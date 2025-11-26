@@ -18,12 +18,54 @@ const OvertimeRequest = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     overtimeDate: '',
-    hours: '',
+    startTime: '',
+    endTime: '',
     reason: ''
   });
 
+  // Calculate total hours automatically
+  const calculateHours = () => {
+    if (!formData.startTime || !formData.endTime) return 0;
+    
+    const [startHour, startMinute] = formData.startTime.split(':').map(Number);
+    const [endHour, endMinute] = formData.endTime.split(':').map(Number);
+    
+    const startTotalMinutes = startHour * 60 + startMinute;
+    const endTotalMinutes = endHour * 60 + endMinute;
+    
+    let diffMinutes = endTotalMinutes - startTotalMinutes;
+    
+    // Handle overnight overtime (e.g., 23:00 to 02:00)
+    if (diffMinutes < 0) {
+      diffMinutes += 24 * 60;
+    }
+    
+    return Math.round((diffMinutes / 60) * 10) / 10; // Round to 1 decimal place
+  };
+
+  const totalHours = calculateHours();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.startTime || !formData.endTime) {
+      toast({
+        title: "Data Tidak Lengkap",
+        description: "Silakan isi jam mulai dan jam selesai",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (totalHours <= 0) {
+      toast({
+        title: "Jam Tidak Valid",
+        description: "Jam selesai harus lebih besar dari jam mulai",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -32,7 +74,7 @@ const OvertimeRequest = () => {
         .insert([{
           user_id: profile?.id!,
           overtime_date: formData.overtimeDate,
-          hours: parseInt(formData.hours),
+          hours: Math.ceil(totalHours), // Round up to nearest hour for storage
           reason: formData.reason,
           status: 'pending'
         }]);
@@ -88,18 +130,37 @@ const OvertimeRequest = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Jam Mulai</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">Jam Selesai</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="hours">Jumlah Jam</Label>
-                <Input
-                  id="hours"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={formData.hours}
-                  onChange={(e) => setFormData({...formData, hours: e.target.value})}
-                  placeholder="Contoh: 3"
-                  required
-                />
+                <Label>Jumlah Jam</Label>
+                <div className="flex items-center h-10 px-3 py-2 rounded-md border border-input bg-muted">
+                  <span className="text-sm text-muted-foreground">
+                    {totalHours > 0 ? `${totalHours} jam` : 'Isi jam mulai dan selesai'}
+                  </span>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -117,7 +178,7 @@ const OvertimeRequest = () => {
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={isSubmitting}
+                disabled={isSubmitting || totalHours <= 0}
               >
                 {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
               </Button>

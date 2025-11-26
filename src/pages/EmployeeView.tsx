@@ -473,14 +473,14 @@ const EmployeeView = () => {
         </Card>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <Card 
             className="cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => window.location.href = '/employee/leave-request'}
           >
             <CardContent className="pt-6 text-center">
               <Calendar className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="font-medium">Ajukan Cuti</p>
+              <p className="font-medium text-sm">Ajukan Cuti</p>
             </CardContent>
           </Card>
           <Card 
@@ -489,7 +489,16 @@ const EmployeeView = () => {
           >
             <CardContent className="pt-6 text-center">
               <Clock className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="font-medium">Lembur</p>
+              <p className="font-medium text-sm">Lembur</p>
+            </CardContent>
+          </Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => window.location.href = '/employee/face-enrollment'}
+          >
+            <CardContent className="pt-6 text-center">
+              <Camera className="h-8 w-8 mx-auto mb-3 text-primary" />
+              <p className="font-medium text-sm">Daftar Wajah</p>
             </CardContent>
           </Card>
         </div>

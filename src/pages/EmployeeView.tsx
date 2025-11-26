@@ -171,6 +171,16 @@ const EmployeeView = () => {
   };
 
   const handleCheckIn = async () => {
+    // Check if FaceIO is ready first
+    if (!faceIO) {
+      toast({
+        title: "FaceIO Belum Siap",
+        description: "Sistem pengenalan wajah sedang dimuat. Silakan tunggu beberapa detik dan coba lagi.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -178,10 +188,6 @@ const EmployeeView = () => {
       const photo = await capturePhoto();
 
       // Step 2: Face Recognition
-      if (!faceIO) {
-        throw new Error("FaceIO belum siap. Silakan refresh halaman.");
-      }
-
       try {
         await faceIO.authenticate({
           locale: 'auto'
@@ -288,6 +294,16 @@ const EmployeeView = () => {
   };
 
   const handleCheckOut = async () => {
+    // Check if FaceIO is ready first
+    if (!faceIO) {
+      toast({
+        title: "FaceIO Belum Siap",
+        description: "Sistem pengenalan wajah sedang dimuat. Silakan tunggu beberapa detik dan coba lagi.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -295,10 +311,6 @@ const EmployeeView = () => {
       const photo = await capturePhoto();
 
       // Step 2: Face Recognition for check-out
-      if (!faceIO) {
-        throw new Error("FaceIO belum siap. Silakan refresh halaman.");
-      }
-
       try {
         await faceIO.authenticate({
           locale: 'auto'

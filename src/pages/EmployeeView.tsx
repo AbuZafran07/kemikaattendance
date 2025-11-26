@@ -16,44 +16,13 @@ const EmployeeView = () => {
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [officeLocations, setOfficeLocations] = useState<Array<{ name: string; latitude: number; longitude: number; radius: number }>>([]);
-  const [faceIO, setFaceIO] = useState<any>(null);
   const { signOut, profile } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Initialize FaceIO
-    const faceioAppId = import.meta.env.VITE_FACEIO_APP_ID;
-    
-    if (!faceioAppId) {
-      console.warn('VITE_FACEIO_APP_ID tidak ditemukan. Silakan tambahkan ke file .env');
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.faceio.net/fio.js';
-    script.async = true;
-    script.onload = () => {
-      try {
-        const fioInstance = new (window as any).faceIO(faceioAppId);
-        setFaceIO(fioInstance);
-      } catch (error) {
-        console.error('Failed to initialize FaceIO:', error);
-      }
-    };
-    script.onerror = () => {
-      console.error('Failed to load FaceIO script');
-    };
-    document.body.appendChild(script);
-    
     fetchOfficeLocation();
     fetchTodayAttendance();
     fetchRecentAttendance();
-    
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
   }, []);
 
   const fetchOfficeLocation = async () => {
@@ -171,35 +140,16 @@ const EmployeeView = () => {
   };
 
   const handleCheckIn = async () => {
-    // Check if FaceIO is ready first
-    if (!faceIO) {
-      toast({
-        title: "FaceIO Belum Siap",
-        description: "Sistem pengenalan wajah sedang dimuat. Silakan tunggu beberapa detik dan coba lagi.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsProcessing(true);
     
     try {
       // Step 1: Capture photo from camera
       const photo = await capturePhoto();
 
-      // Step 2: Face Recognition
-      try {
-        await faceIO.authenticate({
-          locale: 'auto'
-        });
-      } catch (faceError: any) {
-        throw new Error(`Verifikasi wajah gagal: ${faceError.message || 'Tidak dapat mengenali wajah'}`);
-      }
-
-      // Step 3: Get current location
+      // Step 2: Get current location
       const location = await getCurrentLocation();
       
-      // Step 4: Check distance from all office locations
+      // Step 3: Check distance from all office locations
       if (officeLocations.length === 0) {
         throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
       }
@@ -241,7 +191,7 @@ const EmployeeView = () => {
         return;
       }
 
-      // Step 5: Record check-in
+      // Step 4: Record check-in
       const now = new Date();
       const workStartTime = new Date(now);
       workStartTime.setHours(8, 0, 0, 0);
@@ -260,7 +210,7 @@ const EmployeeView = () => {
           check_in_longitude: location.longitude,
           check_in_photo_url: photo,
           gps_validated: true,
-          face_recognition_validated: true,
+          face_recognition_validated: false,
           status: status,
           notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
         }])
@@ -294,32 +244,13 @@ const EmployeeView = () => {
   };
 
   const handleCheckOut = async () => {
-    // Check if FaceIO is ready first
-    if (!faceIO) {
-      toast({
-        title: "FaceIO Belum Siap",
-        description: "Sistem pengenalan wajah sedang dimuat. Silakan tunggu beberapa detik dan coba lagi.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsProcessing(true);
     
     try {
       // Step 1: Capture photo from camera
       const photo = await capturePhoto();
 
-      // Step 2: Face Recognition for check-out
-      try {
-        await faceIO.authenticate({
-          locale: 'auto'
-        });
-      } catch (faceError: any) {
-        throw new Error(`Verifikasi wajah gagal: ${faceError.message || 'Tidak dapat mengenali wajah'}`);
-      }
-
-      // Step 3: Get location and validate
+      // Step 2: Get location and validate
       const location = await getCurrentLocation();
       
       // Check if within range of any office
@@ -473,7 +404,7 @@ const EmployeeView = () => {
         </Card>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <Card 
             className="cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => window.location.href = '/employee/leave-request'}
@@ -490,15 +421,6 @@ const EmployeeView = () => {
             <CardContent className="pt-6 text-center">
               <Clock className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium text-sm">Lembur</p>
-            </CardContent>
-          </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => window.location.href = '/employee/face-enrollment'}
-          >
-            <CardContent className="pt-6 text-center">
-              <Camera className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="font-medium text-sm">Daftar Wajah</p>
             </CardContent>
           </Card>
           <Card 

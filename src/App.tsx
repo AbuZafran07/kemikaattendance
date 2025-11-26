@@ -14,7 +14,9 @@ import Leave from "./pages/Leave";
 import Overtime from "./pages/Overtime";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
 import EmployeeView from "./pages/EmployeeView";
+import FaceEnrollment from "./pages/FaceEnrollment";
 import LeaveRequest from "./pages/LeaveRequest";
 import OvertimeRequest from "./pages/OvertimeRequest";
 import NotFound from "./pages/NotFound";
@@ -38,7 +40,9 @@ const App = () => (
             <Route path="/dashboard/overtime" element={<ProtectedRoute requireAdmin><Overtime /></ProtectedRoute>} />
             <Route path="/dashboard/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
+            <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
+            <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
             <Route path="/employee/leave-request" element={<ProtectedRoute><LeaveRequest /></ProtectedRoute>} />
             <Route path="/employee/overtime-request" element={<ProtectedRoute><OvertimeRequest /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

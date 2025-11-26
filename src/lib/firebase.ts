@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -10,19 +10,53 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+// Check if Firebase is configured
+const isFirebaseConfigured = () => {
+  return !!(
+    firebaseConfig.apiKey &&
+    firebaseConfig.projectId &&
+    firebaseConfig.messagingSenderId &&
+    firebaseConfig.appId
+  );
+};
+
+let app: any;
+let messaging: Messaging | null = null;
+
+// Only initialize if Firebase is properly configured
+if (isFirebaseConfigured()) {
+  try {
+    app = initializeApp(firebaseConfig);
+    messaging = getMessaging(app);
+  } catch (error) {
+    console.warn('Firebase initialization failed:', error);
+  }
+}
 
 export const requestNotificationPermission = async () => {
+  if (!messaging) {
+    console.warn('Firebase Messaging not initialized. Please configure Firebase environment variables.');
+    return null;
+  }
+
+  if (!('Notification' in window)) {
+    console.warn('This browser does not support notifications.');
+    return null;
+  }
+
   try {
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
       console.log('Notification permission granted.');
       
-      const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
-      });
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      if (!vapidKey) {
+        console.warn('Firebase VAPID key not configured.');
+        return null;
+      }
+
+      const token = await getToken(messaging, { vapidKey });
       
       if (token) {
         console.log('FCM Token:', token);
@@ -42,7 +76,11 @@ export const requestNotificationPermission = async () => {
 };
 
 export const onMessageListener = () =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
+    if (!messaging) {
+      reject(new Error('Firebase Messaging not initialized'));
+      return;
+    }
     onMessage(messaging, (payload) => {
       console.log('Message received. ', payload);
       resolve(payload);

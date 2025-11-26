@@ -10,20 +10,17 @@ export const FCMNotifications = () => {
 
   useEffect(() => {
     const setupNotifications = async () => {
+      if (!profile?.id) return;
+
       try {
         const token = await requestNotificationPermission();
         
-        if (token && profile?.id) {
+        if (token) {
           // Store FCM token in database for this user
-          await supabase
-            .from('profiles')
-            .update({ 
-              // Note: You'll need to add fcm_token column to profiles table
-              // This is just placeholder logic
-            })
-            .eq('id', profile.id);
-          
-          console.log('FCM Token saved for user:', profile.id);
+          // Note: You'll need to add fcm_token column to profiles table via migration
+          console.log('FCM Token retrieved for user:', profile.id);
+          console.log('Token:', token);
+          // TODO: Store token in database once fcm_token column is added
         }
       } catch (error) {
         console.error('Error setting up notifications:', error);
@@ -33,14 +30,23 @@ export const FCMNotifications = () => {
     setupNotifications();
 
     // Listen for foreground messages
-    onMessageListener()
+    const unsubscribe = onMessageListener()
       .then((payload: any) => {
         toast({
           title: payload.notification?.title || 'Notifikasi Baru',
           description: payload.notification?.body || '',
         });
       })
-      .catch((err) => console.log('Failed to receive message:', err));
+      .catch((err) => {
+        // Silently fail if Firebase is not configured
+        if (err.message !== 'Firebase Messaging not initialized') {
+          console.log('Failed to receive message:', err);
+        }
+      });
+
+    return () => {
+      // Cleanup if needed
+    };
   }, [profile, toast]);
 
   return null;

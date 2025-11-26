@@ -27,19 +27,15 @@ const EmployeeView = () => {
 
   const fetchOfficeLocation = async () => {
     try {
-      const { data, error } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "office_location")
-        .single();
+      const { data, error } = await supabase.rpc('get_office_location');
 
       if (error) throw error;
-      if (data?.value) {
-        const locationData = data.value as { latitude: number; longitude: number; radius: number };
+      if (data) {
+        const locationData = data as { latitude: number; longitude: number; radius: number };
         setOfficeLocation({
           lat: locationData.latitude,
           lon: locationData.longitude,
-          radius: locationData.radius,
+          radius: locationData.radius || 100,
         });
       }
     } catch (error) {

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
@@ -25,13 +26,13 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/employees" element={<Employees />} />
-            <Route path="/dashboard/attendance" element={<Attendance />} />
-            <Route path="/dashboard/leave" element={<Leave />} />
-            <Route path="/dashboard/reports" element={<Reports />} />
-            <Route path="/dashboard/settings" element={<Settings />} />
-            <Route path="/employee" element={<EmployeeView />} />
+            <Route path="/dashboard" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/employees" element={<ProtectedRoute requireAdmin><Employees /></ProtectedRoute>} />
+            <Route path="/dashboard/attendance" element={<ProtectedRoute requireAdmin><Attendance /></ProtectedRoute>} />
+            <Route path="/dashboard/leave" element={<ProtectedRoute requireAdmin><Leave /></ProtectedRoute>} />
+            <Route path="/dashboard/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
+            <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

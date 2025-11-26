@@ -63,6 +63,16 @@ export default function Settings() {
           acc[item.key] = item.value;
           return acc;
         }, {});
+        
+        // Handle both old and new format
+        if (settingsMap.office_location && !settingsMap.office_locations) {
+          settingsMap.office_locations = [{
+            name: "Kantor Pusat",
+            ...settingsMap.office_location
+          }];
+          delete settingsMap.office_location;
+        }
+        
         setSettings(settingsMap);
       }
     } catch (error: any) {

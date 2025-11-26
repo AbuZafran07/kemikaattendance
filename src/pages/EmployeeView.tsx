@@ -7,10 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-// Office coordinates (replace with actual office location)
-const OFFICE_LAT = -6.200000; // Example: Jakarta
-const OFFICE_LON = 106.816666;
-const MAX_DISTANCE_METERS = 100;
+// Office coordinates will be fetched from system settings
 
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -18,13 +15,37 @@ const EmployeeView = () => {
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [officeLocation, setOfficeLocation] = useState({ lat: -6.2088, lon: 106.8456, radius: 100 });
   const { signOut, profile } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
+    fetchOfficeLocation();
     fetchTodayAttendance();
     fetchRecentAttendance();
   }, []);
+
+  const fetchOfficeLocation = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "office_location")
+        .single();
+
+      if (error) throw error;
+      if (data?.value) {
+        const locationData = data.value as { latitude: number; longitude: number; radius: number };
+        setOfficeLocation({
+          lat: locationData.latitude,
+          lon: locationData.longitude,
+          radius: locationData.radius,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching office location:", error);
+    }
+  };
 
   const fetchTodayAttendance = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -109,16 +130,16 @@ const EmployeeView = () => {
       const distance = calculateDistance(
         location.latitude,
         location.longitude,
-        OFFICE_LAT,
-        OFFICE_LON
+        officeLocation.lat,
+        officeLocation.lon
       );
 
-      const isWithinRange = distance <= MAX_DISTANCE_METERS;
+      const isWithinRange = distance <= officeLocation.radius;
       
       if (!isWithinRange) {
         toast({
           title: "Lokasi Tidak Valid",
-          description: `Anda berada ${Math.round(distance)}m dari kantor. Jarak maksimal ${MAX_DISTANCE_METERS}m`,
+          description: `Anda berada ${Math.round(distance)}m dari kantor. Jarak maksimal ${officeLocation.radius}m`,
           variant: "destructive",
         });
         setIsProcessing(false);
@@ -183,11 +204,11 @@ const EmployeeView = () => {
       const distance = calculateDistance(
         location.latitude,
         location.longitude,
-        OFFICE_LAT,
-        OFFICE_LON
+        officeLocation.lat,
+        officeLocation.lon
       );
 
-      const isWithinRange = distance <= MAX_DISTANCE_METERS;
+      const isWithinRange = distance <= officeLocation.radius;
       
       const now = new Date();
       const checkInTime = new Date(todayAttendance.check_in_time);

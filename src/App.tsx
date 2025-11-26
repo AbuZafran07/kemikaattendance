@@ -9,6 +9,8 @@ import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
 import EmployeeView from "./pages/EmployeeView";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/dashboard/employees" element={<Employees />} />
             <Route path="/dashboard/attendance" element={<Attendance />} />
             <Route path="/dashboard/leave" element={<Leave />} />
+            <Route path="/dashboard/reports" element={<Reports />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="/employee" element={<EmployeeView />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,8 +100,8 @@ export default function Settings() {
       }
 
       toast({
-        title: "Success",
-        description: "Settings saved successfully",
+        title: "Berhasil",
+        description: "Pengaturan berhasil disimpan",
       });
     } catch (error: any) {
       toast({
@@ -115,18 +116,21 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">System Settings</h1>
-        <p className="text-muted-foreground">Configure office location, working hours, and policies</p>
-      </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Pengaturan Sistem</h1>
+          <p className="text-muted-foreground mt-1">Konfigurasi lokasi kantor, jam kerja, dan kebijakan</p>
+        </div>
 
       <Card>
         <CardHeader>
@@ -230,13 +234,13 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Working Hours</CardTitle>
-          <CardDescription>Standard office hours and late threshold</CardDescription>
+          <CardTitle>Jam Kerja</CardTitle>
+          <CardDescription>Jam kerja standar dan batas keterlambatan</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="check_in">Check-in Time</Label>
+              <Label htmlFor="check_in">Waktu Check-in</Label>
               <Input
                 id="check_in"
                 type="time"
@@ -253,7 +257,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <Label htmlFor="check_out">Check-out Time</Label>
+              <Label htmlFor="check_out">Waktu Check-out</Label>
               <Input
                 id="check_out"
                 type="time"
@@ -270,7 +274,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <Label htmlFor="late_threshold">Late Threshold</Label>
+              <Label htmlFor="late_threshold">Batas Keterlambatan</Label>
               <Input
                 id="late_threshold"
                 type="time"
@@ -292,13 +296,13 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Leave Policy</CardTitle>
-          <CardDescription>Annual leave quota and restrictions</CardDescription>
+          <CardTitle>Kebijakan Cuti</CardTitle>
+          <CardDescription>Kuota cuti tahunan dan batasan</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="annual_quota">Annual Quota (days)</Label>
+              <Label htmlFor="annual_quota">Kuota Tahunan (hari)</Label>
               <Input
                 id="annual_quota"
                 type="number"
@@ -315,7 +319,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <Label htmlFor="max_consecutive_days">Max Consecutive Days</Label>
+              <Label htmlFor="max_consecutive_days">Maksimal Hari Berturut-turut</Label>
               <Input
                 id="max_consecutive_days"
                 type="number"
@@ -332,7 +336,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <Label htmlFor="min_notice_days">Minimum Notice (days)</Label>
+              <Label htmlFor="min_notice_days">Pemberitahuan Minimum (hari)</Label>
               <Input
                 id="min_notice_days"
                 type="number"
@@ -354,13 +358,13 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Overtime Policy</CardTitle>
-          <CardDescription>Overtime request rules and limits</CardDescription>
+          <CardTitle>Kebijakan Lembur</CardTitle>
+          <CardDescription>Aturan dan batasan permintaan lembur</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="min_hours">Minimum Hours</Label>
+              <Label htmlFor="min_hours">Jam Minimum</Label>
               <Input
                 id="min_hours"
                 type="number"
@@ -377,7 +381,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <Label htmlFor="max_hours">Maximum Hours</Label>
+              <Label htmlFor="max_hours">Jam Maksimum</Label>
               <Input
                 id="max_hours"
                 type="number"
@@ -398,11 +402,12 @@ export default function Settings() {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save Settings
+          Simpan Pengaturan
         </Button>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

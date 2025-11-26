@@ -42,15 +42,15 @@ const LeaveRequest = () => {
 
       const { error } = await supabase
         .from('leave_requests')
-        .insert({
-          user_id: profile?.id,
-          leave_type: formData.leaveType,
+        .insert([{
+          user_id: profile?.id!,
+          leave_type: formData.leaveType as 'cuti_tahunan' | 'izin' | 'sakit' | 'lupa_absen',
           start_date: formData.startDate,
           end_date: formData.endDate,
           total_days: totalDays,
           reason: formData.reason,
           status: 'pending'
-        });
+        }]);
 
       if (error) throw error;
 

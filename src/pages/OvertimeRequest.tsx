@@ -29,13 +29,13 @@ const OvertimeRequest = () => {
     try {
       const { error } = await supabase
         .from('overtime_requests')
-        .insert({
-          user_id: profile?.id,
+        .insert([{
+          user_id: profile?.id!,
           overtime_date: formData.overtimeDate,
           hours: parseInt(formData.hours),
           reason: formData.reason,
           status: 'pending'
-        });
+        }]);
 
       if (error) throw error;
 

@@ -142,32 +142,58 @@ const EmployeeView = () => {
     });
   };
 
+  const capturePhoto = async (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(stream => {
+          video.srcObject = stream;
+          video.play();
+          
+          video.onloadedmetadata = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            setTimeout(() => {
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(video, 0, 0);
+              const photoDataUrl = canvas.toDataURL('image/jpeg');
+              
+              stream.getTracks().forEach(track => track.stop());
+              resolve(photoDataUrl);
+            }, 1000);
+          };
+        })
+        .catch(err => reject(new Error('Tidak dapat mengakses kamera: ' + err.message)));
+    });
+  };
+
   const handleCheckIn = async () => {
     setIsProcessing(true);
     
     try {
-      // Step 1: Face Recognition
+      // Step 1: Capture photo from camera
+      const photo = await capturePhoto();
+
+      // Step 2: Face Recognition
       if (!faceIO) {
         throw new Error("FaceIO belum siap. Silakan refresh halaman.");
       }
 
-      let faceData;
       try {
-        faceData = await faceIO.enroll({
-          locale: 'auto',
-          payload: {
-            userId: profile?.id,
-            userName: profile?.full_name
-          }
+        await faceIO.authenticate({
+          locale: 'auto'
         });
       } catch (faceError: any) {
         throw new Error(`Verifikasi wajah gagal: ${faceError.message || 'Tidak dapat mengenali wajah'}`);
       }
 
-      // Step 2: Get current location
+      // Step 3: Get current location
       const location = await getCurrentLocation();
       
-      // Step 3: Check distance from all office locations
+      // Step 4: Check distance from all office locations
       if (officeLocations.length === 0) {
         throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
       }
@@ -209,7 +235,7 @@ const EmployeeView = () => {
         return;
       }
 
-      // Step 4: Record check-in
+      // Step 5: Record check-in
       const now = new Date();
       const workStartTime = new Date(now);
       workStartTime.setHours(8, 0, 0, 0);
@@ -226,6 +252,7 @@ const EmployeeView = () => {
           check_in_time: now.toISOString(),
           check_in_latitude: location.latitude,
           check_in_longitude: location.longitude,
+          check_in_photo_url: photo,
           gps_validated: true,
           face_recognition_validated: true,
           status: status,
@@ -264,7 +291,10 @@ const EmployeeView = () => {
     setIsProcessing(true);
     
     try {
-      // Step 1: Face Recognition for check-out
+      // Step 1: Capture photo from camera
+      const photo = await capturePhoto();
+
+      // Step 2: Face Recognition for check-out
       if (!faceIO) {
         throw new Error("FaceIO belum siap. Silakan refresh halaman.");
       }
@@ -277,7 +307,7 @@ const EmployeeView = () => {
         throw new Error(`Verifikasi wajah gagal: ${faceError.message || 'Tidak dapat mengenali wajah'}`);
       }
 
-      // Step 2: Get location and validate
+      // Step 3: Get location and validate
       const location = await getCurrentLocation();
       
       // Check if within range of any office
@@ -305,6 +335,7 @@ const EmployeeView = () => {
           check_out_time: now.toISOString(),
           check_out_latitude: location.latitude,
           check_out_longitude: location.longitude,
+          check_out_photo_url: photo,
           duration_minutes: durationMinutes
         })
         .eq('id', todayAttendance.id);
@@ -431,13 +462,19 @@ const EmployeeView = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => window.location.href = '/employee/leave-request'}
+          >
             <CardContent className="pt-6 text-center">
               <Calendar className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium">Ajukan Cuti</p>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => window.location.href = '/employee/overtime-request'}
+          >
             <CardContent className="pt-6 text-center">
               <Clock className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium">Lembur</p>

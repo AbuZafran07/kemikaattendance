@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, MapPin, LogOut, Calendar, Clock, User } from "lucide-react";
+import { Camera, MapPin, LogOut, Calendar, Clock, User, FileText, TrendingUp } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -473,7 +473,7 @@ const EmployeeView = () => {
         </Card>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <Card 
             className="cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => window.location.href = '/employee/leave-request'}
@@ -499,6 +499,24 @@ const EmployeeView = () => {
             <CardContent className="pt-6 text-center">
               <Camera className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium text-sm">Daftar Wajah</p>
+            </CardContent>
+          </Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => window.location.href = '/employee/attendance-history'}
+          >
+            <CardContent className="pt-6 text-center">
+              <FileText className="h-8 w-8 mx-auto mb-3 text-primary" />
+              <p className="font-medium text-sm">Riwayat</p>
+            </CardContent>
+          </Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => window.location.href = '/employee/performance'}
+          >
+            <CardContent className="pt-6 text-center">
+              <TrendingUp className="h-8 w-8 mx-auto mb-3 text-primary" />
+              <p className="font-medium text-sm">Performa</p>
             </CardContent>
           </Card>
         </div>

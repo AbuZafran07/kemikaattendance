@@ -1,412 +1,70 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-
-interface OfficeLocation {
-  name: string;
-  latitude: number;
-  longitude: number;
-  radius: number;
-}
-
-interface SystemSettings {
-  office_locations: OfficeLocation[];
-  working_hours: {
-    check_in: string;
-    check_out: string;
-    late_threshold: string;
-  };
-  leave_policy: {
-    annual_quota: number;
-    max_consecutive_days: number;
-    min_notice_days: number;
-  };
-  overtime_policy: {
-    min_hours: number;
-    max_hours: number;
-    requires_approval: boolean;
-  };
-}
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building2, MapPin, Clock, Calendar, FileText, Bell } from "lucide-react";
 
 export default function Settings() {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<SystemSettings>({
-    office_locations: [
-      { name: "Kantor Pusat", latitude: -6.2088, longitude: 106.8456, radius: 100 }
-    ],
-    working_hours: { check_in: "08:00", check_out: "17:00", late_threshold: "08:30" },
-    leave_policy: { annual_quota: 12, max_consecutive_days: 14, min_notice_days: 3 },
-    overtime_policy: { min_hours: 1, max_hours: 4, requires_approval: true },
-  });
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("system_settings")
-        .select("key, value");
-
-      if (error) throw error;
-
-      if (data) {
-        const settingsMap = data.reduce((acc: any, item) => {
-          acc[item.key] = item.value;
-          return acc;
-        }, {});
-        
-        // Handle both old and new format
-        if (settingsMap.office_location && !settingsMap.office_locations) {
-          settingsMap.office_locations = [{
-            name: "Kantor Pusat",
-            ...settingsMap.office_location
-          }];
-          delete settingsMap.office_location;
-        }
-        
-        setSettings(settingsMap);
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      for (const [key, value] of Object.entries(settings)) {
-        const { error } = await supabase
-          .from("system_settings")
-          .update({ value })
-          .eq("key", key);
-
-        if (error) throw error;
-      }
-
-      toast({
-        title: "Berhasil",
-        description: "Pengaturan berhasil disimpan",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const navigate = useNavigate();
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pengaturan Sistem</h1>
-          <p className="text-muted-foreground mt-1">Konfigurasi lokasi kantor, jam kerja, dan kebijakan</p>
+          <p className="text-muted-foreground mt-1">Konfigurasi sistem dan pengaturan aplikasi</p>
         </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lokasi Kantor</CardTitle>
-          <CardDescription>Koordinat GPS untuk validasi absensi (maksimal 2 lokasi)</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {settings.office_locations.map((location, index) => (
-            <div key={index} className="space-y-4 p-4 border border-border rounded-lg">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Lokasi {index + 1}</h3>
-                {settings.office_locations.length > 1 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      const newLocations = settings.office_locations.filter((_, i) => i !== index);
-                      setSettings({ ...settings, office_locations: newLocations });
-                    }}
-                  >
-                    Hapus
-                  </Button>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Label htmlFor={`name-${index}`}>Nama Lokasi</Label>
-                  <Input
-                    id={`name-${index}`}
-                    type="text"
-                    value={location.name}
-                    onChange={(e) => {
-                      const newLocations = [...settings.office_locations];
-                      newLocations[index].name = e.target.value;
-                      setSettings({ ...settings, office_locations: newLocations });
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`latitude-${index}`}>Latitude</Label>
-                  <Input
-                    id={`latitude-${index}`}
-                    type="number"
-                    step="0.0001"
-                    value={location.latitude}
-                    onChange={(e) => {
-                      const newLocations = [...settings.office_locations];
-                      newLocations[index].latitude = parseFloat(e.target.value);
-                      setSettings({ ...settings, office_locations: newLocations });
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`longitude-${index}`}>Longitude</Label>
-                  <Input
-                    id={`longitude-${index}`}
-                    type="number"
-                    step="0.0001"
-                    value={location.longitude}
-                    onChange={(e) => {
-                      const newLocations = [...settings.office_locations];
-                      newLocations[index].longitude = parseFloat(e.target.value);
-                      setSettings({ ...settings, office_locations: newLocations });
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`radius-${index}`}>Radius (meter)</Label>
-                  <Input
-                    id={`radius-${index}`}
-                    type="number"
-                    value={location.radius}
-                    onChange={(e) => {
-                      const newLocations = [...settings.office_locations];
-                      newLocations[index].radius = parseInt(e.target.value);
-                      setSettings({ ...settings, office_locations: newLocations });
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-          {settings.office_locations.length < 2 && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSettings({
-                  ...settings,
-                  office_locations: [
-                    ...settings.office_locations,
-                    { name: `Lokasi ${settings.office_locations.length + 1}`, latitude: -6.2088, longitude: 106.8456, radius: 100 }
-                  ]
-                });
-              }}
-            >
-              + Tambah Lokasi
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/settings/office')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Lokasi Kantor
+              </CardTitle>
+              <CardDescription>Kelola lokasi dan koordinat GPS kantor</CardDescription>
+            </CardHeader>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Jam Kerja</CardTitle>
-          <CardDescription>Jam kerja standar dan batas keterlambatan</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="check_in">Waktu Check-in</Label>
-              <Input
-                id="check_in"
-                type="time"
-                value={settings.working_hours.check_in}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    working_hours: {
-                      ...settings.working_hours,
-                      check_in: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="check_out">Waktu Check-out</Label>
-              <Input
-                id="check_out"
-                type="time"
-                value={settings.working_hours.check_out}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    working_hours: {
-                      ...settings.working_hours,
-                      check_out: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="late_threshold">Batas Keterlambatan</Label>
-              <Input
-                id="late_threshold"
-                type="time"
-                value={settings.working_hours.late_threshold}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    working_hours: {
-                      ...settings.working_hours,
-                      late_threshold: e.target.value,
-                    },
-                  })
-                }
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/settings/work-hours')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Jam Kerja
+              </CardTitle>
+              <CardDescription>Atur jam kerja dan toleransi keterlambatan</CardDescription>
+            </CardHeader>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Kebijakan Cuti</CardTitle>
-          <CardDescription>Kuota cuti tahunan dan batasan</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="annual_quota">Kuota Tahunan (hari)</Label>
-              <Input
-                id="annual_quota"
-                type="number"
-                value={settings.leave_policy.annual_quota}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    leave_policy: {
-                      ...settings.leave_policy,
-                      annual_quota: parseInt(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="max_consecutive_days">Maksimal Hari Berturut-turut</Label>
-              <Input
-                id="max_consecutive_days"
-                type="number"
-                value={settings.leave_policy.max_consecutive_days}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    leave_policy: {
-                      ...settings.leave_policy,
-                      max_consecutive_days: parseInt(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="min_notice_days">Pemberitahuan Minimum (hari)</Label>
-              <Input
-                id="min_notice_days"
-                type="number"
-                value={settings.leave_policy.min_notice_days}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    leave_policy: {
-                      ...settings.leave_policy,
-                      min_notice_days: parseInt(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/settings/leave')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Kebijakan Cuti
+              </CardTitle>
+              <CardDescription>Kelola kuota dan aturan cuti</CardDescription>
+            </CardHeader>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Kebijakan Lembur</CardTitle>
-          <CardDescription>Aturan dan batasan permintaan lembur</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="min_hours">Jam Minimum</Label>
-              <Input
-                id="min_hours"
-                type="number"
-                value={settings.overtime_policy.min_hours}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    overtime_policy: {
-                      ...settings.overtime_policy,
-                      min_hours: parseInt(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="max_hours">Jam Maksimum</Label>
-              <Input
-                id="max_hours"
-                type="number"
-                value={settings.overtime_policy.max_hours}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    overtime_policy: {
-                      ...settings.overtime_policy,
-                      max_hours: parseInt(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/settings/overtime')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Kebijakan Lembur
+              </CardTitle>
+              <CardDescription>Atur aturan dan kompensasi lembur</CardDescription>
+            </CardHeader>
+          </Card>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Simpan Pengaturan
-        </Button>
-      </div>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/notification-settings')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Pengaturan Notifikasi
+              </CardTitle>
+              <CardDescription>Kelola notifikasi push untuk admin</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   );

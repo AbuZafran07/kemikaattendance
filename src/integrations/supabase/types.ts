@@ -14,16 +14,243 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance: {
+        Row: {
+          check_in_latitude: number
+          check_in_longitude: number
+          check_in_photo_url: string | null
+          check_in_time: string
+          check_out_latitude: number | null
+          check_out_longitude: number | null
+          check_out_photo_url: string | null
+          check_out_time: string | null
+          created_at: string
+          duration_minutes: number | null
+          face_recognition_validated: boolean | null
+          gps_validated: boolean | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["attendance_status"]
+          user_id: string
+        }
+        Insert: {
+          check_in_latitude: number
+          check_in_longitude: number
+          check_in_photo_url?: string | null
+          check_in_time: string
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          check_out_photo_url?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          face_recognition_validated?: boolean | null
+          gps_validated?: boolean | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["attendance_status"]
+          user_id: string
+        }
+        Update: {
+          check_in_latitude?: number
+          check_in_longitude?: number
+          check_in_photo_url?: string | null
+          check_in_time?: string
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          check_out_photo_url?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          face_recognition_validated?: boolean | null
+          gps_validated?: boolean | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["attendance_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          end_date: string
+          id: string
+          leave_type: Database["public"]["Enums"]["leave_type"]
+          reason: string
+          rejection_reason: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["leave_status"]
+          total_days: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date: string
+          id?: string
+          leave_type: Database["public"]["Enums"]["leave_type"]
+          reason: string
+          rejection_reason?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          total_days: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          leave_type?: Database["public"]["Enums"]["leave_type"]
+          reason?: string
+          rejection_reason?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          total_days?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      overtime_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          hours: number
+          id: string
+          overtime_date: string
+          reason: string
+          status: Database["public"]["Enums"]["leave_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          hours: number
+          id?: string
+          overtime_date: string
+          reason: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          hours?: number
+          id?: string
+          overtime_date?: string
+          reason?: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          annual_leave_quota: number | null
+          created_at: string
+          departemen: string
+          email: string
+          full_name: string
+          id: string
+          jabatan: string
+          join_date: string
+          nik: string
+          phone: string | null
+          photo_url: string | null
+          remaining_leave: number | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          annual_leave_quota?: number | null
+          created_at?: string
+          departemen: string
+          email: string
+          full_name: string
+          id: string
+          jabatan: string
+          join_date?: string
+          nik: string
+          phone?: string | null
+          photo_url?: string | null
+          remaining_leave?: number | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          annual_leave_quota?: number | null
+          created_at?: string
+          departemen?: string
+          email?: string
+          full_name?: string
+          id?: string
+          jabatan?: string
+          join_date?: string
+          nik?: string
+          phone?: string | null
+          photo_url?: string | null
+          remaining_leave?: number | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "employee"
+      attendance_status: "hadir" | "terlambat" | "pulang_cepat" | "tidak_hadir"
+      leave_status: "pending" | "approved" | "rejected"
+      leave_type: "cuti_tahunan" | "izin" | "sakit" | "lupa_absen"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +377,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "employee"],
+      attendance_status: ["hadir", "terlambat", "pulang_cepat", "tidak_hadir"],
+      leave_status: ["pending", "approved", "rejected"],
+      leave_type: ["cuti_tahunan", "izin", "sakit", "lupa_absen"],
+    },
   },
 } as const

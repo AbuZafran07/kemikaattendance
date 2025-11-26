@@ -7,12 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
+interface OfficeLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+}
+
 interface SystemSettings {
-  office_location: {
-    latitude: number;
-    longitude: number;
-    radius: number;
-  };
+  office_locations: OfficeLocation[];
   working_hours: {
     check_in: string;
     check_out: string;
@@ -35,7 +38,9 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SystemSettings>({
-    office_location: { latitude: -6.2088, longitude: 106.8456, radius: 100 },
+    office_locations: [
+      { name: "Kantor Pusat", latitude: -6.2088, longitude: 106.8456, radius: 100 }
+    ],
     working_hours: { check_in: "08:00", check_out: "17:00", late_threshold: "08:30" },
     leave_policy: { annual_quota: 12, max_consecutive_days: 14, min_notice_days: 3 },
     overtime_policy: { min_hours: 1, max_hours: 4, requires_approval: true },
@@ -115,65 +120,101 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Office Location</CardTitle>
-          <CardDescription>GPS coordinates for attendance validation</CardDescription>
+          <CardTitle>Lokasi Kantor</CardTitle>
+          <CardDescription>Koordinat GPS untuk validasi absensi (maksimal 2 lokasi)</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="latitude">Latitude</Label>
-              <Input
-                id="latitude"
-                type="number"
-                step="0.0001"
-                value={settings.office_location.latitude}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    office_location: {
-                      ...settings.office_location,
-                      latitude: parseFloat(e.target.value),
-                    },
-                  })
-                }
-              />
+        <CardContent className="space-y-6">
+          {settings.office_locations.map((location, index) => (
+            <div key={index} className="space-y-4 p-4 border border-border rounded-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Lokasi {index + 1}</h3>
+                {settings.office_locations.length > 1 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      const newLocations = settings.office_locations.filter((_, i) => i !== index);
+                      setSettings({ ...settings, office_locations: newLocations });
+                    }}
+                  >
+                    Hapus
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor={`name-${index}`}>Nama Lokasi</Label>
+                  <Input
+                    id={`name-${index}`}
+                    type="text"
+                    value={location.name}
+                    onChange={(e) => {
+                      const newLocations = [...settings.office_locations];
+                      newLocations[index].name = e.target.value;
+                      setSettings({ ...settings, office_locations: newLocations });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`latitude-${index}`}>Latitude</Label>
+                  <Input
+                    id={`latitude-${index}`}
+                    type="number"
+                    step="0.0001"
+                    value={location.latitude}
+                    onChange={(e) => {
+                      const newLocations = [...settings.office_locations];
+                      newLocations[index].latitude = parseFloat(e.target.value);
+                      setSettings({ ...settings, office_locations: newLocations });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`longitude-${index}`}>Longitude</Label>
+                  <Input
+                    id={`longitude-${index}`}
+                    type="number"
+                    step="0.0001"
+                    value={location.longitude}
+                    onChange={(e) => {
+                      const newLocations = [...settings.office_locations];
+                      newLocations[index].longitude = parseFloat(e.target.value);
+                      setSettings({ ...settings, office_locations: newLocations });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`radius-${index}`}>Radius (meter)</Label>
+                  <Input
+                    id={`radius-${index}`}
+                    type="number"
+                    value={location.radius}
+                    onChange={(e) => {
+                      const newLocations = [...settings.office_locations];
+                      newLocations[index].radius = parseInt(e.target.value);
+                      setSettings({ ...settings, office_locations: newLocations });
+                    }}
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="longitude">Longitude</Label>
-              <Input
-                id="longitude"
-                type="number"
-                step="0.0001"
-                value={settings.office_location.longitude}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    office_location: {
-                      ...settings.office_location,
-                      longitude: parseFloat(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="radius">Radius (meters)</Label>
-              <Input
-                id="radius"
-                type="number"
-                value={settings.office_location.radius}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    office_location: {
-                      ...settings.office_location,
-                      radius: parseInt(e.target.value),
-                    },
-                  })
-                }
-              />
-            </div>
-          </div>
+          ))}
+          {settings.office_locations.length < 2 && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSettings({
+                  ...settings,
+                  office_locations: [
+                    ...settings.office_locations,
+                    { name: `Lokasi ${settings.office_locations.length + 1}`, latitude: -6.2088, longitude: 106.8456, radius: 100 }
+                  ]
+                });
+              }}
+            >
+              + Tambah Lokasi
+            </Button>
+          )}
         </CardContent>
       </Card>
 

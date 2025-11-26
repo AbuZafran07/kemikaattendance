@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
+import Overtime from "./pages/Overtime";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import EmployeeView from "./pages/EmployeeView";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/dashboard/employees" element={<ProtectedRoute requireAdmin><Employees /></ProtectedRoute>} />
             <Route path="/dashboard/attendance" element={<ProtectedRoute requireAdmin><Attendance /></ProtectedRoute>} />
             <Route path="/dashboard/leave" element={<ProtectedRoute requireAdmin><Leave /></ProtectedRoute>} />
+            <Route path="/dashboard/overtime" element={<ProtectedRoute requireAdmin><Overtime /></ProtectedRoute>} />
             <Route path="/dashboard/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />

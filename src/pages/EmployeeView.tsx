@@ -1,30 +1,239 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, MapPin, LogOut, Calendar, Clock, User } from "lucide-react";
 import logo from "@/assets/logo.png";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+// Office coordinates (replace with actual office location)
+const OFFICE_LAT = -6.200000; // Example: Jakarta
+const OFFICE_LON = 106.816666;
+const MAX_DISTANCE_METERS = 100;
 
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const navigate = useNavigate();
+  const [checkInTime, setCheckInTime] = useState<string | null>(null);
+  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+  const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { signOut, profile } = useAuth();
   const { toast } = useToast();
 
-  const handleCheckIn = () => {
-    setIsCheckedIn(true);
-    toast({
-      title: "Check-In Berhasil",
-      description: "Terima kasih, kehadiran Anda telah tercatat",
+  useEffect(() => {
+    fetchTodayAttendance();
+    fetchRecentAttendance();
+  }, []);
+
+  const fetchTodayAttendance = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('attendance')
+      .select('*')
+      .gte('check_in_time', `${today}T00:00:00`)
+      .lte('check_in_time', `${today}T23:59:59`)
+      .single();
+    
+    if (data) {
+      setTodayAttendance(data);
+      setIsCheckedIn(true);
+      setCheckInTime(new Date(data.check_in_time).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }));
+    }
+  };
+
+  const fetchRecentAttendance = async () => {
+    const { data } = await supabase
+      .from('attendance')
+      .select('*')
+      .order('check_in_time', { ascending: false })
+      .limit(3);
+    
+    if (data) {
+      setRecentAttendance(data);
+    }
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in meters
+  };
+
+  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation tidak didukung oleh browser Anda'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+        },
+        (error) => {
+          reject(new Error('Tidak dapat mengakses lokasi: ' + error.message));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
     });
   };
 
-  const handleCheckOut = () => {
-    setIsCheckedIn(false);
-    toast({
-      title: "Check-Out Berhasil",
-      description: "Sampai jumpa besok!",
-    });
+  const handleCheckIn = async () => {
+    setIsProcessing(true);
+    
+    try {
+      // Get current location
+      const location = await getCurrentLocation();
+      
+      // Calculate distance from office
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        OFFICE_LAT,
+        OFFICE_LON
+      );
+
+      const isWithinRange = distance <= MAX_DISTANCE_METERS;
+      
+      if (!isWithinRange) {
+        toast({
+          title: "Lokasi Tidak Valid",
+          description: `Anda berada ${Math.round(distance)}m dari kantor. Jarak maksimal ${MAX_DISTANCE_METERS}m`,
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Record check-in
+      const now = new Date();
+      const workStartTime = new Date(now);
+      workStartTime.setHours(8, 0, 0, 0);
+      
+      let status: 'hadir' | 'terlambat' = 'hadir';
+      if (now > workStartTime) {
+        status = 'terlambat';
+      }
+
+      const { data, error } = await supabase
+        .from('attendance')
+        .insert({
+          user_id: profile?.id,
+          check_in_time: now.toISOString(),
+          check_in_latitude: location.latitude,
+          check_in_longitude: location.longitude,
+          gps_validated: isWithinRange,
+          status: status
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setIsCheckedIn(true);
+      setTodayAttendance(data);
+      setCheckInTime(now.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }));
+
+      toast({
+        title: "Check-In Berhasil",
+        description: `Terima kasih, kehadiran Anda telah tercatat (${Math.round(distance)}m dari kantor)`,
+      });
+
+      fetchRecentAttendance();
+    } catch (error: any) {
+      toast({
+        title: "Check-In Gagal",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    setIsProcessing(true);
+    
+    try {
+      const location = await getCurrentLocation();
+      
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        OFFICE_LAT,
+        OFFICE_LON
+      );
+
+      const isWithinRange = distance <= MAX_DISTANCE_METERS;
+      
+      const now = new Date();
+      const checkInTime = new Date(todayAttendance.check_in_time);
+      const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
+
+      const { error } = await supabase
+        .from('attendance')
+        .update({
+          check_out_time: now.toISOString(),
+          check_out_latitude: location.latitude,
+          check_out_longitude: location.longitude,
+          duration_minutes: durationMinutes
+        })
+        .eq('id', todayAttendance.id);
+
+      if (error) throw error;
+
+      setIsCheckedIn(false);
+      setTodayAttendance(null);
+      setCheckInTime(null);
+
+      toast({
+        title: "Check-Out Berhasil",
+        description: "Sampai jumpa besok!",
+      });
+
+      fetchRecentAttendance();
+    } catch (error: any) {
+      toast({
+        title: "Check-Out Gagal",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const formatStatus = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'hadir': 'Hadir',
+      'terlambat': 'Terlambat',
+      'pulang_cepat': 'Pulang Cepat',
+      'tidak_hadir': 'Tidak Hadir'
+    };
+    return statusMap[status] || status;
   };
 
   return (
@@ -33,7 +242,7 @@ const EmployeeView = () => {
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <img src={logo} alt="Kemika" className="h-10 object-contain" />
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+          <Button variant="ghost" size="icon" onClick={signOut}>
             <LogOut className="h-5 w-5" />
           </Button>
         </div>
@@ -48,9 +257,9 @@ const EmployeeView = () => {
                 <User className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <h2 className="font-bold text-xl">Budi Santoso</h2>
-                <p className="text-muted-foreground">Quality Control</p>
-                <p className="text-sm text-muted-foreground">NIK: NIK003</p>
+                <h2 className="font-bold text-xl">{profile?.full_name || 'Loading...'}</h2>
+                <p className="text-muted-foreground">{profile?.jabatan}</p>
+                <p className="text-sm text-muted-foreground">NIK: {profile?.nik}</p>
               </div>
             </div>
           </CardContent>
@@ -61,7 +270,12 @@ const EmployeeView = () => {
           <CardHeader>
             <CardTitle className="text-center">Absensi Hari Ini</CardTitle>
             <CardDescription className="text-center">
-              Kamis, 26 November 2025
+              {new Date().toLocaleDateString('id-ID', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -75,7 +289,7 @@ const EmployeeView = () => {
                 </div>
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4" />
-                  <span className="text-sm">Lokasi Terdeteksi</span>
+                  <span className="text-sm">GPS akan divalidasi</span>
                 </div>
               </div>
             </div>
@@ -84,23 +298,25 @@ const EmployeeView = () => {
               <Button 
                 className="w-full h-32 text-lg font-semibold gap-3" 
                 onClick={handleCheckIn}
+                disabled={isProcessing}
               >
                 <Camera className="h-6 w-6" />
-                Check-In Sekarang
+                {isProcessing ? "Memproses..." : "Check-In Sekarang"}
               </Button>
             ) : (
               <>
                 <div className="bg-primary/10 p-4 rounded-lg text-center">
                   <p className="text-sm text-muted-foreground">Check-In</p>
-                  <p className="text-2xl font-bold text-primary">08:00</p>
+                  <p className="text-2xl font-bold text-primary">{checkInTime}</p>
                 </div>
                 <Button 
                   className="w-full h-32 text-lg font-semibold gap-3" 
                   variant="secondary"
                   onClick={handleCheckOut}
+                  disabled={isProcessing}
                 >
                   <Camera className="h-6 w-6" />
-                  Check-Out Sekarang
+                  {isProcessing ? "Memproses..." : "Check-Out Sekarang"}
                 </Button>
               </>
             )}
@@ -130,27 +346,38 @@ const EmployeeView = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { date: "25 Nov", checkIn: "08:00", checkOut: "17:00", status: "Hadir" },
-                { date: "24 Nov", checkIn: "08:15", checkOut: "17:05", status: "Terlambat" },
-                { date: "23 Nov", checkIn: "07:55", checkOut: "17:00", status: "Hadir" },
-              ].map((record, i) => (
-                <div key={i} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div>
-                    <p className="font-medium">{record.date}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {record.checkIn} - {record.checkOut}
-                    </p>
+              {recentAttendance.length > 0 ? (
+                recentAttendance.map((record) => (
+                  <div key={record.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                    <div>
+                      <p className="font-medium">
+                        {new Date(record.check_in_time).toLocaleDateString('id-ID', { 
+                          day: 'numeric', 
+                          month: 'short' 
+                        })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(record.check_in_time).toLocaleTimeString('id-ID', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })} - {record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('id-ID', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : '-'}
+                      </p>
+                    </div>
+                    <div className={`text-xs px-2 py-1 rounded ${
+                      record.status === 'hadir' 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'bg-secondary/10 text-secondary'
+                    }`}>
+                      {formatStatus(record.status)}
+                    </div>
                   </div>
-                  <div className={`text-xs px-2 py-1 rounded ${
-                    record.status === "Hadir" 
-                      ? "bg-primary/10 text-primary" 
-                      : "bg-secondary/10 text-secondary"
-                  }`}>
-                    {record.status}
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-4">Belum ada riwayat absensi</p>
+              )}
             </div>
           </CardContent>
         </Card>

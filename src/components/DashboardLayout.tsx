@@ -15,7 +15,7 @@ import {
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -33,10 +33,10 @@ const navigation = [
 ];
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const handleLogout = () => {
-    navigate("/");
+    signOut();
   };
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (

@@ -91,11 +91,10 @@ const Login = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Daftar</TabsTrigger>
-            </TabsList>
+      <Tabs defaultValue="login" className="w-full">
+        <TabsList className="grid w-full grid-cols-1">
+          <TabsTrigger value="login">Login</TabsTrigger>
+        </TabsList>
             
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
@@ -127,80 +126,6 @@ const Login = () => {
               </form>
             </TabsContent>
             
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-fullname">Nama Lengkap</Label>
-                  <Input
-                    id="signup-fullname"
-                    type="text"
-                    placeholder="Nama lengkap"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-nik">NIK</Label>
-                  <Input
-                    id="signup-nik"
-                    type="text"
-                    placeholder="NIK karyawan"
-                    value={nik}
-                    onChange={(e) => setNik(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-jabatan">Jabatan</Label>
-                  <Input
-                    id="signup-jabatan"
-                    type="text"
-                    placeholder="Jabatan"
-                    value={jabatan}
-                    onChange={(e) => setJabatan(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-departemen">Departemen</Label>
-                  <Input
-                    id="signup-departemen"
-                    type="text"
-                    placeholder="Departemen"
-                    value={departemen}
-                    onChange={(e) => setDepartemen(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="nama@kemika.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Memproses..." : "Daftar"}
-                </Button>
-              </form>
-            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

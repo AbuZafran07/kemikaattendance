@@ -247,8 +247,8 @@ const EmployeeView = () => {
 
       const { data, error } = await supabase
         .from('attendance')
-        .insert({
-          user_id: profile?.id,
+        .insert([{
+          user_id: profile?.id!,
           check_in_time: now.toISOString(),
           check_in_latitude: location.latitude,
           check_in_longitude: location.longitude,
@@ -257,7 +257,7 @@ const EmployeeView = () => {
           face_recognition_validated: true,
           status: status,
           notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-        })
+        }])
         .select()
         .single();
 

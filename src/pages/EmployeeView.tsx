@@ -15,31 +15,58 @@ const EmployeeView = () => {
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [officeLocation, setOfficeLocation] = useState({ lat: -6.2088, lon: 106.8456, radius: 100 });
+  const [officeLocations, setOfficeLocations] = useState<Array<{ name: string; latitude: number; longitude: number; radius: number }>>([]);
+  const [faceIO, setFaceIO] = useState<any>(null);
   const { signOut, profile } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Initialize FaceIO
+    const faceioAppId = import.meta.env.VITE_FACEIO_APP_ID;
+    
+    if (!faceioAppId) {
+      console.warn('VITE_FACEIO_APP_ID tidak ditemukan. Silakan tambahkan ke file .env');
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.faceio.net/fio.js';
+    script.async = true;
+    script.onload = () => {
+      try {
+        const fioInstance = new (window as any).faceIO(faceioAppId);
+        setFaceIO(fioInstance);
+      } catch (error) {
+        console.error('Failed to initialize FaceIO:', error);
+      }
+    };
+    script.onerror = () => {
+      console.error('Failed to load FaceIO script');
+    };
+    document.body.appendChild(script);
+    
     fetchOfficeLocation();
     fetchTodayAttendance();
     fetchRecentAttendance();
+    
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
   }, []);
 
   const fetchOfficeLocation = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_office_location');
+      const { data, error } = await supabase.rpc('get_office_locations');
 
       if (error) throw error;
-      if (data) {
-        const locationData = data as { latitude: number; longitude: number; radius: number };
-        setOfficeLocation({
-          lat: locationData.latitude,
-          lon: locationData.longitude,
-          radius: locationData.radius || 100,
-        });
+      if (data && Array.isArray(data)) {
+        const locations = data as Array<{ name: string; latitude: number; longitude: number; radius: number }>;
+        setOfficeLocations(locations);
       }
     } catch (error) {
-      console.error("Error fetching office location:", error);
+      console.error("Error fetching office locations:", error);
     }
   };
 
@@ -119,30 +146,70 @@ const EmployeeView = () => {
     setIsProcessing(true);
     
     try {
-      // Get current location
+      // Step 1: Face Recognition
+      if (!faceIO) {
+        throw new Error("FaceIO belum siap. Silakan refresh halaman.");
+      }
+
+      let faceData;
+      try {
+        faceData = await faceIO.enroll({
+          locale: 'auto',
+          payload: {
+            userId: profile?.id,
+            userName: profile?.full_name
+          }
+        });
+      } catch (faceError: any) {
+        throw new Error(`Verifikasi wajah gagal: ${faceError.message || 'Tidak dapat mengenali wajah'}`);
+      }
+
+      // Step 2: Get current location
       const location = await getCurrentLocation();
       
-      // Calculate distance from office
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        officeLocation.lat,
-        officeLocation.lon
-      );
+      // Step 3: Check distance from all office locations
+      if (officeLocations.length === 0) {
+        throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
+      }
 
-      const isWithinRange = distance <= officeLocation.radius;
+      let nearestOffice: { name: string; distance: number; radius: number } | null = null;
       
-      if (!isWithinRange) {
+      for (const office of officeLocations) {
+        const distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          office.latitude,
+          office.longitude
+        );
+
+        if (distance <= office.radius) {
+          if (!nearestOffice || distance < nearestOffice.distance) {
+            nearestOffice = { name: office.name, distance, radius: office.radius };
+          }
+        }
+      }
+
+      if (!nearestOffice) {
+        const distances = officeLocations.map(office => {
+          const d = calculateDistance(
+            location.latitude,
+            location.longitude,
+            office.latitude,
+            office.longitude
+          );
+          return `${office.name}: ${Math.round(d)}m`;
+        }).join(', ');
+        
         toast({
           title: "Lokasi Tidak Valid",
-          description: `Anda berada ${Math.round(distance)}m dari kantor. Jarak maksimal ${officeLocation.radius}m`,
+          description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
           variant: "destructive",
         });
         setIsProcessing(false);
         return;
       }
 
-      // Record check-in
+      // Step 4: Record check-in
       const now = new Date();
       const workStartTime = new Date(now);
       workStartTime.setHours(8, 0, 0, 0);
@@ -159,8 +226,10 @@ const EmployeeView = () => {
           check_in_time: now.toISOString(),
           check_in_latitude: location.latitude,
           check_in_longitude: location.longitude,
-          gps_validated: isWithinRange,
-          status: status
+          gps_validated: true,
+          face_recognition_validated: true,
+          status: status,
+          notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
         })
         .select()
         .single();
@@ -176,7 +245,7 @@ const EmployeeView = () => {
 
       toast({
         title: "Check-In Berhasil",
-        description: `Terima kasih, kehadiran Anda telah tercatat (${Math.round(distance)}m dari kantor)`,
+        description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
       });
 
       fetchRecentAttendance();
@@ -195,16 +264,36 @@ const EmployeeView = () => {
     setIsProcessing(true);
     
     try {
+      // Step 1: Face Recognition for check-out
+      if (!faceIO) {
+        throw new Error("FaceIO belum siap. Silakan refresh halaman.");
+      }
+
+      try {
+        await faceIO.authenticate({
+          locale: 'auto'
+        });
+      } catch (faceError: any) {
+        throw new Error(`Verifikasi wajah gagal: ${faceError.message || 'Tidak dapat mengenali wajah'}`);
+      }
+
+      // Step 2: Get location and validate
       const location = await getCurrentLocation();
       
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        officeLocation.lat,
-        officeLocation.lon
-      );
-
-      const isWithinRange = distance <= officeLocation.radius;
+      // Check if within range of any office
+      let isValidLocation = false;
+      for (const office of officeLocations) {
+        const distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          office.latitude,
+          office.longitude
+        );
+        if (distance <= office.radius) {
+          isValidLocation = true;
+          break;
+        }
+      }
       
       const now = new Date();
       const checkInTime = new Date(todayAttendance.check_in_time);

@@ -53,7 +53,7 @@ const Attendance = () => {
       .from('attendance')
       .select(`
         *,
-        profiles!attendance_user_id_fkey(full_name, departemen)
+        profiles:user_id(full_name, departemen)
       `)
       .gte('check_in_time', today.toISOString())
       .order('check_in_time', { ascending: false });

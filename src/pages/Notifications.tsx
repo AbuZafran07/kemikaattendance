@@ -74,7 +74,7 @@ const Notifications = () => {
       .from('attendance')
       .select(`
         *,
-        profiles!attendance_user_id_fkey(full_name, nik, departemen)
+        profiles:user_id(full_name, nik, departemen)
       `)
       .gte('check_in_time', today.toISOString())
       .order('check_in_time', { ascending: false });
@@ -89,7 +89,7 @@ const Notifications = () => {
       .from('leave_requests')
       .select(`
         *,
-        profiles!leave_requests_user_id_fkey(full_name, nik, departemen)
+        profiles:user_id(full_name, nik, departemen)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
@@ -104,7 +104,7 @@ const Notifications = () => {
       .from('overtime_requests')
       .select(`
         *,
-        profiles!overtime_requests_user_id_fkey(full_name, nik, departemen)
+        profiles:user_id(full_name, nik, departemen)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });

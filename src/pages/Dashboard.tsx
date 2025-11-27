@@ -48,7 +48,7 @@ const Dashboard = () => {
       .from('attendance')
       .select(`
         *,
-        profiles!attendance_user_id_fkey(full_name, nik)
+        profiles:user_id(full_name, nik)
       `)
       .order('check_in_time', { ascending: false })
       .limit(4);
@@ -62,7 +62,7 @@ const Dashboard = () => {
       .from('leave_requests')
       .select(`
         *,
-        profiles!leave_requests_user_id_fkey(full_name)
+        profiles:user_id(full_name)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })

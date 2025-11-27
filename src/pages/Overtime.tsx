@@ -31,7 +31,7 @@ const Overtime = () => {
       .from('overtime_requests')
       .select(`
         *,
-        profiles!overtime_requests_user_id_fkey(full_name, nik, departemen)
+        profiles:user_id(full_name, nik, departemen)
       `)
       .order('created_at', { ascending: false });
 

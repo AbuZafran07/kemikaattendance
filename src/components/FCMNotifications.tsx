@@ -6,10 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export const FCMNotifications = () => {
   const { toast } = useToast();
-  const { profile, loading } = useAuth();
-  
-  // Don't run if still loading
-  if (loading) return null;
+  const { profile } = useAuth();
 
   useEffect(() => {
     const setupNotifications = async () => {

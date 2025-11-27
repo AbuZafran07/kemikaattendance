@@ -21,11 +21,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
+  // Navigation is handled by AuthContext based on user role
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

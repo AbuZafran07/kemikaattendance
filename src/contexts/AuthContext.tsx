@@ -85,21 +85,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
-    if (!error) {
-      // Navigation will be handled after session is established
-      setTimeout(() => {
-        const role = userRole;
-        if (role === 'admin') {
-          navigate('/dashboard');
-        } else {
-          navigate('/employee');
-        }
-      }, 100);
+    if (!error && data.user) {
+      // Fetch role immediately to ensure correct navigation
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .single();
+      
+      const role = roleData?.role || 'employee';
+      
+      // Navigate based on role
+      if (role === 'admin') {
+        navigate('/dashboard');
+      } else {
+        navigate('/employee');
+      }
     }
     
     return { error };

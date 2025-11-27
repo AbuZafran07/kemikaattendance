@@ -22,6 +22,10 @@ import PerformanceDashboard from "./pages/PerformanceDashboard";
 import NotificationSettings from "./pages/NotificationSettings";
 import LeaveRequest from "./pages/LeaveRequest";
 import OvertimeRequest from "./pages/OvertimeRequest";
+import OfficeSettings from "./pages/OfficeSettings";
+import WorkHoursSettings from "./pages/WorkHoursSettings";
+import LeaveSettings from "./pages/LeaveSettings";
+import OvertimeSettings from "./pages/OvertimeSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +47,10 @@ const App = () => (
             <Route path="/dashboard/overtime" element={<ProtectedRoute requireAdmin><Overtime /></ProtectedRoute>} />
             <Route path="/dashboard/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/office" element={<ProtectedRoute requireAdmin><OfficeSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/work-hours" element={<ProtectedRoute requireAdmin><WorkHoursSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/leave" element={<ProtectedRoute requireAdmin><LeaveSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/overtime" element={<ProtectedRoute requireAdmin><OvertimeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />

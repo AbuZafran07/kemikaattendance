@@ -102,7 +102,7 @@ const LeaveRequest = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih jenis cuti" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[9999] bg-popover">
                     <SelectItem value="cuti_tahunan">Cuti Tahunan</SelectItem>
                     <SelectItem value="izin">Izin</SelectItem>
                     <SelectItem value="sakit">Sakit</SelectItem>

@@ -6,6 +6,7 @@ import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CameraCapture } from "@/components/CameraCapture";
 
 // Office coordinates will be fetched from system settings
 
@@ -15,6 +16,8 @@ const EmployeeView = () => {
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraMode, setCameraMode] = useState<"checkin" | "checkout">("checkin");
   const [officeLocations, setOfficeLocations] = useState<Array<{ name: string; latitude: number; longitude: number; radius: number }>>([]);
   const { signOut, profile } = useAuth();
   const { toast } = useToast();
@@ -111,127 +114,114 @@ const EmployeeView = () => {
     });
   };
 
-  const capturePhoto = async (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      const canvas = document.createElement('canvas');
-      
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-        .then(stream => {
-          video.srcObject = stream;
-          video.play();
-          
-          video.onloadedmetadata = () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            
-            setTimeout(() => {
-              const ctx = canvas.getContext('2d');
-              ctx?.drawImage(video, 0, 0);
-              const photoDataUrl = canvas.toDataURL('image/jpeg');
-              
-              stream.getTracks().forEach(track => track.stop());
-              resolve(photoDataUrl);
-            }, 1000);
-          };
-        })
-        .catch(err => reject(new Error('Tidak dapat mengakses kamera: ' + err.message)));
-    });
-  };
-
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (photoUrl: string) => {
     setIsProcessing(true);
     
     try {
-      // Step 1: Capture photo from camera
-      const photo = await capturePhoto();
-
-      // Step 2: Get current location
-      const location = await getCurrentLocation();
+      // Step 1: Convert blob URL to base64
+      const response = await fetch(photoUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
       
-      // Step 3: Check distance from all office locations
-      if (officeLocations.length === 0) {
-        throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
-      }
+      await new Promise((resolve, reject) => {
+        reader.onloadend = async () => {
+          try {
+            const base64Photo = reader.result as string;
 
-      let nearestOffice: { name: string; distance: number; radius: number } | null = null;
-      
-      for (const office of officeLocations) {
-        const distance = calculateDistance(
-          location.latitude,
-          location.longitude,
-          office.latitude,
-          office.longitude
-        );
+            // Step 2: Get current location
+            const location = await getCurrentLocation();
+            
+            // Step 3: Check distance from all office locations
+            if (officeLocations.length === 0) {
+              throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
+            }
 
-        if (distance <= office.radius) {
-          if (!nearestOffice || distance < nearestOffice.distance) {
-            nearestOffice = { name: office.name, distance, radius: office.radius };
+            let nearestOffice: { name: string; distance: number; radius: number } | null = null;
+            
+            for (const office of officeLocations) {
+              const distance = calculateDistance(
+                location.latitude,
+                location.longitude,
+                office.latitude,
+                office.longitude
+              );
+
+              if (distance <= office.radius) {
+                if (!nearestOffice || distance < nearestOffice.distance) {
+                  nearestOffice = { name: office.name, distance, radius: office.radius };
+                }
+              }
+            }
+
+            if (!nearestOffice) {
+              const distances = officeLocations.map(office => {
+                const d = calculateDistance(
+                  location.latitude,
+                  location.longitude,
+                  office.latitude,
+                  office.longitude
+                );
+                return `${office.name}: ${Math.round(d)}m`;
+              }).join(', ');
+              
+              toast({
+                title: "Lokasi Tidak Valid",
+                description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
+                variant: "destructive",
+              });
+              setIsProcessing(false);
+              return;
+            }
+
+            // Step 4: Record check-in
+            const now = new Date();
+            const workStartTime = new Date(now);
+            workStartTime.setHours(8, 0, 0, 0);
+            
+            let status: 'hadir' | 'terlambat' = 'hadir';
+            if (now > workStartTime) {
+              status = 'terlambat';
+            }
+
+            const { data, error } = await supabase
+              .from('attendance')
+              .insert([{
+                user_id: profile?.id!,
+                check_in_time: now.toISOString(),
+                check_in_latitude: location.latitude,
+                check_in_longitude: location.longitude,
+                check_in_photo_url: base64Photo,
+                gps_validated: true,
+                face_recognition_validated: false,
+                status: status,
+                notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
+              }])
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            setIsCheckedIn(true);
+            setTodayAttendance(data);
+            setCheckInTime(now.toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }));
+
+            toast({
+              title: "Check-In Berhasil",
+              description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
+            });
+
+            fetchRecentAttendance();
+            resolve(true);
+          } catch (error) {
+            reject(error);
           }
-        }
-      }
-
-      if (!nearestOffice) {
-        const distances = officeLocations.map(office => {
-          const d = calculateDistance(
-            location.latitude,
-            location.longitude,
-            office.latitude,
-            office.longitude
-          );
-          return `${office.name}: ${Math.round(d)}m`;
-        }).join(', ');
-        
-        toast({
-          title: "Lokasi Tidak Valid",
-          description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
-      }
-
-      // Step 4: Record check-in
-      const now = new Date();
-      const workStartTime = new Date(now);
-      workStartTime.setHours(8, 0, 0, 0);
-      
-      let status: 'hadir' | 'terlambat' = 'hadir';
-      if (now > workStartTime) {
-        status = 'terlambat';
-      }
-
-      const { data, error } = await supabase
-        .from('attendance')
-        .insert([{
-          user_id: profile?.id!,
-          check_in_time: now.toISOString(),
-          check_in_latitude: location.latitude,
-          check_in_longitude: location.longitude,
-          check_in_photo_url: photo,
-          gps_validated: true,
-          face_recognition_validated: false,
-          status: status,
-          notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setIsCheckedIn(true);
-      setTodayAttendance(data);
-      setCheckInTime(now.toLocaleTimeString('id-ID', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }));
-
-      toast({
-        title: "Check-In Berhasil",
-        description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
       });
-
-      fetchRecentAttendance();
     } catch (error: any) {
       toast({
         title: "Check-In Gagal",
@@ -243,58 +233,73 @@ const EmployeeView = () => {
     }
   };
 
-  const handleCheckOut = async () => {
+  const handleCheckOut = async (photoUrl: string) => {
     setIsProcessing(true);
     
     try {
-      // Step 1: Capture photo from camera
-      const photo = await capturePhoto();
-
-      // Step 2: Get location and validate
-      const location = await getCurrentLocation();
+      // Step 1: Convert blob URL to base64
+      const response = await fetch(photoUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
       
-      // Check if within range of any office
-      let isValidLocation = false;
-      for (const office of officeLocations) {
-        const distance = calculateDistance(
-          location.latitude,
-          location.longitude,
-          office.latitude,
-          office.longitude
-        );
-        if (distance <= office.radius) {
-          isValidLocation = true;
-          break;
-        }
-      }
-      
-      const now = new Date();
-      const checkInTime = new Date(todayAttendance.check_in_time);
-      const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
+      await new Promise((resolve, reject) => {
+        reader.onloadend = async () => {
+          try {
+            const base64Photo = reader.result as string;
 
-      const { error } = await supabase
-        .from('attendance')
-        .update({
-          check_out_time: now.toISOString(),
-          check_out_latitude: location.latitude,
-          check_out_longitude: location.longitude,
-          check_out_photo_url: photo,
-          duration_minutes: durationMinutes
-        })
-        .eq('id', todayAttendance.id);
+            // Step 2: Get location and validate
+            const location = await getCurrentLocation();
+            
+            // Check if within range of any office
+            let isValidLocation = false;
+            for (const office of officeLocations) {
+              const distance = calculateDistance(
+                location.latitude,
+                location.longitude,
+                office.latitude,
+                office.longitude
+              );
+              if (distance <= office.radius) {
+                isValidLocation = true;
+                break;
+              }
+            }
+            
+            const now = new Date();
+            const checkInTime = new Date(todayAttendance.check_in_time);
+            const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
 
-      if (error) throw error;
+            const { error } = await supabase
+              .from('attendance')
+              .update({
+                check_out_time: now.toISOString(),
+                check_out_latitude: location.latitude,
+                check_out_longitude: location.longitude,
+                check_out_photo_url: base64Photo,
+                duration_minutes: durationMinutes
+              })
+              .eq('id', todayAttendance.id);
 
-      setIsCheckedIn(false);
-      setTodayAttendance(null);
-      setCheckInTime(null);
+            if (error) throw error;
 
-      toast({
-        title: "Check-Out Berhasil",
-        description: "Sampai jumpa besok!",
+            setIsCheckedIn(false);
+            setTodayAttendance(null);
+            setCheckInTime(null);
+
+            toast({
+              title: "Check-Out Berhasil",
+              description: "Sampai jumpa besok!",
+            });
+
+            fetchRecentAttendance();
+            resolve(true);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
       });
-
-      fetchRecentAttendance();
     } catch (error: any) {
       toast({
         title: "Check-Out Gagal",
@@ -377,7 +382,10 @@ const EmployeeView = () => {
             {!isCheckedIn ? (
               <Button 
                 className="w-full h-32 text-lg font-semibold gap-3" 
-                onClick={handleCheckIn}
+                onClick={() => {
+                  setCameraMode("checkin");
+                  setShowCamera(true);
+                }}
                 disabled={isProcessing}
               >
                 <Camera className="h-6 w-6" />
@@ -392,7 +400,10 @@ const EmployeeView = () => {
                 <Button 
                   className="w-full h-32 text-lg font-semibold gap-3" 
                   variant="secondary"
-                  onClick={handleCheckOut}
+                  onClick={() => {
+                    setCameraMode("checkout");
+                    setShowCamera(true);
+                  }}
                   disabled={isProcessing}
                 >
                   <Camera className="h-6 w-6" />
@@ -486,6 +497,19 @@ const EmployeeView = () => {
           </CardContent>
         </Card>
       </div>
+
+      <CameraCapture
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={(photoUrl) => {
+          if (cameraMode === "checkin") {
+            handleCheckIn(photoUrl);
+          } else {
+            handleCheckOut(photoUrl);
+          }
+        }}
+        title={cameraMode === "checkin" ? "Check-In" : "Check-Out"}
+      />
     </div>
   );
 };

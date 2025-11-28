@@ -23,10 +23,14 @@ interface AttendanceRecord {
   status: string;
   duration_minutes: number | null;
   gps_validated: boolean;
-  profiles: {
-    full_name: string;
-    departemen: string;
-  };
+  full_name?: string;
+  departemen?: string;
+}
+
+interface Profile {
+  id: string;
+  full_name: string;
+  departemen: string;
 }
 
 const Attendance = () => {
@@ -49,36 +53,68 @@ const Attendance = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { data, error } = await supabase
+    // Fetch attendance data
+    const { data: attendanceRecords, error: attendanceError } = await supabase
       .from('attendance')
-      .select(`
-        *,
-        profiles:user_id(full_name, departemen)
-      `)
+      .select('*')
       .gte('check_in_time', today.toISOString())
       .order('check_in_time', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching attendance:', error);
+    if (attendanceError) {
+      console.error('Error fetching attendance:', attendanceError);
       toast({
         title: "Error",
         description: "Gagal memuat data absensi",
         variant: "destructive",
       });
-    } else if (data) {
-      setAttendanceData(data as any);
-      
-      // Calculate statistics
-      const totalCheckIn = data.length;
-      const lateCount = data.filter((record: any) => record.status === 'terlambat').length;
-      const notCheckedOut = data.filter((record: any) => !record.check_out_time).length;
-      
-      setStats({
-        totalCheckIn,
-        lateCount,
-        notCheckedOut,
-      });
+      setIsRefreshing(false);
+      return;
     }
+
+    if (!attendanceRecords || attendanceRecords.length === 0) {
+      setAttendanceData([]);
+      setStats({ totalCheckIn: 0, lateCount: 0, notCheckedOut: 0 });
+      setIsRefreshing(false);
+      return;
+    }
+
+    // Fetch all profiles
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, departemen');
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+    }
+
+    const profilesMap = new Map<string, Profile>();
+    if (profiles) {
+      profiles.forEach((p) => profilesMap.set(p.id, p));
+    }
+
+    // Merge attendance with profiles
+    const mergedData: AttendanceRecord[] = attendanceRecords.map((record) => {
+      const profile = profilesMap.get(record.user_id);
+      return {
+        ...record,
+        full_name: profile?.full_name || 'Unknown',
+        departemen: profile?.departemen || '-',
+      };
+    });
+
+    setAttendanceData(mergedData);
+    
+    // Calculate statistics
+    const totalCheckIn = mergedData.length;
+    const lateCount = mergedData.filter((record) => record.status === 'terlambat').length;
+    const notCheckedOut = mergedData.filter((record) => !record.check_out_time).length;
+    
+    setStats({
+      totalCheckIn,
+      lateCount,
+      notCheckedOut,
+    });
+    
     setIsRefreshing(false);
   };
 
@@ -244,8 +280,8 @@ const Attendance = () => {
                   <TableBody>
                     {attendanceData.map((record) => (
                       <TableRow key={record.id}>
-                        <TableCell className="font-medium">{record.profiles.full_name}</TableCell>
-                        <TableCell>{record.profiles.departemen}</TableCell>
+                        <TableCell className="font-medium">{record.full_name}</TableCell>
+                        <TableCell>{record.departemen}</TableCell>
                         <TableCell className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-muted-foreground" />
                           {formatTime(record.check_in_time)}

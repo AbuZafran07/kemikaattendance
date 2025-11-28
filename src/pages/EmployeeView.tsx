@@ -8,7 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CameraCapture } from "@/components/CameraCapture";
 
-// Office coordinates will be fetched from system settings
+// Office coordinates and work hours will be fetched from system settings
+
+interface WorkHoursConfig {
+  check_in_start: string;
+  check_in_end: string;
+  check_out_start: string;
+  check_out_end: string;
+  late_tolerance_minutes: number;
+  early_leave_tolerance_minutes: number;
+}
 
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -19,11 +28,13 @@ const EmployeeView = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraMode, setCameraMode] = useState<"checkin" | "checkout">("checkin");
   const [officeLocations, setOfficeLocations] = useState<Array<{ name: string; latitude: number; longitude: number; radius: number }>>([]);
+  const [workHours, setWorkHours] = useState<WorkHoursConfig | null>(null);
   const { signOut, profile } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchOfficeLocation();
+    fetchWorkHours();
     fetchTodayAttendance();
     fetchRecentAttendance();
   }, []);
@@ -39,6 +50,23 @@ const EmployeeView = () => {
       }
     } catch (error) {
       console.error("Error fetching office locations:", error);
+    }
+  };
+
+  const fetchWorkHours = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'work_hours')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setWorkHours(data.value as unknown as WorkHoursConfig);
+      }
+    } catch (error) {
+      console.error("Error fetching work hours:", error);
     }
   };
 
@@ -173,14 +201,30 @@ const EmployeeView = () => {
               return;
             }
 
-            // Step 4: Record check-in
+            // Step 4: Record check-in with status based on work hours settings
             const now = new Date();
-            const workStartTime = new Date(now);
-            workStartTime.setHours(8, 0, 0, 0);
             
             let status: 'hadir' | 'terlambat' = 'hadir';
-            if (now > workStartTime) {
-              status = 'terlambat';
+            
+            if (workHours) {
+              // Parse check_in_end time (e.g., "09:00")
+              const [endHour, endMinute] = workHours.check_in_end.split(':').map(Number);
+              const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
+              
+              const checkInHour = now.getHours();
+              const checkInMinute = now.getMinutes();
+              const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+              
+              if (checkInTotalMinutes > lateThreshold) {
+                status = 'terlambat';
+              }
+            } else {
+              // Default: 09:00 + 15 min tolerance = 09:15
+              const workStartTime = new Date(now);
+              workStartTime.setHours(9, 15, 0, 0);
+              if (now > workStartTime) {
+                status = 'terlambat';
+              }
             }
 
             const { data, error } = await supabase

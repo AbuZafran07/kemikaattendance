@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Download, MoreVertical } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -27,17 +27,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { JABATAN_OPTIONS, DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 
 const Employees = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Form state
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -64,11 +76,51 @@ const Employees = () => {
     }
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File terlalu besar",
+          description: "Maksimal ukuran foto 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadPhoto = async (userId: string): Promise<string | null> => {
+    if (!photoFile) return null;
+
+    const fileExt = photoFile.name.split('.').pop();
+    const fileName = `${userId}.${fileExt}`;
+    const filePath = `photos/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('employee-photos')
+      .upload(filePath, photoFile, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('employee-photos')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsUploading(true);
 
     try {
-      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -84,13 +136,19 @@ const Employees = () => {
 
       if (authError) throw authError;
 
-      // Update profile with additional data
       if (authData.user) {
+        let photoUrl: string | null = null;
+        
+        if (photoFile) {
+          photoUrl = await uploadPhoto(authData.user.id);
+        }
+
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
             phone: formData.phone,
             address: formData.address,
+            photo_url: photoUrl,
           })
           .eq('id', authData.user.id);
 
@@ -103,16 +161,7 @@ const Employees = () => {
       });
 
       setIsDialogOpen(false);
-      setFormData({
-        email: "",
-        password: "",
-        nik: "",
-        full_name: "",
-        jabatan: "",
-        departemen: "",
-        phone: "",
-        address: "",
-      });
+      resetForm();
       fetchEmployees();
     } catch (error: any) {
       toast({
@@ -120,7 +169,24 @@ const Employees = () => {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      email: "",
+      password: "",
+      nik: "",
+      full_name: "",
+      jabatan: "",
+      departemen: "",
+      phone: "",
+      address: "",
+    });
+    setPhotoFile(null);
+    setPhotoPreview(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -152,6 +218,15 @@ const Employees = () => {
     emp.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -167,7 +242,10 @@ const Employees = () => {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) resetForm();
+            }}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -182,6 +260,37 @@ const Employees = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleAddEmployee} className="space-y-4">
+                  {/* Photo Upload */}
+                  <div className="flex flex-col items-center gap-4">
+                    <div 
+                      className="relative cursor-pointer group"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Avatar className="h-24 w-24">
+                        {photoPreview ? (
+                          <AvatarImage src={photoPreview} alt="Preview" />
+                        ) : (
+                          <AvatarFallback className="bg-muted">
+                            <User className="h-10 w-10 text-muted-foreground" />
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Upload className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoSelect}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Klik untuk upload foto (maks 5MB)
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="nik">NIK *</Label>
@@ -224,21 +333,41 @@ const Employees = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="jabatan">Jabatan *</Label>
-                      <Input
-                        id="jabatan"
+                      <Select
                         value={formData.jabatan}
-                        onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
+                        onValueChange={(value) => setFormData({ ...formData, jabatan: value })}
                         required
-                      />
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih Jabatan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {JABATAN_OPTIONS.map((jabatan) => (
+                            <SelectItem key={jabatan} value={jabatan}>
+                              {jabatan}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="departemen">Departemen *</Label>
-                      <Input
-                        id="departemen"
+                      <Select
                         value={formData.departemen}
-                        onChange={(e) => setFormData({ ...formData, departemen: e.target.value })}
+                        onValueChange={(value) => setFormData({ ...formData, departemen: value })}
                         required
-                      />
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih Departemen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DEPARTMENT_OPTIONS.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">Telepon</Label>
@@ -261,7 +390,9 @@ const Employees = () => {
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Batal
                     </Button>
-                    <Button type="submit">Simpan</Button>
+                    <Button type="submit" disabled={isUploading}>
+                      {isUploading ? "Menyimpan..." : "Simpan"}
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
@@ -292,6 +423,7 @@ const Employees = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Foto</TableHead>
                     <TableHead>NIK</TableHead>
                     <TableHead>Nama</TableHead>
                     <TableHead>Email</TableHead>
@@ -306,6 +438,12 @@ const Employees = () => {
                   {filteredEmployees.length > 0 ? (
                     filteredEmployees.map((employee) => (
                       <TableRow key={employee.id}>
+                        <TableCell>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={employee.photo_url} alt={employee.full_name} />
+                            <AvatarFallback>{getInitials(employee.full_name)}</AvatarFallback>
+                          </Avatar>
+                        </TableCell>
                         <TableCell className="font-medium">{employee.nik}</TableCell>
                         <TableCell>{employee.full_name}</TableCell>
                         <TableCell className="text-muted-foreground">{employee.email}</TableCell>
@@ -338,7 +476,7 @@ const Employees = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         {searchQuery ? 'Tidak ada karyawan yang sesuai dengan pencarian' : 'Belum ada karyawan'}
                       </TableCell>
                     </TableRow>

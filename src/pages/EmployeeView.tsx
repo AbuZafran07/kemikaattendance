@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, MapPin, LogOut, Calendar, Clock, User, FileText, TrendingUp } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -382,9 +383,12 @@ const EmployeeView = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-8 w-8 text-primary" />
-              </div>
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={profile?.photo_url || undefined} alt={profile?.full_name} />
+                <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                  {profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || <User className="h-8 w-8" />}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <h2 className="font-bold text-xl">{profile?.full_name || 'Loading...'}</h2>
                 <p className="text-muted-foreground">{profile?.jabatan}</p>

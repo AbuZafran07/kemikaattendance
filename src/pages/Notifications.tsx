@@ -67,8 +67,13 @@ const Notifications = () => {
   };
 
   const fetchAttendance = async () => {
+    // Get today's date at midnight (local time)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    // Get end of today
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
 
     const { data } = await supabase
       .from('attendance')
@@ -77,6 +82,7 @@ const Notifications = () => {
         profiles:user_id(full_name, nik, departemen)
       `)
       .gte('check_in_time', today.toISOString())
+      .lte('check_in_time', endOfToday.toISOString())
       .order('check_in_time', { ascending: false });
 
     if (data) {
@@ -234,7 +240,7 @@ const Notifications = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Pusat Notifikasi</h1>
             <p className="text-muted-foreground mt-1">
-              Pantau aktivitas check-in/out dan pengajuan karyawan secara real-time
+              Aktivitas real-time hari ini - {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
           <Button
@@ -307,8 +313,8 @@ const Notifications = () => {
           <TabsContent value="attendance" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Aktivitas Absensi Real-Time</CardTitle>
-                <CardDescription>Check-in dan check-out karyawan hari ini</CardDescription>
+                <CardTitle>Aktivitas Absensi Hari Ini</CardTitle>
+                <CardDescription>Check-in dan check-out karyawan hari ini (data akan direset setiap hari)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">

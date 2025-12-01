@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -44,11 +44,13 @@ const Employees = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [viewingEmployee, setViewingEmployee] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -249,6 +251,11 @@ const Employees = () => {
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
     setIsEditDialogOpen(true);
+  };
+
+  const openDetailDialog = (employee: any) => {
+    setViewingEmployee(employee);
+    setIsDetailDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -632,6 +639,138 @@ const Employees = () => {
           </DialogContent>
         </Dialog>
 
+        {/* Employee Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
+          setIsDetailDialogOpen(open);
+          if (!open) setViewingEmployee(null);
+        }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Detail Karyawan</DialogTitle>
+              <DialogDescription>
+                Informasi lengkap karyawan
+              </DialogDescription>
+            </DialogHeader>
+            {viewingEmployee && (
+              <div className="space-y-6">
+                {/* Profile Header */}
+                <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-border">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={viewingEmployee.photo_url} alt={viewingEmployee.full_name} />
+                    <AvatarFallback className="text-2xl">{getInitials(viewingEmployee.full_name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="text-center sm:text-left">
+                    <h3 className="text-2xl font-bold">{viewingEmployee.full_name}</h3>
+                    <p className="text-muted-foreground">{viewingEmployee.jabatan}</p>
+                    <Badge className="mt-2" variant={viewingEmployee.status === 'Active' ? 'default' : 'secondary'}>
+                      {viewingEmployee.status}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Detail Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">NIK</p>
+                      <p className="font-medium">{viewingEmployee.nik}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Mail className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="font-medium">{viewingEmployee.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Phone className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Telepon</p>
+                      <p className="font-medium">{viewingEmployee.phone || '-'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Briefcase className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Jabatan</p>
+                      <p className="font-medium">{viewingEmployee.jabatan}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Departemen</p>
+                      <p className="font-medium">{viewingEmployee.departemen}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tanggal Bergabung</p>
+                      <p className="font-medium">{new Date(viewingEmployee.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 col-span-1 sm:col-span-2">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Alamat</p>
+                      <p className="font-medium">{viewingEmployee.address || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Leave Info */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+                  <div className="text-center p-4 rounded-lg bg-primary/5">
+                    <p className="text-sm text-muted-foreground">Kuota Cuti Tahunan</p>
+                    <p className="text-2xl font-bold text-primary">{viewingEmployee.annual_leave_quota || 12}</p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-primary/5">
+                    <p className="text-sm text-muted-foreground">Sisa Cuti</p>
+                    <p className="text-2xl font-bold text-primary">{viewingEmployee.remaining_leave || 12}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                  <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
+                    Tutup
+                  </Button>
+                  <Button onClick={() => {
+                    setIsDetailDialogOpen(false);
+                    openEditDialog(viewingEmployee);
+                  }}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit Data
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -693,7 +832,10 @@ const Employees = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openDetailDialog(employee)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Lihat Detail
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openEditDialog(employee)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit

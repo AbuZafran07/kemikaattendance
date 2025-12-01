@@ -67,23 +67,26 @@ const Notifications = () => {
   };
 
   const fetchAttendance = async () => {
-    // Get today's date at midnight (local time)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get end of today
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
+    // Get today's date in local timezone format (YYYY-MM-DD)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
 
-    const { data } = await supabase
+    console.log('Fetching attendance for date:', todayStr);
+
+    const { data, error } = await supabase
       .from('attendance')
       .select(`
         *,
         profiles:user_id(full_name, nik, departemen)
       `)
-      .gte('check_in_time', today.toISOString())
-      .lte('check_in_time', endOfToday.toISOString())
+      .gte('check_in_time', `${todayStr}T00:00:00`)
+      .lte('check_in_time', `${todayStr}T23:59:59`)
       .order('check_in_time', { ascending: false });
+
+    console.log('Attendance data:', data, 'Error:', error);
 
     if (data) {
       setAttendanceNotifications(data as any);

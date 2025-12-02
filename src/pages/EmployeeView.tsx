@@ -19,7 +19,6 @@ interface WorkHoursConfig {
   late_tolerance_minutes: number;
   early_leave_tolerance_minutes: number;
 }
-
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -28,40 +27,52 @@ const EmployeeView = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraMode, setCameraMode] = useState<"checkin" | "checkout">("checkin");
-  const [officeLocations, setOfficeLocations] = useState<Array<{ name: string; latitude: number; longitude: number; radius: number }>>([]);
+  const [officeLocations, setOfficeLocations] = useState<Array<{
+    name: string;
+    latitude: number;
+    longitude: number;
+    radius: number;
+  }>>([]);
   const [workHours, setWorkHours] = useState<WorkHoursConfig | null>(null);
-  const { signOut, profile } = useAuth();
-  const { toast } = useToast();
-
+  const {
+    signOut,
+    profile
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   useEffect(() => {
     fetchOfficeLocation();
     fetchWorkHours();
     fetchTodayAttendance();
     fetchRecentAttendance();
   }, []);
-
   const fetchOfficeLocation = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_office_locations');
-
+      const {
+        data,
+        error
+      } = await supabase.rpc('get_office_locations');
       if (error) throw error;
       if (data && Array.isArray(data)) {
-        const locations = data as Array<{ name: string; latitude: number; longitude: number; radius: number }>;
+        const locations = data as Array<{
+          name: string;
+          latitude: number;
+          longitude: number;
+          radius: number;
+        }>;
         setOfficeLocations(locations);
       }
     } catch (error) {
       console.error("Error fetching office locations:", error);
     }
   };
-
   const fetchWorkHours = async () => {
     try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'work_hours')
-        .maybeSingle();
-
+      const {
+        data,
+        error
+      } = await supabase.from('system_settings').select('value').eq('key', 'work_hours').maybeSingle();
       if (error) throw error;
       if (data) {
         setWorkHours(data.value as unknown as WorkHoursConfig);
@@ -70,16 +81,11 @@ const EmployeeView = () => {
       console.error("Error fetching work hours:", error);
     }
   };
-
   const fetchTodayAttendance = async () => {
     const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
-      .from('attendance')
-      .select('*')
-      .gte('check_in_time', `${today}T00:00:00`)
-      .lte('check_in_time', `${today}T23:59:59`)
-      .single();
-    
+    const {
+      data
+    } = await supabase.from('attendance').select('*').gte('check_in_time', `${today}T00:00:00`).lte('check_in_time', `${today}T23:59:59`).single();
     if (data) {
       setTodayAttendance(data);
       setIsCheckedIn(true);
@@ -89,69 +95,56 @@ const EmployeeView = () => {
       }));
     }
   };
-
   const fetchRecentAttendance = async () => {
-    const { data } = await supabase
-      .from('attendance')
-      .select('*')
-      .order('check_in_time', { ascending: false })
-      .limit(3);
-    
+    const {
+      data
+    } = await supabase.from('attendance').select('*').order('check_in_time', {
+      ascending: false
+    }).limit(3);
     if (data) {
       setRecentAttendance(data);
     }
   };
-
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3; // Earth's radius in meters
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
     const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     return R * c; // Distance in meters
   };
-
-  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number }> => {
+  const getCurrentLocation = (): Promise<{
+    latitude: number;
+    longitude: number;
+  }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         reject(new Error('Geolocation tidak didukung oleh browser Anda'));
         return;
       }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-        },
-        (error) => {
-          reject(new Error('Tidak dapat mengakses lokasi: ' + error.message));
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
+      navigator.geolocation.getCurrentPosition(position => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      }, error => {
+        reject(new Error('Tidak dapat mengakses lokasi: ' + error.message));
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
     });
   };
-
   const handleCheckIn = async (photoUrl: string) => {
     setIsProcessing(true);
-    
     try {
       // Step 1: Convert blob URL to base64
       const response = await fetch(photoUrl);
       const blob = await response.blob();
       const reader = new FileReader();
-      
       await new Promise((resolve, reject) => {
         reader.onloadend = async () => {
           try {
@@ -159,44 +152,37 @@ const EmployeeView = () => {
 
             // Step 2: Get current location
             const location = await getCurrentLocation();
-            
+
             // Step 3: Check distance from all office locations
             if (officeLocations.length === 0) {
               throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
             }
-
-            let nearestOffice: { name: string; distance: number; radius: number } | null = null;
-            
+            let nearestOffice: {
+              name: string;
+              distance: number;
+              radius: number;
+            } | null = null;
             for (const office of officeLocations) {
-              const distance = calculateDistance(
-                location.latitude,
-                location.longitude,
-                office.latitude,
-                office.longitude
-              );
-
+              const distance = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
               if (distance <= office.radius) {
                 if (!nearestOffice || distance < nearestOffice.distance) {
-                  nearestOffice = { name: office.name, distance, radius: office.radius };
+                  nearestOffice = {
+                    name: office.name,
+                    distance,
+                    radius: office.radius
+                  };
                 }
               }
             }
-
             if (!nearestOffice) {
               const distances = officeLocations.map(office => {
-                const d = calculateDistance(
-                  location.latitude,
-                  location.longitude,
-                  office.latitude,
-                  office.longitude
-                );
+                const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
                 return `${office.name}: ${Math.round(d)}m`;
               }).join(', ');
-              
               toast({
                 title: "Lokasi Tidak Valid",
                 description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
-                variant: "destructive",
+                variant: "destructive"
               });
               setIsProcessing(false);
               return;
@@ -204,18 +190,14 @@ const EmployeeView = () => {
 
             // Step 4: Record check-in with status based on work hours settings
             const now = new Date();
-            
             let status: 'hadir' | 'terlambat' = 'hadir';
-            
             if (workHours) {
               // Parse check_in_end time (e.g., "09:00")
               const [endHour, endMinute] = workHours.check_in_end.split(':').map(Number);
               const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
-              
               const checkInHour = now.getHours();
               const checkInMinute = now.getMinutes();
               const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-              
               if (checkInTotalMinutes > lateThreshold) {
                 status = 'terlambat';
               }
@@ -227,37 +209,31 @@ const EmployeeView = () => {
                 status = 'terlambat';
               }
             }
-
-            const { data, error } = await supabase
-              .from('attendance')
-              .insert([{
-                user_id: profile?.id!,
-                check_in_time: now.toISOString(),
-                check_in_latitude: location.latitude,
-                check_in_longitude: location.longitude,
-                check_in_photo_url: base64Photo,
-                gps_validated: true,
-                face_recognition_validated: false,
-                status: status,
-                notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-              }])
-              .select()
-              .single();
-
+            const {
+              data,
+              error
+            } = await supabase.from('attendance').insert([{
+              user_id: profile?.id!,
+              check_in_time: now.toISOString(),
+              check_in_latitude: location.latitude,
+              check_in_longitude: location.longitude,
+              check_in_photo_url: base64Photo,
+              gps_validated: true,
+              face_recognition_validated: false,
+              status: status,
+              notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
+            }]).select().single();
             if (error) throw error;
-
             setIsCheckedIn(true);
             setTodayAttendance(data);
             setCheckInTime(now.toLocaleTimeString('id-ID', {
               hour: '2-digit',
               minute: '2-digit'
             }));
-
             toast({
               title: "Check-In Berhasil",
-              description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
+              description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
             });
-
             fetchRecentAttendance();
             resolve(true);
           } catch (error) {
@@ -271,22 +247,19 @@ const EmployeeView = () => {
       toast({
         title: "Check-In Gagal",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsProcessing(false);
     }
   };
-
   const handleCheckOut = async (photoUrl: string) => {
     setIsProcessing(true);
-    
     try {
       // Step 1: Convert blob URL to base64
       const response = await fetch(photoUrl);
       const blob = await response.blob();
       const reader = new FileReader();
-      
       await new Promise((resolve, reject) => {
         reader.onloadend = async () => {
           try {
@@ -294,41 +267,37 @@ const EmployeeView = () => {
 
             // Step 2: Get location and validate
             const location = await getCurrentLocation();
-            
+
             // Check if within range of any office
             let isValidLocation = false;
-            let nearestOffice: { name: string; distance: number } | null = null;
-            
+            let nearestOffice: {
+              name: string;
+              distance: number;
+            } | null = null;
             for (const office of officeLocations) {
-              const distance = calculateDistance(
-                location.latitude,
-                location.longitude,
-                office.latitude,
-                office.longitude
-              );
+              const distance = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
               if (distance <= office.radius) {
                 isValidLocation = true;
                 if (!nearestOffice || distance < nearestOffice.distance) {
-                  nearestOffice = { name: office.name, distance };
+                  nearestOffice = {
+                    name: office.name,
+                    distance
+                  };
                 }
               }
             }
-            
             const now = new Date();
             const checkInTime = new Date(todayAttendance.check_in_time);
             const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
 
             // Determine checkout status based on time
             let finalStatus = todayAttendance.status;
-            
             if (workHours) {
               const [startHour, startMinute] = workHours.check_out_start.split(':').map(Number);
               const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
-              
               const checkOutHour = now.getHours();
               const checkOutMinute = now.getMinutes();
               const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
-              
               if (checkOutTotalMinutes < earlyLeaveThreshold) {
                 finalStatus = 'pulang_cepat';
               }
@@ -337,40 +306,29 @@ const EmployeeView = () => {
               const checkOutHour = now.getHours();
               const checkOutMinute = now.getMinutes();
               const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
-              
-              if (checkOutTotalMinutes < (17 * 60 - 15)) {
+              if (checkOutTotalMinutes < 17 * 60 - 15) {
                 finalStatus = 'pulang_cepat';
               }
             }
-
-            const { error } = await supabase
-              .from('attendance')
-              .update({
-                check_out_time: now.toISOString(),
-                check_out_latitude: location.latitude,
-                check_out_longitude: location.longitude,
-                check_out_photo_url: base64Photo,
-                duration_minutes: durationMinutes,
-                status: finalStatus,
-                notes: nearestOffice 
-                  ? `Check-in di ${todayAttendance.notes?.split(' di ')[1] || 'kantor'}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-                  : todayAttendance.notes
-              })
-              .eq('id', todayAttendance.id);
-
+            const {
+              error
+            } = await supabase.from('attendance').update({
+              check_out_time: now.toISOString(),
+              check_out_latitude: location.latitude,
+              check_out_longitude: location.longitude,
+              check_out_photo_url: base64Photo,
+              duration_minutes: durationMinutes,
+              status: finalStatus,
+              notes: nearestOffice ? `Check-in di ${todayAttendance.notes?.split(' di ')[1] || 'kantor'}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)` : todayAttendance.notes
+            }).eq('id', todayAttendance.id);
             if (error) throw error;
-
             setIsCheckedIn(false);
             setTodayAttendance(null);
             setCheckInTime(null);
-
             toast({
               title: "Check-Out Berhasil",
-              description: finalStatus === 'pulang_cepat' 
-                ? "Anda pulang lebih awal dari jadwal" 
-                : "Sampai jumpa besok!",
+              description: finalStatus === 'pulang_cepat' ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!"
             });
-
             fetchRecentAttendance();
             resolve(true);
           } catch (error) {
@@ -384,13 +342,12 @@ const EmployeeView = () => {
       toast({
         title: "Check-Out Gagal",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsProcessing(false);
     }
   };
-
   const formatStatus = (status: string) => {
     const statusMap: Record<string, string> = {
       'hadir': 'Hadir',
@@ -400,9 +357,7 @@ const EmployeeView = () => {
     };
     return statusMap[status] || status;
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
+  return <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -413,11 +368,11 @@ const EmployeeView = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-lg space-y-6">
+      <div className="container mx-auto px-4 py-6 max-w-lg space-y-6 bg-[#5f7d51]/[0.22]">
         {/* Profile Card */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
+            <div className="gap-4 items-center justify-start flex flex-row">
               <Avatar className="h-16 w-16">
                 <AvatarImage src={profile?.photo_url || undefined} alt={profile?.full_name} />
                 <AvatarFallback className="bg-primary/10 text-primary text-lg">
@@ -438,22 +393,22 @@ const EmployeeView = () => {
           <CardHeader>
             <CardTitle className="text-center">Absensi Hari Ini</CardTitle>
             <CardDescription className="text-center">
-              {new Date().toLocaleDateString('id-ID', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
+              {new Date().toLocaleDateString('id-ID', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-center">
               <div className="text-center">
-                <div className="text-4xl font-bold text-primary mb-2">
-                  {new Date().toLocaleTimeString('id-ID', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                <div className="text-4xl font-bold mb-2 text-green-800">
+                  {new Date().toLocaleTimeString('id-ID', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
                 </div>
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
                   <MapPin className="h-4 w-4" />
@@ -462,74 +417,49 @@ const EmployeeView = () => {
               </div>
             </div>
 
-            {!isCheckedIn ? (
-              <Button 
-                className="w-full h-32 text-lg font-semibold gap-3" 
-                onClick={() => {
-                  setCameraMode("checkin");
-                  setShowCamera(true);
-                }}
-                disabled={isProcessing}
-              >
+            {!isCheckedIn ? <Button onClick={() => {
+            setCameraMode("checkin");
+            setShowCamera(true);
+          }} disabled={isProcessing} className="w-full h-32 font-semibold gap-3 text-justify text-lg bg-green-800 hover:bg-green-700 mx-0 my-[7px]">
                 <Camera className="h-6 w-6" />
                 {isProcessing ? "Memproses..." : "Check-In Sekarang"}
-              </Button>
-            ) : (
-              <>
+              </Button> : <>
                 <div className="bg-primary/10 p-4 rounded-lg text-center">
                   <p className="text-sm text-muted-foreground">Check-In</p>
                   <p className="text-2xl font-bold text-primary">{checkInTime}</p>
                 </div>
-                <Button 
-                  className="w-full h-32 text-lg font-semibold gap-3" 
-                  variant="secondary"
-                  onClick={() => {
-                    setCameraMode("checkout");
-                    setShowCamera(true);
-                  }}
-                  disabled={isProcessing}
-                >
+                <Button className="w-full h-32 text-lg font-semibold gap-3" variant="secondary" onClick={() => {
+              setCameraMode("checkout");
+              setShowCamera(true);
+            }} disabled={isProcessing}>
                   <Camera className="h-6 w-6" />
                   {isProcessing ? "Memproses..." : "Check-Out Sekarang"}
                 </Button>
-              </>
-            )}
+              </>}
           </CardContent>
         </Card>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3">
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => window.location.href = '/employee/leave-request'}
-          >
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/leave-request'}>
             <CardContent className="pt-6 text-center">
               <Calendar className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium text-sm">Ajukan Cuti</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => window.location.href = '/employee/overtime-request'}
-          >
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/overtime-request'}>
             <CardContent className="pt-6 text-center">
               <Clock className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium text-sm">Lembur</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => window.location.href = '/employee/attendance-history'}
-          >
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/attendance-history'}>
             <CardContent className="pt-6 text-center">
               <FileText className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium text-sm">Riwayat</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => window.location.href = '/employee/performance'}
-          >
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/performance'}>
             <CardContent className="pt-6 text-center">
               <TrendingUp className="h-8 w-8 mx-auto mb-3 text-primary" />
               <p className="font-medium text-sm">Performa</p>
@@ -544,57 +474,40 @@ const EmployeeView = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentAttendance.length > 0 ? (
-                recentAttendance.map((record) => (
-                  <div key={record.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+              {recentAttendance.length > 0 ? recentAttendance.map(record => <div key={record.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                     <div>
                       <p className="font-medium">
-                        {new Date(record.check_in_time).toLocaleDateString('id-ID', { 
-                          day: 'numeric', 
-                          month: 'short' 
-                        })}
+                        {new Date(record.check_in_time).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short'
+                  })}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {new Date(record.check_in_time).toLocaleTimeString('id-ID', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })} - {record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('id-ID', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        }) : '-'}
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })} - {record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : '-'}
                       </p>
                     </div>
-                    <div className={`text-xs px-2 py-1 rounded ${
-                      record.status === 'hadir' 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'bg-secondary/10 text-secondary'
-                    }`}>
+                    <div className={`text-xs px-2 py-1 rounded ${record.status === 'hadir' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
                       {formatStatus(record.status)}
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-center text-muted-foreground py-4">Belum ada riwayat absensi</p>
-              )}
+                  </div>) : <p className="text-center text-muted-foreground py-4">Belum ada riwayat absensi</p>}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <CameraCapture
-        isOpen={showCamera}
-        onClose={() => setShowCamera(false)}
-        onCapture={(photoUrl) => {
-          if (cameraMode === "checkin") {
-            handleCheckIn(photoUrl);
-          } else {
-            handleCheckOut(photoUrl);
-          }
-        }}
-        title={cameraMode === "checkin" ? "Check-In" : "Check-Out"}
-      />
-    </div>
-  );
+      <CameraCapture isOpen={showCamera} onClose={() => setShowCamera(false)} onCapture={photoUrl => {
+      if (cameraMode === "checkin") {
+        handleCheckIn(photoUrl);
+      } else {
+        handleCheckOut(photoUrl);
+      }
+    }} title={cameraMode === "checkin" ? "Check-In" : "Check-Out"} />
+    </div>;
 };
-
 export default EmployeeView;

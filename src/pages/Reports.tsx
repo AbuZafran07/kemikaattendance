@@ -29,17 +29,17 @@ export default function Reports() {
       let filename = "";
 
       if (reportType === "attendance") {
-        const query = supabase
+        let query = supabase
           .from("attendance")
           .select(`
             *,
             profiles!inner(full_name, departemen, nik)
           `)
-          .gte("check_in_time", startDate)
-          .lte("check_in_time", endDate);
+          .gte("check_in_time", `${startDate}T00:00:00`)
+          .lte("check_in_time", `${endDate}T23:59:59`);
 
         if (department !== "all") {
-          query.eq("profiles.departemen", department);
+          query = query.eq("profiles.departemen", department);
         }
 
         const { data: attendanceData, error } = await query;
@@ -56,7 +56,7 @@ export default function Reports() {
         }));
         filename = `Attendance_Report_${startDate}_to_${endDate}.xlsx`;
       } else if (reportType === "leave") {
-        const query = supabase
+        let query = supabase
           .from("leave_requests")
           .select(`
             *,
@@ -66,7 +66,7 @@ export default function Reports() {
           .lte("end_date", endDate);
 
         if (department !== "all") {
-          query.eq("profiles.departemen", department);
+          query = query.eq("profiles.departemen", department);
         }
 
         const { data: leaveData, error } = await query;
@@ -85,12 +85,12 @@ export default function Reports() {
         }));
         filename = `Leave_Report_${startDate}_to_${endDate}.xlsx`;
       } else {
-        const query = supabase
+        let query = supabase
           .from("profiles")
           .select("*");
 
         if (department !== "all") {
-          query.eq("departemen", department);
+          query = query.eq("departemen", department);
         }
 
         const { data: employeeData, error } = await query;
@@ -139,17 +139,17 @@ export default function Reports() {
       let title = "";
 
       if (reportType === "attendance") {
-        const query = supabase
+        let query = supabase
           .from("attendance")
           .select(`
             *,
             profiles!inner(full_name, departemen, nik)
           `)
-          .gte("check_in_time", startDate)
-          .lte("check_in_time", endDate);
+          .gte("check_in_time", `${startDate}T00:00:00`)
+          .lte("check_in_time", `${endDate}T23:59:59`);
 
         if (department !== "all") {
-          query.eq("profiles.departemen", department);
+          query = query.eq("profiles.departemen", department);
         }
 
         const { data: attendanceData, error } = await query;
@@ -166,7 +166,7 @@ export default function Reports() {
         ]);
         title = `Laporan Absensi: ${startDate} sampai ${endDate}`;
       } else {
-        const query = supabase
+        let query = supabase
           .from("leave_requests")
           .select(`
             *,
@@ -176,7 +176,7 @@ export default function Reports() {
           .lte("end_date", endDate);
 
         if (department !== "all") {
-          query.eq("profiles.departemen", department);
+          query = query.eq("profiles.departemen", department);
         }
 
         const { data: leaveData, error } = await query;

@@ -101,7 +101,7 @@ export async function determineAttendanceStatus(
     .maybeSingle();
   
   if (error || !data) {
-    // Default: 09:00 is late
+    // Default: 09:00 + 15 min tolerance = 09:15 is late
     const checkInHour = checkInTime.getHours();
     const checkInMinute = checkInTime.getMinutes();
     const totalMinutes = checkInHour * 60 + checkInMinute;
@@ -121,4 +121,46 @@ export async function determineAttendanceStatus(
   const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
   
   return checkInTotalMinutes > lateThreshold ? 'terlambat' : 'hadir';
+}
+
+// Determine if checkout is early departure
+export async function determineCheckoutStatus(
+  checkOutTime: Date,
+  currentStatus: 'hadir' | 'terlambat'
+): Promise<'hadir' | 'terlambat' | 'pulang_cepat'> {
+  const { data, error } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'work_hours')
+    .maybeSingle();
+  
+  if (error || !data) {
+    // Default: before 16:45 (17:00 - 15 min tolerance) is early
+    const checkOutHour = checkOutTime.getHours();
+    const checkOutMinute = checkOutTime.getMinutes();
+    const totalMinutes = checkOutHour * 60 + checkOutMinute;
+    
+    if (totalMinutes < (17 * 60 - 15)) {
+      return 'pulang_cepat';
+    }
+    return currentStatus;
+  }
+  
+  const config = data.value as {
+    check_out_start: string;
+    early_leave_tolerance_minutes: number;
+  };
+  
+  const [startHour, startMinute] = config.check_out_start.split(':').map(Number);
+  const earlyLeaveThreshold = startHour * 60 + startMinute - (config.early_leave_tolerance_minutes || 0);
+  
+  const checkOutHour = checkOutTime.getHours();
+  const checkOutMinute = checkOutTime.getMinutes();
+  const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
+  
+  if (checkOutTotalMinutes < earlyLeaveThreshold) {
+    return 'pulang_cepat';
+  }
+  
+  return currentStatus;
 }

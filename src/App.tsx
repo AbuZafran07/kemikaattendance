@@ -28,11 +28,8 @@ import WorkHoursSettings from "./pages/WorkHoursSettings";
 import LeaveSettings from "./pages/LeaveSettings";
 import OvertimeSettings from "./pages/OvertimeSettings";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -40,7 +37,7 @@ const App = () => (
         <AuthProvider>
           <FCMNotifications />
           <Routes>
-            <Route path="/" element={<Login />} />
+            <Route path="/" element={<Login />} className="bg-[#6e6a46]/70" />
             <Route path="/dashboard" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
             <Route path="/dashboard/employees" element={<ProtectedRoute requireAdmin><Employees /></ProtectedRoute>} />
             <Route path="/dashboard/attendance" element={<ProtectedRoute requireAdmin><Attendance /></ProtectedRoute>} />
@@ -67,7 +64,5 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
-);
-
+  </QueryClientProvider>;
 export default App;

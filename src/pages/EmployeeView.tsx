@@ -368,7 +368,7 @@ const EmployeeView = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-lg space-y-6 bg-[#5f7d51]/[0.22]">
+      <div className="container mx-auto px-4 py-6 max-w-lg space-y-6 bg-[#f0f5ed]">
         {/* Profile Card */}
         <Card>
           <CardContent className="pt-6">

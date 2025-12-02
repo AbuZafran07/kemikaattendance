@@ -297,6 +297,8 @@ const EmployeeView = () => {
             
             // Check if within range of any office
             let isValidLocation = false;
+            let nearestOffice: { name: string; distance: number } | null = null;
+            
             for (const office of officeLocations) {
               const distance = calculateDistance(
                 location.latitude,
@@ -306,13 +308,40 @@ const EmployeeView = () => {
               );
               if (distance <= office.radius) {
                 isValidLocation = true;
-                break;
+                if (!nearestOffice || distance < nearestOffice.distance) {
+                  nearestOffice = { name: office.name, distance };
+                }
               }
             }
             
             const now = new Date();
             const checkInTime = new Date(todayAttendance.check_in_time);
             const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
+
+            // Determine checkout status based on time
+            let finalStatus = todayAttendance.status;
+            
+            if (workHours) {
+              const [startHour, startMinute] = workHours.check_out_start.split(':').map(Number);
+              const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
+              
+              const checkOutHour = now.getHours();
+              const checkOutMinute = now.getMinutes();
+              const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
+              
+              if (checkOutTotalMinutes < earlyLeaveThreshold) {
+                finalStatus = 'pulang_cepat';
+              }
+            } else {
+              // Default: before 16:45 (17:00 - 15 min tolerance) is early
+              const checkOutHour = now.getHours();
+              const checkOutMinute = now.getMinutes();
+              const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
+              
+              if (checkOutTotalMinutes < (17 * 60 - 15)) {
+                finalStatus = 'pulang_cepat';
+              }
+            }
 
             const { error } = await supabase
               .from('attendance')
@@ -321,7 +350,11 @@ const EmployeeView = () => {
                 check_out_latitude: location.latitude,
                 check_out_longitude: location.longitude,
                 check_out_photo_url: base64Photo,
-                duration_minutes: durationMinutes
+                duration_minutes: durationMinutes,
+                status: finalStatus,
+                notes: nearestOffice 
+                  ? `Check-in di ${todayAttendance.notes?.split(' di ')[1] || 'kantor'}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
+                  : todayAttendance.notes
               })
               .eq('id', todayAttendance.id);
 
@@ -333,7 +366,9 @@ const EmployeeView = () => {
 
             toast({
               title: "Check-Out Berhasil",
-              description: "Sampai jumpa besok!",
+              description: finalStatus === 'pulang_cepat' 
+                ? "Anda pulang lebih awal dari jadwal" 
+                : "Sampai jumpa besok!",
             });
 
             fetchRecentAttendance();

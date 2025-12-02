@@ -67,30 +67,20 @@ const Notifications = () => {
   };
 
   const fetchAttendance = async () => {
-    // Get last 7 days date range (for fallback if no data today)
+    // Get today's date range in UTC to match database timezone
     const now = new Date();
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const todayStr = formatDate(now);
-    const sevenDaysAgoStr = formatDate(sevenDaysAgo);
-
-    // First try to get today's data
+    // First try to get today's data using date comparison
     const { data: todayData, error: todayError } = await supabase
       .from('attendance')
       .select(`
         *,
         profiles:user_id(full_name, nik, departemen)
       `)
-      .gte('check_in_time', `${todayStr}T00:00:00`)
-      .lte('check_in_time', `${todayStr}T23:59:59`)
+      .gte('created_at', startOfToday.toISOString())
+      .lte('created_at', endOfToday.toISOString())
       .order('check_in_time', { ascending: false });
 
     // If we have today's data, use it
@@ -100,14 +90,16 @@ const Notifications = () => {
     }
 
     // Otherwise, get last 7 days data
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
     const { data: recentData, error: recentError } = await supabase
       .from('attendance')
       .select(`
         *,
         profiles:user_id(full_name, nik, departemen)
       `)
-      .gte('check_in_time', `${sevenDaysAgoStr}T00:00:00`)
-      .lte('check_in_time', `${todayStr}T23:59:59`)
+      .gte('created_at', sevenDaysAgo.toISOString())
       .order('check_in_time', { ascending: false })
       .limit(20);
 

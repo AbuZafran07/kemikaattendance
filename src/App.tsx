@@ -13,6 +13,7 @@ import Attendance from "./pages/Attendance";
 import Leave from "./pages/Leave";
 import Overtime from "./pages/Overtime";
 import Reports from "./pages/Reports";
+import EmployeeReports from "./pages/EmployeeReports";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import EmployeeView from "./pages/EmployeeView";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/dashboard/leave" element={<ProtectedRoute requireAdmin><Leave /></ProtectedRoute>} />
             <Route path="/dashboard/overtime" element={<ProtectedRoute requireAdmin><Overtime /></ProtectedRoute>} />
             <Route path="/dashboard/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
+            <Route path="/dashboard/reports/employee" element={<ProtectedRoute requireAdmin><EmployeeReports /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/office" element={<ProtectedRoute requireAdmin><OfficeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/work-hours" element={<ProtectedRoute requireAdmin><WorkHoursSettings /></ProtectedRoute>} />

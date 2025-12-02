@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Loader2, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -16,6 +17,7 @@ import { DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 
 export default function Reports() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [reportType, setReportType] = useState<"attendance" | "leave" | "employees">("attendance");
   const [startDate, setStartDate] = useState("");
@@ -234,6 +236,38 @@ export default function Reports() {
           <p className="text-muted-foreground mt-1">
             Buat dan ekspor laporan absensi, cuti, dan data karyawan
           </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Laporan Umum</CardTitle>
+              <CardDescription>Export laporan absensi, cuti, dan database karyawan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Gunakan form di bawah untuk menghasilkan laporan berdasarkan rentang tanggal dan departemen
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 hover:border-primary/40 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/reports/employee')}>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                <CardTitle>Laporan Per Karyawan</CardTitle>
+              </div>
+              <CardDescription>Export data kehadiran untuk karyawan individual</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Pilih karyawan tertentu dan hasilkan laporan kehadiran mereka dalam format Excel atau PDF
+              </p>
+              <Button variant="link" className="mt-2 p-0 h-auto">
+                Buka Laporan Per Karyawan →
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>

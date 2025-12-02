@@ -73,7 +73,7 @@ const Login = () => {
     }
     setIsLoading(false);
   };
-  return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/10 p-4">
+  return <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 p-4 bg-[#3c3c28] flex items-center justify-center border-0 border-solid rounded-none">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">

@@ -67,16 +67,23 @@ const Notifications = () => {
   };
 
   const fetchAttendance = async () => {
-    // Get today's date in local timezone format (YYYY-MM-DD)
+    // Get last 7 days date range (for fallback if no data today)
     const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
-    console.log('Fetching attendance for date:', todayStr);
+    const todayStr = formatDate(now);
+    const sevenDaysAgoStr = formatDate(sevenDaysAgo);
 
-    const { data, error } = await supabase
+    // First try to get today's data
+    const { data: todayData, error: todayError } = await supabase
       .from('attendance')
       .select(`
         *,
@@ -86,10 +93,26 @@ const Notifications = () => {
       .lte('check_in_time', `${todayStr}T23:59:59`)
       .order('check_in_time', { ascending: false });
 
-    console.log('Attendance data:', data, 'Error:', error);
+    // If we have today's data, use it
+    if (todayData && todayData.length > 0) {
+      setAttendanceNotifications(todayData as any);
+      return;
+    }
 
-    if (data) {
-      setAttendanceNotifications(data as any);
+    // Otherwise, get last 7 days data
+    const { data: recentData, error: recentError } = await supabase
+      .from('attendance')
+      .select(`
+        *,
+        profiles:user_id(full_name, nik, departemen)
+      `)
+      .gte('check_in_time', `${sevenDaysAgoStr}T00:00:00`)
+      .lte('check_in_time', `${todayStr}T23:59:59`)
+      .order('check_in_time', { ascending: false })
+      .limit(20);
+
+    if (recentData) {
+      setAttendanceNotifications(recentData as any);
     }
   };
 

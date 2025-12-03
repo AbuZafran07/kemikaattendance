@@ -107,7 +107,7 @@ export async function determineAttendanceStatus(checkInTime: Date): Promise<"had
 export async function determineCheckoutStatus(
   checkOutTime: Date,
   currentStatus: "hadir" | "terlambat",
-): Promise<"hadir" | "terlambat" | "pulang_cepat"> {
+): Promise<"hadir" | "terlambat" | "pulang cepat"> {
   const { data, error } = await supabase.from("system_settings").select("value").eq("key", "work_hours").maybeSingle();
 
   if (error || !data) {
@@ -117,7 +117,7 @@ export async function determineCheckoutStatus(
     const totalMinutes = checkOutHour * 60 + checkOutMinute;
 
     if (totalMinutes < 17 * 60) {
-      return "pulang_cepat";
+      return "pulang cepat";
     }
     return currentStatus;
   }
@@ -135,7 +135,7 @@ export async function determineCheckoutStatus(
   const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
 
   if (checkOutTotalMinutes < earlyLeaveThreshold) {
-    return "pulang_cepat";
+    return "pulang cepat";
   }
 
   return currentStatus;

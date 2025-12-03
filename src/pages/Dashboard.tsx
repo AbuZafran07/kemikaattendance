@@ -8,8 +8,11 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import PendingRequests from "@/components/dashboard/PendingRequests";
 import { format, subDays } from "date-fns";
 import { id } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
+  const { toast } = useToast();
+
   const [stats, setStats] = useState({
     totalEmployees: 0,
     presentToday: 0,
@@ -28,27 +31,43 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+
+    // 🟢 Setup realtime listener
+    const channel = supabase
+      .channel("realtime:attendance")
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, (payload) => {
+        console.log("Realtime change:", payload);
+
+        if (payload.eventType === "INSERT") {
+          setRecentAttendance((prev) => [payload.new, ...prev]);
+        } else if (payload.eventType === "UPDATE") {
+          setRecentAttendance((prev) => prev.map((r) => (r.id === payload.new.id ? payload.new : r)));
+        }
+
+        toast({
+          title: "Update Absensi",
+          description:
+            payload.eventType === "INSERT" ? "Karyawan baru melakukan Check-In" : "Karyawan melakukan Check-Out",
+        });
+
+        fetchDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
     const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
-    // Gunakan waktu lokal (WIB)
-    const toWIB = (date: Date) => {
-      const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-      return new Date(utc + 7 * 60 * 60 * 1000);
-    };
-
-    const startOfToday = toWIB(new Date());
-    startOfToday.setHours(0, 0, 0, 0);
-    const endOfToday = toWIB(new Date());
-    endOfToday.setHours(23, 59, 59, 999);
-
-    // Fetch all data paralel
     const [
       { count: employeeCount },
       { data: profiles },
-      { data: todayAttendance, error: attendanceError },
+      { data: todayAttendance },
       { data: recentData },
       { data: leaveData },
       { data: overtimeData },
@@ -56,42 +75,31 @@ const Dashboard = () => {
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("id, departemen"),
-
-      // 🟢 Ambil absensi hari ini berdasarkan check_in_time (bukan created_at)
       supabase
         .from("attendance")
         .select("*")
         .gte("check_in_time", startOfToday.toISOString())
         .lte("check_in_time", endOfToday.toISOString()),
-
-      // 🟢 Ambil 10 aktivitas absensi terbaru
       supabase
         .from("attendance")
         .select("*, profiles:user_id(full_name, departemen)")
         .order("check_in_time", { ascending: false })
         .limit(10),
-
-      // 🟢 Ambil cuti yang status-nya pending/menunggu
       supabase
         .from("leave_requests")
         .select("*, profiles:user_id(full_name)")
         .in("status", ["pending", "menunggu", "diajukan"])
         .order("created_at", { ascending: false })
         .limit(5),
-
-      // 🟢 Ambil lembur yang status-nya pending/menunggu
       supabase
         .from("overtime_requests")
         .select("*, profiles:user_id(full_name)")
         .in("status", ["pending", "menunggu", "diajukan"])
         .order("created_at", { ascending: false })
         .limit(5),
-
-      // 🟢 Ambil data absensi 7 hari terakhir
       supabase.from("attendance").select("*").gte("check_in_time", subDays(today, 7).toISOString()),
     ]);
 
-    // ✅ Hitung Statistik Hari Ini
     const present = todayAttendance?.filter((a) => a.status === "hadir").length || 0;
     const late = todayAttendance?.filter((a) => a.status === "terlambat").length || 0;
     const earlyLeave = todayAttendance?.filter((a) => a.status === "pulang_cepat").length || 0;
@@ -109,35 +117,32 @@ const Dashboard = () => {
       totalOvertimeHours: 0,
     });
 
-    if (recentData) setRecentAttendance(recentData);
-    if (leaveData) setPendingLeave(leaveData);
-    if (overtimeData) setPendingOvertime(overtimeData);
+    setRecentAttendance(recentData || []);
+    setPendingLeave(leaveData || []);
+    setPendingOvertime(overtimeData || []);
 
-    // ✅ Proses Grafik Mingguan
     const weeklyStats: Record<string, { hadir: number; terlambat: number; tidak_hadir: number }> = {};
     for (let i = 6; i >= 0; i--) {
       const date = subDays(today, i);
-      const dayKey = format(date, "yyyy-MM-dd");
-      const dayLabel = format(date, "EEE", { locale: id });
-      weeklyStats[dayKey] = { hadir: 0, terlambat: 0, tidak_hadir: 0 };
+      const key = format(date, "yyyy-MM-dd");
+      weeklyStats[key] = { hadir: 0, terlambat: 0, tidak_hadir: 0 };
     }
 
-    weekAttendance?.forEach((record) => {
-      const recordDate = format(new Date(record.check_in_time), "yyyy-MM-dd");
-      if (weeklyStats[recordDate]) {
-        if (record.status === "hadir") weeklyStats[recordDate].hadir++;
-        else if (record.status === "terlambat") weeklyStats[recordDate].terlambat++;
+    weekAttendance?.forEach((rec) => {
+      const day = format(new Date(rec.check_in_time), "yyyy-MM-dd");
+      if (weeklyStats[day]) {
+        if (rec.status === "hadir") weeklyStats[day].hadir++;
+        else if (rec.status === "terlambat") weeklyStats[day].terlambat++;
       }
     });
 
-    const chartData = Object.entries(weeklyStats).map(([date, data]) => ({
+    const chartData = Object.entries(weeklyStats).map(([date, d]) => ({
       day: format(new Date(date), "EEE", { locale: id }),
-      ...data,
-      tidak_hadir: Math.max(0, (employeeCount || 0) - data.hadir - data.terlambat),
+      ...d,
+      tidak_hadir: Math.max(0, (employeeCount || 0) - d.hadir - d.terlambat),
     }));
     setWeeklyData(chartData);
 
-    // ✅ Hitung Kehadiran per Departemen
     const deptMap: Record<string, { total: number; present: number }> = {};
     profiles?.forEach((p) => {
       const dept = p.departemen || "Lainnya";
@@ -152,11 +157,7 @@ const Dashboard = () => {
     });
 
     const deptData = Object.entries(deptMap)
-      .map(([name, data]) => ({
-        name: name.replace(" Department", ""),
-        value: data.total,
-        present: data.present,
-      }))
+      .map(([name, d]) => ({ name, value: d.total, present: d.present }))
       .filter((d) => d.value > 0)
       .slice(0, 6);
 
@@ -165,9 +166,9 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fadeIn">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground mt-1">{format(new Date(), "EEEE, d MMMM yyyy", { locale: id })}</p>
         </div>
 

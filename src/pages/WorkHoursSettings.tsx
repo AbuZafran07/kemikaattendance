@@ -22,12 +22,12 @@ export default function WorkHoursSettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [config, setConfig] = useState<WorkHoursConfig>({
-    check_in_start: "08:00",
-    check_in_end: "09:00",
+    check_in_start: "00:00",
+    check_in_end: "08:00",
     check_out_start: "17:00",
-    check_out_end: "18:00",
+    check_out_end: "23:59",
     late_tolerance_minutes: 15,
-    early_leave_tolerance_minutes: 15,
+    early_leave_tolerance_minutes: 0,
   });
 
   useEffect(() => {
@@ -152,7 +152,7 @@ export default function WorkHoursSettings() {
                         onChange={(e) => setConfig({ ...config, check_in_end: e.target.value })}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Batas waktu check-in tepat waktu (sebelum dianggap terlambat)
+                        Jam masuk resmi perusahaan (keterlambatan dihitung dari waktu ini + toleransi)
                       </p>
                     </div>
                   </div>

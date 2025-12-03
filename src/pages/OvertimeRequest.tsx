@@ -16,51 +16,55 @@ const OvertimeRequest = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
-    overtimeDate: '',
-    startTime: '',
-    endTime: '',
-    reason: ''
+    overtimeDate: "",
+    startTime: "",
+    endTime: "",
+    reason: "",
   });
 
-  // Calculate total hours automatically
+  // 🔹 Hitung jam lembur otomatis
   const calculateHours = () => {
     if (!formData.startTime || !formData.endTime) return 0;
-    
-    const [startHour, startMinute] = formData.startTime.split(':').map(Number);
-    const [endHour, endMinute] = formData.endTime.split(':').map(Number);
-    
+
+    const [startHour, startMinute] = formData.startTime.split(":").map(Number);
+    const [endHour, endMinute] = formData.endTime.split(":").map(Number);
+
     const startTotalMinutes = startHour * 60 + startMinute;
     const endTotalMinutes = endHour * 60 + endMinute;
-    
+
     let diffMinutes = endTotalMinutes - startTotalMinutes;
-    
-    // Handle overnight overtime (e.g., 23:00 to 02:00)
+
+    // Handle lembur melewati tengah malam
     if (diffMinutes < 0) {
       diffMinutes += 24 * 60;
     }
-    
-    return Math.round((diffMinutes / 60) * 10) / 10; // Round to 1 decimal place
+
+    // Bulatkan 1 desimal
+    return Math.round((diffMinutes / 60) * 10) / 10;
   };
 
   const totalHours = calculateHours();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.startTime || !formData.endTime) {
+
+    // 🔹 Validasi input dasar
+    if (!formData.overtimeDate || !formData.startTime || !formData.endTime || !formData.reason) {
       toast({
-        title: "Data Tidak Lengkap",
-        description: "Silakan isi jam mulai dan jam selesai",
+        title: "Data belum lengkap",
+        description: "Mohon isi semua kolom sebelum mengirim pengajuan lembur.",
         variant: "destructive",
       });
       return;
     }
-    
+
+    // 🔹 Validasi jam
     if (totalHours <= 0) {
       toast({
-        title: "Jam Tidak Valid",
-        description: "Jam selesai harus lebih besar dari jam mulai",
+        title: "Jam tidak valid",
+        description: "Jam selesai harus lebih besar dari jam mulai.",
         variant: "destructive",
       });
       return;
@@ -69,28 +73,33 @@ const OvertimeRequest = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
-        .from('overtime_requests')
-        .insert([{
-          user_id: profile?.id!,
+      // Simpan data lembur ke Supabase
+      const { error } = await supabase.from("overtime_requests").insert([
+        {
+          user_id: profile?.id,
           overtime_date: formData.overtimeDate,
-          hours: Math.ceil(totalHours), // Round up to nearest hour for storage
+          start_time: formData.startTime,
+          end_time: formData.endTime,
+          hours: totalHours, // simpan jam aktual (boleh desimal)
           reason: formData.reason,
-          status: 'pending'
-        }]);
+          status: "pending", // pastikan cocok dengan dashboard HRGA
+          created_at: new Date().toISOString(),
+        },
+      ]);
 
       if (error) throw error;
 
       toast({
         title: "Berhasil",
-        description: "Pengajuan lembur berhasil dikirim",
+        description: "Pengajuan lembur berhasil dikirim dan menunggu persetujuan HRGA.",
       });
 
-      navigate('/employee');
+      navigate("/employee");
     } catch (error: any) {
+      console.error("Error submitting overtime:", error);
       toast({
-        title: "Gagal",
-        description: error.message,
+        title: "Gagal mengirim pengajuan",
+        description: error.message || "Terjadi kesalahan saat mengirim data.",
         variant: "destructive",
       });
     } finally {
@@ -100,10 +109,11 @@ const OvertimeRequest = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
+      {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/employee')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/employee")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <img src={logo} alt="Kemika" className="h-10 object-contain" />
@@ -111,25 +121,29 @@ const OvertimeRequest = () => {
         </div>
       </header>
 
+      {/* Body */}
       <div className="container mx-auto px-4 py-6 max-w-lg">
         <Card>
           <CardHeader>
             <CardTitle>Ajukan Lembur</CardTitle>
             <CardDescription>Isi formulir pengajuan lembur</CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Tanggal lembur */}
               <div className="space-y-2">
                 <Label htmlFor="overtimeDate">Tanggal Lembur</Label>
                 <Input
                   id="overtimeDate"
                   type="date"
                   value={formData.overtimeDate}
-                  onChange={(e) => setFormData({...formData, overtimeDate: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, overtimeDate: e.target.value })}
                   required
                 />
               </div>
 
+              {/* Jam mulai & selesai */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">Jam Mulai</Label>
@@ -137,7 +151,7 @@ const OvertimeRequest = () => {
                     id="startTime"
                     type="time"
                     value={formData.startTime}
-                    onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                     required
                   />
                 </div>
@@ -148,38 +162,37 @@ const OvertimeRequest = () => {
                     id="endTime"
                     type="time"
                     value={formData.endTime}
-                    onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                     required
                   />
                 </div>
               </div>
 
+              {/* Total jam */}
               <div className="space-y-2">
                 <Label>Jumlah Jam</Label>
                 <div className="flex items-center h-10 px-3 py-2 rounded-md border border-input bg-muted">
                   <span className="text-sm text-muted-foreground">
-                    {totalHours > 0 ? `${totalHours} jam` : 'Isi jam mulai dan selesai'}
+                    {totalHours > 0 ? `${totalHours} jam` : "Isi jam mulai dan selesai"}
                   </span>
                 </div>
               </div>
 
+              {/* Alasan / Deskripsi */}
               <div className="space-y-2">
-                <Label htmlFor="reason">Alasan/Deskripsi Pekerjaan</Label>
+                <Label htmlFor="reason">Alasan / Deskripsi Pekerjaan</Label>
                 <Textarea
                   id="reason"
                   value={formData.reason}
-                  onChange={(e) => setFormData({...formData, reason: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                   placeholder="Jelaskan pekerjaan yang akan dilakukan saat lembur..."
                   rows={4}
                   required
                 />
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={isSubmitting || totalHours <= 0}
-              >
+              {/* Tombol submit */}
+              <Button type="submit" className="w-full" disabled={isSubmitting || totalHours <= 0}>
                 {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
               </Button>
             </form>

@@ -31,7 +31,6 @@ export default function Reports() {
       let filename = "";
 
       if (reportType === "attendance") {
-        // First fetch attendance data
         const { data: attendanceData, error: attendanceError } = await supabase
           .from("attendance")
           .select("*")
@@ -40,38 +39,42 @@ export default function Reports() {
 
         if (attendanceError) throw attendanceError;
 
-        // Then fetch profiles
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, full_name, departemen, nik");
 
         if (profilesError) throw profilesError;
 
-        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge and filter
-        let mergedData = attendanceData?.map(record => ({
-          ...record,
-          profiles: profilesMap.get(record.user_id)
-        })).filter(record => record.profiles) || [];
+        let mergedData =
+          attendanceData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
 
-        // Filter by department if not "all"
         if (department !== "all") {
-          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
         }
 
-        data = mergedData.map((record: any) => ({
-          NIK: record.profiles?.nik || "-",
-          Name: record.profiles?.full_name || "-",
-          Department: record.profiles?.departemen || "-",
-          "Check In": format(new Date(record.check_in_time), "yyyy-MM-dd HH:mm"),
-          "Check Out": record.check_out_time ? format(new Date(record.check_out_time), "yyyy-MM-dd HH:mm") : "-",
-          Status: record.status,
-          "Duration (min)": record.duration_minutes || "-",
-        }));
+        data = mergedData.map((record: any) => {
+          const checkIn = new Date(record.check_in_time);
+          const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
+          return {
+            Date: format(checkIn, "yyyy-MM-dd"),
+            NIK: record.profiles?.nik || "-",
+            Name: record.profiles?.full_name || "-",
+            Department: record.profiles?.departemen || "-",
+            "Check In Time": format(checkIn, "HH:mm"),
+            "Check Out Time": checkOut ? format(checkOut, "HH:mm") : "-",
+            Status: record.status,
+            "Duration (min)": record.duration_minutes || "-",
+          };
+        });
         filename = `Attendance_Report_${startDate}_to_${endDate}.xlsx`;
       } else if (reportType === "leave") {
-        // First fetch leave requests
         const { data: leaveData, error: leaveError } = await supabase
           .from("leave_requests")
           .select("*")
@@ -80,24 +83,24 @@ export default function Reports() {
 
         if (leaveError) throw leaveError;
 
-        // Then fetch profiles
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, full_name, departemen, nik");
 
         if (profilesError) throw profilesError;
 
-        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge and filter
-        let mergedData = leaveData?.map(record => ({
-          ...record,
-          profiles: profilesMap.get(record.user_id)
-        })).filter(record => record.profiles) || [];
+        let mergedData =
+          leaveData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
 
-        // Filter by department if not "all"
         if (department !== "all") {
-          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
         }
 
         data = mergedData.map((record: any) => ({
@@ -113,13 +116,8 @@ export default function Reports() {
         }));
         filename = `Leave_Report_${startDate}_to_${endDate}.xlsx`;
       } else {
-        let query = supabase
-          .from("profiles")
-          .select("*");
-
-        if (department !== "all") {
-          query = query.eq("departemen", department);
-        }
+        let query = supabase.from("profiles").select("*");
+        if (department !== "all") query = query.eq("departemen", department);
 
         const { data: employeeData, error } = await query;
         if (error) throw error;
@@ -141,19 +139,12 @@ export default function Reports() {
 
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, reportType === "attendance" ? "Attendance" : reportType === "leave" ? "Leave" : "Employees");
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
       XLSX.writeFile(wb, filename);
 
-      toast({
-        title: "Berhasil",
-        description: "Laporan berhasil diekspor ke Excel",
-      });
+      toast({ title: "Berhasil", description: "Laporan berhasil diekspor ke Excel" });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -167,7 +158,6 @@ export default function Reports() {
       let title = "";
 
       if (reportType === "attendance") {
-        // First fetch attendance data
         const { data: attendanceData, error: attendanceError } = await supabase
           .from("attendance")
           .select("*")
@@ -176,38 +166,42 @@ export default function Reports() {
 
         if (attendanceError) throw attendanceError;
 
-        // Then fetch profiles
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, full_name, departemen, nik");
 
         if (profilesError) throw profilesError;
 
-        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge and filter
-        let mergedData = attendanceData?.map(record => ({
-          ...record,
-          profiles: profilesMap.get(record.user_id)
-        })).filter(record => record.profiles) || [];
+        let mergedData =
+          attendanceData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
 
-        // Filter by department if not "all"
         if (department !== "all") {
-          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
         }
 
-        columns = ["NIK", "Name", "Department", "Check In", "Check Out", "Status"];
-        data = mergedData.map((record: any) => [
-          record.profiles?.nik || "-",
-          record.profiles?.full_name || "-",
-          record.profiles?.departemen || "-",
-          format(new Date(record.check_in_time), "yyyy-MM-dd HH:mm"),
-          record.check_out_time ? format(new Date(record.check_out_time), "yyyy-MM-dd HH:mm") : "-",
-          record.status,
-        ]);
-        title = `Laporan Absensi: ${startDate} sampai ${endDate}`;
+        columns = ["Date", "NIK", "Name", "Department", "Check In", "Check Out", "Status"];
+        data = mergedData.map((record: any) => {
+          const checkIn = new Date(record.check_in_time);
+          const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
+          return [
+            format(checkIn, "yyyy-MM-dd"),
+            record.profiles?.nik || "-",
+            record.profiles?.full_name || "-",
+            record.profiles?.departemen || "-",
+            format(checkIn, "HH:mm"),
+            checkOut ? format(checkOut, "HH:mm") : "-",
+            record.status,
+          ];
+        });
+        title = `Laporan Absensi (${startDate} s.d ${endDate})`;
       } else {
-        // First fetch leave requests
         const { data: leaveData, error: leaveError } = await supabase
           .from("leave_requests")
           .select("*")
@@ -216,37 +210,38 @@ export default function Reports() {
 
         if (leaveError) throw leaveError;
 
-        // Then fetch profiles
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, full_name, departemen, nik");
 
         if (profilesError) throw profilesError;
 
-        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge and filter
-        let mergedData = leaveData?.map(record => ({
-          ...record,
-          profiles: profilesMap.get(record.user_id)
-        })).filter(record => record.profiles) || [];
+        let mergedData =
+          leaveData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
 
-        // Filter by department if not "all"
         if (department !== "all") {
-          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
         }
 
-        columns = ["NIK", "Name", "Leave Type", "Start", "End", "Days", "Status"];
+        columns = ["NIK", "Name", "Department", "Leave Type", "Start", "End", "Days", "Status"];
         data = mergedData.map((record: any) => [
           record.profiles?.nik || "-",
           record.profiles?.full_name || "-",
+          record.profiles?.departemen || "-",
           record.leave_type,
           record.start_date,
           record.end_date,
           record.total_days,
           record.status,
         ]);
-        title = `Laporan Cuti: ${startDate} sampai ${endDate}`;
+        title = `Laporan Cuti (${startDate} s.d ${endDate})`;
       }
 
       const doc = new jsPDF();
@@ -264,17 +259,9 @@ export default function Reports() {
       });
 
       doc.save(`${reportType}_report_${format(new Date(), "yyyy-MM-dd")}.pdf`);
-
-      toast({
-        title: "Berhasil",
-        description: "Laporan berhasil diekspor ke PDF",
-      });
+      toast({ title: "Berhasil", description: "Laporan berhasil diekspor ke PDF" });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -285,9 +272,7 @@ export default function Reports() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Laporan & Analytics</h1>
-          <p className="text-muted-foreground mt-1">
-            Buat dan ekspor laporan absensi, cuti, dan data karyawan
-          </p>
+          <p className="text-muted-foreground mt-1">Buat dan ekspor laporan absensi, cuti, dan data karyawan</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -303,7 +288,10 @@ export default function Reports() {
             </CardContent>
           </Card>
 
-          <Card className="border-primary/20 hover:border-primary/40 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/reports/employee')}>
+          <Card
+            className="border-primary/20 hover:border-primary/40 transition-colors cursor-pointer"
+            onClick={() => navigate("/dashboard/reports/employee")}
+          >
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
@@ -364,28 +352,26 @@ export default function Reports() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startDate">Tanggal Mulai</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
+                  <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endDate">Tanggal Akhir</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
+                  <Input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
                 </div>
               </div>
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button onClick={exportToExcel} disabled={loading || (reportType !== "employees" && (!startDate || !endDate))} className="bg-primary hover:bg-primary/90">
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+              <Button
+                onClick={exportToExcel}
+                disabled={loading || (reportType !== "employees" && (!startDate || !endDate))}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                )}
                 Export ke Excel
               </Button>
               {reportType !== "employees" && (

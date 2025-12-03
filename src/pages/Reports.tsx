@@ -31,26 +31,39 @@ export default function Reports() {
       let filename = "";
 
       if (reportType === "attendance") {
-        let query = supabase
+        // First fetch attendance data
+        const { data: attendanceData, error: attendanceError } = await supabase
           .from("attendance")
-          .select(`
-            *,
-            profiles!inner(full_name, departemen, nik)
-          `)
+          .select("*")
           .gte("check_in_time", `${startDate}T00:00:00`)
           .lte("check_in_time", `${endDate}T23:59:59`);
 
+        if (attendanceError) throw attendanceError;
+
+        // Then fetch profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+        // Merge and filter
+        let mergedData = attendanceData?.map(record => ({
+          ...record,
+          profiles: profilesMap.get(record.user_id)
+        })).filter(record => record.profiles) || [];
+
+        // Filter by department if not "all"
         if (department !== "all") {
-          query = query.eq("profiles.departemen", department);
+          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
         }
 
-        const { data: attendanceData, error } = await query;
-        if (error) throw error;
-
-        data = attendanceData.map((record: any) => ({
-          NIK: record.profiles.nik,
-          Name: record.profiles.full_name,
-          Department: record.profiles.departemen,
+        data = mergedData.map((record: any) => ({
+          NIK: record.profiles?.nik || "-",
+          Name: record.profiles?.full_name || "-",
+          Department: record.profiles?.departemen || "-",
           "Check In": format(new Date(record.check_in_time), "yyyy-MM-dd HH:mm"),
           "Check Out": record.check_out_time ? format(new Date(record.check_out_time), "yyyy-MM-dd HH:mm") : "-",
           Status: record.status,
@@ -58,26 +71,39 @@ export default function Reports() {
         }));
         filename = `Attendance_Report_${startDate}_to_${endDate}.xlsx`;
       } else if (reportType === "leave") {
-        let query = supabase
+        // First fetch leave requests
+        const { data: leaveData, error: leaveError } = await supabase
           .from("leave_requests")
-          .select(`
-            *,
-            profiles!inner(full_name, departemen, nik)
-          `)
+          .select("*")
           .gte("start_date", startDate)
           .lte("end_date", endDate);
 
+        if (leaveError) throw leaveError;
+
+        // Then fetch profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+        // Merge and filter
+        let mergedData = leaveData?.map(record => ({
+          ...record,
+          profiles: profilesMap.get(record.user_id)
+        })).filter(record => record.profiles) || [];
+
+        // Filter by department if not "all"
         if (department !== "all") {
-          query = query.eq("profiles.departemen", department);
+          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
         }
 
-        const { data: leaveData, error } = await query;
-        if (error) throw error;
-
-        data = leaveData.map((record: any) => ({
-          NIK: record.profiles.nik,
-          Name: record.profiles.full_name,
-          Department: record.profiles.departemen,
+        data = mergedData.map((record: any) => ({
+          NIK: record.profiles?.nik || "-",
+          Name: record.profiles?.full_name || "-",
+          Department: record.profiles?.departemen || "-",
           "Leave Type": record.leave_type,
           "Start Date": record.start_date,
           "End Date": record.end_date,
@@ -141,53 +167,79 @@ export default function Reports() {
       let title = "";
 
       if (reportType === "attendance") {
-        let query = supabase
+        // First fetch attendance data
+        const { data: attendanceData, error: attendanceError } = await supabase
           .from("attendance")
-          .select(`
-            *,
-            profiles!inner(full_name, departemen, nik)
-          `)
+          .select("*")
           .gte("check_in_time", `${startDate}T00:00:00`)
           .lte("check_in_time", `${endDate}T23:59:59`);
 
+        if (attendanceError) throw attendanceError;
+
+        // Then fetch profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+        // Merge and filter
+        let mergedData = attendanceData?.map(record => ({
+          ...record,
+          profiles: profilesMap.get(record.user_id)
+        })).filter(record => record.profiles) || [];
+
+        // Filter by department if not "all"
         if (department !== "all") {
-          query = query.eq("profiles.departemen", department);
+          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
         }
 
-        const { data: attendanceData, error } = await query;
-        if (error) throw error;
-
         columns = ["NIK", "Name", "Department", "Check In", "Check Out", "Status"];
-        data = attendanceData.map((record: any) => [
-          record.profiles.nik,
-          record.profiles.full_name,
-          record.profiles.departemen,
+        data = mergedData.map((record: any) => [
+          record.profiles?.nik || "-",
+          record.profiles?.full_name || "-",
+          record.profiles?.departemen || "-",
           format(new Date(record.check_in_time), "yyyy-MM-dd HH:mm"),
           record.check_out_time ? format(new Date(record.check_out_time), "yyyy-MM-dd HH:mm") : "-",
           record.status,
         ]);
         title = `Laporan Absensi: ${startDate} sampai ${endDate}`;
       } else {
-        let query = supabase
+        // First fetch leave requests
+        const { data: leaveData, error: leaveError } = await supabase
           .from("leave_requests")
-          .select(`
-            *,
-            profiles!inner(full_name, departemen, nik)
-          `)
+          .select("*")
           .gte("start_date", startDate)
           .lte("end_date", endDate);
 
+        if (leaveError) throw leaveError;
+
+        // Then fetch profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+        // Merge and filter
+        let mergedData = leaveData?.map(record => ({
+          ...record,
+          profiles: profilesMap.get(record.user_id)
+        })).filter(record => record.profiles) || [];
+
+        // Filter by department if not "all"
         if (department !== "all") {
-          query = query.eq("profiles.departemen", department);
+          mergedData = mergedData.filter(record => record.profiles?.departemen === department);
         }
 
-        const { data: leaveData, error } = await query;
-        if (error) throw error;
-
         columns = ["NIK", "Name", "Leave Type", "Start", "End", "Days", "Status"];
-        data = leaveData.map((record: any) => [
-          record.profiles.nik,
-          record.profiles.full_name,
+        data = mergedData.map((record: any) => [
+          record.profiles?.nik || "-",
+          record.profiles?.full_name || "-",
           record.leave_type,
           record.start_date,
           record.end_date,

@@ -37,7 +37,7 @@ const App = () => <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <FCMNotifications />
           <Routes>
-            <Route path="/" element={<Login />} className="bg-[#6e6a46]/70" />
+            <Route path="/" element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
             <Route path="/dashboard/employees" element={<ProtectedRoute requireAdmin><Employees /></ProtectedRoute>} />
             <Route path="/dashboard/attendance" element={<ProtectedRoute requireAdmin><Attendance /></ProtectedRoute>} />
@@ -51,7 +51,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/leave" element={<ProtectedRoute requireAdmin><LeaveSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/overtime" element={<ProtectedRoute requireAdmin><OvertimeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
-            <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} className="py-0 bg-[#6e6a46]/[0.96]" />
+            <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
             <Route path="/employee/leave-request" element={<ProtectedRoute><LeaveRequest /></ProtectedRoute>} />
             <Route path="/employee/overtime-request" element={<ProtectedRoute><OvertimeRequest /></ProtectedRoute>} />

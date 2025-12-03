@@ -17,13 +17,15 @@ const LeaveRequest = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
-    leaveType: '',
-    startDate: '',
-    endDate: '',
-    reason: ''
+    leaveType: "",
+    startDate: "",
+    endDate: "",
+    reason: "",
   });
 
+  // Hitung total hari cuti
   const calculateDays = (start: string, end: string) => {
     if (!start || !end) return 0;
     const startDate = new Date(start);
@@ -38,32 +40,72 @@ const LeaveRequest = () => {
     setIsSubmitting(true);
 
     try {
+      // Validasi form
+      if (!formData.leaveType || !formData.startDate || !formData.endDate || !formData.reason) {
+        toast({
+          title: "Data belum lengkap",
+          description: "Mohon isi semua field sebelum mengirim.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validasi tanggal
+      const start = new Date(formData.startDate);
+      const end = new Date(formData.endDate);
+      if (end < start) {
+        toast({
+          title: "Tanggal tidak valid",
+          description: "Tanggal selesai tidak boleh lebih awal dari tanggal mulai.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const totalDays = calculateDays(formData.startDate, formData.endDate);
 
-      const { error } = await supabase
-        .from('leave_requests')
-        .insert([{
-          user_id: profile?.id!,
-          leave_type: formData.leaveType as 'cuti_tahunan' | 'izin' | 'sakit' | 'lupa_absen',
+      // Validasi sisa cuti tahunan (opsional)
+      if (formData.leaveType === "cuti_tahunan" && profile?.remaining_leave) {
+        if (totalDays > profile.remaining_leave) {
+          toast({
+            title: "Cuti melebihi jatah",
+            description: `Sisa cuti tahunan Anda hanya ${profile.remaining_leave} hari.`,
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Simpan ke Supabase
+      const { error } = await supabase.from("leave_requests").insert([
+        {
+          user_id: profile?.id,
+          leave_type: formData.leaveType,
           start_date: formData.startDate,
           end_date: formData.endDate,
           total_days: totalDays,
           reason: formData.reason,
-          status: 'pending'
-        }]);
+          status: "pending", // pastikan cocok dengan filter di dashboard
+          created_at: new Date().toISOString(), // pastikan waktu tersimpan
+        },
+      ]);
 
       if (error) throw error;
 
       toast({
         title: "Berhasil",
-        description: "Pengajuan cuti berhasil dikirim",
+        description: "Pengajuan cuti berhasil dikirim dan menunggu persetujuan HRGA.",
       });
 
-      navigate('/employee');
+      navigate("/employee");
     } catch (error: any) {
+      console.error("Error submitting leave:", error);
       toast({
-        title: "Gagal",
-        description: error.message,
+        title: "Gagal mengirim pengajuan",
+        description: error.message || "Terjadi kesalahan saat mengirim data.",
         variant: "destructive",
       });
     } finally {
@@ -73,10 +115,11 @@ const LeaveRequest = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
+      {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/employee')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/employee")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <img src={logo} alt="Kemika" className="h-10 object-contain" />
@@ -84,6 +127,7 @@ const LeaveRequest = () => {
         </div>
       </header>
 
+      {/* Body */}
       <div className="container mx-auto px-4 py-6 max-w-lg">
         <Card>
           <CardHeader>
@@ -92,11 +136,12 @@ const LeaveRequest = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Jenis Cuti */}
               <div className="space-y-2">
                 <Label htmlFor="leaveType">Jenis Cuti</Label>
-                <Select 
-                  value={formData.leaveType} 
-                  onValueChange={(value) => setFormData({...formData, leaveType: value})}
+                <Select
+                  value={formData.leaveType}
+                  onValueChange={(value) => setFormData({ ...formData, leaveType: value })}
                   required
                 >
                   <SelectTrigger>
@@ -111,59 +156,59 @@ const LeaveRequest = () => {
                 </Select>
               </div>
 
+              {/* Tanggal Mulai */}
               <div className="space-y-2">
                 <Label htmlFor="startDate">Tanggal Mulai</Label>
                 <Input
                   id="startDate"
                   type="date"
                   value={formData.startDate}
-                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                   required
                 />
               </div>
 
+              {/* Tanggal Selesai */}
               <div className="space-y-2">
                 <Label htmlFor="endDate">Tanggal Selesai</Label>
                 <Input
                   id="endDate"
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                   min={formData.startDate}
                   required
                 />
               </div>
 
+              {/* Info Durasi & Sisa Cuti */}
               {formData.startDate && formData.endDate && (
                 <div className="bg-primary/10 p-3 rounded-lg">
                   <p className="text-sm">
-                    Total hari: <span className="font-bold">{calculateDays(formData.startDate, formData.endDate)} hari</span>
+                    Total hari:{" "}
+                    <span className="font-bold">{calculateDays(formData.startDate, formData.endDate)} hari</span>
                   </p>
                   {profile?.remaining_leave && (
-                    <p className="text-sm text-muted-foreground">
-                      Sisa cuti tahunan: {profile.remaining_leave} hari
-                    </p>
+                    <p className="text-sm text-muted-foreground">Sisa cuti tahunan: {profile.remaining_leave} hari</p>
                   )}
                 </div>
               )}
 
+              {/* Alasan */}
               <div className="space-y-2">
                 <Label htmlFor="reason">Alasan</Label>
                 <Textarea
                   id="reason"
                   value={formData.reason}
-                  onChange={(e) => setFormData({...formData, reason: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                   placeholder="Jelaskan alasan pengajuan cuti..."
                   rows={4}
                   required
                 />
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={isSubmitting}
-              >
+              {/* Tombol Kirim */}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
               </Button>
             </form>

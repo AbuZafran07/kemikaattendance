@@ -217,7 +217,7 @@ const Attendance = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row items-end gap-4">
               <div className="space-y-2">
                 <Label>Tanggal Mulai</Label>
                 <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -225,6 +225,17 @@ const Attendance = () => {
               <div className="space-y-2">
                 <Label>Tanggal Akhir</Label>
                 <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+
+              {/* Tombol Terapkan Filter */}
+              <div>
+                <Button
+                  variant="default"
+                  onClick={fetchAttendanceData}
+                  disabled={!startDate || !endDate || isRefreshing}
+                >
+                  Tampilkan
+                </Button>
               </div>
             </div>
           </CardContent>

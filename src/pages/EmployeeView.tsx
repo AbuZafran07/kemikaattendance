@@ -191,21 +191,23 @@ const EmployeeView = () => {
             // Step 4: Record check-in with status based on work hours settings
             const now = new Date();
             let status: 'hadir' | 'terlambat' = 'hadir';
-            if (workHours) {
+            const checkInHour = now.getHours();
+            const checkInMinute = now.getMinutes();
+            const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+            
+            if (workHours && workHours.check_in_end) {
               // Parse check_in_end time (e.g., "09:00")
               const [endHour, endMinute] = workHours.check_in_end.split(':').map(Number);
               const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
-              const checkInHour = now.getHours();
-              const checkInMinute = now.getMinutes();
-              const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+              console.log('Work hours check:', { checkInTotalMinutes, lateThreshold, checkInEnd: workHours.check_in_end });
               if (checkInTotalMinutes > lateThreshold) {
                 status = 'terlambat';
               }
             } else {
-              // Default: 09:00 + 15 min tolerance = 09:15
-              const workStartTime = new Date(now);
-              workStartTime.setHours(9, 15, 0, 0);
-              if (now > workStartTime) {
+              // Default: jam 09:00 + 15 menit toleransi = 09:15 (555 menit)
+              const defaultLateThreshold = 9 * 60 + 15; // 555 menit
+              console.log('Default check:', { checkInTotalMinutes, defaultLateThreshold });
+              if (checkInTotalMinutes > defaultLateThreshold) {
                 status = 'terlambat';
               }
             }
@@ -292,21 +294,22 @@ const EmployeeView = () => {
 
             // Determine checkout status based on time
             let finalStatus = todayAttendance.status;
-            if (workHours) {
+            const checkOutHour = now.getHours();
+            const checkOutMinute = now.getMinutes();
+            const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
+            
+            if (workHours && workHours.check_out_start) {
               const [startHour, startMinute] = workHours.check_out_start.split(':').map(Number);
               const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
-              const checkOutHour = now.getHours();
-              const checkOutMinute = now.getMinutes();
-              const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
+              console.log('Checkout check:', { checkOutTotalMinutes, earlyLeaveThreshold, checkOutStart: workHours.check_out_start });
               if (checkOutTotalMinutes < earlyLeaveThreshold) {
                 finalStatus = 'pulang_cepat';
               }
             } else {
-              // Default: before 16:45 (17:00 - 15 min tolerance) is early
-              const checkOutHour = now.getHours();
-              const checkOutMinute = now.getMinutes();
-              const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
-              if (checkOutTotalMinutes < 17 * 60 - 15) {
+              // Default: sebelum 16:45 (17:00 - 15 menit toleransi) = pulang cepat
+              const defaultEarlyLeaveThreshold = 17 * 60 - 15; // 1005 menit (16:45)
+              console.log('Default checkout:', { checkOutTotalMinutes, defaultEarlyLeaveThreshold });
+              if (checkOutTotalMinutes < defaultEarlyLeaveThreshold) {
                 finalStatus = 'pulang_cepat';
               }
             }

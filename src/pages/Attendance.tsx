@@ -7,21 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -65,9 +52,9 @@ const Attendance = () => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
-    setStartDate(firstDay.toISOString().split('T')[0]);
-    setEndDate(lastDay.toISOString().split('T')[0]);
+
+    setStartDate(firstDay.toISOString().split("T")[0]);
+    setEndDate(lastDay.toISOString().split("T")[0]);
   }, []);
 
   useEffect(() => {
@@ -81,20 +68,20 @@ const Attendance = () => {
 
     const startDateTime = new Date(startDate);
     startDateTime.setHours(0, 0, 0, 0);
-    
+
     const endDateTime = new Date(endDate);
     endDateTime.setHours(23, 59, 59, 999);
 
     // Fetch ALL attendance data within date range
     const { data: attendanceRecords, error: attendanceError } = await supabase
-      .from('attendance')
-      .select('*')
-      .gte('check_in_time', startDateTime.toISOString())
-      .lte('check_in_time', endDateTime.toISOString())
-      .order('check_in_time', { ascending: false });
+      .from("attendance")
+      .select("*")
+      .gte("check_in_time", startDateTime.toISOString())
+      .lte("check_in_time", endDateTime.toISOString())
+      .order("check_in_time", { ascending: false });
 
     if (attendanceError) {
-      console.error('Error fetching attendance:', attendanceError);
+      console.error("Error fetching attendance:", attendanceError);
       toast({
         title: "Error",
         description: "Gagal memuat data absensi",
@@ -113,11 +100,11 @@ const Attendance = () => {
 
     // Fetch all profiles
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, full_name, departemen, photo_url');
+      .from("profiles")
+      .select("id, full_name, departemen, photo_url");
 
     if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
+      console.error("Error fetching profiles:", profilesError);
     }
 
     const profilesMap = new Map<string, Profile>();
@@ -130,71 +117,74 @@ const Attendance = () => {
       const profile = profilesMap.get(record.user_id);
       return {
         ...record,
-        full_name: profile?.full_name || 'Unknown',
-        departemen: profile?.departemen || '-',
+        full_name: profile?.full_name || "Unknown",
+        departemen: profile?.departemen || "-",
         photo_url: profile?.photo_url,
       };
     });
 
     setAttendanceData(mergedData);
-    
+
     // Calculate statistics
     const totalRecords = mergedData.length;
-    const lateCount = mergedData.filter((record) => record.status === 'terlambat').length;
-    const onTimeCount = mergedData.filter((record) => record.status === 'hadir').length;
-    
+    const lateCount = mergedData.filter((record) => record.status === "terlambat").length;
+    const onTimeCount = mergedData.filter((record) => record.status === "hadir").length;
+
     setStats({
       totalRecords,
       lateCount,
       onTimeCount,
     });
-    
+
     setIsRefreshing(false);
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   };
 
   const calculateDuration = (checkIn: string, checkOut: string | null) => {
     if (!checkOut) return "-";
-    
+
     const start = new Date(checkIn);
     const end = new Date(checkOut);
     const diffMs = end.getTime() - start.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     return `${hours}h ${minutes}m`;
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "hadir":
-        return <Badge className="bg-primary">Hadir</Badge>;
+        return <Badge className="bg-primary text-white">Hadir</Badge>;
       case "terlambat":
         return <Badge variant="destructive">Terlambat</Badge>;
+      case "pulang cepat":
+      case "pulang_cepat":
+        return <Badge variant="destructive">Pulang Cepat</Badge>; // ✅ warna merah seperti "Terlambat"
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}</Badge>;
     }
   };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -211,17 +201,10 @@ const Attendance = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Rekap Absensi</h1>
-            <p className="text-muted-foreground mt-1">
-              Data rekap absensi seluruh karyawan
-            </p>
+            <p className="text-muted-foreground mt-1">Data rekap absensi seluruh karyawan</p>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={fetchAttendanceData}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="icon" onClick={fetchAttendanceData} disabled={isRefreshing}>
+            <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
@@ -237,19 +220,11 @@ const Attendance = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="space-y-2">
                 <Label>Tanggal Mulai</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Tanggal Akhir</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
           </CardContent>
@@ -258,9 +233,7 @@ const Attendance = () => {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Absensi
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Absensi</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -272,9 +245,7 @@ const Attendance = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Tepat Waktu
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tepat Waktu</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -286,9 +257,7 @@ const Attendance = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Terlambat
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Terlambat</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -330,7 +299,7 @@ const Attendance = () => {
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={record.photo_url || undefined} />
                               <AvatarFallback className="text-xs">
-                                {getInitials(record.full_name || 'U')}
+                                {getInitials(record.full_name || "U")}
                               </AvatarFallback>
                             </Avatar>
                             <div>
@@ -344,12 +313,8 @@ const Attendance = () => {
                           <Clock className="h-4 w-4 text-muted-foreground" />
                           {formatTime(record.check_in_time)}
                         </TableCell>
-                        <TableCell>
-                          {record.check_out_time ? formatTime(record.check_out_time) : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {calculateDuration(record.check_in_time, record.check_out_time)}
-                        </TableCell>
+                        <TableCell>{record.check_out_time ? formatTime(record.check_out_time) : "-"}</TableCell>
+                        <TableCell>{calculateDuration(record.check_in_time, record.check_out_time)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {record.check_in_photo_url && (
@@ -357,7 +322,7 @@ const Attendance = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                onClick={() => openPhotoDialog(record.check_in_photo_url, 'Check-In')}
+                                onClick={() => openPhotoDialog(record.check_in_photo_url, "Check-In")}
                               >
                                 <Camera className="h-4 w-4 text-primary" />
                               </Button>
@@ -367,7 +332,7 @@ const Attendance = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                onClick={() => openPhotoDialog(record.check_out_photo_url, 'Check-Out')}
+                                onClick={() => openPhotoDialog(record.check_out_photo_url, "Check-Out")}
                               >
                                 <Eye className="h-4 w-4 text-muted-foreground" />
                               </Button>
@@ -379,10 +344,10 @@ const Attendance = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <MapPin className={`h-4 w-4 ${record.gps_validated ? 'text-primary' : 'text-destructive'}`} />
-                            <span className="text-sm">
-                              {record.gps_validated ? 'Valid' : 'Invalid'}
-                            </span>
+                            <MapPin
+                              className={`h-4 w-4 ${record.gps_validated ? "text-primary" : "text-destructive"}`}
+                            />
+                            <span className="text-sm">{record.gps_validated ? "Valid" : "Invalid"}</span>
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(record.status)}</TableCell>
@@ -392,9 +357,7 @@ const Attendance = () => {
                 </Table>
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Tidak ada data absensi pada periode ini
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Tidak ada data absensi pada periode ini</div>
             )}
           </CardContent>
         </Card>
@@ -405,9 +368,7 @@ const Attendance = () => {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Foto {selectedPhoto?.type}</DialogTitle>
-            <DialogDescription>
-              Foto absensi karyawan
-            </DialogDescription>
+            <DialogDescription>Foto absensi karyawan</DialogDescription>
           </DialogHeader>
           {selectedPhoto && (
             <div className="flex justify-center">

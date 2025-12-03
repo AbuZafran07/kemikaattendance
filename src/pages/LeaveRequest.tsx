@@ -36,20 +36,48 @@ const LeaveRequest = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    try {
-      // Validasi form
-      if (!formData.leaveType || !formData.startDate || !formData.endDate || !formData.reason) {
-        toast({
-          title: "Data belum lengkap",
-          description: "Mohon isi semua field sebelum mengirim.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = profile?.id || userData?.user?.id;
+
+    if (!userId) throw new Error("Gagal menemukan user aktif.");
+
+    const totalDays = calculateDays(formData.startDate, formData.endDate);
+
+    const { error } = await supabase.from("leave_requests").insert([
+      {
+        user_id: userId,
+        leave_type: formData.leaveType,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        total_days: totalDays,
+        reason: formData.reason,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    if (error) throw error;
+
+    toast({
+      title: "Berhasil",
+      description: "Pengajuan cuti berhasil dikirim dan menunggu persetujuan HR.",
+    });
+
+    navigate("/employee");
+  } catch (error: any) {
+    toast({
+      title: "Gagal mengirim pengajuan",
+      description: error.message || "Terjadi kesalahan saat mengirim data.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
       // Validasi tanggal
       const start = new Date(formData.startDate);

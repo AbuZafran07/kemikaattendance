@@ -17,14 +17,10 @@ export default function LeaveSettings() {
               <Calendar className="h-5 w-5" />
               Pengaturan Kebijakan Cuti
             </CardTitle>
-            <CardDescription>
-              Halaman ini sedang dalam pengembangan
-            </CardDescription>
+            <CardDescription>Halaman ini sedang dalam pengembangan</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              Fitur pengaturan kebijakan cuti akan segera tersedia.
-            </p>
+            <p className="text-muted-foreground">Fitur pengaturan kebijakan cuti akan segera tersedia.</p>
           </CardContent>
         </Card>
       </div>

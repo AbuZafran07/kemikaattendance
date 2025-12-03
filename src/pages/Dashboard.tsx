@@ -69,7 +69,7 @@ const Dashboard = () => {
         .from("attendance")
         .select("*, profiles:user_id(full_name, departemen)")
         .order("check_in_time", { ascending: false })
-        .limit(10),
+        .limit(20),
 
       // 🟢 Ambil cuti yang status-nya pending/menunggu
       supabase
@@ -94,7 +94,7 @@ const Dashboard = () => {
     // ✅ Hitung Statistik Hari Ini
     const present = todayAttendance?.filter((a) => a.status === "hadir").length || 0;
     const late = todayAttendance?.filter((a) => a.status === "terlambat").length || 0;
-    const earlyLeave = todayAttendance?.filter((a) => a.status === "pulang_cepat").length || 0;
+    const earlyLeave = todayAttendance?.filter((a) => a.status === "pulang cepat").length || 0;
     const totalCheckedIn = todayAttendance?.length || 0;
     const absent = (employeeCount || 0) - totalCheckedIn;
 
@@ -114,12 +114,12 @@ const Dashboard = () => {
     if (overtimeData) setPendingOvertime(overtimeData);
 
     // ✅ Proses Grafik Mingguan
-    const weeklyStats: Record<string, { hadir: number; terlambat: number; tidak_hadir: number }> = {};
+    const weeklyStats: Record<string, { hadir: number; terlambat: number; tidak hadir: number }> = {};
     for (let i = 6; i >= 0; i--) {
       const date = subDays(today, i);
       const dayKey = format(date, "yyyy-MM-dd");
       const dayLabel = format(date, "EEE", { locale: id });
-      weeklyStats[dayKey] = { hadir: 0, terlambat: 0, tidak_hadir: 0 };
+      weeklyStats[dayKey] = { hadir: 0, terlambat: 0, tidak hadir: 0 };
     }
 
     weekAttendance?.forEach((record) => {
@@ -133,7 +133,7 @@ const Dashboard = () => {
     const chartData = Object.entries(weeklyStats).map(([date, data]) => ({
       day: format(new Date(date), "EEE", { locale: id }),
       ...data,
-      tidak_hadir: Math.max(0, (employeeCount || 0) - data.hadir - data.terlambat),
+      tidak hadir: Math.max(0, (employeeCount || 0) - data.hadir - data.terlambat),
     }));
     setWeeklyData(chartData);
 

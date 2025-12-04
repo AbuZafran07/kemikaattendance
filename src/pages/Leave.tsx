@@ -17,6 +17,30 @@ const Leave = () => {
 
   useEffect(() => {
     fetchLeaveRequests();
+
+    // Real-time listener for leave requests
+    const channel = supabase
+      .channel("realtime:leave_requests")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leave_requests" },
+        (payload) => {
+          console.log("Leave request change:", payload);
+          fetchLeaveRequests();
+          
+          if (payload.eventType === "INSERT") {
+            toast({
+              title: "Pengajuan Cuti Baru",
+              description: "Ada permintaan cuti baru masuk",
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchLeaveRequests = async () => {

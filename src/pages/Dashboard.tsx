@@ -32,11 +32,11 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
 
-    // 🟢 Setup realtime listener
-    const channel = supabase
+    // Real-time listener for attendance
+    const attendanceChannel = supabase
       .channel("realtime:attendance")
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, (payload) => {
-        console.log("Realtime change:", payload);
+        console.log("Realtime attendance change:", payload);
 
         if (payload.eventType === "INSERT") {
           setRecentAttendance((prev) => [payload.new, ...prev]);
@@ -54,8 +54,44 @@ const Dashboard = () => {
       })
       .subscribe();
 
+    // Real-time listener for leave requests
+    const leaveChannel = supabase
+      .channel("realtime:leave_requests_dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leave_requests" }, (payload) => {
+        console.log("Realtime leave change:", payload);
+        
+        if (payload.eventType === "INSERT") {
+          toast({
+            title: "Pengajuan Cuti Baru",
+            description: "Ada permintaan cuti baru masuk",
+          });
+        }
+        
+        fetchDashboardData();
+      })
+      .subscribe();
+
+    // Real-time listener for overtime requests
+    const overtimeChannel = supabase
+      .channel("realtime:overtime_requests_dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "overtime_requests" }, (payload) => {
+        console.log("Realtime overtime change:", payload);
+        
+        if (payload.eventType === "INSERT") {
+          toast({
+            title: "Pengajuan Lembur Baru",
+            description: "Ada permintaan lembur baru masuk",
+          });
+        }
+        
+        fetchDashboardData();
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(attendanceChannel);
+      supabase.removeChannel(leaveChannel);
+      supabase.removeChannel(overtimeChannel);
     };
   }, []);
 

@@ -24,6 +24,30 @@ const Overtime = () => {
 
   useEffect(() => {
     fetchOvertimeRequests();
+
+    // Real-time listener for overtime requests
+    const channel = supabase
+      .channel("realtime:overtime_requests")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "overtime_requests" },
+        (payload) => {
+          console.log("Overtime request change:", payload);
+          fetchOvertimeRequests();
+          
+          if (payload.eventType === "INSERT") {
+            toast({
+              title: "Pengajuan Lembur Baru",
+              description: "Ada permintaan lembur baru masuk",
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchOvertimeRequests = async () => {

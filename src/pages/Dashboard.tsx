@@ -88,13 +88,13 @@ const Dashboard = () => {
       supabase
         .from("leave_requests")
         .select("*, profiles:user_id(full_name)")
-        .in("status", ["pending", "menunggu", "diajukan"])
+        .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(5),
       supabase
         .from("overtime_requests")
         .select("*, profiles:user_id(full_name)")
-        .in("status", ["pending", "menunggu", "diajukan"])
+        .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(5),
       supabase.from("attendance").select("*").gte("check_in_time", subDays(today, 7).toISOString()),

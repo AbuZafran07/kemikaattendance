@@ -1,8 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, User } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getOptimizedImageUrl, getInitials } from "@/lib/imageUtils";
+import { EmployeeAvatar } from "@/components/ui/employee-avatar";
 
 interface AttendanceRecord {
   id: string;
@@ -46,15 +45,11 @@ const RecentActivity = ({ data }: RecentActivityProps) => {
               const status = formatStatus(record.status);
               return (
                 <div key={record.id} className="flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage 
-                      src={getOptimizedImageUrl(record.profiles?.photo_url, { width: 80, height: 80 })} 
-                      alt={record.profiles?.full_name || 'Employee'} 
-                    />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {record.profiles?.full_name ? getInitials(record.profiles.full_name) : <User className="h-5 w-5" />}
-                    </AvatarFallback>
-                  </Avatar>
+                  <EmployeeAvatar
+                    src={record.profiles?.photo_url}
+                    name={record.profiles?.full_name}
+                    fallbackClassName="bg-primary/10 text-primary"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{record.profiles?.full_name}</p>
                     <p className="text-xs text-muted-foreground">

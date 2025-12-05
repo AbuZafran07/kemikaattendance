@@ -100,6 +100,7 @@ const Dashboard = () => {
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
     const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
+    // Fetch all data without joins first
     const [
       { count: employeeCount },
       { data: profiles },
@@ -110,7 +111,7 @@ const Dashboard = () => {
       { data: weekAttendance },
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
-      supabase.from("profiles").select("id, departemen"),
+      supabase.from("profiles").select("id, full_name, departemen"),
       supabase
         .from("attendance")
         .select("*")
@@ -118,23 +119,46 @@ const Dashboard = () => {
         .lte("check_in_time", endOfToday.toISOString()),
       supabase
         .from("attendance")
-        .select("*, profiles:user_id(full_name, departemen)")
+        .select("*")
         .order("check_in_time", { ascending: false })
         .limit(10),
       supabase
         .from("leave_requests")
-        .select("*, profiles:user_id(full_name)")
+        .select("*")
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(5),
       supabase
         .from("overtime_requests")
-        .select("*, profiles:user_id(full_name)")
+        .select("*")
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(5),
       supabase.from("attendance").select("*").gte("check_in_time", subDays(today, 7).toISOString()),
     ]);
+
+    // Create profiles map for joining
+    const profilesMap = new Map(
+      (profiles || []).map(p => [p.id, { full_name: p.full_name, departemen: p.departemen }])
+    );
+
+    // Combine recent attendance with profiles
+    const recentWithProfiles = (recentData || []).map(record => ({
+      ...record,
+      profiles: profilesMap.get(record.user_id) || null
+    }));
+
+    // Combine leave requests with profiles
+    const leaveWithProfiles = (leaveData || []).map(request => ({
+      ...request,
+      profiles: profilesMap.get(request.user_id) || null
+    }));
+
+    // Combine overtime requests with profiles
+    const overtimeWithProfiles = (overtimeData || []).map(request => ({
+      ...request,
+      profiles: profilesMap.get(request.user_id) || null
+    }));
 
     const present = todayAttendance?.filter((a) => a.status === "hadir").length || 0;
     const late = todayAttendance?.filter((a) => a.status === "terlambat").length || 0;
@@ -153,9 +177,9 @@ const Dashboard = () => {
       totalOvertimeHours: 0,
     });
 
-    setRecentAttendance(recentData || []);
-    setPendingLeave(leaveData || []);
-    setPendingOvertime(overtimeData || []);
+    setRecentAttendance(recentWithProfiles);
+    setPendingLeave(leaveWithProfiles);
+    setPendingOvertime(overtimeWithProfiles);
 
     const weeklyStats: Record<string, { hadir: number; terlambat: number; tidak_hadir: number }> = {};
     for (let i = 6; i >= 0; i--) {

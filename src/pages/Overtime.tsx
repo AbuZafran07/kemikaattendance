@@ -52,26 +52,54 @@ const Overtime = () => {
 
   const fetchOvertimeRequests = async () => {
     console.log("Fetching overtime requests...");
-    const { data, error } = await supabase
+    
+    // Fetch overtime requests first
+    const { data: overtimeData, error: overtimeError } = await supabase
       .from('overtime_requests')
-      .select(`
-        *,
-        profiles:user_id(full_name, nik, departemen)
-      `)
+      .select("*")
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error("Error fetching overtime requests:", error);
+    if (overtimeError) {
+      console.error("Error fetching overtime requests:", overtimeError);
       toast({
         title: "Gagal Memuat Data",
-        description: error.message,
+        description: overtimeError.message,
         variant: "destructive",
       });
       return;
     }
 
-    console.log("Overtime requests fetched:", data);
-    setOvertimeRequests(data || []);
+    if (!overtimeData || overtimeData.length === 0) {
+      setOvertimeRequests([]);
+      return;
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(overtimeData.map(r => r.user_id))];
+    
+    // Fetch profiles for those users
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, nik, departemen")
+      .in("id", userIds);
+
+    if (profilesError) {
+      console.error("Error fetching profiles:", profilesError);
+    }
+
+    // Create a map of profiles
+    const profilesMap = new Map(
+      (profilesData || []).map(p => [p.id, p])
+    );
+
+    // Combine overtime requests with profiles
+    const combinedData = overtimeData.map(request => ({
+      ...request,
+      profiles: profilesMap.get(request.user_id) || null
+    }));
+
+    console.log("Overtime requests fetched:", combinedData);
+    setOvertimeRequests(combinedData);
   };
 
   const handleApprove = async (requestId: string) => {

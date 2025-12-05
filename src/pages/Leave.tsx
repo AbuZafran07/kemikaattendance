@@ -45,28 +45,54 @@ const Leave = () => {
 
   const fetchLeaveRequests = async () => {
     console.log("Fetching leave requests...");
-    const { data, error } = await supabase
+    
+    // Fetch leave requests first
+    const { data: leaveData, error: leaveError } = await supabase
       .from("leave_requests")
-      .select(
-        `
-        *,
-        profiles:user_id(full_name, nik, departemen)
-      `
-      )
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching leave requests:", error);
+    if (leaveError) {
+      console.error("Error fetching leave requests:", leaveError);
       toast({
         title: "Gagal Memuat Data",
-        description: error.message,
+        description: leaveError.message,
         variant: "destructive",
       });
       return;
     }
 
-    console.log("Leave requests fetched:", data);
-    setLeaveRequests(data || []);
+    if (!leaveData || leaveData.length === 0) {
+      setLeaveRequests([]);
+      return;
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(leaveData.map(r => r.user_id))];
+    
+    // Fetch profiles for those users
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, nik, departemen")
+      .in("id", userIds);
+
+    if (profilesError) {
+      console.error("Error fetching profiles:", profilesError);
+    }
+
+    // Create a map of profiles
+    const profilesMap = new Map(
+      (profilesData || []).map(p => [p.id, p])
+    );
+
+    // Combine leave requests with profiles
+    const combinedData = leaveData.map(request => ({
+      ...request,
+      profiles: profilesMap.get(request.user_id) || null
+    }));
+
+    console.log("Leave requests fetched:", combinedData);
+    setLeaveRequests(combinedData);
   };
 
   const handleApprove = async (requestId: string) => {

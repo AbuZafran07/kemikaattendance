@@ -4,17 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Clock, 
   Calendar, 
   CheckCircle2, 
-  XCircle, 
   User,
   MapPin,
   RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getOptimizedImageUrl, getInitials } from "@/lib/imageUtils";
 
 interface AttendanceNotification {
   id: string;
@@ -26,6 +27,7 @@ interface AttendanceNotification {
     full_name: string;
     nik: string;
     departemen: string;
+    photo_url?: string;
   };
   notes: string | null;
   created_at: string;
@@ -40,6 +42,7 @@ interface RequestNotification {
     full_name: string;
     nik: string;
     departemen: string;
+    photo_url?: string;
   };
   type?: 'leave' | 'overtime';
 }
@@ -103,11 +106,11 @@ const Notifications = () => {
     const userIds = [...new Set(attendanceData.map(a => a.user_id))];
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, full_name, nik, departemen')
+      .select('id, full_name, nik, departemen, photo_url')
       .in('id', userIds);
 
     const profilesMap = new Map(
-      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen }])
+      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     const combinedData = attendanceData.map(record => ({
@@ -133,11 +136,11 @@ const Notifications = () => {
     const userIds = [...new Set(leaveData.map(l => l.user_id))];
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, full_name, nik, departemen')
+      .select('id, full_name, nik, departemen, photo_url')
       .in('id', userIds);
 
     const profilesMap = new Map(
-      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen }])
+      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     const combinedData = leaveData.map(request => ({
@@ -164,11 +167,11 @@ const Notifications = () => {
     const userIds = [...new Set(overtimeData.map(o => o.user_id))];
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, full_name, nik, departemen')
+      .select('id, full_name, nik, departemen, photo_url')
       .in('id', userIds);
 
     const profilesMap = new Map(
-      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen }])
+      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     const combinedData = overtimeData.map(request => ({
@@ -385,9 +388,15 @@ const Notifications = () => {
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="h-5 w-5 text-primary" />
-                          </div>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage 
+                              src={getOptimizedImageUrl(notification.profiles.photo_url, { width: 80, height: 80 })} 
+                              alt={notification.profiles.full_name} 
+                            />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {getInitials(notification.profiles.full_name)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <p className="font-semibold">{notification.profiles.full_name}</p>
                             <p className="text-sm text-muted-foreground">
@@ -438,9 +447,15 @@ const Notifications = () => {
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-secondary/10 flex items-center justify-center">
-                            <Calendar className="h-5 w-5 text-secondary" />
-                          </div>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage 
+                              src={getOptimizedImageUrl(notification.profiles.photo_url, { width: 80, height: 80 })} 
+                              alt={notification.profiles.full_name} 
+                            />
+                            <AvatarFallback className="bg-secondary/10 text-secondary">
+                              {getInitials(notification.profiles.full_name)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <p className="font-semibold">{notification.profiles.full_name}</p>
                             <p className="text-sm text-muted-foreground">
@@ -479,9 +494,15 @@ const Notifications = () => {
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
-                            <Clock className="h-5 w-5 text-accent" />
-                          </div>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage 
+                              src={getOptimizedImageUrl(notification.profiles.photo_url, { width: 80, height: 80 })} 
+                              alt={notification.profiles.full_name} 
+                            />
+                            <AvatarFallback className="bg-accent/10 text-accent">
+                              {getInitials(notification.profiles.full_name)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <p className="font-semibold">{notification.profiles.full_name}</p>
                             <p className="text-sm text-muted-foreground">

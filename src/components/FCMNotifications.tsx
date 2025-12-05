@@ -16,10 +16,7 @@ export const FCMNotifications = () => {
         const token = await requestNotificationPermission();
         
         if (token) {
-          // Store FCM token in database for this user
-          // Note: You'll need to add fcm_token column to profiles table via migration
-          console.log('FCM Token retrieved for user:', profile.id);
-          console.log('Token:', token);
+          // FCM token retrieved successfully
           // TODO: Store token in database once fcm_token column is added
         }
       } catch (error) {

@@ -111,7 +111,7 @@ const Dashboard = () => {
       { data: weekAttendance },
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
-      supabase.from("profiles").select("id, full_name, departemen"),
+      supabase.from("profiles").select("id, full_name, departemen, photo_url"),
       supabase
         .from("attendance")
         .select("*")
@@ -139,7 +139,7 @@ const Dashboard = () => {
 
     // Create profiles map for joining
     const profilesMap = new Map(
-      (profiles || []).map(p => [p.id, { full_name: p.full_name, departemen: p.departemen }])
+      (profiles || []).map(p => [p.id, { full_name: p.full_name, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     // Combine recent attendance with profiles

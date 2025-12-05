@@ -57,7 +57,7 @@ const StatsCards = ({ stats }: StatsCardsProps) => {
       bgColor: "bg-destructive/10",
     },
     {
-      title: "Cuti Pending",
+      title: "Pending",
       value: stats.pendingLeave.toString(),
       icon: CalendarOff,
       description: "Menunggu approval",

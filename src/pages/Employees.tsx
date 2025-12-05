@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2 } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -47,6 +47,10 @@ const Employees = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
+  const [resetPasswordEmployee, setResetPasswordEmployee] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -387,6 +391,62 @@ const Employees = () => {
         description: "Karyawan berhasil dihapus",
       });
       fetchEmployees();
+    }
+  };
+
+  const openResetPasswordDialog = (employee: any) => {
+    setResetPasswordEmployee(employee);
+    setNewPassword("");
+    setIsResetPasswordDialogOpen(true);
+  };
+
+  const handleAdminResetPassword = async () => {
+    if (!resetPasswordEmployee || !newPassword) {
+      toast({
+        title: "Password Diperlukan",
+        description: "Masukkan password baru",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password Terlalu Pendek",
+        description: "Password minimal 6 karakter",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: {
+          userId: resetPasswordEmployee.id,
+          newPassword: newPassword,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: `Password untuk ${resetPasswordEmployee.full_name} berhasil direset`,
+      });
+
+      setIsResetPasswordDialogOpen(false);
+      setResetPasswordEmployee(null);
+      setNewPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Gagal Reset Password",
+        description: error.message || "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -925,6 +985,10 @@ const Employees = () => {
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openResetPasswordDialog(employee)}>
+                                <KeyRound className="h-4 w-4 mr-2" />
+                                Reset Password
+                              </DropdownMenuItem>
                               <DropdownMenuItem 
                                 className="text-destructive"
                                 onClick={() => handleDelete(employee.id)}
@@ -948,6 +1012,47 @@ const Employees = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={isResetPasswordDialogOpen} onOpenChange={(open) => {
+          setIsResetPasswordDialogOpen(open);
+          if (!open) {
+            setResetPasswordEmployee(null);
+            setNewPassword("");
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <KeyRound className="h-5 w-5" />
+                Reset Password Karyawan
+              </DialogTitle>
+              <DialogDescription>
+                Reset password untuk {resetPasswordEmployee?.full_name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Password Baru</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Minimal 6 karakter"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsResetPasswordDialogOpen(false)}>
+                  Batal
+                </Button>
+                <Button onClick={handleAdminResetPassword} disabled={isResettingPassword}>
+                  {isResettingPassword ? "Menyimpan..." : "Reset Password"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

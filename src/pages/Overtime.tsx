@@ -51,7 +51,8 @@ const Overtime = () => {
   }, []);
 
   const fetchOvertimeRequests = async () => {
-    const query = supabase
+    console.log("Fetching overtime requests...");
+    const { data, error } = await supabase
       .from('overtime_requests')
       .select(`
         *,
@@ -59,11 +60,18 @@ const Overtime = () => {
       `)
       .order('created_at', { ascending: false });
 
-    const { data } = await query;
-    
-    if (data) {
-      setOvertimeRequests(data);
+    if (error) {
+      console.error("Error fetching overtime requests:", error);
+      toast({
+        title: "Gagal Memuat Data",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
     }
+
+    console.log("Overtime requests fetched:", data);
+    setOvertimeRequests(data || []);
   };
 
   const handleApprove = async (requestId: string) => {

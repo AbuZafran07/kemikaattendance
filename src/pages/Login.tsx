@@ -4,19 +4,56 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema } from "@/lib/validationSchemas";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const { signIn } = useAuth();
   const { toast } = useToast();
+
+  const handleResetPassword = async () => {
+    if (!resetEmail) {
+      toast({
+        title: "Email Diperlukan",
+        description: "Masukkan email yang terdaftar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsResetLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/`
+    });
+
+    if (error) {
+      toast({
+        title: "Gagal Mengirim Email",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Email Terkirim",
+        description: "Link reset password telah dikirim ke email Anda"
+      });
+      setResetDialogOpen(false);
+      setResetEmail("");
+    }
+    setIsResetLoading(false);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +141,41 @@ const Login = () => {
                 <Button type="submit" disabled={isLoading} className="w-full bg-green-800 hover:bg-green-700">
                   {isLoading ? "Memproses..." : "Masuk"}
                 </Button>
+                
+                <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="link" type="button" className="w-full text-muted-foreground">
+                      Lupa Password?
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Reset Password</DialogTitle>
+                      <DialogDescription>
+                        Masukkan email Anda untuk menerima link reset password
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="reset-email">Email</Label>
+                        <Input
+                          id="reset-email"
+                          type="email"
+                          placeholder="nama@kemika.com"
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        onClick={handleResetPassword}
+                        disabled={isResetLoading}
+                        className="w-full"
+                      >
+                        {isResetLoading ? "Mengirim..." : "Kirim Link Reset"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </form>
             </TabsContent>
           </Tabs>

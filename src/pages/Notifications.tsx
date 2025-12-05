@@ -67,75 +67,117 @@ const Notifications = () => {
   };
 
   const fetchAttendance = async () => {
-    // Get today's date range in UTC to match database timezone
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     
-    // First try to get today's data using date comparison
-    const { data: todayData, error: todayError } = await supabase
+    // First try to get today's data
+    let { data: attendanceData } = await supabase
       .from('attendance')
-      .select(`
-        *,
-        profiles:user_id(full_name, nik, departemen)
-      `)
+      .select('*')
       .gte('created_at', startOfToday.toISOString())
       .lte('created_at', endOfToday.toISOString())
       .order('check_in_time', { ascending: false });
 
-    // If we have today's data, use it
-    if (todayData && todayData.length > 0) {
-      setAttendanceNotifications(todayData as any);
+    // If no today's data, get last 7 days
+    if (!attendanceData || attendanceData.length === 0) {
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: recentData } = await supabase
+        .from('attendance')
+        .select('*')
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('check_in_time', { ascending: false })
+        .limit(20);
+      
+      attendanceData = recentData;
+    }
+
+    if (!attendanceData || attendanceData.length === 0) {
+      setAttendanceNotifications([]);
       return;
     }
 
-    // Otherwise, get last 7 days data
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const { data: recentData, error: recentError } = await supabase
-      .from('attendance')
-      .select(`
-        *,
-        profiles:user_id(full_name, nik, departemen)
-      `)
-      .gte('created_at', sevenDaysAgo.toISOString())
-      .order('check_in_time', { ascending: false })
-      .limit(20);
+    // Fetch profiles for user IDs
+    const userIds = [...new Set(attendanceData.map(a => a.user_id))];
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name, nik, departemen')
+      .in('id', userIds);
 
-    if (recentData) {
-      setAttendanceNotifications(recentData as any);
-    }
+    const profilesMap = new Map(
+      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen }])
+    );
+
+    const combinedData = attendanceData.map(record => ({
+      ...record,
+      profiles: profilesMap.get(record.user_id) || { full_name: 'Unknown', nik: '-', departemen: '-' }
+    }));
+
+    setAttendanceNotifications(combinedData as any);
   };
 
   const fetchLeaveRequests = async () => {
-    const { data } = await supabase
+    const { data: leaveData } = await supabase
       .from('leave_requests')
-      .select(`
-        *,
-        profiles:user_id(full_name, nik, departemen)
-      `)
+      .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (data) {
-      setLeaveNotifications(data.map(d => ({ ...d, type: 'leave' as const })) as any);
+    if (!leaveData || leaveData.length === 0) {
+      setLeaveNotifications([]);
+      return;
     }
+
+    const userIds = [...new Set(leaveData.map(l => l.user_id))];
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name, nik, departemen')
+      .in('id', userIds);
+
+    const profilesMap = new Map(
+      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen }])
+    );
+
+    const combinedData = leaveData.map(request => ({
+      ...request,
+      type: 'leave' as const,
+      profiles: profilesMap.get(request.user_id) || { full_name: 'Unknown', nik: '-', departemen: '-' }
+    }));
+
+    setLeaveNotifications(combinedData as any);
   };
 
   const fetchOvertimeRequests = async () => {
-    const { data } = await supabase
+    const { data: overtimeData } = await supabase
       .from('overtime_requests')
-      .select(`
-        *,
-        profiles:user_id(full_name, nik, departemen)
-      `)
+      .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (data) {
-      setOvertimeNotifications(data.map(d => ({ ...d, type: 'overtime' as const })) as any);
+    if (!overtimeData || overtimeData.length === 0) {
+      setOvertimeNotifications([]);
+      return;
     }
+
+    const userIds = [...new Set(overtimeData.map(o => o.user_id))];
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name, nik, departemen')
+      .in('id', userIds);
+
+    const profilesMap = new Map(
+      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen }])
+    );
+
+    const combinedData = overtimeData.map(request => ({
+      ...request,
+      type: 'overtime' as const,
+      profiles: profilesMap.get(request.user_id) || { full_name: 'Unknown', nik: '-', departemen: '-' }
+    }));
+
+    setOvertimeNotifications(combinedData as any);
   };
 
   const setupRealtimeSubscriptions = () => {

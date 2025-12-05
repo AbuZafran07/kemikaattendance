@@ -20,8 +20,8 @@ export default function Reports() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [reportType, setReportType] = useState<"attendance" | "leave" | "overtime" | "employees">("attendance");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [department, setDepartment] = useState<string>("all");
 
   const exportToExcel = async () => {

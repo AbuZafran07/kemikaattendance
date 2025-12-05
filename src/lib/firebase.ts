@@ -59,7 +59,7 @@ export const requestNotificationPermission = async () => {
       const token = await getToken(messaging, { vapidKey });
       
       if (token) {
-        console.log('FCM Token:', token);
+        // Token retrieved successfully
         return token;
       } else {
         console.log('No registration token available.');

@@ -27,6 +27,7 @@ import OfficeSettings from "./pages/OfficeSettings";
 import WorkHoursSettings from "./pages/WorkHoursSettings";
 import LeaveSettings from "./pages/LeaveSettings";
 import OvertimeSettings from "./pages/OvertimeSettings";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -38,6 +39,7 @@ const App = () => <QueryClientProvider client={queryClient}>
           <FCMNotifications />
           <Routes>
             <Route path="/" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
             <Route path="/dashboard/employees" element={<ProtectedRoute requireAdmin><Employees /></ProtectedRoute>} />
             <Route path="/dashboard/attendance" element={<ProtectedRoute requireAdmin><Attendance /></ProtectedRoute>} />

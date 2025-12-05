@@ -19,7 +19,7 @@ export default function Reports() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [reportType, setReportType] = useState<"attendance" | "leave" | "employees">("attendance");
+  const [reportType, setReportType] = useState<"attendance" | "leave" | "overtime" | "employees">("attendance");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [department, setDepartment] = useState<string>("all");
@@ -115,6 +115,45 @@ export default function Reports() {
           Reason: record.reason,
         }));
         filename = `Leave_Report_${startDate}_to_${endDate}.xlsx`;
+      } else if (reportType === "overtime") {
+        const { data: overtimeData, error: overtimeError } = await supabase
+          .from("overtime_requests")
+          .select("*")
+          .gte("overtime_date", startDate)
+          .lte("overtime_date", endDate);
+
+        if (overtimeError) throw overtimeError;
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+        let mergedData =
+          overtimeData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
+
+        if (department !== "all") {
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
+        }
+
+        data = mergedData.map((record: any) => ({
+          NIK: record.profiles?.nik || "-",
+          Name: record.profiles?.full_name || "-",
+          Department: record.profiles?.departemen || "-",
+          "Overtime Date": record.overtime_date,
+          "Hours": record.hours,
+          Status: record.status,
+          Reason: record.reason,
+        }));
+        filename = `Overtime_Report_${startDate}_to_${endDate}.xlsx`;
       } else {
         let query = supabase.from("profiles").select("*");
         if (department !== "all") query = query.eq("departemen", department);
@@ -201,7 +240,7 @@ export default function Reports() {
           ];
         });
         title = `Laporan Absensi (${startDate} s.d ${endDate})`;
-      } else {
+      } else if (reportType === "leave") {
         const { data: leaveData, error: leaveError } = await supabase
           .from("leave_requests")
           .select("*")
@@ -242,6 +281,46 @@ export default function Reports() {
           record.status,
         ]);
         title = `Laporan Cuti (${startDate} s.d ${endDate})`;
+      } else if (reportType === "overtime") {
+        const { data: overtimeData, error: overtimeError } = await supabase
+          .from("overtime_requests")
+          .select("*")
+          .gte("overtime_date", startDate)
+          .lte("overtime_date", endDate);
+
+        if (overtimeError) throw overtimeError;
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+        let mergedData =
+          overtimeData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
+
+        if (department !== "all") {
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
+        }
+
+        columns = ["NIK", "Name", "Department", "Date", "Hours", "Status", "Reason"];
+        data = mergedData.map((record: any) => [
+          record.profiles?.nik || "-",
+          record.profiles?.full_name || "-",
+          record.profiles?.departemen || "-",
+          record.overtime_date,
+          record.hours,
+          record.status,
+          record.reason,
+        ]);
+        title = `Laporan Lembur (${startDate} s.d ${endDate})`;
       }
 
       const doc = new jsPDF();
@@ -326,6 +405,7 @@ export default function Reports() {
                   <SelectContent>
                     <SelectItem value="attendance">Laporan Absensi</SelectItem>
                     <SelectItem value="leave">Laporan Cuti</SelectItem>
+                    <SelectItem value="overtime">Laporan Lembur</SelectItem>
                     <SelectItem value="employees">Database Karyawan</SelectItem>
                   </SelectContent>
                 </Select>

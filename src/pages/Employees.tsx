@@ -40,6 +40,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { JABATAN_OPTIONS, DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 import { employeeSchema, employeeEditSchema } from "@/lib/validationSchemas";
+import { compressEmployeePhoto, blobToFile } from "@/lib/imageCompression";
 
 const Employees = () => {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -151,18 +152,25 @@ const Employees = () => {
   const uploadPhoto = async (userId: string): Promise<string | null> => {
     if (!photoFile) return null;
 
-    const fileExt = photoFile.name.split('.').pop();
-    const fileName = `${userId}.${fileExt}`;
-    const filePath = `photos/${fileName}`;
+    try {
+      // Compress the photo before uploading
+      const compressedBlob = await compressEmployeePhoto(photoFile);
+      const compressedFile = blobToFile(compressedBlob, `${userId}.jpg`);
+      
+      const filePath = `photos/${userId}.jpg`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('employee-photos')
-      .upload(filePath, photoFile, { upsert: true });
+      const { error: uploadError } = await supabase.storage
+        .from('employee-photos')
+        .upload(filePath, compressedFile, { upsert: true });
 
-    if (uploadError) throw uploadError;
+      if (uploadError) throw uploadError;
 
-    // Return the file path - we'll generate signed URLs when displaying
-    return filePath;
+      // Return the file path - we'll generate signed URLs when displaying
+      return filePath;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      throw error;
+    }
   };
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});

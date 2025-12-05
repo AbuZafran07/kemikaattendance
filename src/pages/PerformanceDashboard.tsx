@@ -1,11 +1,33 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, Calendar, Clock, Award } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, TrendingUp, Calendar, Clock, Award, FileText, Briefcase } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/logo.png";
+import { format } from "date-fns";
+import { id as localeId } from "date-fns/locale";
+
+interface LeaveRequest {
+  id: string;
+  leave_type: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  total_days: number;
+  created_at: string;
+}
+
+interface OvertimeRequest {
+  id: string;
+  overtime_date: string;
+  hours: number;
+  status: string;
+  reason: string;
+  created_at: string;
+}
 
 const PerformanceDashboard = () => {
   const navigate = useNavigate();
@@ -18,19 +40,20 @@ const PerformanceDashboard = () => {
     remainingLeave: profile?.remaining_leave || 0,
     usedLeave: (profile?.annual_leave_quota || 12) - (profile?.remaining_leave || 0)
   });
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([]);
 
   useEffect(() => {
     fetchPerformanceStats();
+    fetchRequestHistory();
   }, []);
 
   const fetchPerformanceStats = async () => {
     try {
-      // Get current month date range
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      // Fetch attendance data
       const { data: attendanceData } = await supabase
         .from('attendance')
         .select('*')
@@ -38,7 +61,6 @@ const PerformanceDashboard = () => {
         .gte('check_in_time', firstDay.toISOString())
         .lte('check_in_time', lastDay.toISOString());
 
-      // Fetch overtime data
       const { data: overtimeData } = await supabase
         .from('overtime_requests')
         .select('hours')
@@ -62,6 +84,52 @@ const PerformanceDashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching performance stats:', error);
+    }
+  };
+
+  const fetchRequestHistory = async () => {
+    try {
+      const { data: leaveData } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', profile?.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const { data: overtimeData } = await supabase
+        .from('overtime_requests')
+        .select('*')
+        .eq('user_id', profile?.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setLeaveRequests(leaveData || []);
+      setOvertimeRequests(overtimeData || []);
+    } catch (error) {
+      console.error('Error fetching request history:', error);
+    }
+  };
+
+  const formatLeaveType = (type: string) => {
+    const types: Record<string, string> = {
+      cuti_tahunan: 'Cuti Tahunan',
+      izin: 'Izin',
+      sakit: 'Sakit',
+      lupa_absen: 'Lupa Absen'
+    };
+    return types[type] || type;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">Menunggu</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Disetujui</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">Ditolak</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -174,6 +242,70 @@ const PerformanceDashboard = () => {
                  'Tingkatkan kehadiran Anda untuk performa yang lebih baik'}
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Leave Request History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Riwayat Pengajuan Cuti/Izin
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {leaveRequests.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Belum ada pengajuan cuti/izin</p>
+            ) : (
+              <div className="space-y-3">
+                {leaveRequests.map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{formatLeaveType(request.leave_type)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(request.start_date), 'd MMM yyyy', { locale: localeId })}
+                        {request.start_date !== request.end_date && (
+                          <> - {format(new Date(request.end_date), 'd MMM yyyy', { locale: localeId })}</>
+                        )}
+                        {' '}({request.total_days} hari)
+                      </p>
+                    </div>
+                    {getStatusBadge(request.status)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Overtime Request History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Riwayat Pengajuan Lembur
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overtimeRequests.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Belum ada pengajuan lembur</p>
+            ) : (
+              <div className="space-y-3">
+                {overtimeRequests.map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">
+                        {format(new Date(request.overtime_date), 'd MMM yyyy', { locale: localeId })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {request.hours} jam - {request.reason.length > 30 ? request.reason.substring(0, 30) + '...' : request.reason}
+                      </p>
+                    </div>
+                    {getStatusBadge(request.status)}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -15,6 +15,32 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// Helper to get signed URL for employee photos
+const getSignedPhotoUrl = async (filePath: string | null): Promise<string | null> => {
+  if (!filePath) return null;
+  
+  let path = filePath;
+  if (filePath.startsWith('http')) {
+    const match = filePath.match(/employee-photos\/(.+)$/);
+    if (match) {
+      path = match[1];
+    } else {
+      return filePath;
+    }
+  }
+  
+  const { data, error } = await supabase.storage
+    .from('employee-photos')
+    .createSignedUrl(path, 3600);
+  
+  if (error) {
+    console.error('Error creating signed URL:', error);
+    return null;
+  }
+  
+  return data.signedUrl;
+};
+
 interface AttendanceNotification {
   id: string;
   user_id: string;
@@ -107,8 +133,16 @@ const Notifications = () => {
       .select('id, full_name, nik, departemen, photo_url')
       .in('id', userIds);
 
+    // Generate signed URLs for photos
+    const profilesWithSignedUrls = await Promise.all(
+      (profilesData || []).map(async (p) => {
+        const signedUrl = await getSignedPhotoUrl(p.photo_url);
+        return { ...p, photo_url: signedUrl };
+      })
+    );
+
     const profilesMap = new Map(
-      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
+      profilesWithSignedUrls.map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     const combinedData = attendanceData.map(record => ({
@@ -137,8 +171,16 @@ const Notifications = () => {
       .select('id, full_name, nik, departemen, photo_url')
       .in('id', userIds);
 
+    // Generate signed URLs for photos
+    const profilesWithSignedUrls = await Promise.all(
+      (profilesData || []).map(async (p) => {
+        const signedUrl = await getSignedPhotoUrl(p.photo_url);
+        return { ...p, photo_url: signedUrl };
+      })
+    );
+
     const profilesMap = new Map(
-      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
+      profilesWithSignedUrls.map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     const combinedData = leaveData.map(request => ({
@@ -168,8 +210,16 @@ const Notifications = () => {
       .select('id, full_name, nik, departemen, photo_url')
       .in('id', userIds);
 
+    // Generate signed URLs for photos
+    const profilesWithSignedUrls = await Promise.all(
+      (profilesData || []).map(async (p) => {
+        const signedUrl = await getSignedPhotoUrl(p.photo_url);
+        return { ...p, photo_url: signedUrl };
+      })
+    );
+
     const profilesMap = new Map(
-      (profilesData || []).map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
+      profilesWithSignedUrls.map(p => [p.id, { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     const combinedData = overtimeData.map(request => ({

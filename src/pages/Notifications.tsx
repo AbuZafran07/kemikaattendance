@@ -4,18 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EmployeeAvatar } from "@/components/ui/employee-avatar";
 import { 
   Clock, 
   Calendar, 
   CheckCircle2, 
-  User,
   MapPin,
   RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { getOptimizedImageUrl, getInitials } from "@/lib/imageUtils";
 
 interface AttendanceNotification {
   id: string;
@@ -388,15 +386,11 @@ const Notifications = () => {
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage 
-                              src={getOptimizedImageUrl(notification.profiles.photo_url, { width: 80, height: 80 })} 
-                              alt={notification.profiles.full_name} 
-                            />
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {getInitials(notification.profiles.full_name)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <EmployeeAvatar
+                            src={notification.profiles.photo_url}
+                            name={notification.profiles.full_name}
+                            fallbackClassName="bg-primary/10 text-primary"
+                          />
                           <div>
                             <p className="font-semibold">{notification.profiles.full_name}</p>
                             <p className="text-sm text-muted-foreground">
@@ -447,15 +441,11 @@ const Notifications = () => {
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage 
-                              src={getOptimizedImageUrl(notification.profiles.photo_url, { width: 80, height: 80 })} 
-                              alt={notification.profiles.full_name} 
-                            />
-                            <AvatarFallback className="bg-secondary/10 text-secondary">
-                              {getInitials(notification.profiles.full_name)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <EmployeeAvatar
+                            src={notification.profiles.photo_url}
+                            name={notification.profiles.full_name}
+                            fallbackClassName="bg-secondary/10 text-secondary"
+                          />
                           <div>
                             <p className="font-semibold">{notification.profiles.full_name}</p>
                             <p className="text-sm text-muted-foreground">
@@ -494,15 +484,11 @@ const Notifications = () => {
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage 
-                              src={getOptimizedImageUrl(notification.profiles.photo_url, { width: 80, height: 80 })} 
-                              alt={notification.profiles.full_name} 
-                            />
-                            <AvatarFallback className="bg-accent/10 text-accent">
-                              {getInitials(notification.profiles.full_name)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <EmployeeAvatar
+                            src={notification.profiles.photo_url}
+                            name={notification.profiles.full_name}
+                            fallbackClassName="bg-accent/10 text-accent"
+                          />
                           <div>
                             <p className="font-semibold">{notification.profiles.full_name}</p>
                             <p className="text-sm text-muted-foreground">

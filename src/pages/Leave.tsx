@@ -44,21 +44,29 @@ const Leave = () => {
   }, []);
 
   const fetchLeaveRequests = async () => {
-    const query = supabase
+    console.log("Fetching leave requests...");
+    const { data, error } = await supabase
       .from("leave_requests")
       .select(
         `
         *,
         profiles:user_id(full_name, nik, departemen)
-      `,
+      `
       )
       .order("created_at", { ascending: false });
 
-    const { data } = await query;
-
-    if (data) {
-      setLeaveRequests(data);
+    if (error) {
+      console.error("Error fetching leave requests:", error);
+      toast({
+        title: "Gagal Memuat Data",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
     }
+
+    console.log("Leave requests fetched:", data);
+    setLeaveRequests(data || []);
   };
 
   const handleApprove = async (requestId: string) => {

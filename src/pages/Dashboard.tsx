@@ -10,6 +10,33 @@ import { format, subDays } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 
+// Helper to get signed URL for employee photos
+const getSignedPhotoUrl = async (filePath: string | null): Promise<string | null> => {
+  if (!filePath) return null;
+  
+  // If it's already a full URL (legacy data), try to extract the path
+  let path = filePath;
+  if (filePath.startsWith('http')) {
+    const match = filePath.match(/employee-photos\/(.+)$/);
+    if (match) {
+      path = match[1];
+    } else {
+      return filePath; // Return as-is if we can't parse it
+    }
+  }
+  
+  const { data, error } = await supabase.storage
+    .from('employee-photos')
+    .createSignedUrl(path, 3600); // 1 hour expiry
+  
+  if (error) {
+    console.error('Error creating signed URL:', error);
+    return null;
+  }
+  
+  return data.signedUrl;
+};
+
 const Dashboard = () => {
   const { toast } = useToast();
 
@@ -137,9 +164,21 @@ const Dashboard = () => {
       supabase.from("attendance").select("*").gte("check_in_time", subDays(today, 7).toISOString()),
     ]);
 
-    // Create profiles map for joining
+    // Create profiles map with signed URLs for photos
+    const profilesWithSignedUrls = await Promise.all(
+      (profiles || []).map(async (p) => {
+        const signedUrl = await getSignedPhotoUrl(p.photo_url);
+        return {
+          id: p.id,
+          full_name: p.full_name,
+          departemen: p.departemen,
+          photo_url: signedUrl
+        };
+      })
+    );
+    
     const profilesMap = new Map(
-      (profiles || []).map(p => [p.id, { full_name: p.full_name, departemen: p.departemen, photo_url: p.photo_url }])
+      profilesWithSignedUrls.map(p => [p.id, { full_name: p.full_name, departemen: p.departemen, photo_url: p.photo_url }])
     );
 
     // Combine recent attendance with profiles

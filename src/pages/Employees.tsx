@@ -39,6 +39,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { JABATAN_OPTIONS, DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
+import { employeeSchema, employeeEditSchema } from "@/lib/validationSchemas";
 
 const Employees = () => {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -87,8 +88,44 @@ const Employees = () => {
       .order('created_at', { ascending: false });
     
     if (data) {
-      setEmployees(data);
+      // Generate signed URLs for all employee photos
+      const employeesWithSignedUrls = await Promise.all(
+        data.map(async (emp) => {
+          if (emp.photo_url) {
+            const signedUrl = await getSignedPhotoUrl(emp.photo_url);
+            return { ...emp, photo_url: signedUrl };
+          }
+          return emp;
+        })
+      );
+      setEmployees(employeesWithSignedUrls);
     }
+  };
+
+  // Helper to get signed URL for employee photos
+  const getSignedPhotoUrl = async (filePath: string): Promise<string | null> => {
+    if (!filePath) return null;
+    
+    // If it's already a full URL (legacy data), try to extract the path
+    if (filePath.startsWith('http')) {
+      const match = filePath.match(/employee-photos\/(.+)$/);
+      if (match) {
+        filePath = match[1];
+      } else {
+        return filePath; // Return as-is if we can't parse it
+      }
+    }
+    
+    const { data, error } = await supabase.storage
+      .from('employee-photos')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+    
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    
+    return data.signedUrl;
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
@@ -124,27 +161,45 @@ const Employees = () => {
 
     if (uploadError) throw uploadError;
 
-    const { data } = supabase.storage
-      .from('employee-photos')
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
+    // Return the file path - we'll generate signed URLs when displaying
+    return filePath;
   };
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrors({});
+
+    // Validate input
+    const result = employeeSchema.safeParse(formData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        errors[field] = err.message;
+      });
+      setFormErrors(errors);
+      toast({
+        title: "Validasi Gagal",
+        description: "Periksa kembali data yang dimasukkan",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+        email: result.data.email,
+        password: result.data.password,
         options: {
           data: {
-            nik: formData.nik,
-            full_name: formData.full_name,
-            jabatan: formData.jabatan,
-            departemen: formData.departemen
+            nik: result.data.nik,
+            full_name: result.data.full_name,
+            jabatan: result.data.jabatan,
+            departemen: result.data.departemen
           }
         }
       });
@@ -192,6 +247,25 @@ const Employees = () => {
   const handleEditEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEmployee) return;
+    setEditFormErrors({});
+
+    // Validate input
+    const result = employeeEditSchema.safeParse(editFormData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        errors[field] = err.message;
+      });
+      setEditFormErrors(errors);
+      toast({
+        title: "Validasi Gagal",
+        description: "Periksa kembali data yang dimasukkan",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -204,13 +278,13 @@ const Employees = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          nik: editFormData.nik,
-          full_name: editFormData.full_name,
-          jabatan: editFormData.jabatan,
-          departemen: editFormData.departemen,
-          phone: editFormData.phone,
-          address: editFormData.address,
-          status: editFormData.status,
+          nik: result.data.nik,
+          full_name: result.data.full_name,
+          jabatan: result.data.jabatan,
+          departemen: result.data.departemen,
+          phone: result.data.phone || null,
+          address: result.data.address || null,
+          status: result.data.status,
           photo_url: photoUrl,
         })
         .eq('id', editingEmployee.id);
@@ -250,6 +324,7 @@ const Employees = () => {
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
+    setEditFormErrors({});
     setIsEditDialogOpen(true);
   };
 
@@ -280,6 +355,8 @@ const Employees = () => {
     });
     setPhotoFile(null);
     setPhotoPreview(null);
+    setFormErrors({});
+    setEditFormErrors({});
   };
 
   const handleDelete = async (id: string) => {

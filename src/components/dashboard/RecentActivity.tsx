@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserCheck, LogOut, Clock } from "lucide-react";
+import { Clock, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface AttendanceRecord {
   id: string;
@@ -10,6 +11,7 @@ interface AttendanceRecord {
   profiles?: {
     full_name: string;
     departemen: string;
+    photo_url?: string;
   };
 }
 
@@ -28,6 +30,15 @@ const RecentActivity = ({ data }: RecentActivityProps) => {
     return statusMap[status] || { label: status, variant: 'outline' as const };
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -43,15 +54,15 @@ const RecentActivity = ({ data }: RecentActivityProps) => {
               const status = formatStatus(record.status);
               return (
                 <div key={record.id} className="flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    record.check_out_time ? 'bg-secondary/10' : 'bg-primary/10'
-                  }`}>
-                    {record.check_out_time ? (
-                      <LogOut className="h-5 w-5 text-secondary" />
-                    ) : (
-                      <UserCheck className="h-5 w-5 text-primary" />
-                    )}
-                  </div>
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage 
+                      src={record.profiles?.photo_url || ''} 
+                      alt={record.profiles?.full_name || 'Employee'} 
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {record.profiles?.full_name ? getInitials(record.profiles.full_name) : <User className="h-5 w-5" />}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{record.profiles?.full_name}</p>
                     <p className="text-xs text-muted-foreground">

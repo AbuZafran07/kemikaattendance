@@ -58,9 +58,9 @@ const StatsCards = ({ stats }: StatsCardsProps) => {
     },
     {
       title: "Pending",
-      value: stats.pendingLeave.toString(),
+      value: (stats.pendingLeave + stats.pendingOvertime).toString(),
       icon: CalendarOff,
-      description: "Menunggu approval",
+      description: `${stats.pendingLeave} cuti, ${stats.pendingOvertime} lembur`,
       color: "text-secondary",
       bgColor: "bg-secondary/10",
     },

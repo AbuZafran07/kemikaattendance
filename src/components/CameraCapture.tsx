@@ -52,11 +52,13 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
   }, [isOpen]);
 
   const fetchOfficeLocations = async () => {
-    const { data, error } = await supabase.from("office_locations").select("*");
+    const { data, error } = await supabase.rpc("get_office_locations");
     if (error) {
       console.error("Gagal memuat lokasi kantor:", error);
     } else {
-      setOffices(data || []);
+      // RPC returns JSON array of office locations
+      const locations = Array.isArray(data) ? (data as unknown as OfficeLocation[]) : [];
+      setOffices(locations);
     }
   };
 

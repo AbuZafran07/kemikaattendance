@@ -90,6 +90,27 @@ export const employeeEditSchema = z.object({
     .optional(),
 });
 
+export const leaveRequestSchema = z.object({
+  leaveType: z.enum(['cuti_tahunan', 'izin', 'sakit', 'lupa_absen'], {
+    required_error: 'Jenis cuti harus dipilih',
+  }),
+  startDate: z.string().min(1, 'Tanggal mulai harus diisi'),
+  endDate: z.string().min(1, 'Tanggal selesai harus diisi'),
+  reason: z.string().trim().max(1000, 'Alasan maksimal 1000 karakter').optional().or(z.literal('')),
+}).refine(data => new Date(data.endDate) >= new Date(data.startDate), {
+  message: 'Tanggal selesai harus setelah tanggal mulai',
+  path: ['endDate'],
+});
+
+export const overtimeRequestSchema = z.object({
+  overtimeDate: z.string().min(1, 'Tanggal lembur harus diisi'),
+  startTime: z.string().min(1, 'Jam mulai harus diisi'),
+  endTime: z.string().min(1, 'Jam selesai harus diisi'),
+  reason: z.string().trim().min(1, 'Alasan harus diisi').max(1000, 'Alasan maksimal 1000 karakter'),
+});
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
 export type EmployeeEditFormData = z.infer<typeof employeeEditSchema>;
+export type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
+export type OvertimeRequestFormData = z.infer<typeof overtimeRequestSchema>;

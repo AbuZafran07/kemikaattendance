@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { leaveRequestSchema, LeaveRequestFormData } from "@/lib/validationSchemas";
 import logo from "@/assets/logo.png";
 
 const LeaveRequest = () => {
@@ -18,11 +21,14 @@ const LeaveRequest = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    leaveType: "",
-    startDate: "",
-    endDate: "",
-    reason: "",
+  const form = useForm<LeaveRequestFormData>({
+    resolver: zodResolver(leaveRequestSchema),
+    defaultValues: {
+      leaveType: undefined,
+      startDate: "",
+      endDate: "",
+      reason: "",
+    },
   });
 
   const calculateDays = (start: string, end: string) => {
@@ -33,21 +39,20 @@ const LeaveRequest = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: LeaveRequestFormData) => {
     setIsSubmitting(true);
 
     try {
-      const totalDays = calculateDays(formData.startDate, formData.endDate);
+      const totalDays = calculateDays(data.startDate, data.endDate);
 
       const { error } = await supabase.from("leave_requests").insert([
         {
           user_id: profile?.id,
-          leave_type: formData.leaveType as "cuti_tahunan" | "izin" | "sakit" | "lupa_absen",
-          start_date: formData.startDate,
-          end_date: formData.endDate,
+          leave_type: data.leaveType,
+          start_date: data.startDate,
+          end_date: data.endDate,
           total_days: totalDays,
-          reason: formData.reason,
+          reason: data.reason || "",
         },
       ]);
 
@@ -88,60 +93,83 @@ const LeaveRequest = () => {
             <CardDescription>Isi formulir pengajuan cuti</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>Jenis Cuti</Label>
-                <Select
-                  value={formData.leaveType}
-                  onValueChange={(value) => setFormData({ ...formData, leaveType: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih jenis cuti" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cuti_tahunan">Cuti Tahunan</SelectItem>
-                    <SelectItem value="izin">Izin</SelectItem>
-                    <SelectItem value="sakit">Sakit</SelectItem>
-                    <SelectItem value="lupa_absen">Lupa Absen</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Tanggal Mulai</Label>
-                <Input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  required
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="leaveType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jenis Cuti</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih jenis cuti" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cuti_tahunan">Cuti Tahunan</SelectItem>
+                          <SelectItem value="izin">Izin</SelectItem>
+                          <SelectItem value="sakit">Sakit</SelectItem>
+                          <SelectItem value="lupa_absen">Lupa Absen</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div>
-                <Label>Tanggal Selesai</Label>
-                <Input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  required
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tanggal Mulai</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div>
-                <Label>Alasan</Label>
-                <Textarea
-                  rows={4}
-                  placeholder="Tuliskan alasan cuti..."
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tanggal Selesai</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
-              </Button>
-            </form>
+                <FormField
+                  control={form.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Alasan</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={4}
+                          placeholder="Tuliskan alasan cuti..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </div>

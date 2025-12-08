@@ -2,7 +2,6 @@ import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, X, MapPin, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 
 interface CameraCaptureProps {
   onCapture: (photoUrl: string, isInsideArea: boolean) => void;
@@ -11,36 +10,38 @@ interface CameraCaptureProps {
   title?: string;
 }
 
-interface OfficeLocation {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  radius_meters: number;
-}
-
 export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto Absensi" }: CameraCaptureProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isCapturing, setIsCapturing] = useState(false);
-  const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
+  const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({
+    lat: null,
+    lng: null,
+  });
   const [address, setAddress] = useState<string | null>(null);
-  const [locationStatus, setLocationStatus] = useState<{ inside: boolean; officeName?: string }>({ inside: false });
+  const [locationStatus, setLocationStatus] = useState<{
+    inside: boolean;
+    officeName?: string;
+  }>({ inside: false });
   const [showInstruction, setShowInstruction] = useState(true);
-  const [offices, setOffices] = useState<OfficeLocation[]>([]);
 
-  // 🕓 Update waktu real-time
+  // 🏢 Daftar lokasi kantor
+  const OFFICE_LOCATIONS = [
+    { name: "Head Office", lat: -6.2318, lng: 106.72395, radius: 50 },
+    { name: "Warehouse", lat: -6.23133, lng: 106.72716, radius: 100 },
+  ];
+
+  // Update waktu real-time
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // 🚀 Fetch data kantor dari Supabase
+  // Saat kamera dibuka
   useEffect(() => {
     if (isOpen) {
-      fetchOfficeLocations();
       startCamera();
       getCurrentLocation();
       setShowInstruction(true);
@@ -51,55 +52,53 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     }
   }, [isOpen]);
 
-  const fetchOfficeLocations = async () => {
-    const { data, error } = await supabase.rpc("get_office_locations");
-    if (error) {
-      console.error("Gagal memuat lokasi kantor:", error);
-    } else {
-      // RPC returns JSON array of office locations
-      const locations = Array.isArray(data) ? (data as unknown as OfficeLocation[]) : [];
-      setOffices(locations);
-    }
-  };
-
-  // 📍 Ambil lokasi user dan cek validasi kantor
+  // 📍 Ambil lokasi user
   const getCurrentLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         setLocation({ lat: latitude, lng: longitude });
-        await getAddressFromCoords(latitude, longitude);
 
+        // Cek apakah user dalam radius salah satu kantor
         let inside = false;
         let officeName = "";
-        for (const office of offices) {
-          const distance = getDistanceInMeters(latitude, longitude, office.latitude, office.longitude);
-          if (distance <= office.radius_meters) {
+        for (const office of OFFICE_LOCATIONS) {
+          const distance = getDistanceInMeters(latitude, longitude, office.lat, office.lng);
+          if (distance <= office.radius) {
             inside = true;
             officeName = office.name;
             break;
           }
         }
         setLocationStatus({ inside, officeName });
+
+        await getAddressFromCoords(latitude, longitude);
       },
-      (err) => console.error("Gagal ambil lokasi:", err),
+      (err) => {
+        console.error("Gagal ambil lokasi:", err);
+      },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
-  // 🌍 Reverse geocoding
+  // 🌍 Reverse geocoding alamat
   const getAddressFromCoords = async (lat: number, lng: number) => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
       const data = await res.json();
-      setAddress(data.display_name?.split(",").slice(0, 3).join(", ") || "Alamat tidak ditemukan");
+      if (data.display_name) {
+        const shortAddr = data.display_name.split(",").slice(0, 3).join(", ");
+        setAddress(shortAddr);
+      } else {
+        setAddress("Alamat tidak ditemukan");
+      }
     } catch {
       setAddress("Gagal memuat alamat");
     }
   };
 
-  // 📏 Hitung jarak antar koordinat (meter)
+  // 📏 Hitung jarak 2 titik (meter)
   const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
@@ -107,10 +106,11 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     const Δφ = ((lat2 - lat1) * Math.PI) / 180;
     const Δλ = ((lon2 - lon1) * Math.PI) / 180;
     const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
-  // 🎥 Kamera depan
+  // 📸 Start kamera depan
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -120,7 +120,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       setStream(mediaStream);
       if (videoRef.current) videoRef.current.srcObject = mediaStream;
     } catch {
-      alert("Tidak dapat mengakses kamera depan. Pastikan izin kamera diaktifkan.");
+      alert("Tidak dapat mengakses kamera depan. Pastikan izin kamera diberikan.");
     }
   };
 
@@ -131,7 +131,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     }
   };
 
-  // 📸 Ambil foto + overlay info
+  // 📸 Ambil foto + overlay info lokasi
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
     setIsCapturing(true);
@@ -162,7 +162,6 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     const addrText = address || "Memuat alamat...";
     const areaStatus = locationStatus.inside ? `✅ Dalam area ${locationStatus.officeName}` : "❌ Di luar area kantor";
 
-    // Overlay box
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(10, canvas.height - 120, 520, 110);
 
@@ -208,20 +207,19 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        {/* Preview Kamera */}
         <div className="relative bg-black">
           <video ref={videoRef} autoPlay playsInline className="w-full max-h-[60vh] object-contain" />
           <canvas ref={canvasRef} className="hidden" />
 
-          {/* Pesan instruksi */}
+          {/* 💬 Pesan instruksi */}
           {showInstruction && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2 animate-fadeIn">
               <Info className="h-4 w-4 text-yellow-300" />
               <span>Harap absen dengan wajah terlihat jelas dan pencahayaan cukup</span>
             </div>
           )}
 
-          {/* Overlay Lokasi */}
+          {/* 📍 Info lokasi */}
           <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-2 rounded text-xs font-semibold space-y-1">
             <div>{formatTime()}</div>
             <div className="flex items-center gap-1">

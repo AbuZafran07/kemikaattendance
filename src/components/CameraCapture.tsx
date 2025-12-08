@@ -27,26 +27,24 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
   }>({ inside: false });
   const [showInstruction, setShowInstruction] = useState(true);
 
-  // 🏢 Daftar lokasi kantor
+  // 🏢 Daftar lokasi kantor (bisa diubah sesuai kebutuhan)
   const OFFICE_LOCATIONS = [
     { name: "Head Office", lat: -6.2318, lng: 106.72395, radius: 50 },
     { name: "Warehouse", lat: -6.23133, lng: 106.72716, radius: 100 },
   ];
 
-  // Update waktu real-time
+  // 🕒 Update waktu real-time setiap detik
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Saat kamera dibuka
+  // 🚀 Saat kamera dibuka
   useEffect(() => {
     if (isOpen) {
       startCamera();
       getCurrentLocation();
-      setShowInstruction(true);
-      const timer = setTimeout(() => setShowInstruction(false), 3000);
-      return () => clearTimeout(timer);
+      setShowInstruction(true); // tetap tampil sampai ambil foto
     } else {
       stopCamera();
     }
@@ -60,7 +58,6 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
         const { latitude, longitude } = pos.coords;
         setLocation({ lat: latitude, lng: longitude });
 
-        // Cek apakah user dalam radius salah satu kantor
         let inside = false;
         let officeName = "";
         for (const office of OFFICE_LOCATIONS) {
@@ -75,14 +72,12 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
 
         await getAddressFromCoords(latitude, longitude);
       },
-      (err) => {
-        console.error("Gagal ambil lokasi:", err);
-      },
+      (err) => console.error("Gagal ambil lokasi:", err),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
-  // 🌍 Reverse geocoding alamat
+  // 🌍 Ambil nama alamat dari koordinat (reverse geocoding)
   const getAddressFromCoords = async (lat: number, lng: number) => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
@@ -98,7 +93,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     }
   };
 
-  // 📏 Hitung jarak 2 titik (meter)
+  // 📏 Hitung jarak antar dua titik (meter)
   const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
@@ -110,7 +105,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     return R * c;
   };
 
-  // 📸 Start kamera depan
+  // 🎥 Start kamera depan
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -120,7 +115,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       setStream(mediaStream);
       if (videoRef.current) videoRef.current.srcObject = mediaStream;
     } catch {
-      alert("Tidak dapat mengakses kamera depan. Pastikan izin kamera diberikan.");
+      alert("Tidak dapat mengakses kamera depan. Pastikan izin kamera diaktifkan.");
     }
   };
 
@@ -131,9 +126,18 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     }
   };
 
-  // 📸 Ambil foto + overlay info lokasi
+  // 🔊 Bunyi kamera (notifikasi)
+  const playCameraSound = () => {
+    const audio = new Audio("https://actions.google.com/sounds/v1/foley/camera_shutter_click.ogg");
+    audio.play();
+  };
+
+  // 📸 Ambil foto + overlay lokasi + bunyi
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
+
+    setShowInstruction(false); // sembunyikan pesan saat ambil foto
+    playCameraSound(); // bunyi notifikasi
     setIsCapturing(true);
 
     const video = videoRef.current;
@@ -162,6 +166,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     const addrText = address || "Memuat alamat...";
     const areaStatus = locationStatus.inside ? `✅ Dalam area ${locationStatus.officeName}` : "❌ Di luar area kantor";
 
+    // 🧾 Overlay informasi di foto
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(10, canvas.height - 120, 520, 110);
 
@@ -175,6 +180,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     ctx.fillStyle = locationStatus.inside ? "#00ff7f" : "#ff4d4f";
     ctx.fillText(areaStatus, 20, canvas.height - 20);
 
+    // Simpan hasil foto ke blob
     canvas.toBlob(
       (blob) => {
         if (blob) {
@@ -219,7 +225,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
             </div>
           )}
 
-          {/* 📍 Info lokasi */}
+          {/* 📍 Info lokasi di layar */}
           <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-2 rounded text-xs font-semibold space-y-1">
             <div>{formatTime()}</div>
             <div className="flex items-center gap-1">

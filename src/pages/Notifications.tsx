@@ -407,6 +407,7 @@ const Notifications = () => {
             <TabsTrigger value="overtime">Lembur Pending ({overtimeNotifications.length})</TabsTrigger>
           </TabsList>
 
+          {/* ✅ TAB AKTIVITAS ABSENSI – SUDAH ADA TANGGAL */}
           <TabsContent value="attendance" className="space-y-4">
             <Card>
               <CardHeader>
@@ -421,6 +422,7 @@ const Notifications = () => {
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
+                        {/* Kiri: Foto + Info karyawan */}
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar
                             src={notification.profiles.photo_url}
@@ -434,7 +436,16 @@ const Notifications = () => {
                             </p>
                           </div>
                         </div>
+
+                        {/* Kanan: Tanggal, jam, status, lokasi */}
                         <div className="text-right space-y-1">
+                          {/* ✅ Tanggal absen */}
+                          <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(notification.check_in_time || notification.created_at)}</span>
+                          </div>
+
+                          {/* Jam check-in / check-out */}
                           <div className="flex items-center gap-2 justify-end">
                             <Clock className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm font-medium">
@@ -442,7 +453,11 @@ const Notifications = () => {
                               {notification.check_out_time && ` - ${formatTime(notification.check_out_time)}`}
                             </span>
                           </div>
+
+                          {/* Status */}
                           {getStatusBadge(notification.status)}
+
+                          {/* Notes / lokasi */}
                           {notification.notes && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <MapPin className="h-3 w-3" />

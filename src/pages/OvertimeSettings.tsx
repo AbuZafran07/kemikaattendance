@@ -10,6 +10,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { HolidayManager, Holiday } from "@/components/HolidayManager";
 
 interface OvertimePolicyConfig {
   min_hours: number;
@@ -27,6 +28,7 @@ interface OvertimePolicyConfig {
   meal_allowance_amount: number;
   transport_allowance_enabled: boolean;
   transport_allowance_amount: number;
+  holidays: Holiday[];
 }
 
 export default function OvertimeSettings() {
@@ -50,6 +52,7 @@ export default function OvertimeSettings() {
     meal_allowance_amount: 50000,
     transport_allowance_enabled: true,
     transport_allowance_amount: 30000,
+    holidays: [],
   });
 
   useEffect(() => {
@@ -452,6 +455,12 @@ export default function OvertimeSettings() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Hari Libur Nasional */}
+            <HolidayManager
+              holidays={config.holidays}
+              onHolidaysChange={(holidays) => setConfig({ ...config, holidays })}
+            />
 
             <Alert>
               <Info className="h-4 w-4" />

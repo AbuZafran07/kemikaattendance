@@ -59,7 +59,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/employee/overtime-request" element={<ProtectedRoute><OvertimeRequest /></ProtectedRoute>} />
             <Route path="/employee/attendance-history" element={<ProtectedRoute><AttendanceHistory /></ProtectedRoute>} />
             <Route path="/employee/performance" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
-            <Route path="/notification-settings" element={<ProtectedRoute requireAdmin><NotificationSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/notifications" element={<ProtectedRoute requireAdmin><NotificationSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

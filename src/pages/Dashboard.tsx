@@ -51,6 +51,7 @@ const Dashboard = () => {
     totalOvertimeHours: 0,
   });
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
+  const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
   const [pendingLeave, setPendingLeave] = useState<any[]>([]);
   const [pendingOvertime, setPendingOvertime] = useState<any[]>([]);
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
@@ -136,6 +137,7 @@ const Dashboard = () => {
       { data: leaveData },
       { data: overtimeData },
       { data: weekAttendance },
+      { data: approvedLeaveToday },
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("id, full_name, departemen, photo_url"),
@@ -162,6 +164,13 @@ const Dashboard = () => {
         .order("created_at", { ascending: false })
         .limit(5),
       supabase.from("attendance").select("*").gte("check_in_time", subDays(today, 7).toISOString()),
+      // Fetch approved leave requests for today
+      supabase
+        .from("leave_requests")
+        .select("*")
+        .eq("status", "approved")
+        .lte("start_date", format(today, "yyyy-MM-dd"))
+        .gte("end_date", format(today, "yyyy-MM-dd")),
     ]);
 
     // Create profiles map with signed URLs for photos
@@ -216,6 +225,34 @@ const Dashboard = () => {
       totalOvertimeHours: 0,
     });
 
+    // Find employees who are absent today
+    const todayUserIds = new Set(todayAttendance?.map(a => a.user_id) || []);
+    const leaveUserIds = new Map((approvedLeaveToday || []).map(l => [l.user_id, l.leave_type]));
+    
+    const absentList = (profiles || [])
+      .filter(p => !todayUserIds.has(p.id))
+      .map(p => {
+        const leaveType = leaveUserIds.get(p.id);
+        let absence_reason: "cuti" | "izin" | "sakit" | "tidak_absen" = "tidak_absen";
+        
+        if (leaveType) {
+          if (leaveType === "cuti_tahunan") absence_reason = "cuti";
+          else if (leaveType === "izin") absence_reason = "izin";
+          else if (leaveType === "sakit") absence_reason = "sakit";
+          else absence_reason = "cuti";
+        }
+        
+        return {
+          id: p.id,
+          full_name: p.full_name,
+          departemen: p.departemen,
+          photo_url: profilesMap.get(p.id)?.photo_url || null,
+          absence_reason,
+          leave_type: leaveType || undefined,
+        };
+      });
+
+    setAbsentEmployees(absentList);
     setRecentAttendance(recentWithProfiles);
     setPendingLeave(leaveWithProfiles);
     setPendingOvertime(overtimeWithProfiles);
@@ -279,7 +316,7 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <RecentActivity data={recentAttendance} />
+          <RecentActivity data={recentAttendance} absentEmployees={absentEmployees} />
           <PendingRequests leaveRequests={pendingLeave} overtimeRequests={pendingOvertime} />
         </div>
       </div>

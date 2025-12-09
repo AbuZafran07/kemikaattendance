@@ -334,6 +334,8 @@ const Notifications = () => {
         return <Badge className="bg-primary">Hadir</Badge>;
       case "terlambat":
         return <Badge variant="destructive">Terlambat</Badge>;
+      case "pulang_cepat":
+        return <Badge variant="destructive">Pulang Cepat</Badge>;
       case "pending":
         return <Badge variant="secondary">Pending</Badge>;
       default:

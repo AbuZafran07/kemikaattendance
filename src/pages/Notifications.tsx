@@ -365,7 +365,7 @@ const Notifications = () => {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Check-In Hari Ini</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Aktivitas Absensi</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">

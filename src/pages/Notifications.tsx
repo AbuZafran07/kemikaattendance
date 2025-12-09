@@ -411,7 +411,7 @@ const Notifications = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Aktivitas Absensi</CardTitle>
-                <CardDescription>Check-in dan check-out karyawan hari ini</CardDescription>
+                <CardDescription>Check-in dan check-out karyawan</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">

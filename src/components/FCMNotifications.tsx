@@ -16,8 +16,17 @@ export const FCMNotifications = () => {
         const token = await requestNotificationPermission();
         
         if (token) {
-          // FCM token retrieved successfully
-          // TODO: Store token in database once fcm_token column is added
+          // Store FCM token in database
+          const { error } = await supabase
+            .from('profiles')
+            .update({ fcm_token: token } as any)
+            .eq('id', profile.id);
+          
+          if (error) {
+            console.error('Error storing FCM token:', error);
+          } else {
+            console.log('FCM token stored successfully');
+          }
         }
       } catch (error) {
         console.error('Error setting up notifications:', error);

@@ -30,6 +30,19 @@ const RecentActivity = ({ data }: RecentActivityProps) => {
     return statusMap[status] || { label: status, variant: "outline" as const };
   };
 
+  // Cek apakah tanggal check_in adalah hari ini
+  const isToday = (dateString: string) => {
+    const d = new Date(dateString);
+    const today = new Date();
+
+    return (
+      d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()
+    );
+  };
+
+  // Filter hanya record absensi hari ini
+  const todayRecords = data.filter((record) => isToday(record.check_in_time));
+
   return (
     <Card>
       <CardHeader>
@@ -38,8 +51,8 @@ const RecentActivity = ({ data }: RecentActivityProps) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4 max-h-[400px] overflow-y-auto pb-2">
-          {data.length > 0 ? (
-            data.map((record) => {
+          {todayRecords.length > 0 ? (
+            todayRecords.map((record) => {
               const status = formatStatus(record.status);
               return (
                 <div

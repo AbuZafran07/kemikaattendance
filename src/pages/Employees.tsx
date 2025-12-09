@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -51,6 +51,10 @@ const Employees = () => {
   const [resetPasswordEmployee, setResetPasswordEmployee] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isSetAdminDialogOpen, setIsSetAdminDialogOpen] = useState(false);
+  const [setAdminEmployee, setSetAdminEmployee] = useState<any>(null);
+  const [isSettingAdmin, setIsSettingAdmin] = useState(false);
+  const [employeeRoles, setEmployeeRoles] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -84,7 +88,22 @@ const Employees = () => {
 
   useEffect(() => {
     fetchEmployees();
+    fetchEmployeeRoles();
   }, []);
+
+  const fetchEmployeeRoles = async () => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+    
+    if (data) {
+      const rolesMap: Record<string, string> = {};
+      data.forEach((item) => {
+        rolesMap[item.user_id] = item.role;
+      });
+      setEmployeeRoles(rolesMap);
+    }
+  };
 
   const fetchEmployees = async () => {
     const { data } = await supabase
@@ -447,6 +466,46 @@ const Employees = () => {
       });
     } finally {
       setIsResettingPassword(false);
+    }
+  };
+
+  const openSetAdminDialog = (employee: any) => {
+    setSetAdminEmployee(employee);
+    setIsSetAdminDialogOpen(true);
+  };
+
+  const handleSetAdminRole = async () => {
+    if (!setAdminEmployee) return;
+
+    setIsSettingAdmin(true);
+
+    try {
+      const currentRole = employeeRoles[setAdminEmployee.id] || 'employee';
+      const newRole = currentRole === 'admin' ? 'employee' : 'admin';
+
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role: newRole })
+        .eq('user_id', setAdminEmployee.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: `${setAdminEmployee.full_name} sekarang menjadi ${newRole === 'admin' ? 'Admin' : 'Karyawan'}`,
+      });
+
+      setIsSetAdminDialogOpen(false);
+      setSetAdminEmployee(null);
+      fetchEmployeeRoles();
+    } catch (error: any) {
+      toast({
+        title: "Gagal Mengubah Role",
+        description: error.message || "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSettingAdmin(false);
     }
   };
 
@@ -961,7 +1020,17 @@ const Employees = () => {
                           </Avatar>
                         </TableCell>
                         <TableCell className="font-medium">{employee.nik}</TableCell>
-                        <TableCell>{employee.full_name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {employee.full_name}
+                            {employeeRoles[employee.id] === 'admin' && (
+                              <Badge variant="outline" className="text-xs">
+                                <ShieldCheck className="h-3 w-3 mr-1" />
+                                Admin
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{employee.email}</TableCell>
                         <TableCell>{employee.jabatan}</TableCell>
                         <TableCell>{employee.departemen}</TableCell>
@@ -988,6 +1057,19 @@ const Employees = () => {
                               <DropdownMenuItem onClick={() => openResetPasswordDialog(employee)}>
                                 <KeyRound className="h-4 w-4 mr-2" />
                                 Reset Password
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openSetAdminDialog(employee)}>
+                                {employeeRoles[employee.id] === 'admin' ? (
+                                  <>
+                                    <Shield className="h-4 w-4 mr-2" />
+                                    Hapus Admin
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShieldCheck className="h-4 w-4 mr-2" />
+                                    Jadikan Admin
+                                  </>
+                                )}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 className="text-destructive"
@@ -1048,6 +1130,51 @@ const Employees = () => {
                 </Button>
                 <Button onClick={handleAdminResetPassword} disabled={isResettingPassword}>
                   {isResettingPassword ? "Menyimpan..." : "Reset Password"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Set Admin Dialog */}
+        <Dialog open={isSetAdminDialogOpen} onOpenChange={(open) => {
+          setIsSetAdminDialogOpen(open);
+          if (!open) {
+            setSetAdminEmployee(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                {setAdminEmployee && employeeRoles[setAdminEmployee.id] === 'admin' 
+                  ? 'Hapus Role Admin' 
+                  : 'Jadikan Admin'}
+              </DialogTitle>
+              <DialogDescription>
+                {setAdminEmployee && employeeRoles[setAdminEmployee.id] === 'admin'
+                  ? `Apakah Anda yakin ingin menghapus role admin dari ${setAdminEmployee?.full_name}?`
+                  : `Apakah Anda yakin ingin menjadikan ${setAdminEmployee?.full_name} sebagai Admin?`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">
+                  {setAdminEmployee && employeeRoles[setAdminEmployee.id] === 'admin'
+                    ? 'Karyawan ini akan kehilangan akses ke dashboard admin dan hanya bisa mengakses tampilan karyawan.'
+                    : 'Karyawan ini akan mendapatkan akses penuh ke dashboard admin termasuk mengelola karyawan, pengaturan, dan laporan.'}
+                </p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsSetAdminDialogOpen(false)}>
+                  Batal
+                </Button>
+                <Button onClick={handleSetAdminRole} disabled={isSettingAdmin}>
+                  {isSettingAdmin ? "Menyimpan..." : (
+                    setAdminEmployee && employeeRoles[setAdminEmployee.id] === 'admin' 
+                      ? "Hapus Admin" 
+                      : "Jadikan Admin"
+                  )}
                 </Button>
               </div>
             </div>

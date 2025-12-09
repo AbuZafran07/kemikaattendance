@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,18 +8,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ArrowLeft } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, AlertCircle, Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { leaveRequestSchema, LeaveRequestFormData } from "@/lib/validationSchemas";
+import { useLeavePolicy } from "@/hooks/usePolicySettings";
 import logo from "@/assets/logo.png";
 
 const LeaveRequest = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { policy, isLoading: isPolicyLoading } = useLeavePolicy();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [usedQuotas, setUsedQuotas] = useState({ annual: 0, sick: 0, permission: 0 });
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
@@ -31,6 +36,44 @@ const LeaveRequest = () => {
     },
   });
 
+  const leaveType = form.watch("leaveType");
+  const startDate = form.watch("startDate");
+  const endDate = form.watch("endDate");
+
+  // Fetch used quotas for validation
+  useEffect(() => {
+    const fetchUsedQuotas = async () => {
+      if (!profile?.id) return;
+
+      const currentYear = new Date().getFullYear();
+      const yearStart = `${currentYear}-01-01`;
+      const yearEnd = `${currentYear}-12-31`;
+
+      try {
+        const { data } = await supabase
+          .from("leave_requests")
+          .select("leave_type, total_days")
+          .eq("user_id", profile.id)
+          .in("status", ["pending", "approved"])
+          .gte("start_date", yearStart)
+          .lte("start_date", yearEnd);
+
+        const quotas = { annual: 0, sick: 0, permission: 0 };
+        data?.forEach((req) => {
+          if (req.leave_type === "cuti_tahunan") quotas.annual += req.total_days;
+          else if (req.leave_type === "sakit") quotas.sick += req.total_days;
+          else if (req.leave_type === "izin") quotas.permission += req.total_days;
+        });
+
+        setUsedQuotas(quotas);
+      } catch (error) {
+        console.error("Error fetching used quotas:", error);
+      }
+    };
+
+    fetchUsedQuotas();
+  }, [profile?.id]);
+
   const calculateDays = (start: string, end: string) => {
     if (!start || !end) return 0;
     const startDate = new Date(start);
@@ -39,12 +82,92 @@ const LeaveRequest = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
+  const totalDays = useMemo(() => {
+    return calculateDays(startDate, endDate);
+  }, [startDate, endDate]);
+
+  // Validate based on policy settings
+  useEffect(() => {
+    const errors: string[] = [];
+
+    if (!leaveType || !startDate || !endDate || totalDays <= 0) {
+      setValidationErrors([]);
+      return;
+    }
+
+    // Check advance request days (except for sick leave and lupa_absen)
+    if (leaveType !== "sakit" && leaveType !== "lupa_absen") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(startDate);
+      const daysDiff = Math.floor((selectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff < policy.min_days_advance_request) {
+        errors.push(`Pengajuan cuti harus minimal ${policy.min_days_advance_request} hari sebelumnya`);
+      }
+    }
+
+    // Check max consecutive days
+    if (totalDays > policy.max_consecutive_days) {
+      errors.push(`Maksimal cuti berturut-turut adalah ${policy.max_consecutive_days} hari`);
+    }
+
+    // Check quota based on leave type
+    if (leaveType === "cuti_tahunan") {
+      const remainingQuota = policy.annual_leave_quota - usedQuotas.annual;
+      if (totalDays > remainingQuota) {
+        errors.push(`Sisa kuota cuti tahunan tidak mencukupi. Tersisa: ${remainingQuota} hari`);
+      }
+    } else if (leaveType === "sakit") {
+      const remainingQuota = policy.sick_leave_quota - usedQuotas.sick;
+      if (totalDays > remainingQuota) {
+        errors.push(`Sisa kuota cuti sakit tidak mencukupi. Tersisa: ${remainingQuota} hari`);
+      }
+    } else if (leaveType === "izin") {
+      const remainingQuota = policy.permission_quota - usedQuotas.permission;
+      if (totalDays > remainingQuota) {
+        errors.push(`Sisa kuota izin tidak mencukupi. Tersisa: ${remainingQuota} hari`);
+      }
+    }
+
+    setValidationErrors(errors);
+  }, [leaveType, startDate, endDate, totalDays, policy, usedQuotas]);
+
+  const getQuotaInfo = () => {
+    return {
+      annual: {
+        total: policy.annual_leave_quota,
+        used: usedQuotas.annual,
+        remaining: policy.annual_leave_quota - usedQuotas.annual,
+      },
+      sick: {
+        total: policy.sick_leave_quota,
+        used: usedQuotas.sick,
+        remaining: policy.sick_leave_quota - usedQuotas.sick,
+      },
+      permission: {
+        total: policy.permission_quota,
+        used: usedQuotas.permission,
+        remaining: policy.permission_quota - usedQuotas.permission,
+      },
+    };
+  };
+
+  const quotaInfo = getQuotaInfo();
+
   const onSubmit = async (data: LeaveRequestFormData) => {
+    if (validationErrors.length > 0) {
+      toast({
+        title: "Validasi Gagal",
+        description: validationErrors[0],
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const totalDays = calculateDays(data.startDate, data.endDate);
-
       const { error } = await supabase.from("leave_requests").insert([
         {
           user_id: profile?.id,
@@ -93,83 +216,133 @@ const LeaveRequest = () => {
             <CardDescription>Isi formulir pengajuan cuti</CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="leaveType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Jenis Cuti</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih jenis cuti" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="cuti_tahunan">Cuti Tahunan</SelectItem>
-                          <SelectItem value="izin">Izin</SelectItem>
-                          <SelectItem value="sakit">Sakit</SelectItem>
-                          <SelectItem value="lupa_absen">Lupa Absen</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {isPolicyLoading ? (
+              <p className="text-muted-foreground">Memuat kebijakan...</p>
+            ) : (
+              <>
+                {/* Quota Info */}
+                <Alert className="mb-4">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="text-xs space-y-1">
+                      <p>Sisa Kuota Tahun Ini:</p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Cuti Tahunan: <strong>{quotaInfo.annual.remaining}</strong>/{quotaInfo.annual.total} hari</span>
+                        <span>Sakit: <strong>{quotaInfo.sick.remaining}</strong>/{quotaInfo.sick.total} hari</span>
+                        <span>Izin: <strong>{quotaInfo.permission.remaining}</strong>/{quotaInfo.permission.total} hari</span>
+                      </div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
 
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tanggal Mulai</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="leaveType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Jenis Cuti</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih jenis cuti" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="cuti_tahunan">
+                                Cuti Tahunan (Sisa: {quotaInfo.annual.remaining} hari)
+                              </SelectItem>
+                              <SelectItem value="izin">
+                                Izin (Sisa: {quotaInfo.permission.remaining} hari)
+                              </SelectItem>
+                              <SelectItem value="sakit">
+                                Sakit (Sisa: {quotaInfo.sick.remaining} hari)
+                              </SelectItem>
+                              <SelectItem value="lupa_absen">Lupa Absen</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tanggal Selesai</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="startDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tanggal Mulai</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="reason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Alasan</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          rows={4}
-                          placeholder="Tuliskan alasan cuti..."
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="endDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tanggal Selesai</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          {totalDays > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Total: {totalDays} hari
+                            </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
-                </Button>
-              </form>
-            </Form>
+                    {/* Validation Errors */}
+                    {validationErrors.length > 0 && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <ul className="list-disc list-inside text-xs space-y-1">
+                            {validationErrors.map((error, idx) => (
+                              <li key={idx}>{error}</li>
+                            ))}
+                          </ul>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <FormField
+                      control={form.control}
+                      name="reason"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Alasan</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              rows={4}
+                              placeholder="Tuliskan alasan cuti..."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isSubmitting || validationErrors.length > 0}
+                    >
+                      {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
+                    </Button>
+                  </form>
+                </Form>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

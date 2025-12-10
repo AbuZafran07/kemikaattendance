@@ -29,6 +29,9 @@ import LeaveSettings from "./pages/LeaveSettings";
 import OvertimeSettings from "./pages/OvertimeSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import EmployeeSelfService from "./pages/EmployeeSelfService";
+import EmployeeNotifications from "./pages/EmployeeNotifications";
+
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -59,6 +62,8 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/employee/overtime-request" element={<ProtectedRoute><OvertimeRequest /></ProtectedRoute>} />
             <Route path="/employee/attendance-history" element={<ProtectedRoute><AttendanceHistory /></ProtectedRoute>} />
             <Route path="/employee/performance" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
+            <Route path="/employee/self-service" element={<ProtectedRoute><EmployeeSelfService /></ProtectedRoute>} />
+            <Route path="/employee/notifications" element={<ProtectedRoute><EmployeeNotifications /></ProtectedRoute>} />
             <Route path="/dashboard/settings/notifications" element={<ProtectedRoute requireAdmin><NotificationSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

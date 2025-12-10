@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, MapPin, LogOut, Calendar, Clock, User, FileText, TrendingUp } from "lucide-react";
+import { Camera, MapPin, LogOut, User, Calendar, Clock, ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CameraCapture } from "@/components/CameraCapture";
+import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
+import { useNavigate } from "react-router-dom";
 
 // Office coordinates and work hours will be fetched from system settings
 
@@ -19,6 +21,13 @@ interface WorkHoursConfig {
   late_tolerance_minutes: number;
   early_leave_tolerance_minutes: number;
 }
+
+interface StatsData {
+  leaveBalance: number;
+  leaveTotal: number;
+  attendanceCount: number;
+}
+
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -34,6 +43,7 @@ const EmployeeView = () => {
     radius: number;
   }>>([]);
   const [workHours, setWorkHours] = useState<WorkHoursConfig | null>(null);
+  const [stats, setStats] = useState<StatsData>({ leaveBalance: 0, leaveTotal: 12, attendanceCount: 0 });
   const {
     signOut,
     profile
@@ -41,12 +51,15 @@ const EmployeeView = () => {
   const {
     toast
   } = useToast();
+  const navigate = useNavigate();
+  
   useEffect(() => {
     fetchOfficeLocation();
     fetchWorkHours();
     fetchTodayAttendance();
     fetchRecentAttendance();
-  }, []);
+    fetchStats();
+  }, [profile?.id]);
   const fetchOfficeLocation = async () => {
     try {
       const {
@@ -103,6 +116,32 @@ const EmployeeView = () => {
     }).limit(3);
     if (data) {
       setRecentAttendance(data);
+    }
+  };
+  
+  const fetchStats = async () => {
+    if (!profile?.id) return;
+    
+    try {
+      // Get current month attendance count
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      
+      const { count: attendanceCount } = await supabase
+        .from('attendance')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profile.id)
+        .gte('check_in_time', startOfMonth)
+        .lte('check_in_time', endOfMonth);
+      
+      setStats({
+        leaveBalance: profile.remaining_leave || 0,
+        leaveTotal: profile.annual_leave_quota || 12,
+        attendanceCount: attendanceCount || 0,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
   };
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -360,7 +399,7 @@ const EmployeeView = () => {
     };
     return statusMap[status] || status;
   };
-  return <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
+  return <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -371,7 +410,7 @@ const EmployeeView = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-lg space-y-6 border-none bg-[#6e6a46]/15">
+      <div className="container mx-auto px-4 py-6 max-w-lg space-y-6">
         {/* Profile Card */}
         <Card>
           <CardContent className="pt-6">
@@ -442,67 +481,76 @@ const EmployeeView = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/leave-request'}>
-            <CardContent className="pt-6 text-center">
-              <Calendar className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="font-medium text-sm">Ajukan Cuti</p>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/overtime-request'}>
-            <CardContent className="pt-6 text-center">
-              <Clock className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="font-medium text-sm">Lembur</p>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/attendance-history'}>
-            <CardContent className="pt-6 text-center">
-              <FileText className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="font-medium text-sm">Riwayat</p>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/employee/performance'}>
-            <CardContent className="pt-6 text-center">
-              <TrendingUp className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="font-medium text-sm">Performa</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Attendance */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Riwayat Absensi</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentAttendance.length > 0 ? recentAttendance.map(record => <div key={record.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                    <div>
-                      <p className="font-medium">
-                        {new Date(record.check_in_time).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short'
-                  })}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(record.check_in_time).toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })} - {record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  }) : '-'}
-                      </p>
-                    </div>
-                    <div className={`text-xs px-2 py-1 rounded ${record.status === 'hadir' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
-                      {formatStatus(record.status)}
-                    </div>
-                  </div>) : <p className="text-center text-muted-foreground py-4">Belum ada riwayat absensi</p>}
+        {/* Stats Card */}
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div 
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate('/employee/leave-request')}
+              >
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Cuti</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-bold text-primary">{stats.leaveBalance}/{stats.leaveTotal}</p>
+                </div>
+              </div>
+              <div 
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate('/employee/attendance-history')}
+              >
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <User className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Kehadiran</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-bold text-primary">{stats.attendanceCount}</p>
+                </div>
+              </div>
+              <div 
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate('/employee/overtime-request')}
+              >
+                <div className="p-2 bg-orange-500/10 rounded-lg">
+                  <Clock className="h-5 w-5 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Lembur</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-bold text-primary">Ajukan</p>
+                </div>
+              </div>
+              <div 
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate('/employee/performance')}
+              >
+                <div className="p-2 bg-purple-500/10 rounded-lg">
+                  <User className="h-5 w-5 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Performa</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-bold text-primary">Lihat</p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <EmployeeBottomNav />
 
       <CameraCapture isOpen={showCamera} onClose={() => setShowCamera(false)} onCapture={photoUrl => {
       if (cameraMode === "checkin") {

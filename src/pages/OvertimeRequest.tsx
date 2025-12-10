@@ -17,6 +17,7 @@ import { overtimeRequestSchema, OvertimeRequestFormData } from "@/lib/validation
 import { useOvertimePolicy, isHoliday, isWeekend } from "@/hooks/usePolicySettings";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import logo from "@/assets/logo.png";
+import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 
 const OvertimeRequest = () => {
   const navigate = useNavigate();
@@ -238,7 +239,7 @@ const OvertimeRequest = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -374,6 +375,8 @@ const OvertimeRequest = () => {
           </CardContent>
         </Card>
       </div>
+
+      <EmployeeBottomNav />
     </div>
   );
 };

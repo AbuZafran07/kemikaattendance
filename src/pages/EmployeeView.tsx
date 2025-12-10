@@ -171,6 +171,11 @@ const EmployeeView = () => {
           minute: "2-digit",
         }),
       );
+    } else {
+      // No attendance today - reset state
+      setTodayAttendance(null);
+      setIsCheckedIn(false);
+      setCheckInTime(null);
     }
   };
   const fetchRecentAttendance = async () => {
@@ -451,7 +456,7 @@ const EmployeeView = () => {
                 finalStatus = "pulang_cepat";
               }
             }
-            const { error } = await supabase
+            const { data: updatedData, error } = await supabase
               .from("attendance")
               .update({
                 check_out_time: now.toISOString(),
@@ -464,11 +469,14 @@ const EmployeeView = () => {
                   ? `Check-in di ${todayAttendance.notes?.split(" di ")[1] || "kantor"}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
                   : todayAttendance.notes,
               })
-              .eq("id", todayAttendance.id);
+              .eq("id", todayAttendance.id)
+              .select()
+              .single();
             if (error) throw error;
-            setIsCheckedIn(false);
-            setTodayAttendance(null);
-            setCheckInTime(null);
+            
+            // Update state with checkout time - keep isCheckedIn true to show completed attendance
+            setTodayAttendance(updatedData);
+            
             toast({
               title: "Check-Out Berhasil",
               description:
@@ -601,9 +609,9 @@ const EmployeeView = () => {
               <div className="flex-1 bg-primary/10 rounded-lg px-4 py-3">
                 <span className="text-sm font-medium text-foreground">
                   Check-in:{" "}
-                  {isCheckedIn && checkInTime ? (
+                  {todayAttendance?.check_in_time ? (
                     <span className="text-primary font-semibold">
-                      {new Date(todayAttendance?.check_in_time).toLocaleTimeString("id-ID", {
+                      {new Date(todayAttendance.check_in_time).toLocaleTimeString("id-ID", {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
@@ -631,18 +639,9 @@ const EmployeeView = () => {
             </div>
 
             {/* Action Button */}
-            {!isCheckedIn ? (
-              <Button
-                onClick={() => {
-                  setCameraMode("checkin");
-                  setShowCamera(true);
-                }}
-                disabled={isProcessing}
-                className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90"
-              >
-                {isProcessing ? "Memproses..." : "Check In"}
-              </Button>
-            ) : !todayAttendance?.check_out_time ? (
+            {todayAttendance?.check_out_time ? (
+              <div className="text-center py-3 text-muted-foreground">Absensi hari ini selesai</div>
+            ) : todayAttendance ? (
               <Button
                 onClick={() => {
                   setCameraMode("checkout");
@@ -654,7 +653,16 @@ const EmployeeView = () => {
                 {isProcessing ? "Memproses..." : "Check Out"}
               </Button>
             ) : (
-              <div className="text-center py-3 text-muted-foreground">Absensi hari ini selesai</div>
+              <Button
+                onClick={() => {
+                  setCameraMode("checkin");
+                  setShowCamera(true);
+                }}
+                disabled={isProcessing}
+                className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90"
+              >
+                {isProcessing ? "Memproses..." : "Check In"}
+              </Button>
             )}
           </CardContent>
         </Card>

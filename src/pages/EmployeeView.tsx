@@ -544,7 +544,7 @@ const EmployeeView = () => {
                   })}
                 </CardDescription>
               </div>
-              <div className="text-right">
+              <div className="text-bottom">
                 <p className="text-xs text-muted-foreground">{profile?.jabatan}</p>
               </div>
             </div>

@@ -482,25 +482,31 @@ const EmployeeView = () => {
                 </CardDescription>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-primary tabular-nums transition-all duration-300">
-                  <span className="inline-block" style={{ minWidth: '2ch' }}>
-                    {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit' }).split(':')[0]}
-                  </span>
-                  <span className="animate-pulse">:</span>
-                  <span className="inline-block" style={{ minWidth: '2ch' }}>
-                    {currentTime.toLocaleTimeString('id-ID', { minute: '2-digit' }).split(':')[1] || currentTime.getMinutes().toString().padStart(2, '0')}
-                  </span>
-                  <span className="animate-pulse">:</span>
-                  <span className="inline-block text-primary/70" style={{ minWidth: '2ch' }}>
-                    {currentTime.getSeconds().toString().padStart(2, '0')}
-                  </span>
+                <div className="text-3xl font-bold text-primary tabular-nums">
+                  {currentTime.getHours().toString().padStart(2, '0')}
+                  <span className="animate-pulse">.</span>
+                  {currentTime.getMinutes().toString().padStart(2, '0')}
                 </div>
                 <p className="text-xs text-muted-foreground">{profile?.jabatan}</p>
               </div>
             </div>
-            
+          </CardHeader>
+        </Card>
+
+        {/* Check-In/Out Card */}
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            {/* Real-time Clock */}
+            <div className="text-center">
+              <div className="text-5xl font-bold text-primary tabular-nums tracking-wider">
+                {currentTime.getHours().toString().padStart(2, '0')}
+                <span className="animate-pulse">.</span>
+                {currentTime.getMinutes().toString().padStart(2, '0')}
+              </div>
+            </div>
+
             {/* GPS Status */}
-            <div className="mt-4 flex items-center gap-2 text-sm">
+            <div className="flex items-center justify-center gap-2 text-sm">
               {gpsStatus === 'loading' && (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -511,7 +517,7 @@ const EmployeeView = () => {
                 <>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   <span className="text-muted-foreground">
-                    {nearestOffice.name} • <span className={nearestOffice.distance <= 100 ? 'text-green-600 font-medium' : 'text-orange-500'}>
+                    {nearestOffice.name} • <span className={nearestOffice.distance <= 100 ? 'text-green-600 font-medium' : 'text-destructive'}>
                       {Math.round(nearestOffice.distance)}m
                     </span>
                   </span>
@@ -530,12 +536,7 @@ const EmployeeView = () => {
                 </>
               )}
             </div>
-          </CardHeader>
-        </Card>
 
-        {/* Check-In/Out Card */}
-        <Card>
-          <CardContent className="pt-6 space-y-4">
             {/* Check-in/Check-out Time Pills */}
             <div className="flex gap-2">
               <div className="flex-1 bg-primary/10 rounded-lg px-4 py-3">
@@ -544,8 +545,7 @@ const EmployeeView = () => {
                     <span className="text-primary font-semibold">
                       {new Date(todayAttendance?.check_in_time).toLocaleTimeString('id-ID', {
                         hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
+                        minute: '2-digit'
                       })}
                     </span>
                   ) : (
@@ -559,8 +559,7 @@ const EmployeeView = () => {
                     <span className="text-primary font-semibold">
                       {new Date(todayAttendance.check_out_time).toLocaleTimeString('id-ID', {
                         hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
+                        minute: '2-digit'
                       })}
                     </span>
                   ) : (

@@ -531,23 +531,25 @@ const EmployeeView = () => {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-  <CardTitle className="text-xl">
-    Assalamualaikum,
-    <br />
-    {profile?.full_name || "User"}!
-  </CardTitle>
-  {/* 🧍 Jabatan ditampilkan di bawah nama */}
-  <p className="text-sm text-muted-foreground mt-1">
-    {profile?.jabatan || "Karyawan"}
-  </p>
-  <CardDescription className="mt-2">
-    {currentTime.toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    })}
-  </CardDescription>
-</div>
+                <CardTitle className="text-xl">
+                  Assalamualaikum,
+                  <br />
+                  {profile?.full_name || "User"}!
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {profile?.jabatan || "Karyawan"}
+                </p>
+                <CardDescription className="mt-2">
+                  {currentTime.toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
         {/* Check-In/Out Card */}
         <Card>

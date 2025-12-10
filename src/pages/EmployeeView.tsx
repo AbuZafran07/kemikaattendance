@@ -534,7 +534,7 @@ const EmployeeView = () => {
                 <CardTitle className="text-xl">
                   Assalamualaikum,
                   <br />
-                  {profile?.full_name?.split(" ")[0] || "User"}!
+                  {profile?.full_name || "User"}!
                 </CardTitle>
                 <CardDescription className="mt-1">
                   {currentTime.toLocaleDateString("id-ID", {

@@ -418,7 +418,7 @@ export default function Reports() {
         body: data,
         startY: 28,
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [0, 71, 171] },
+        headStyles: { fillColor: [0, 135, 81] },
       });
 
       doc.save(`${reportType}_report_${format(new Date(), "yyyy-MM-dd")}.pdf`);

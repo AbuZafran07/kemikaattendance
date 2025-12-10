@@ -196,7 +196,7 @@ export default function EmployeeReports() {
         body: tableData,
         startY: 70,
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [0, 71, 171] },
+        headStyles: { fillColor: [0, 135, 81] },
       });
 
       // Download

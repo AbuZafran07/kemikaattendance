@@ -19,7 +19,7 @@ export default function Reports() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [reportType, setReportType] = useState<"attendance" | "leave" | "overtime" | "employees">("attendance");
+  const [reportType, setReportType] = useState<"attendance" | "leave" | "overtime" | "employees" | "business_travel">("attendance");
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [department, setDepartment] = useState<string>("all");
@@ -154,6 +154,48 @@ export default function Reports() {
           Reason: record.reason,
         }));
         filename = `Overtime_Report_${startDate}_to_${endDate}.xlsx`;
+      } else if (reportType === "business_travel") {
+        const { data: travelData, error: travelError } = await supabase
+          .from("business_travel_requests")
+          .select("*")
+          .gte("start_date", startDate)
+          .lte("end_date", endDate);
+
+        if (travelError) throw travelError;
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+        let mergedData =
+          travelData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
+
+        if (department !== "all") {
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
+        }
+
+        data = mergedData.map((record: any) => ({
+          NIK: record.profiles?.nik || "-",
+          Name: record.profiles?.full_name || "-",
+          Department: record.profiles?.departemen || "-",
+          Destination: record.destination,
+          Purpose: record.purpose,
+          "Start Date": record.start_date,
+          "End Date": record.end_date,
+          "Total Days": record.total_days,
+          Status: record.status,
+          Notes: record.notes || "-",
+        }));
+        filename = `Business_Travel_Report_${startDate}_to_${endDate}.xlsx`;
       } else {
         let query = supabase.from("profiles").select("*");
         if (department !== "all") query = query.eq("departemen", department);
@@ -321,6 +363,48 @@ export default function Reports() {
           record.reason,
         ]);
         title = `Laporan Lembur (${startDate} s.d ${endDate})`;
+      } else if (reportType === "business_travel") {
+        const { data: travelData, error: travelError } = await supabase
+          .from("business_travel_requests")
+          .select("*")
+          .gte("start_date", startDate)
+          .lte("end_date", endDate);
+
+        if (travelError) throw travelError;
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, departemen, nik");
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+        let mergedData =
+          travelData
+            ?.map((record) => ({
+              ...record,
+              profiles: profilesMap.get(record.user_id),
+            }))
+            .filter((record) => record.profiles) || [];
+
+        if (department !== "all") {
+          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
+        }
+
+        columns = ["NIK", "Name", "Department", "Destination", "Purpose", "Start", "End", "Days", "Status"];
+        data = mergedData.map((record: any) => [
+          record.profiles?.nik || "-",
+          record.profiles?.full_name || "-",
+          record.profiles?.departemen || "-",
+          record.destination,
+          record.purpose,
+          record.start_date,
+          record.end_date,
+          record.total_days,
+          record.status,
+        ]);
+        title = `Laporan Perjalanan Dinas (${startDate} s.d ${endDate})`;
       }
 
       const doc = new jsPDF();
@@ -406,6 +490,7 @@ export default function Reports() {
                     <SelectItem value="attendance">Laporan Absensi</SelectItem>
                     <SelectItem value="leave">Laporan Cuti</SelectItem>
                     <SelectItem value="overtime">Laporan Lembur</SelectItem>
+                    <SelectItem value="business_travel">Laporan Perjalanan Dinas</SelectItem>
                     <SelectItem value="employees">Database Karyawan</SelectItem>
                   </SelectContent>
                 </Select>

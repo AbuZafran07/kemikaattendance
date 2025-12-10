@@ -560,7 +560,7 @@ const EmployeeView = () => {
                     </span> : <span className="text-muted-foreground">-</span>}
                 </span>
               </div>
-              <div className="flex-1 bg-muted rounded-lg px-4 py-3 pl-[5px] pr-[24px]">
+              <div className="flex-1 rounded-lg px-4 py-3 pl-[5px] pr-[24px] bg-red-100">
                 <span className="font-medium text-foreground text-xs">
                   Check-out:{" "}
                   {todayAttendance?.check_out_time ? <span className="text-primary font-semibold">

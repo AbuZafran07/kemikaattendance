@@ -17,7 +17,12 @@ import { z } from "zod";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Password lama harus diisi"),
-  newPassword: z.string().min(6, "Password baru minimal 6 karakter"),
+  newPassword: z
+    .string()
+    .min(8, "Password baru minimal 8 karakter")
+    .regex(/[A-Z]/, "Harus mengandung minimal 1 huruf besar")
+    .regex(/[0-9]/, "Harus mengandung minimal 1 angka")
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Harus mengandung minimal 1 simbol"),
   confirmPassword: z.string().min(1, "Konfirmasi password harus diisi"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Password baru tidak cocok",
@@ -166,7 +171,7 @@ export const ChangePasswordDialog = ({
                 type={showNewPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Masukkan password baru (min. 6 karakter)"
+                placeholder="Min. 8 karakter"
                 className={errors.newPassword ? "border-destructive" : ""}
               />
               <Button
@@ -186,6 +191,20 @@ export const ChangePasswordDialog = ({
             {errors.newPassword && (
               <p className="text-sm text-destructive">{errors.newPassword}</p>
             )}
+            <ul className="text-xs text-muted-foreground space-y-1 mt-2">
+              <li className={newPassword.length >= 8 ? "text-green-600" : ""}>
+                • Minimal 8 karakter
+              </li>
+              <li className={/[A-Z]/.test(newPassword) ? "text-green-600" : ""}>
+                • Minimal 1 huruf besar (A-Z)
+              </li>
+              <li className={/[0-9]/.test(newPassword) ? "text-green-600" : ""}>
+                • Minimal 1 angka (0-9)
+              </li>
+              <li className={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? "text-green-600" : ""}>
+                • Minimal 1 simbol (!@#$%^&*)
+              </li>
+            </ul>
           </div>
 
           {/* Confirm Password */}

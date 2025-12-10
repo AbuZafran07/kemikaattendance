@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -10,8 +10,21 @@ import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface LeaveRequest {
   id: string;
@@ -33,12 +46,16 @@ interface OvertimeRequest {
   created_at: string;
 }
 
+type StatusFilter = "all" | "pending" | "approved" | "rejected";
+
 const RequestHistory = () => {
   const navigate = useNavigate();
   const { signOut, profile } = useAuth();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.id) {
@@ -71,6 +88,46 @@ const RequestHistory = () => {
     }
   };
 
+  const handleCancelLeave = async (id: string) => {
+    setCancellingId(id);
+    try {
+      const { error } = await supabase
+        .from("leave_requests")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setLeaveRequests((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Pengajuan cuti berhasil dibatalkan");
+    } catch (error) {
+      console.error("Error cancelling leave request:", error);
+      toast.error("Gagal membatalkan pengajuan");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const handleCancelOvertime = async (id: string) => {
+    setCancellingId(id);
+    try {
+      const { error } = await supabase
+        .from("overtime_requests")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setOvertimeRequests((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Pengajuan lembur berhasil dibatalkan");
+    } catch (error) {
+      console.error("Error cancelling overtime request:", error);
+      toast.error("Gagal membatalkan pengajuan");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const formatLeaveType = (type: string) => {
     const typeMap: Record<string, string> = {
       cuti_tahunan: "Cuti Tahunan",
@@ -92,6 +149,14 @@ const RequestHistory = () => {
     }
   };
 
+  const filterByStatus = <T extends { status: string }>(items: T[]): T[] => {
+    if (statusFilter === "all") return items;
+    return items.filter((item) => item.status === statusFilter);
+  };
+
+  const filteredLeaveRequests = filterByStatus(leaveRequests);
+  const filteredOvertimeRequests = filterByStatus(overtimeRequests);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
       {/* Header */}
@@ -110,10 +175,25 @@ const RequestHistory = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-lg space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Riwayat Pengajuan</h1>
-          <p className="text-muted-foreground">Riwayat pengajuan cuti dan lembur</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Riwayat Pengajuan</h1>
+            <p className="text-muted-foreground">Riwayat pengajuan cuti dan lembur</p>
+          </div>
         </div>
+
+        {/* Status Filter */}
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Filter Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Status</SelectItem>
+            <SelectItem value="pending">Menunggu</SelectItem>
+            <SelectItem value="approved">Disetujui</SelectItem>
+            <SelectItem value="rejected">Ditolak</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Tabs defaultValue="leave" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -130,14 +210,14 @@ const RequestHistory = () => {
           <TabsContent value="leave" className="mt-4 space-y-3">
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Memuat...</div>
-            ) : leaveRequests.length === 0 ? (
+            ) : filteredLeaveRequests.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  Belum ada pengajuan cuti
+                  {statusFilter === "all" ? "Belum ada pengajuan cuti" : "Tidak ada pengajuan dengan status ini"}
                 </CardContent>
               </Card>
             ) : (
-              leaveRequests.map((request) => (
+              filteredLeaveRequests.map((request) => (
                 <Card key={request.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
@@ -149,7 +229,40 @@ const RequestHistory = () => {
                             ` - ${format(new Date(request.end_date), "d MMM yyyy", { locale: id })}`}
                         </p>
                       </div>
-                      {getStatusBadge(request.status)}
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(request.status)}
+                        {request.status === "pending" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                disabled={cancellingId === request.id}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Batalkan Pengajuan?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Apakah Anda yakin ingin membatalkan pengajuan cuti ini? Tindakan ini tidak dapat dibatalkan.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Tidak</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleCancelLeave(request.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Ya, Batalkan
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">{request.reason}</p>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -165,14 +278,14 @@ const RequestHistory = () => {
           <TabsContent value="overtime" className="mt-4 space-y-3">
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Memuat...</div>
-            ) : overtimeRequests.length === 0 ? (
+            ) : filteredOvertimeRequests.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  Belum ada pengajuan lembur
+                  {statusFilter === "all" ? "Belum ada pengajuan lembur" : "Tidak ada pengajuan dengan status ini"}
                 </CardContent>
               </Card>
             ) : (
-              overtimeRequests.map((request) => (
+              filteredOvertimeRequests.map((request) => (
                 <Card key={request.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
@@ -182,7 +295,40 @@ const RequestHistory = () => {
                         </h3>
                         <p className="text-sm text-muted-foreground">{request.hours} jam lembur</p>
                       </div>
-                      {getStatusBadge(request.status)}
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(request.status)}
+                        {request.status === "pending" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                disabled={cancellingId === request.id}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Batalkan Pengajuan?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Apakah Anda yakin ingin membatalkan pengajuan lembur ini? Tindakan ini tidak dapat dibatalkan.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Tidak</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleCancelOvertime(request.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Ya, Batalkan
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">{request.reason}</p>
                     <div className="text-xs text-muted-foreground">

@@ -21,13 +21,11 @@ interface WorkHoursConfig {
   late_tolerance_minutes: number;
   early_leave_tolerance_minutes: number;
 }
-
 interface StatsData {
   leaveBalance: number;
   leaveTotal: number;
   attendanceCount: number;
 }
-
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -43,11 +41,21 @@ const EmployeeView = () => {
     radius: number;
   }>>([]);
   const [workHours, setWorkHours] = useState<WorkHoursConfig | null>(null);
-  const [stats, setStats] = useState<StatsData>({ leaveBalance: 0, leaveTotal: 12, attendanceCount: 0 });
+  const [stats, setStats] = useState<StatsData>({
+    leaveBalance: 0,
+    leaveTotal: 12,
+    attendanceCount: 0
+  });
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [nearestOffice, setNearestOffice] = useState<{ name: string; distance: number } | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [nearestOffice, setNearestOffice] = useState<{
+    name: string;
+    distance: number;
+  } | null>(null);
   const {
     signOut,
     profile
@@ -56,7 +64,6 @@ const EmployeeView = () => {
     toast
   } = useToast();
   const navigate = useNavigate();
-  
   useEffect(() => {
     fetchOfficeLocation();
     fetchWorkHours();
@@ -77,23 +84,23 @@ const EmployeeView = () => {
   useEffect(() => {
     const fetchGpsLocation = async () => {
       if (officeLocations.length === 0) return;
-      
       setGpsStatus('loading');
       try {
         const location = await getCurrentLocation();
         setCurrentLocation(location);
-        
+
         // Find nearest office
-        let nearest: { name: string; distance: number } | null = null;
+        let nearest: {
+          name: string;
+          distance: number;
+        } | null = null;
         for (const office of officeLocations) {
-          const distance = calculateDistance(
-            location.latitude, 
-            location.longitude, 
-            office.latitude, 
-            office.longitude
-          );
+          const distance = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
           if (!nearest || distance < nearest.distance) {
-            nearest = { name: office.name, distance };
+            nearest = {
+              name: office.name,
+              distance
+            };
           }
         }
         setNearestOffice(nearest);
@@ -103,7 +110,6 @@ const EmployeeView = () => {
         setGpsStatus('error');
       }
     };
-
     if (officeLocations.length > 0) {
       fetchGpsLocation();
     }
@@ -166,27 +172,23 @@ const EmployeeView = () => {
       setRecentAttendance(data);
     }
   };
-  
   const fetchStats = async () => {
     if (!profile?.id) return;
-    
     try {
       // Get current month attendance count
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-      
-      const { count: attendanceCount } = await supabase
-        .from('attendance')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', profile.id)
-        .gte('check_in_time', startOfMonth)
-        .lte('check_in_time', endOfMonth);
-      
+      const {
+        count: attendanceCount
+      } = await supabase.from('attendance').select('*', {
+        count: 'exact',
+        head: true
+      }).eq('user_id', profile.id).gte('check_in_time', startOfMonth).lte('check_in_time', endOfMonth);
       setStats({
         leaveBalance: profile.remaining_leave || 0,
         leaveTotal: profile.annual_leave_quota || 12,
-        attendanceCount: attendanceCount || 0,
+        attendanceCount: attendanceCount || 0
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -281,19 +283,25 @@ const EmployeeView = () => {
             const checkInHour = now.getHours();
             const checkInMinute = now.getMinutes();
             const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-            
             if (workHours && workHours.check_in_end) {
               // Parse check_in_end time (e.g., "09:00")
               const [endHour, endMinute] = workHours.check_in_end.split(':').map(Number);
               const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
-              console.log('Work hours check:', { checkInTotalMinutes, lateThreshold, checkInEnd: workHours.check_in_end });
+              console.log('Work hours check:', {
+                checkInTotalMinutes,
+                lateThreshold,
+                checkInEnd: workHours.check_in_end
+              });
               if (checkInTotalMinutes > lateThreshold) {
                 status = 'terlambat';
               }
             } else {
               // Default: jam 09:00 + 15 menit toleransi = 09:15 (555 menit)
               const defaultLateThreshold = 9 * 60 + 15; // 555 menit
-              console.log('Default check:', { checkInTotalMinutes, defaultLateThreshold });
+              console.log('Default check:', {
+                checkInTotalMinutes,
+                defaultLateThreshold
+              });
               if (checkInTotalMinutes > defaultLateThreshold) {
                 status = 'terlambat';
               }
@@ -384,18 +392,24 @@ const EmployeeView = () => {
             const checkOutHour = now.getHours();
             const checkOutMinute = now.getMinutes();
             const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
-            
             if (workHours && workHours.check_out_start) {
               const [startHour, startMinute] = workHours.check_out_start.split(':').map(Number);
               const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
-              console.log('Checkout check:', { checkOutTotalMinutes, earlyLeaveThreshold, checkOutStart: workHours.check_out_start });
+              console.log('Checkout check:', {
+                checkOutTotalMinutes,
+                earlyLeaveThreshold,
+                checkOutStart: workHours.check_out_start
+              });
               if (checkOutTotalMinutes < earlyLeaveThreshold) {
                 finalStatus = 'pulang_cepat';
               }
             } else {
               // Default: sebelum 16:45 (17:00 - 15 menit toleransi) = pulang cepat
               const defaultEarlyLeaveThreshold = 17 * 60 - 15; // 1005 menit (16:45)
-              console.log('Default checkout:', { checkOutTotalMinutes, defaultEarlyLeaveThreshold });
+              console.log('Default checkout:', {
+                checkOutTotalMinutes,
+                defaultEarlyLeaveThreshold
+              });
               if (checkOutTotalMinutes < defaultEarlyLeaveThreshold) {
                 finalStatus = 'pulang_cepat';
               }
@@ -475,18 +489,14 @@ const EmployeeView = () => {
                 </CardTitle>
                 <CardDescription className="mt-1">
                   {currentTime.toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
                 </CardDescription>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-primary tabular-nums">
-                  {currentTime.getHours().toString().padStart(2, '0')}
-                  <span className="animate-pulse">.</span>
-                  {currentTime.getMinutes().toString().padStart(2, '0')}
-                </div>
+                
                 <p className="text-xs text-muted-foreground">{profile?.jabatan}</p>
               </div>
             </div>
@@ -507,96 +517,66 @@ const EmployeeView = () => {
 
             {/* GPS Status */}
             <div className="flex items-center justify-center gap-2 text-sm">
-              {gpsStatus === 'loading' && (
-                <>
+              {gpsStatus === 'loading' && <>
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   <span className="text-muted-foreground">Mendeteksi lokasi...</span>
-                </>
-              )}
-              {gpsStatus === 'success' && nearestOffice && (
-                <>
+                </>}
+              {gpsStatus === 'success' && nearestOffice && <>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   <span className="text-muted-foreground">
                     {nearestOffice.name} • <span className={nearestOffice.distance <= 100 ? 'text-green-600 font-medium' : 'text-destructive'}>
                       {Math.round(nearestOffice.distance)}m
                     </span>
                   </span>
-                </>
-              )}
-              {gpsStatus === 'error' && (
-                <>
+                </>}
+              {gpsStatus === 'error' && <>
                   <XCircle className="h-4 w-4 text-destructive" />
                   <span className="text-destructive">Gagal mendeteksi lokasi</span>
-                </>
-              )}
-              {gpsStatus === 'idle' && (
-                <>
+                </>}
+              {gpsStatus === 'idle' && <>
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">GPS akan divalidasi</span>
-                </>
-              )}
+                </>}
             </div>
 
             {/* Check-in/Check-out Time Pills */}
             <div className="flex gap-2">
               <div className="flex-1 bg-primary/10 rounded-lg px-4 py-3">
                 <span className="text-sm font-medium text-foreground">
-                  Check-in: {isCheckedIn && checkInTime ? (
-                    <span className="text-primary font-semibold">
+                  Check-in: {isCheckedIn && checkInTime ? <span className="text-primary font-semibold">
                       {new Date(todayAttendance?.check_in_time).toLocaleTimeString('id-ID', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                    </span> : <span className="text-muted-foreground">-</span>}
                 </span>
               </div>
               <div className="flex-1 bg-muted rounded-lg px-4 py-3">
                 <span className="text-sm font-medium text-foreground">
-                  Check-out: {todayAttendance?.check_out_time ? (
-                    <span className="text-primary font-semibold">
+                  Check-out: {todayAttendance?.check_out_time ? <span className="text-primary font-semibold">
                       {new Date(todayAttendance.check_out_time).toLocaleTimeString('id-ID', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                    </span> : <span className="text-muted-foreground">-</span>}
                 </span>
               </div>
             </div>
 
             {/* Action Button */}
-            {!isCheckedIn ? (
-              <Button 
-                onClick={() => {
-                  setCameraMode("checkin");
-                  setShowCamera(true);
-                }} 
-                disabled={isProcessing} 
-                className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90"
-              >
+            {!isCheckedIn ? <Button onClick={() => {
+            setCameraMode("checkin");
+            setShowCamera(true);
+          }} disabled={isProcessing} className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90">
                 {isProcessing ? "Memproses..." : "Check In"}
-              </Button>
-            ) : !todayAttendance?.check_out_time ? (
-              <Button 
-                onClick={() => {
-                  setCameraMode("checkout");
-                  setShowCamera(true);
-                }} 
-                disabled={isProcessing}
-                className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90"
-              >
+              </Button> : !todayAttendance?.check_out_time ? <Button onClick={() => {
+            setCameraMode("checkout");
+            setShowCamera(true);
+          }} disabled={isProcessing} className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90">
                 {isProcessing ? "Memproses..." : "Check Out"}
-              </Button>
-            ) : (
-              <div className="text-center py-3 text-muted-foreground">
+              </Button> : <div className="text-center py-3 text-muted-foreground">
                 Absensi hari ini selesai
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>
 
@@ -604,10 +584,7 @@ const EmployeeView = () => {
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-4">
-              <div 
-                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate('/employee/leave-request')}
-              >
+              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/employee/leave-request')}>
                 <div className="p-2 bg-blue-500/10 rounded-lg">
                   <Calendar className="h-5 w-5 text-blue-600" />
                 </div>
@@ -619,10 +596,7 @@ const EmployeeView = () => {
                   <p className="text-lg font-bold text-primary">{stats.leaveBalance}/{stats.leaveTotal}</p>
                 </div>
               </div>
-              <div 
-                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate('/employee/attendance-history')}
-              >
+              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/employee/attendance-history')}>
                 <div className="p-2 bg-green-500/10 rounded-lg">
                   <User className="h-5 w-5 text-green-600" />
                 </div>
@@ -634,10 +608,7 @@ const EmployeeView = () => {
                   <p className="text-lg font-bold text-primary">{stats.attendanceCount}</p>
                 </div>
               </div>
-              <div 
-                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate('/employee/request-history')}
-              >
+              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/employee/request-history')}>
                 <div className="p-2 bg-orange-500/10 rounded-lg">
                   <FileText className="h-5 w-5 text-orange-600" />
                 </div>
@@ -649,10 +620,7 @@ const EmployeeView = () => {
                   <p className="text-lg font-bold text-primary">Lihat</p>
                 </div>
               </div>
-              <div 
-                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate('/employee/performance')}
-              >
+              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/employee/performance')}>
                 <div className="p-2 bg-purple-500/10 rounded-lg">
                   <User className="h-5 w-5 text-purple-600" />
                 </div>

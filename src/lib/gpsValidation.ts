@@ -76,22 +76,39 @@ export async function validateGPSLocation(userLat: number, userLon: number): Pro
   };
 }
 
-// Determine attendance status based on check-in time
-export async function determineAttendanceStatus(checkInTime: Date): Promise<"hadir" | "terlambat"> {
-  const { data, error } = await supabase.from("system_settings").select("value").eq("key", "work_hours").maybeSingle();
+// Fetch work hours settings from database using SECURITY DEFINER function
+async function fetchWorkHoursSettings(): Promise<{
+  check_in_end: string;
+  check_out_start: string;
+  late_tolerance_minutes: number;
+  early_leave_tolerance_minutes: number;
+} | null> {
+  const { data, error } = await supabase.rpc("get_work_hours");
 
   if (error || !data) {
+    console.error("Error fetching work hours:", error);
+    return null;
+  }
+
+  return data as {
+    check_in_end: string;
+    check_out_start: string;
+    late_tolerance_minutes: number;
+    early_leave_tolerance_minutes: number;
+  };
+}
+
+// Determine attendance status based on check-in time
+export async function determineAttendanceStatus(checkInTime: Date): Promise<"hadir" | "terlambat"> {
+  const config = await fetchWorkHoursSettings();
+
+  if (!config) {
     // Default: 08:00 + 15 min tolerance = 08:15 is late
     const checkInHour = checkInTime.getHours();
     const checkInMinute = checkInTime.getMinutes();
     const totalMinutes = checkInHour * 60 + checkInMinute;
     return totalMinutes > 8 * 60 + 15 ? "terlambat" : "hadir";
   }
-
-  const config = data.value as {
-    check_in_end: string;
-    late_tolerance_minutes: number;
-  };
 
   const [endHour, endMinute] = config.check_in_end.split(":").map(Number);
   const lateThreshold = endHour * 60 + endMinute + (config.late_tolerance_minutes || 15);
@@ -108,9 +125,9 @@ export async function determineCheckoutStatus(
   checkOutTime: Date,
   currentStatus: "hadir" | "terlambat",
 ): Promise<"hadir" | "terlambat" | "pulang cepat"> {
-  const { data, error } = await supabase.from("system_settings").select("value").eq("key", "work_hours").maybeSingle();
+  const config = await fetchWorkHoursSettings();
 
-  if (error || !data) {
+  if (!config) {
     // Default: before 17:00 is early
     const checkOutHour = checkOutTime.getHours();
     const checkOutMinute = checkOutTime.getMinutes();
@@ -121,11 +138,6 @@ export async function determineCheckoutStatus(
     }
     return currentStatus;
   }
-
-  const config = data.value as {
-    check_out_start: string;
-    early_leave_tolerance_minutes: number;
-  };
 
   const [startHour, startMinute] = config.check_out_start.split(":").map(Number);
   const earlyLeaveThreshold = startHour * 60 + startMinute - (config.early_leave_tolerance_minutes || 0);

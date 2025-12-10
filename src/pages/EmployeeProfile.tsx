@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building, Calendar, CreditCard, LogOut, User, Pencil } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building, Calendar, CreditCard, LogOut, User, Pencil, Key } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -11,11 +11,13 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
 import { EditProfileDialog } from "@/components/EditProfileDialog";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 const EmployeeProfile = () => {
   const navigate = useNavigate();
   const { signOut, profile, refreshProfile } = useAuth();
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   if (!profile) {
     return (
@@ -59,15 +61,26 @@ const EmployeeProfile = () => {
               <h2 className="text-xl font-bold mt-3">{profile.full_name}</h2>
               <p className="text-muted-foreground">{profile.jabatan}</p>
               <Badge variant="secondary" className="mt-2">{profile.departemen}</Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 gap-2"
-                onClick={() => setShowEditDialog(true)}
-              >
-                <Pencil className="h-4 w-4" />
-                Edit Profil
-              </Button>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setShowEditDialog(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit Profil
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setShowPasswordDialog(true)}
+                >
+                  <Key className="h-4 w-4" />
+                  Ganti Password
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -186,6 +199,15 @@ const EmployeeProfile = () => {
           onOpenChange={setShowEditDialog}
           profile={profile}
           onUpdated={() => refreshProfile()}
+        />
+      )}
+
+      {/* Change Password Dialog */}
+      {showPasswordDialog && (
+        <ChangePasswordDialog
+          open={showPasswordDialog}
+          onOpenChange={setShowPasswordDialog}
+          userEmail={profile.email}
         />
       )}
 

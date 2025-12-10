@@ -99,8 +99,10 @@ export const EditProfileDialog = ({
     // Delete old photo if exists
     if (profile.photo_url) {
       try {
-        const oldPath = profile.photo_url.split("/employee-photos/")[1];
-        if (oldPath) {
+        // Extract path from signed URL or regular path
+        const urlParts = profile.photo_url.split("/employee-photos/");
+        if (urlParts[1]) {
+          const oldPath = urlParts[1].split("?")[0]; // Remove query params from signed URL
           await supabase.storage.from("employee-photos").remove([oldPath]);
         }
       } catch (error) {
@@ -119,11 +121,16 @@ export const EditProfileDialog = ({
       throw uploadError;
     }
 
-    const { data: urlData } = supabase.storage
+    // Use signed URL since bucket is private
+    const { data: signedUrlData, error: signedError } = await supabase.storage
       .from("employee-photos")
-      .getPublicUrl(fileName);
+      .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year expiry
 
-    return urlData.publicUrl;
+    if (signedError || !signedUrlData) {
+      throw signedError || new Error("Failed to create signed URL");
+    }
+
+    return signedUrlData.signedUrl;
   };
 
   const handleSubmit = async () => {

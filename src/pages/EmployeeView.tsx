@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, MapPin, LogOut, User, Calendar, Clock, ChevronRight } from "lucide-react";
+import { Camera, MapPin, LogOut, User, Calendar, FileText, ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -517,17 +517,17 @@ const EmployeeView = () => {
               </div>
               <div 
                 className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate('/employee/overtime-request')}
+                onClick={() => navigate('/employee/request-history')}
               >
                 <div className="p-2 bg-orange-500/10 rounded-lg">
-                  <Clock className="h-5 w-5 text-orange-600" />
+                  <FileText className="h-5 w-5 text-orange-600" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Lembur</span>
+                    <span className="text-sm text-muted-foreground">Riwayat</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <p className="text-lg font-bold text-primary">Ajukan</p>
+                  <p className="text-lg font-bold text-primary">Lihat</p>
                 </div>
               </div>
               <div 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
-import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -63,10 +63,29 @@ interface RequestNotification {
   type?: "leave" | "overtime";
 }
 
+interface BusinessTravelNotification {
+  id: string;
+  user_id: string;
+  destination: string;
+  purpose: string;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  status: string;
+  created_at: string;
+  profiles: {
+    full_name: string;
+    nik: string;
+    departemen: string;
+    photo_url?: string;
+  };
+}
+
 const Notifications = () => {
   const [attendanceNotifications, setAttendanceNotifications] = useState<AttendanceNotification[]>([]);
   const [leaveNotifications, setLeaveNotifications] = useState<RequestNotification[]>([]);
   const [overtimeNotifications, setOvertimeNotifications] = useState<RequestNotification[]>([]);
+  const [businessTravelNotifications, setBusinessTravelNotifications] = useState<BusinessTravelNotification[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
@@ -77,7 +96,7 @@ const Notifications = () => {
 
   const fetchAllNotifications = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchAttendance(), fetchLeaveRequests(), fetchOvertimeRequests()]);
+    await Promise.all([fetchAttendance(), fetchLeaveRequests(), fetchOvertimeRequests(), fetchBusinessTravelRequests()]);
     setIsRefreshing(false);
   };
 
@@ -228,6 +247,46 @@ const Notifications = () => {
     setOvertimeNotifications(combinedData as any);
   };
 
+  const fetchBusinessTravelRequests = async () => {
+    const { data: travelData } = await supabase
+      .from("business_travel_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (!travelData || travelData.length === 0) {
+      setBusinessTravelNotifications([]);
+      return;
+    }
+
+    const userIds = [...new Set(travelData.map((t) => t.user_id))];
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, full_name, nik, departemen, photo_url")
+      .in("id", userIds);
+
+    const profilesWithSignedUrls = await Promise.all(
+      (profilesData || []).map(async (p) => {
+        const signedUrl = await getSignedPhotoUrl(p.photo_url);
+        return { ...p, photo_url: signedUrl };
+      }),
+    );
+
+    const profilesMap = new Map(
+      profilesWithSignedUrls.map((p) => [
+        p.id,
+        { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url },
+      ]),
+    );
+
+    const combinedData = travelData.map((request) => ({
+      ...request,
+      profiles: profilesMap.get(request.user_id) || { full_name: "Unknown", nik: "-", departemen: "-" },
+    }));
+
+    setBusinessTravelNotifications(combinedData as BusinessTravelNotification[]);
+  };
+
   const setupRealtimeSubscriptions = () => {
     // Subscribe to attendance changes
     const attendanceChannel = supabase
@@ -306,10 +365,35 @@ const Notifications = () => {
       )
       .subscribe();
 
+    // Subscribe to business travel requests
+    const travelChannel = supabase
+      .channel("business-travel-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "business_travel_requests",
+        },
+        (payload) => {
+          console.log("Business travel request change:", payload);
+          fetchBusinessTravelRequests();
+
+          if (payload.eventType === "INSERT") {
+            toast({
+              title: "Pengajuan Perjalanan Dinas Baru",
+              description: "Ada pengajuan perjalanan dinas yang memerlukan persetujuan",
+            });
+          }
+        },
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(attendanceChannel);
       supabase.removeChannel(leaveChannel);
       supabase.removeChannel(overtimeChannel);
+      supabase.removeChannel(travelChannel);
     };
   };
 
@@ -400,6 +484,18 @@ const Notifications = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Perjalanan Dinas Pending</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Plane className="h-5 w-5 text-primary" />
+                <span className="text-3xl font-bold">{businessTravelNotifications.length}</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs defaultValue="attendance" className="space-y-4">
@@ -407,6 +503,7 @@ const Notifications = () => {
             <TabsTrigger value="attendance">Aktivitas Absensi ({attendanceNotifications.length})</TabsTrigger>
             <TabsTrigger value="leave">Cuti Pending ({leaveNotifications.length})</TabsTrigger>
             <TabsTrigger value="overtime">Lembur Pending ({overtimeNotifications.length})</TabsTrigger>
+            <TabsTrigger value="travel">Perjalanan Dinas ({businessTravelNotifications.length})</TabsTrigger>
           </TabsList>
 
           {/* ✅ TAB AKTIVITAS ABSENSI – SUDAH ADA TANGGAL */}
@@ -550,6 +647,62 @@ const Notifications = () => {
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       Tidak ada pengajuan lembur yang pending
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="travel" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pengajuan Perjalanan Dinas Menunggu Persetujuan</CardTitle>
+                <CardDescription>Tinjau dan setujui pengajuan perjalanan dinas karyawan</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {businessTravelNotifications.length > 0 ? (
+                    businessTravelNotifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <EmployeeAvatar
+                            src={notification.profiles.photo_url}
+                            name={notification.profiles.full_name}
+                            fallbackClassName="bg-primary/10 text-primary"
+                          />
+                          <div>
+                            <p className="font-semibold">{notification.profiles.full_name}</p>
+                            <p className="text-sm text-muted-foreground">{notification.profiles.departemen}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3 inline mr-1" />
+                              {notification.destination}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(notification.start_date).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                            })}{" "}
+                            -{" "}
+                            {new Date(notification.end_date).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </p>
+                          <Badge variant="secondary">{notification.total_days} hari</Badge>
+                          {getStatusBadge(notification.status)}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Tidak ada pengajuan perjalanan dinas yang pending
                     </div>
                   )}
                 </div>

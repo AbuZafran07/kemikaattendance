@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Clock, X } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, X, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { EditLeaveRequestDialog } from "@/components/EditLeaveRequestDialog";
+import { EditOvertimeRequestDialog } from "@/components/EditOvertimeRequestDialog";
 
 interface LeaveRequest {
   id: string;
@@ -56,6 +58,8 @@ const RequestHistory = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [editLeaveRequest, setEditLeaveRequest] = useState<LeaveRequest | null>(null);
+  const [editOvertimeRequest, setEditOvertimeRequest] = useState<OvertimeRequest | null>(null);
 
   useEffect(() => {
     if (profile?.id) {
@@ -229,38 +233,48 @@ const RequestHistory = () => {
                             ` - ${format(new Date(request.end_date), "d MMM yyyy", { locale: id })}`}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         {getStatusBadge(request.status)}
                         {request.status === "pending" && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                disabled={cancellingId === request.id}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Batalkan Pengajuan?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Apakah Anda yakin ingin membatalkan pengajuan cuti ini? Tindakan ini tidak dapat dibatalkan.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Tidak</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleCancelLeave(request.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setEditLeaveRequest(request)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  disabled={cancellingId === request.id}
                                 >
-                                  Ya, Batalkan
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Batalkan Pengajuan?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Apakah Anda yakin ingin membatalkan pengajuan cuti ini? Tindakan ini tidak dapat dibatalkan.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Tidak</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleCancelLeave(request.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Ya, Batalkan
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
                         )}
                       </div>
                     </div>
@@ -295,38 +309,48 @@ const RequestHistory = () => {
                         </h3>
                         <p className="text-sm text-muted-foreground">{request.hours} jam lembur</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         {getStatusBadge(request.status)}
                         {request.status === "pending" && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                disabled={cancellingId === request.id}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Batalkan Pengajuan?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Apakah Anda yakin ingin membatalkan pengajuan lembur ini? Tindakan ini tidak dapat dibatalkan.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Tidak</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleCancelOvertime(request.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setEditOvertimeRequest(request)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  disabled={cancellingId === request.id}
                                 >
-                                  Ya, Batalkan
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Batalkan Pengajuan?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Apakah Anda yakin ingin membatalkan pengajuan lembur ini? Tindakan ini tidak dapat dibatalkan.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Tidak</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleCancelOvertime(request.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Ya, Batalkan
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
                         )}
                       </div>
                     </div>
@@ -341,6 +365,25 @@ const RequestHistory = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Edit Dialogs */}
+      {editLeaveRequest && (
+        <EditLeaveRequestDialog
+          open={!!editLeaveRequest}
+          onOpenChange={(open) => !open && setEditLeaveRequest(null)}
+          request={editLeaveRequest}
+          onUpdated={fetchRequests}
+        />
+      )}
+
+      {editOvertimeRequest && (
+        <EditOvertimeRequestDialog
+          open={!!editOvertimeRequest}
+          onOpenChange={(open) => !open && setEditOvertimeRequest(null)}
+          request={editOvertimeRequest}
+          onUpdated={fetchRequests}
+        />
+      )}
 
       <EmployeeBottomNav />
     </div>

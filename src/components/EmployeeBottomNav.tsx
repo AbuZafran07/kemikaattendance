@@ -14,7 +14,7 @@ const navItems: NavItem[] = [
   { label: "Cuti", icon: Calendar, path: "/employee/leave-request" },
   { label: "Self Service", icon: LayoutGrid, path: "/employee/self-service", isCenter: true },
   { label: "Notifikasi", icon: Bell, path: "/employee/notifications" },
-  { label: "Profil", icon: User, path: "/employee/performance" },
+  { label: "Profil", icon: User, path: "/employee/profile" },
 ];
 
 export const EmployeeBottomNav = () => {

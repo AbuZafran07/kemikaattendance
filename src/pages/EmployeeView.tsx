@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, MapPin, LogOut, User, Calendar, FileText, ChevronRight, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import {
+  Camera,
+  MapPin,
+  LogOut,
+  User,
+  Calendar,
+  FileText,
+  ChevronRight,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,17 +45,19 @@ const EmployeeView = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraMode, setCameraMode] = useState<"checkin" | "checkout">("checkin");
-  const [officeLocations, setOfficeLocations] = useState<Array<{
-    name: string;
-    latitude: number;
-    longitude: number;
-    radius: number;
-  }>>([]);
+  const [officeLocations, setOfficeLocations] = useState<
+    Array<{
+      name: string;
+      latitude: number;
+      longitude: number;
+      radius: number;
+    }>
+  >([]);
   const [workHours, setWorkHours] = useState<WorkHoursConfig | null>(null);
   const [stats, setStats] = useState<StatsData>({
     leaveBalance: 0,
     leaveTotal: 12,
-    attendanceCount: 0
+    attendanceCount: 0,
   });
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -56,13 +69,8 @@ const EmployeeView = () => {
     name: string;
     distance: number;
   } | null>(null);
-  const {
-    signOut,
-    profile
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { signOut, profile } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   useEffect(() => {
     fetchOfficeLocation();
@@ -99,7 +107,7 @@ const EmployeeView = () => {
           if (!nearest || distance < nearest.distance) {
             nearest = {
               name: office.name,
-              distance
+              distance,
             };
           }
         }
@@ -116,10 +124,7 @@ const EmployeeView = () => {
   }, [officeLocations]);
   const fetchOfficeLocation = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.rpc("get_office_locations");
+      const { data, error } = await supabase.rpc("get_office_locations");
       if (error) throw error;
       if (data && Array.isArray(data)) {
         const locations = data as Array<{
@@ -136,10 +141,11 @@ const EmployeeView = () => {
   };
   const fetchWorkHours = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from("system_settings").select("value").eq("key", "work_hours").maybeSingle();
+      const { data, error } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "work_hours")
+        .maybeSingle();
       if (error) throw error;
       if (data) {
         setWorkHours(data.value as unknown as WorkHoursConfig);
@@ -150,16 +156,21 @@ const EmployeeView = () => {
   };
   const fetchTodayAttendance = async () => {
     const today = new Date().toISOString().split("T")[0];
-    const {
-      data
-    } = await supabase.from("attendance").select("*").gte("check_in_time", `${today}T00:00:00`).lte("check_in_time", `${today}T23:59:59`).single();
+    const { data } = await supabase
+      .from("attendance")
+      .select("*")
+      .gte("check_in_time", `${today}T00:00:00`)
+      .lte("check_in_time", `${today}T23:59:59`)
+      .single();
     if (data) {
       setTodayAttendance(data);
       setIsCheckedIn(true);
-      setCheckInTime(new Date(data.check_in_time).toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit"
-      }));
+      setCheckInTime(
+        new Date(data.check_in_time).toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
     } else {
       // No attendance today - reset state
       setTodayAttendance(null);
@@ -168,11 +179,13 @@ const EmployeeView = () => {
     }
   };
   const fetchRecentAttendance = async () => {
-    const {
-      data
-    } = await supabase.from("attendance").select("*").order("check_in_time", {
-      ascending: false
-    }).limit(3);
+    const { data } = await supabase
+      .from("attendance")
+      .select("*")
+      .order("check_in_time", {
+        ascending: false,
+      })
+      .limit(3);
     if (data) {
       setRecentAttendance(data);
     }
@@ -184,16 +197,19 @@ const EmployeeView = () => {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-      const {
-        count: attendanceCount
-      } = await supabase.from("attendance").select("*", {
-        count: "exact",
-        head: true
-      }).eq("user_id", profile.id).gte("check_in_time", startOfMonth).lte("check_in_time", endOfMonth);
+      const { count: attendanceCount } = await supabase
+        .from("attendance")
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq("user_id", profile.id)
+        .gte("check_in_time", startOfMonth)
+        .lte("check_in_time", endOfMonth);
       setStats({
         leaveBalance: profile.remaining_leave || 0,
         leaveTotal: profile.annual_leave_quota || 12,
-        attendanceCount: attendanceCount || 0
+        attendanceCount: attendanceCount || 0,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -201,10 +217,10 @@ const EmployeeView = () => {
   };
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3; // Earth's radius in meters
-    const φ1 = lat1 * Math.PI / 180;
-    const φ2 = lat2 * Math.PI / 180;
-    const Δφ = (lat2 - lat1) * Math.PI / 180;
-    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
     const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distance in meters
@@ -218,18 +234,22 @@ const EmployeeView = () => {
         reject(new Error("Geolocation tidak didukung oleh browser Anda"));
         return;
       }
-      navigator.geolocation.getCurrentPosition(position => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-      }, error => {
-        reject(new Error("Tidak dapat mengakses lokasi: " + error.message));
-      }, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      });
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          reject(new Error("Tidak dapat mengakses lokasi: " + error.message));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        },
+      );
     });
   };
   const handleCheckIn = async (photoUrl: string) => {
@@ -257,26 +277,33 @@ const EmployeeView = () => {
               radius: number;
             } | null = null;
             for (const office of officeLocations) {
-              const distance = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
+              const distance = calculateDistance(
+                location.latitude,
+                location.longitude,
+                office.latitude,
+                office.longitude,
+              );
               if (distance <= office.radius) {
                 if (!nearestOffice || distance < nearestOffice.distance) {
                   nearestOffice = {
                     name: office.name,
                     distance,
-                    radius: office.radius
+                    radius: office.radius,
                   };
                 }
               }
             }
             if (!nearestOffice) {
-              const distances = officeLocations.map(office => {
-                const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
-                return `${office.name}: ${Math.round(d)}m`;
-              }).join(", ");
+              const distances = officeLocations
+                .map((office) => {
+                  const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
+                  return `${office.name}: ${Math.round(d)}m`;
+                })
+                .join(", ");
               toast({
                 title: "Lokasi Tidak Valid",
                 description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
-                variant: "destructive"
+                variant: "destructive",
               });
               setIsProcessing(false);
               return;
@@ -295,7 +322,7 @@ const EmployeeView = () => {
               console.log("Work hours check:", {
                 checkInTotalMinutes,
                 lateThreshold,
-                checkInEnd: workHours.check_in_end
+                checkInEnd: workHours.check_in_end,
               });
               if (checkInTotalMinutes > lateThreshold) {
                 status = "terlambat";
@@ -305,36 +332,41 @@ const EmployeeView = () => {
               const defaultLateThreshold = 9 * 60 + 15; // 555 menit
               console.log("Default check:", {
                 checkInTotalMinutes,
-                defaultLateThreshold
+                defaultLateThreshold,
               });
               if (checkInTotalMinutes > defaultLateThreshold) {
                 status = "terlambat";
               }
             }
-            const {
-              data,
-              error
-            } = await supabase.from("attendance").insert([{
-              user_id: profile?.id!,
-              check_in_time: now.toISOString(),
-              check_in_latitude: location.latitude,
-              check_in_longitude: location.longitude,
-              check_in_photo_url: base64Photo,
-              gps_validated: true,
-              face_recognition_validated: false,
-              status: status,
-              notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-            }]).select().single();
+            const { data, error } = await supabase
+              .from("attendance")
+              .insert([
+                {
+                  user_id: profile?.id!,
+                  check_in_time: now.toISOString(),
+                  check_in_latitude: location.latitude,
+                  check_in_longitude: location.longitude,
+                  check_in_photo_url: base64Photo,
+                  gps_validated: true,
+                  face_recognition_validated: false,
+                  status: status,
+                  notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
+                },
+              ])
+              .select()
+              .single();
             if (error) throw error;
             setIsCheckedIn(true);
             setTodayAttendance(data);
-            setCheckInTime(now.toLocaleTimeString("id-ID", {
-              hour: "2-digit",
-              minute: "2-digit"
-            }));
+            setCheckInTime(
+              now.toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            );
             toast({
               title: "Check-In Berhasil",
-              description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
+              description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
             });
             fetchRecentAttendance();
             resolve(true);
@@ -349,7 +381,7 @@ const EmployeeView = () => {
       toast({
         title: "Check-In Gagal",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
@@ -377,13 +409,18 @@ const EmployeeView = () => {
               distance: number;
             } | null = null;
             for (const office of officeLocations) {
-              const distance = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
+              const distance = calculateDistance(
+                location.latitude,
+                location.longitude,
+                office.latitude,
+                office.longitude,
+              );
               if (distance <= office.radius) {
                 isValidLocation = true;
                 if (!nearestOffice || distance < nearestOffice.distance) {
                   nearestOffice = {
                     name: office.name,
-                    distance
+                    distance,
                   };
                 }
               }
@@ -403,7 +440,7 @@ const EmployeeView = () => {
               console.log("Checkout check:", {
                 checkOutTotalMinutes,
                 earlyLeaveThreshold,
-                checkOutStart: workHours.check_out_start
+                checkOutStart: workHours.check_out_start,
               });
               if (checkOutTotalMinutes < earlyLeaveThreshold) {
                 finalStatus = "pulang_cepat";
@@ -413,31 +450,36 @@ const EmployeeView = () => {
               const defaultEarlyLeaveThreshold = 17 * 60 - 15; // 1005 menit (16:45)
               console.log("Default checkout:", {
                 checkOutTotalMinutes,
-                defaultEarlyLeaveThreshold
+                defaultEarlyLeaveThreshold,
               });
               if (checkOutTotalMinutes < defaultEarlyLeaveThreshold) {
                 finalStatus = "pulang_cepat";
               }
             }
-            const {
-              data: updatedData,
-              error
-            } = await supabase.from("attendance").update({
-              check_out_time: now.toISOString(),
-              check_out_latitude: location.latitude,
-              check_out_longitude: location.longitude,
-              check_out_photo_url: base64Photo,
-              duration_minutes: durationMinutes,
-              status: finalStatus,
-              notes: nearestOffice ? `Check-in di ${todayAttendance.notes?.split(" di ")[1] || "kantor"}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)` : todayAttendance.notes
-            }).eq("id", todayAttendance.id).select().single();
+            const { data: updatedData, error } = await supabase
+              .from("attendance")
+              .update({
+                check_out_time: now.toISOString(),
+                check_out_latitude: location.latitude,
+                check_out_longitude: location.longitude,
+                check_out_photo_url: base64Photo,
+                duration_minutes: durationMinutes,
+                status: finalStatus,
+                notes: nearestOffice
+                  ? `Check-in di ${todayAttendance.notes?.split(" di ")[1] || "kantor"}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
+                  : todayAttendance.notes,
+              })
+              .eq("id", todayAttendance.id)
+              .select()
+              .single();
             if (error) throw error;
 
             // Update state with checkout time - keep isCheckedIn true to show completed attendance
             setTodayAttendance(updatedData);
             toast({
               title: "Check-Out Berhasil",
-              description: finalStatus === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!"
+              description:
+                finalStatus === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!",
             });
             fetchRecentAttendance();
             resolve(true);
@@ -452,7 +494,7 @@ const EmployeeView = () => {
       toast({
         title: "Check-Out Gagal",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
@@ -463,11 +505,12 @@ const EmployeeView = () => {
       hadir: "Hadir",
       terlambat: "Terlambat",
       pulang_cepat: "Pulang Cepat",
-      tidak_hadir: "Tidak Hadir"
+      tidak_hadir: "Tidak Hadir",
     };
     return statusMap[status] || status;
   };
-  return <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -486,7 +529,12 @@ const EmployeeView = () => {
               <Avatar className="h-16 w-16 ring-2 ring-primary/20">
                 <AvatarImage src={profile?.photo_url || undefined} alt={profile?.full_name} />
                 <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                  {profile?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || <User className="h-8 w-8" />}
+                  {profile?.full_name
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2) || <User className="h-8 w-8" />}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
@@ -498,10 +546,10 @@ const EmployeeView = () => {
                 <p className="text-sm text-muted-foreground mt-1">{profile?.jabatan || "Karyawan"}</p>
                 <CardDescription className="mt-2">
                   {currentTime.toLocaleDateString("id-ID", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric"
-                })}
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </CardDescription>
               </div>
             </div>
@@ -522,11 +570,14 @@ const EmployeeView = () => {
 
             {/* GPS Status */}
             <div className="flex items-center justify-center gap-2 text-sm">
-              {gpsStatus === "loading" && <>
+              {gpsStatus === "loading" && (
+                <>
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   <span className="text-muted-foreground">Mendeteksi lokasi...</span>
-                </>}
-              {gpsStatus === "success" && nearestOffice && <>
+                </>
+              )}
+              {gpsStatus === "success" && nearestOffice && (
+                <>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   <span className="text-muted-foreground">
                     {nearestOffice.name} •{" "}
@@ -534,15 +585,20 @@ const EmployeeView = () => {
                       {Math.round(nearestOffice.distance)}m
                     </span>
                   </span>
-                </>}
-              {gpsStatus === "error" && <>
+                </>
+              )}
+              {gpsStatus === "error" && (
+                <>
                   <XCircle className="h-4 w-4 text-destructive" />
                   <span className="text-destructive">Gagal mendeteksi lokasi</span>
-                </>}
-              {gpsStatus === "idle" && <>
+                </>
+              )}
+              {gpsStatus === "idle" && (
+                <>
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">GPS akan divalidasi</span>
-                </>}
+                </>
+              )}
             </div>
 
             {/* Check-in/Check-out Time Pills */}
@@ -550,41 +606,63 @@ const EmployeeView = () => {
               <div className="flex-1 bg-primary/10 rounded-lg px-4 py-3 pl-[5px] pr-[26px]">
                 <span className="font-medium text-foreground text-xs">
                   Check-in:{" "}
-                  {todayAttendance?.check_in_time ? <span className="text-primary font-semibold">
+                  {todayAttendance?.check_in_time ? (
+                    <span className="text-primary font-semibold">
                       {new Date(todayAttendance.check_in_time).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  })}
-                    </span> : <span className="text-muted-foreground">-</span>}
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </span>
               </div>
               <div className="flex-1 rounded-lg px-4 py-3 pl-[5px] pr-[24px] bg-red-100">
                 <span className="font-medium text-foreground text-xs">
                   Check-out:{" "}
-                  {todayAttendance?.check_out_time ? <span className="text-primary font-semibold">
+                  {todayAttendance?.check_out_time ? (
+                    <span className="text-primary font-semibold">
                       {new Date(todayAttendance.check_out_time).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  })}
-                    </span> : <span className="text-muted-foreground">-</span>}
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </span>
               </div>
             </div>
 
             {/* Action Button */}
-            {todayAttendance?.check_out_time ? <div className="text-center py-3 text-muted-foreground">Absensi hari ini selesai</div> : todayAttendance ? <Button onClick={() => {
-            setCameraMode("checkout");
-            setShowCamera(true);
-          }} disabled={isProcessing} className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90">
+            {todayAttendance?.check_out_time ? (
+              <div className="text-center py-3 text-muted-foreground">Absensi hari ini selesai</div>
+            ) : todayAttendance ? (
+              <Button
+                onClick={() => {
+                  setCameraMode("checkout");
+                  setShowCamera(true);
+                }}
+                disabled={isProcessing}
+                className="w-full h-10 font-semibold text-lg bg-primary hover:bg-primary/90"
+              >
                 <Camera className="h-5 w-5 mr-2" />
                 {isProcessing ? "Memproses..." : "Check Out"}
-              </Button> : <Button onClick={() => {
-            setCameraMode("checkin");
-            setShowCamera(true);
-          }} disabled={isProcessing} className="w-full h-14 font-semibold bg-primary hover:bg-primary/90 text-base">
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  setCameraMode("checkin");
+                  setShowCamera(true);
+                }}
+                disabled={isProcessing}
+                className="w-full h-10 font-semibold bg-primary hover:bg-primary/90 text-base"
+              >
                 <Camera className="h-5 w-5 mr-2" />
                 {isProcessing ? "Memproses..." : "Check In"}
-              </Button>}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -592,7 +670,10 @@ const EmployeeView = () => {
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/employee/leave-request")}>
+              <div
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate("/employee/leave-request")}
+              >
                 <div className="p-2 bg-blue-500/10 rounded-lg">
                   <Calendar className="h-5 w-5 text-blue-600" />
                 </div>
@@ -606,7 +687,10 @@ const EmployeeView = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/employee/attendance-history")}>
+              <div
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate("/employee/attendance-history")}
+              >
                 <div className="p-2 bg-green-500/10 rounded-lg">
                   <User className="h-5 w-5 text-green-600" />
                 </div>
@@ -618,7 +702,10 @@ const EmployeeView = () => {
                   <p className="text-lg font-bold text-primary">{stats.attendanceCount}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/employee/request-history")}>
+              <div
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate("/employee/request-history")}
+              >
                 <div className="p-2 bg-orange-500/10 rounded-lg">
                   <FileText className="h-5 w-5 text-orange-600" />
                 </div>
@@ -630,7 +717,10 @@ const EmployeeView = () => {
                   <p className="text-lg font-bold text-primary">Lihat</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/employee/performance")}>
+              <div
+                className="flex items-center gap-3 p-3 bg-card rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate("/employee/performance")}
+              >
                 <div className="p-2 bg-purple-500/10 rounded-lg">
                   <User className="h-5 w-5 text-purple-600" />
                 </div>
@@ -649,13 +739,19 @@ const EmployeeView = () => {
 
       <EmployeeBottomNav />
 
-      <CameraCapture isOpen={showCamera} onClose={() => setShowCamera(false)} onCapture={photoUrl => {
-      if (cameraMode === "checkin") {
-        handleCheckIn(photoUrl);
-      } else {
-        handleCheckOut(photoUrl);
-      }
-    }} title={cameraMode === "checkin" ? "Check-In" : "Check-Out"} />
-    </div>;
+      <CameraCapture
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={(photoUrl) => {
+          if (cameraMode === "checkin") {
+            handleCheckIn(photoUrl);
+          } else {
+            handleCheckOut(photoUrl);
+          }
+        }}
+        title={cameraMode === "checkin" ? "Check-In" : "Check-Out"}
+      />
+    </div>
+  );
 };
 export default EmployeeView;

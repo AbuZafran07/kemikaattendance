@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { leaveRequestSchema, LeaveRequestFormData } from "@/lib/validationSchemas";
 import { useLeavePolicy } from "@/hooks/usePolicySettings";
 import logo from "@/assets/logo.png";
+import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 
 const LeaveRequest = () => {
   const navigate = useNavigate();
@@ -199,7 +200,7 @@ const LeaveRequest = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/employee")}>
@@ -346,6 +347,8 @@ const LeaveRequest = () => {
           </CardContent>
         </Card>
       </div>
+
+      <EmployeeBottomNav />
     </div>
   );
 };

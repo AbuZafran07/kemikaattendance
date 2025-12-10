@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import logo from "@/assets/logo.png";
+import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 
 const AttendanceHistory = () => {
   const navigate = useNavigate();
@@ -79,7 +80,7 @@ const AttendanceHistory = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -88,14 +89,14 @@ const AttendanceHistory = () => {
             </Button>
             <img src={logo} alt="Kemika" className="h-10 object-contain" />
           </div>
-          <Button onClick={exportToExcel} disabled={attendanceRecords.length === 0}>
+          <Button onClick={exportToExcel} disabled={attendanceRecords.length === 0} size="sm">
             <Download className="h-4 w-4 mr-2" />
-            Export Excel
+            Export
           </Button>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
+      <div className="container mx-auto px-4 py-6 max-w-lg">
         <Card>
           <CardHeader>
             <CardTitle>Riwayat Absensi</CardTitle>
@@ -156,6 +157,8 @@ const AttendanceHistory = () => {
           </CardContent>
         </Card>
       </div>
+
+      <EmployeeBottomNav />
     </div>
   );
 };

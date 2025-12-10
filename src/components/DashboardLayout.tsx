@@ -10,7 +10,8 @@ import {
   Bell, 
   Settings,
   LogOut,
-  Menu
+  Menu,
+  Plane
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Absensi", href: "/dashboard/attendance", icon: ClipboardCheck },
   { name: "Cuti", href: "/dashboard/leave", icon: Calendar },
   { name: "Lembur", href: "/dashboard/overtime", icon: Clock },
+  { name: "Perjalanan Dinas", href: "/dashboard/business-travel", icon: Plane },
   { name: "Laporan", href: "/dashboard/reports", icon: FileText },
   { name: "Notifikasi", href: "/dashboard/notifications", icon: Bell },
   { name: "Pengaturan", href: "/dashboard/settings", icon: Settings },

@@ -550,7 +550,7 @@ const EmployeeView = () => {
             {/* Check-in/Check-out Time Pills */}
             <div className="flex gap-2">
               <div className="flex-1 bg-primary/10 rounded-lg px-4 py-3 pl-[5px] pr-[26px]">
-                <span className="text-sm font-medium text-foreground">
+                <span className="font-medium text-foreground text-xs">
                   Check-in:{" "}
                   {todayAttendance?.check_in_time ? <span className="text-primary font-semibold">
                       {new Date(todayAttendance.check_in_time).toLocaleTimeString("id-ID", {
@@ -561,7 +561,7 @@ const EmployeeView = () => {
                 </span>
               </div>
               <div className="flex-1 bg-muted rounded-lg px-4 py-3 pl-[5px] pr-[24px]">
-                <span className="text-sm font-medium text-foreground">
+                <span className="font-medium text-foreground text-xs">
                   Check-out:{" "}
                   {todayAttendance?.check_out_time ? <span className="text-primary font-semibold">
                       {new Date(todayAttendance.check_out_time).toLocaleTimeString("id-ID", {

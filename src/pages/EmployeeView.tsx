@@ -432,52 +432,69 @@ const EmployeeView = () => {
 
         {/* Check-In/Out Card */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-center">Absensi Hari Ini</CardTitle>
-            <CardDescription className="text-center">
-              {new Date().toLocaleDateString('id-ID', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-center">
-              <div className="text-center">
-                <div className="text-4xl font-bold mb-2 text-green-800">
-                  {new Date().toLocaleTimeString('id-ID', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-                </div>
-                <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span className="text-sm">GPS akan divalidasi</span>
-                </div>
+          <CardContent className="pt-6 space-y-4">
+            {/* Check-in/Check-out Time Pills */}
+            <div className="flex gap-2">
+              <div className="flex-1 bg-primary/10 rounded-lg px-4 py-3">
+                <span className="text-sm font-medium text-foreground">
+                  Check-in: {isCheckedIn && checkInTime ? (
+                    <span className="text-primary font-semibold">
+                      {new Date(todayAttendance?.check_in_time).toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex-1 bg-muted rounded-lg px-4 py-3">
+                <span className="text-sm font-medium text-foreground">
+                  Check-out: {todayAttendance?.check_out_time ? (
+                    <span className="text-primary font-semibold">
+                      {new Date(todayAttendance.check_out_time).toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </span>
               </div>
             </div>
 
-            {!isCheckedIn ? <Button onClick={() => {
-            setCameraMode("checkin");
-            setShowCamera(true);
-          }} disabled={isProcessing} className="w-full h-32 font-semibold gap-3 text-justify text-lg bg-green-800 hover:bg-green-700 mx-0 my-[7px]">
-                <Camera className="h-6 w-6" />
-                {isProcessing ? "Memproses..." : "Check-In Sekarang"}
-              </Button> : <>
-                <div className="bg-primary/10 p-4 rounded-lg text-center">
-                  <p className="text-sm text-muted-foreground">Check-In</p>
-                  <p className="text-2xl font-bold text-primary">{checkInTime}</p>
-                </div>
-                <Button className="w-full h-32 text-lg font-semibold gap-3" variant="secondary" onClick={() => {
-              setCameraMode("checkout");
-              setShowCamera(true);
-            }} disabled={isProcessing}>
-                  <Camera className="h-6 w-6" />
-                  {isProcessing ? "Memproses..." : "Check-Out Sekarang"}
-                </Button>
-              </>}
+            {/* Action Button */}
+            {!isCheckedIn ? (
+              <Button 
+                onClick={() => {
+                  setCameraMode("checkin");
+                  setShowCamera(true);
+                }} 
+                disabled={isProcessing} 
+                className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90"
+              >
+                {isProcessing ? "Memproses..." : "Check In"}
+              </Button>
+            ) : !todayAttendance?.check_out_time ? (
+              <Button 
+                onClick={() => {
+                  setCameraMode("checkout");
+                  setShowCamera(true);
+                }} 
+                disabled={isProcessing}
+                className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90"
+              >
+                {isProcessing ? "Memproses..." : "Check Out"}
+              </Button>
+            ) : (
+              <div className="text-center py-3 text-muted-foreground">
+                Absensi hari ini selesai
+              </div>
+            )}
           </CardContent>
         </Card>
 

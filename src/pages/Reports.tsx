@@ -14,6 +14,24 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
+import logoImage from "@/assets/logo.png";
+
+const loadImageAsBase64 = (src: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+};
 
 export default function Reports() {
   const { toast } = useToast();
@@ -408,15 +426,24 @@ export default function Reports() {
       }
 
       const doc = new jsPDF();
+      
+      // Add logo
+      try {
+        const logoBase64 = await loadImageAsBase64(logoImage);
+        doc.addImage(logoBase64, "PNG", 14, 10, 30, 12);
+      } catch (e) {
+        console.log("Could not load logo");
+      }
+      
       doc.setFontSize(16);
-      doc.text(title, 14, 15);
+      doc.text(title, 50, 18);
       doc.setFontSize(10);
-      doc.text(`Dibuat: ${format(new Date(), "yyyy-MM-dd HH:mm")}`, 14, 22);
+      doc.text(`Dibuat: ${format(new Date(), "yyyy-MM-dd HH:mm")}`, 50, 25);
 
       autoTable(doc, {
         head: [columns],
         body: data,
-        startY: 28,
+        startY: 32,
         styles: { fontSize: 8 },
         headStyles: { fillColor: [0, 135, 81] },
       });

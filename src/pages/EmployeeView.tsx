@@ -544,13 +544,6 @@ const EmployeeView = () => {
                   {profile?.full_name || "User"}!
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">{profile?.jabatan || "Karyawan"}</p>
-                <CardDescription className="mt-2">
-                  {currentTime.toLocaleDateString("id-ID", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -566,6 +559,13 @@ const EmployeeView = () => {
                 <span className="animate-pulse">.</span>
                 {currentTime.getMinutes().toString().padStart(2, "0")}
               </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {currentTime.toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
             </div>
 
             {/* GPS Status */}

@@ -10,7 +10,7 @@ interface EmployeeAvatarProps {
   name?: string;
   className?: string;
   fallbackClassName?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   lazy?: boolean;
 }
 
@@ -18,12 +18,14 @@ const sizeClasses = {
   sm: "h-8 w-8",
   md: "h-10 w-10",
   lg: "h-12 w-12",
+  xl: "h-24 w-24",
 };
 
 const imageSizes = {
   sm: { width: 64, height: 64 },
   md: { width: 80, height: 80 },
   lg: { width: 96, height: 96 },
+  xl: { width: 192, height: 192 },
 };
 
 export const EmployeeAvatar = ({
@@ -79,14 +81,18 @@ export const EmployeeAvatar = ({
     setHasError(true);
   };
 
+  // Compute the effective size class, allowing className to override
+  const effectiveSizeClass = sizeClasses[size];
+
   return (
-    <div ref={containerRef} className={cn(sizeClasses[size], className)}>
+    <div ref={containerRef} className={cn(effectiveSizeClass, className)}>
       {isLoading && isVisible && (
-        <Skeleton className={cn("rounded-full", sizeClasses[size])} />
+        <Skeleton className={cn("rounded-full", effectiveSizeClass, className)} />
       )}
       <Avatar
         className={cn(
-          sizeClasses[size],
+          effectiveSizeClass,
+          className,
           isLoading && isVisible ? "hidden" : "animate-fade-in"
         )}
       >

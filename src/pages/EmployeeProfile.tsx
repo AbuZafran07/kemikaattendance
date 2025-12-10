@@ -54,7 +54,7 @@ const EmployeeProfile = () => {
                 <EmployeeAvatar
                   src={profile.photo_url}
                   name={profile.full_name}
-                  size="lg"
+                  size="xl"
                   className="h-24 w-24 text-2xl"
                 />
               </div>

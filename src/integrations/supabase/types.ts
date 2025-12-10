@@ -71,6 +71,60 @@ export type Database = {
         }
         Relationships: []
       }
+      business_travel_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          destination: string
+          document_url: string | null
+          end_date: string
+          id: string
+          notes: string | null
+          purpose: string
+          rejection_reason: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["leave_status"]
+          total_days: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          destination: string
+          document_url?: string | null
+          end_date: string
+          id?: string
+          notes?: string | null
+          purpose: string
+          rejection_reason?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          total_days: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          destination?: string
+          document_url?: string | null
+          end_date?: string
+          id?: string
+          notes?: string | null
+          purpose?: string
+          rejection_reason?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          total_days?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           approved_at: string | null

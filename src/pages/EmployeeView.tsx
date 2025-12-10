@@ -603,7 +603,7 @@ const EmployeeView = () => {
 
             {/* Check-in/Check-out Time Pills */}
             <div className="flex gap-2">
-              <div className="flex-1 bg-primary/10 rounded-lg px-4 py-3 pl-[5px] pr-[26px]">
+              <div className="flex-1 bg-primary/10 rounded-lg px-5 py-2 pl-[5px] pr-[26px]">
                 <span className="font-medium text-foreground text-xs">
                   Check-in:{" "}
                   {todayAttendance?.check_in_time ? (
@@ -618,7 +618,7 @@ const EmployeeView = () => {
                   )}
                 </span>
               </div>
-              <div className="flex-1 rounded-lg px-4 py-3 pl-[5px] pr-[24px] bg-red-100">
+              <div className="flex-1 rounded-lg px-5 py-2 pl-[5px] pr-[24px] bg-red-100">
                 <span className="font-medium text-foreground text-xs">
                   Check-out:{" "}
                   {todayAttendance?.check_out_time ? (

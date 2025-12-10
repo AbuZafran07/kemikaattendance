@@ -430,6 +430,32 @@ const EmployeeView = () => {
           </CardContent>
         </Card>
 
+        {/* Welcome & Attendance Card */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16 ring-2 ring-primary/20">
+                <AvatarImage src={profile?.photo_url || undefined} alt={profile?.full_name} />
+                <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                  {profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || <User className="h-8 w-8" />}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-xl">
+                  Welcome back,<br />{profile?.full_name?.split(' ')[0] || 'User'}!
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {new Date().toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
         {/* Check-In/Out Card */}
         <Card>
           <CardContent className="pt-6 space-y-4">

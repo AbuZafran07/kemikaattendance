@@ -1,4 +1,4 @@
-import { Home, Calendar, Bell, User, LayoutGrid } from "lucide-react";
+import { Home, Plane, Bell, User, LayoutGrid } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -11,7 +11,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Beranda", icon: Home, path: "/employee" },
-  { label: "Cuti", icon: Calendar, path: "/employee/leave-request" },
+  { label: "Dinas", icon: Plane, path: "/employee/business-travel" },
   { label: "Self Service", icon: LayoutGrid, path: "/employee/self-service", isCenter: true },
   { label: "Notifikasi", icon: Bell, path: "/employee/notifications" },
   { label: "Profil", icon: User, path: "/employee/profile" },

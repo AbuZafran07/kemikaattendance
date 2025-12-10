@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, TrendingUp, ChevronRight, History } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar, Clock, TrendingUp, ChevronRight, History, Plane, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -24,11 +24,25 @@ const services: ServiceItem[] = [
     color: "bg-blue-500/10 text-blue-600",
   },
   {
+    label: "Ajukan Perjalanan Dinas",
+    description: "Buat pengajuan perjalanan dinas luar",
+    icon: Plane,
+    path: "/employee/business-travel",
+    color: "bg-purple-500/10 text-purple-600",
+  },
+  {
     label: "Ajukan Lembur",
     description: "Buat pengajuan jam lembur",
     icon: Clock,
     path: "/employee/overtime-request",
     color: "bg-orange-500/10 text-orange-600",
+  },
+  {
+    label: "Riwayat Pengajuan",
+    description: "Lihat riwayat cuti, lembur, dan perjalanan dinas",
+    icon: FileText,
+    path: "/employee/request-history",
+    color: "bg-gray-500/10 text-gray-600",
   },
   {
     label: "Riwayat Absensi",

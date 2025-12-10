@@ -33,6 +33,9 @@ import EmployeeSelfService from "./pages/EmployeeSelfService";
 import EmployeeNotifications from "./pages/EmployeeNotifications";
 import RequestHistory from "./pages/RequestHistory";
 import EmployeeProfile from "./pages/EmployeeProfile";
+import BusinessTravelRequest from "./pages/BusinessTravelRequest";
+import BusinessTravelHistory from "./pages/BusinessTravelHistory";
+import BusinessTravel from "./pages/BusinessTravel";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -50,6 +53,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/attendance" element={<ProtectedRoute requireAdmin><Attendance /></ProtectedRoute>} />
             <Route path="/dashboard/leave" element={<ProtectedRoute requireAdmin><Leave /></ProtectedRoute>} />
             <Route path="/dashboard/overtime" element={<ProtectedRoute requireAdmin><Overtime /></ProtectedRoute>} />
+            <Route path="/dashboard/business-travel" element={<ProtectedRoute requireAdmin><BusinessTravel /></ProtectedRoute>} />
             <Route path="/dashboard/reports" element={<ProtectedRoute requireAdmin><Reports /></ProtectedRoute>} />
             <Route path="/dashboard/reports/employee" element={<ProtectedRoute requireAdmin><EmployeeReports /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
@@ -62,6 +66,8 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
             <Route path="/employee/leave-request" element={<ProtectedRoute><LeaveRequest /></ProtectedRoute>} />
             <Route path="/employee/overtime-request" element={<ProtectedRoute><OvertimeRequest /></ProtectedRoute>} />
+            <Route path="/employee/business-travel" element={<ProtectedRoute><BusinessTravelRequest /></ProtectedRoute>} />
+            <Route path="/employee/business-travel-history" element={<ProtectedRoute><BusinessTravelHistory /></ProtectedRoute>} />
             <Route path="/employee/attendance-history" element={<ProtectedRoute><AttendanceHistory /></ProtectedRoute>} />
             <Route path="/employee/performance" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
             <Route path="/employee/self-service" element={<ProtectedRoute><EmployeeSelfService /></ProtectedRoute>} />

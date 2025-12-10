@@ -44,6 +44,7 @@ const EmployeeView = () => {
   }>>([]);
   const [workHours, setWorkHours] = useState<WorkHoursConfig | null>(null);
   const [stats, setStats] = useState<StatsData>({ leaveBalance: 0, leaveTotal: 12, attendanceCount: 0 });
+  const [currentTime, setCurrentTime] = useState(new Date());
   const {
     signOut,
     profile
@@ -60,6 +61,14 @@ const EmployeeView = () => {
     fetchRecentAttendance();
     fetchStats();
   }, [profile?.id]);
+
+  // Real-time clock update
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
   const fetchOfficeLocation = async () => {
     try {
       const {
@@ -411,26 +420,7 @@ const EmployeeView = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-lg space-y-6">
-        {/* Profile Card */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="gap-4 items-center justify-start flex flex-row">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={profile?.photo_url || undefined} alt={profile?.full_name} />
-                <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                  {profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || <User className="h-8 w-8" />}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h2 className="font-bold text-xl">{profile?.full_name || 'Loading...'}</h2>
-                <p className="text-muted-foreground">{profile?.jabatan}</p>
-                <p className="text-sm text-muted-foreground">NIK: {profile?.nik}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Welcome & Attendance Card */}
+        {/* Welcome Card with Profile */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-4">
@@ -440,17 +430,27 @@ const EmployeeView = () => {
                   {profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || <User className="h-8 w-8" />}
                 </AvatarFallback>
               </Avatar>
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-xl">
                   Welcome back,<br />{profile?.full_name?.split(' ')[0] || 'User'}!
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  {new Date().toLocaleDateString('id-ID', {
+                  {currentTime.toLocaleDateString('id-ID', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric'
                   })}
                 </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-primary">
+                  {currentTime.toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">{profile?.jabatan}</p>
               </div>
             </div>
           </CardHeader>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building, Calendar, CreditCard, LogOut, User } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building, Calendar, CreditCard, LogOut, User, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -10,10 +10,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
+import { EditProfileDialog } from "@/components/EditProfileDialog";
 
 const EmployeeProfile = () => {
   const navigate = useNavigate();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, refreshProfile } = useAuth();
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   if (!profile) {
     return (
@@ -57,6 +59,15 @@ const EmployeeProfile = () => {
               <h2 className="text-xl font-bold mt-3">{profile.full_name}</h2>
               <p className="text-muted-foreground">{profile.jabatan}</p>
               <Badge variant="secondary" className="mt-2">{profile.departemen}</Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 gap-2"
+                onClick={() => setShowEditDialog(true)}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Profil
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -167,6 +178,16 @@ const EmployeeProfile = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Profile Dialog */}
+      {showEditDialog && (
+        <EditProfileDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          profile={profile}
+          onUpdated={() => refreshProfile()}
+        />
+      )}
 
       <EmployeeBottomNav />
     </div>

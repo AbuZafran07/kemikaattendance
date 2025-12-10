@@ -11,6 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, userData: any) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   loading: boolean;
 }
 
@@ -135,6 +136,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate('/');
   };
 
+  const refreshProfile = async () => {
+    if (user?.id) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      setProfile(profileData);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -144,6 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signIn,
       signUp,
       signOut,
+      refreshProfile,
       loading
     }}>
       {children}

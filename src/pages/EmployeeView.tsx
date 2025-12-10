@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, MapPin, LogOut, User, Calendar, FileText, ChevronRight } from "lucide-react";
+import { Camera, MapPin, LogOut, User, Calendar, FileText, ChevronRight, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +45,9 @@ const EmployeeView = () => {
   const [workHours, setWorkHours] = useState<WorkHoursConfig | null>(null);
   const [stats, setStats] = useState<StatsData>({ leaveBalance: 0, leaveTotal: 12, attendanceCount: 0 });
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [nearestOffice, setNearestOffice] = useState<{ name: string; distance: number } | null>(null);
   const {
     signOut,
     profile
@@ -69,6 +72,42 @@ const EmployeeView = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch GPS location on mount
+  useEffect(() => {
+    const fetchGpsLocation = async () => {
+      if (officeLocations.length === 0) return;
+      
+      setGpsStatus('loading');
+      try {
+        const location = await getCurrentLocation();
+        setCurrentLocation(location);
+        
+        // Find nearest office
+        let nearest: { name: string; distance: number } | null = null;
+        for (const office of officeLocations) {
+          const distance = calculateDistance(
+            location.latitude, 
+            location.longitude, 
+            office.latitude, 
+            office.longitude
+          );
+          if (!nearest || distance < nearest.distance) {
+            nearest = { name: office.name, distance };
+          }
+        }
+        setNearestOffice(nearest);
+        setGpsStatus('success');
+      } catch (error) {
+        console.error('GPS error:', error);
+        setGpsStatus('error');
+      }
+    };
+
+    if (officeLocations.length > 0) {
+      fetchGpsLocation();
+    }
+  }, [officeLocations]);
   const fetchOfficeLocation = async () => {
     try {
       const {
@@ -443,15 +482,53 @@ const EmployeeView = () => {
                 </CardDescription>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-primary">
-                  {currentTime.toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                  })}
+                <div className="text-2xl font-bold text-primary tabular-nums transition-all duration-300">
+                  <span className="inline-block" style={{ minWidth: '2ch' }}>
+                    {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit' }).split(':')[0]}
+                  </span>
+                  <span className="animate-pulse">:</span>
+                  <span className="inline-block" style={{ minWidth: '2ch' }}>
+                    {currentTime.toLocaleTimeString('id-ID', { minute: '2-digit' }).split(':')[1] || currentTime.getMinutes().toString().padStart(2, '0')}
+                  </span>
+                  <span className="animate-pulse">:</span>
+                  <span className="inline-block text-primary/70" style={{ minWidth: '2ch' }}>
+                    {currentTime.getSeconds().toString().padStart(2, '0')}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground">{profile?.jabatan}</p>
               </div>
+            </div>
+            
+            {/* GPS Status */}
+            <div className="mt-4 flex items-center gap-2 text-sm">
+              {gpsStatus === 'loading' && (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <span className="text-muted-foreground">Mendeteksi lokasi...</span>
+                </>
+              )}
+              {gpsStatus === 'success' && nearestOffice && (
+                <>
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-muted-foreground">
+                    {nearestOffice.name} • <span className={nearestOffice.distance <= 100 ? 'text-green-600 font-medium' : 'text-orange-500'}>
+                      {Math.round(nearestOffice.distance)}m
+                    </span>
+                  </span>
+                </>
+              )}
+              {gpsStatus === 'error' && (
+                <>
+                  <XCircle className="h-4 w-4 text-destructive" />
+                  <span className="text-destructive">Gagal mendeteksi lokasi</span>
+                </>
+              )}
+              {gpsStatus === 'idle' && (
+                <>
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">GPS akan divalidasi</span>
+                </>
+              )}
             </div>
           </CardHeader>
         </Card>

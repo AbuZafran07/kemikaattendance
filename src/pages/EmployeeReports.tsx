@@ -13,6 +13,24 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
+import logoImage from "@/assets/logo.png";
+
+const loadImageAsBase64 = (src: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+};
 
 export default function EmployeeReports() {
   const { toast } = useToast();
@@ -162,15 +180,23 @@ export default function EmployeeReports() {
       // Create PDF
       const doc = new jsPDF();
       
+      // Add logo
+      try {
+        const logoBase64 = await loadImageAsBase64(logoImage);
+        doc.addImage(logoBase64, "PNG", 14, 10, 30, 12);
+      } catch (e) {
+        console.log("Could not load logo");
+      }
+      
       // Title and employee info
       doc.setFontSize(16);
-      doc.text("Laporan Kehadiran Karyawan", 14, 15);
+      doc.text("Laporan Kehadiran Karyawan", 50, 18);
       
       doc.setFontSize(10);
-      doc.text(`Nama: ${employee?.full_name}`, 14, 25);
-      doc.text(`NIK: ${employee?.nik}`, 14, 30);
-      doc.text(`Departemen: ${employee?.departemen}`, 14, 35);
-      doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 40);
+      doc.text(`Nama: ${employee?.full_name}`, 14, 30);
+      doc.text(`NIK: ${employee?.nik}`, 14, 35);
+      doc.text(`Departemen: ${employee?.departemen}`, 14, 40);
+      doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 45);
 
       // Summary statistics
       const totalHadir = attendanceData.filter(r => r.status === 'hadir').length;
@@ -178,9 +204,9 @@ export default function EmployeeReports() {
       const totalPulangCepat = attendanceData.filter(r => r.status === 'pulang_cepat').length;
       const totalDuration = attendanceData.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
       
-      doc.text(`Total Kehadiran: ${attendanceData.length} hari`, 14, 50);
-      doc.text(`Hadir Tepat Waktu: ${totalHadir} | Terlambat: ${totalTerlambat} | Pulang Cepat: ${totalPulangCepat}`, 14, 55);
-      doc.text(`Total Jam Kerja: ${Math.floor(totalDuration / 60)} jam ${totalDuration % 60} menit`, 14, 60);
+      doc.text(`Total Kehadiran: ${attendanceData.length} hari`, 14, 55);
+      doc.text(`Hadir Tepat Waktu: ${totalHadir} | Terlambat: ${totalTerlambat} | Pulang Cepat: ${totalPulangCepat}`, 14, 60);
+      doc.text(`Total Jam Kerja: ${Math.floor(totalDuration / 60)} jam ${totalDuration % 60} menit`, 14, 65);
 
       // Table
       const tableData = attendanceData.map((record: any) => [
@@ -194,7 +220,7 @@ export default function EmployeeReports() {
       autoTable(doc, {
         head: [["Tanggal", "Check In", "Check Out", "Durasi", "Status"]],
         body: tableData,
-        startY: 70,
+        startY: 75,
         styles: { fontSize: 8 },
         headStyles: { fillColor: [0, 135, 81] },
       });

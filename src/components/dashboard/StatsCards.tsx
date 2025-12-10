@@ -10,11 +10,15 @@ interface StatsCardsProps {
     earlyLeaveToday: number;
     pendingLeave: number;
     pendingOvertime: number;
+    pendingTravel?: number;
     totalOvertimeHours: number;
   };
 }
 
 const StatsCards = ({ stats }: StatsCardsProps) => {
+  const pendingTravel = stats.pendingTravel || 0;
+  const totalPending = stats.pendingLeave + stats.pendingOvertime + pendingTravel;
+  
   const statsData = [
     {
       title: "Total Karyawan",
@@ -58,9 +62,9 @@ const StatsCards = ({ stats }: StatsCardsProps) => {
     },
     {
       title: "Pending",
-      value: (stats.pendingLeave + stats.pendingOvertime).toString(),
+      value: totalPending.toString(),
       icon: CalendarOff,
-      description: `${stats.pendingLeave} cuti, ${stats.pendingOvertime} lembur`,
+      description: `${stats.pendingLeave} cuti, ${stats.pendingOvertime} lembur${pendingTravel > 0 ? `, ${pendingTravel} dinas` : ''}`,
       color: "text-secondary",
       bgColor: "bg-secondary/10",
     },

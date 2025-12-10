@@ -578,11 +578,13 @@ const EmployeeView = () => {
             setCameraMode("checkout");
             setShowCamera(true);
           }} disabled={isProcessing} className="w-full h-14 font-semibold text-lg bg-primary hover:bg-primary/90">
+                <Camera className="h-5 w-5 mr-2" />
                 {isProcessing ? "Memproses..." : "Check Out"}
               </Button> : <Button onClick={() => {
             setCameraMode("checkin");
             setShowCamera(true);
           }} disabled={isProcessing} className="w-full h-14 font-semibold bg-primary hover:bg-primary/90 text-base">
+                <Camera className="h-5 w-5 mr-2" />
                 {isProcessing ? "Memproses..." : "Check In"}
               </Button>}
           </CardContent>

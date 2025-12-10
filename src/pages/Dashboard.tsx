@@ -48,12 +48,14 @@ const Dashboard = () => {
     earlyLeaveToday: 0,
     pendingLeave: 0,
     pendingOvertime: 0,
+    pendingTravel: 0,
     totalOvertimeHours: 0,
   });
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
   const [pendingLeave, setPendingLeave] = useState<any[]>([]);
   const [pendingOvertime, setPendingOvertime] = useState<any[]>([]);
+  const [pendingTravel, setPendingTravel] = useState<any[]>([]);
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
   const [departmentData, setDepartmentData] = useState<any[]>([]);
 
@@ -116,10 +118,28 @@ const Dashboard = () => {
       })
       .subscribe();
 
+    // Real-time listener for business travel requests
+    const travelChannel = supabase
+      .channel("realtime:business_travel_dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "business_travel_requests" }, (payload) => {
+        console.log("Realtime business travel change:", payload);
+        
+        if (payload.eventType === "INSERT") {
+          toast({
+            title: "Pengajuan Perjalanan Dinas Baru",
+            description: "Ada permintaan perjalanan dinas baru masuk",
+          });
+        }
+        
+        fetchDashboardData();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(attendanceChannel);
       supabase.removeChannel(leaveChannel);
       supabase.removeChannel(overtimeChannel);
+      supabase.removeChannel(travelChannel);
     };
   }, []);
 
@@ -138,6 +158,7 @@ const Dashboard = () => {
       { data: overtimeData },
       { data: weekAttendance },
       { data: approvedLeaveToday },
+      { data: travelData },
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("id, full_name, departemen, photo_url"),
@@ -164,13 +185,18 @@ const Dashboard = () => {
         .order("created_at", { ascending: false })
         .limit(5),
       supabase.from("attendance").select("*").gte("check_in_time", subDays(today, 7).toISOString()),
-      // Fetch approved leave requests for today
       supabase
         .from("leave_requests")
         .select("*")
         .eq("status", "approved")
         .lte("start_date", format(today, "yyyy-MM-dd"))
         .gte("end_date", format(today, "yyyy-MM-dd")),
+      supabase
+        .from("business_travel_requests")
+        .select("*")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(5),
     ]);
 
     // Create profiles map with signed URLs for photos
@@ -208,6 +234,12 @@ const Dashboard = () => {
       profiles: profilesMap.get(request.user_id) || null
     }));
 
+    // Combine business travel requests with profiles
+    const travelWithProfiles = (travelData || []).map(request => ({
+      ...request,
+      profiles: profilesMap.get(request.user_id) || null
+    }));
+
     const present = todayAttendance?.filter((a) => a.status === "hadir").length || 0;
     const late = todayAttendance?.filter((a) => a.status === "terlambat").length || 0;
     const earlyLeave = todayAttendance?.filter((a) => a.status === "pulang_cepat").length || 0;
@@ -222,6 +254,7 @@ const Dashboard = () => {
       earlyLeaveToday: earlyLeave,
       pendingLeave: leaveData?.length || 0,
       pendingOvertime: overtimeData?.length || 0,
+      pendingTravel: travelData?.length || 0,
       totalOvertimeHours: 0,
     });
 
@@ -256,6 +289,7 @@ const Dashboard = () => {
     setRecentAttendance(recentWithProfiles);
     setPendingLeave(leaveWithProfiles);
     setPendingOvertime(overtimeWithProfiles);
+    setPendingTravel(travelWithProfiles);
 
     const weeklyStats: Record<string, { hadir: number; terlambat: number; tidak_hadir: number }> = {};
     for (let i = 6; i >= 0; i--) {
@@ -317,7 +351,7 @@ const Dashboard = () => {
 
         <div className="grid gap-4 md:grid-cols-2">
           <RecentActivity data={recentAttendance} absentEmployees={absentEmployees} />
-          <PendingRequests leaveRequests={pendingLeave} overtimeRequests={pendingOvertime} />
+          <PendingRequests leaveRequests={pendingLeave} overtimeRequests={pendingOvertime} businessTravelRequests={pendingTravel} />
         </div>
       </div>
     </DashboardLayout>

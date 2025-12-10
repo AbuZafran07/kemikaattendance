@@ -32,6 +32,7 @@ import NotFound from "./pages/NotFound";
 import EmployeeSelfService from "./pages/EmployeeSelfService";
 import EmployeeNotifications from "./pages/EmployeeNotifications";
 import RequestHistory from "./pages/RequestHistory";
+import EmployeeProfile from "./pages/EmployeeProfile";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -66,6 +67,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/employee/self-service" element={<ProtectedRoute><EmployeeSelfService /></ProtectedRoute>} />
             <Route path="/employee/notifications" element={<ProtectedRoute><EmployeeNotifications /></ProtectedRoute>} />
             <Route path="/employee/request-history" element={<ProtectedRoute><RequestHistory /></ProtectedRoute>} />
+            <Route path="/employee/profile" element={<ProtectedRoute><EmployeeProfile /></ProtectedRoute>} />
             <Route path="/dashboard/settings/notifications" element={<ProtectedRoute requireAdmin><NotificationSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

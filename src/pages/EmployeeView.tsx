@@ -699,7 +699,7 @@ const EmployeeView = () => {
                     <span className="text-sm text-muted-foreground">Kehadiran</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <p className="text-lg font-bold text-primary">{stats.attendanceCount}</p>
+                  <p className="text-lg font-bold text-primary">Lihat</p>
                 </div>
               </div>
               <div

@@ -98,7 +98,12 @@ const Notifications = () => {
 
   const fetchAllNotifications = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchAttendance(), fetchLeaveRequests(), fetchOvertimeRequests(), fetchBusinessTravelRequests()]);
+    await Promise.all([
+      fetchAttendance(),
+      fetchLeaveRequests(),
+      fetchOvertimeRequests(),
+      fetchBusinessTravelRequests(),
+    ]);
     setIsRefreshing(false);
   };
 
@@ -463,12 +468,12 @@ const Notifications = () => {
             </CardContent>
           </Card>
 
-          <Card 
+          <Card
             className="cursor-pointer hover:bg-accent/5 transition-colors"
             onClick={() => navigate("/dashboard/leave")}
           >
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Cuti Pending</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Cuti Pending</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -478,12 +483,12 @@ const Notifications = () => {
             </CardContent>
           </Card>
 
-          <Card 
+          <Card
             className="cursor-pointer hover:bg-accent/5 transition-colors"
             onClick={() => navigate("/dashboard/overtime")}
           >
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Lembur Pending</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Lembur Pending</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -493,12 +498,12 @@ const Notifications = () => {
             </CardContent>
           </Card>
 
-          <Card 
+          <Card
             className="cursor-pointer hover:bg-accent/5 transition-colors"
             onClick={() => navigate("/dashboard/business-travel")}
           >
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Perjalanan Dinas Pending</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Perjalanan Dinas Pending</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">

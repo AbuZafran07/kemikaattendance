@@ -14,6 +14,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import logoImage from "@/assets/logo.png";
+import { formatAttendanceStatus } from "@/lib/statusUtils";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -98,7 +99,7 @@ export default function EmployeeReports() {
         "Check In": format(new Date(record.check_in_time), "HH:mm:ss"),
         "Check Out": record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
         "Durasi (menit)": record.duration_minutes || "-",
-        Status: record.status,
+        Status: formatAttendanceStatus(record.status),
         "GPS Valid": record.gps_validated ? "Ya" : "Tidak",
         Catatan: record.notes || "-",
       }));
@@ -214,7 +215,7 @@ export default function EmployeeReports() {
         format(new Date(record.check_in_time), "HH:mm:ss"),
         record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
         record.duration_minutes ? `${record.duration_minutes} min` : "-",
-        record.status,
+        formatAttendanceStatus(record.status),
       ]);
 
       autoTable(doc, {

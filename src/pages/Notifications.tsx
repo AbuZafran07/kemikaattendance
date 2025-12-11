@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +89,7 @@ const Notifications = () => {
   const [businessTravelNotifications, setBusinessTravelNotifications] = useState<BusinessTravelNotification[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAllNotifications();
@@ -461,7 +463,10 @@ const Notifications = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-accent/5 transition-colors"
+            onClick={() => navigate("/leave")}
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Cuti Pending</CardTitle>
             </CardHeader>
@@ -473,7 +478,10 @@ const Notifications = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-accent/5 transition-colors"
+            onClick={() => navigate("/overtime")}
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Lembur Pending</CardTitle>
             </CardHeader>
@@ -485,7 +493,10 @@ const Notifications = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-accent/5 transition-colors"
+            onClick={() => navigate("/business-travel")}
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Perjalanan Dinas Pending</CardTitle>
             </CardHeader>

@@ -12,9 +12,10 @@ import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format } from "date-fns";
+import { format, eachDayOfInterval, parseISO, isWithinInterval } from "date-fns";
 import { DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 import logoImage from "@/assets/logo.png";
+import { formatAttendanceStatus, formatLeaveType } from "@/lib/statusUtils";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -59,6 +60,26 @@ export default function Reports() {
 
         if (attendanceError) throw attendanceError;
 
+        // Fetch approved leave requests within date range
+        const { data: leaveData, error: leaveError } = await supabase
+          .from("leave_requests")
+          .select("*")
+          .eq("status", "approved")
+          .lte("start_date", endDate)
+          .gte("end_date", startDate);
+
+        if (leaveError) throw leaveError;
+
+        // Fetch approved business travel requests within date range
+        const { data: travelData, error: travelError } = await supabase
+          .from("business_travel_requests")
+          .select("*")
+          .eq("status", "approved")
+          .lte("start_date", endDate)
+          .gte("end_date", startDate);
+
+        if (travelError) throw travelError;
+
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, full_name, departemen, nik");
@@ -67,7 +88,8 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        let mergedData =
+        // Merge attendance data
+        let mergedAttendance =
           attendanceData
             ?.map((record) => ({
               ...record,
@@ -76,10 +98,11 @@ export default function Reports() {
             .filter((record) => record.profiles) || [];
 
         if (department !== "all") {
-          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
+          mergedAttendance = mergedAttendance.filter((record) => record.profiles?.departemen === department);
         }
 
-        data = mergedData.map((record: any) => {
+        // Convert attendance to report format
+        const attendanceRows = mergedAttendance.map((record: any) => {
           const checkIn = new Date(record.check_in_time);
           const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
           return {
@@ -89,10 +112,75 @@ export default function Reports() {
             Department: record.profiles?.departemen || "-",
             "Check In Time": format(checkIn, "HH:mm"),
             "Check Out Time": checkOut ? format(checkOut, "HH:mm") : "-",
-            Status: record.status,
+            Status: formatAttendanceStatus(record.status),
             "Duration (min)": record.duration_minutes || "-",
           };
         });
+
+        // Add leave records (expand each day within range)
+        const leaveRows: any[] = [];
+        const dateRangeStart = parseISO(startDate);
+        const dateRangeEnd = parseISO(endDate);
+
+        leaveData?.forEach((leave) => {
+          const profile = profilesMap.get(leave.user_id);
+          if (!profile) return;
+          if (department !== "all" && profile.departemen !== department) return;
+
+          const leaveStart = parseISO(leave.start_date);
+          const leaveEnd = parseISO(leave.end_date);
+          const days = eachDayOfInterval({ start: leaveStart, end: leaveEnd });
+
+          days.forEach((day) => {
+            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
+              leaveRows.push({
+                Date: format(day, "yyyy-MM-dd"),
+                NIK: profile.nik || "-",
+                Name: profile.full_name || "-",
+                Department: profile.departemen || "-",
+                "Check In Time": "-",
+                "Check Out Time": "-",
+                Status: formatLeaveType(leave.leave_type),
+                "Duration (min)": "-",
+              });
+            }
+          });
+        });
+
+        // Add business travel records (expand each day within range)
+        const travelRows: any[] = [];
+        travelData?.forEach((travel) => {
+          const profile = profilesMap.get(travel.user_id);
+          if (!profile) return;
+          if (department !== "all" && profile.departemen !== department) return;
+
+          const travelStart = parseISO(travel.start_date);
+          const travelEnd = parseISO(travel.end_date);
+          const days = eachDayOfInterval({ start: travelStart, end: travelEnd });
+
+          days.forEach((day) => {
+            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
+              travelRows.push({
+                Date: format(day, "yyyy-MM-dd"),
+                NIK: profile.nik || "-",
+                Name: profile.full_name || "-",
+                Department: profile.departemen || "-",
+                "Check In Time": "-",
+                "Check Out Time": "-",
+                Status: "Dinas",
+                "Duration (min)": "-",
+              });
+            }
+          });
+        });
+
+        // Combine and sort by date, then name
+        data = [...attendanceRows, ...leaveRows, ...travelRows].sort((a, b) => {
+          const dateCompare = a.Date.localeCompare(b.Date);
+          if (dateCompare !== 0) return dateCompare;
+          return a.Name.localeCompare(b.Name);
+        });
+
         filename = `Attendance_Report_${startDate}_to_${endDate}.xlsx`;
       } else if (reportType === "leave") {
         const { data: leaveData, error: leaveError } = await supabase
@@ -127,11 +215,11 @@ export default function Reports() {
           NIK: record.profiles?.nik || "-",
           Name: record.profiles?.full_name || "-",
           Department: record.profiles?.departemen || "-",
-          "Leave Type": record.leave_type,
+          "Leave Type": formatLeaveType(record.leave_type),
           "Start Date": record.start_date,
           "End Date": record.end_date,
           "Total Days": record.total_days,
-          Status: record.status,
+          Status: formatAttendanceStatus(record.status),
           Reason: record.reason,
         }));
         filename = `Leave_Report_${startDate}_to_${endDate}.xlsx`;
@@ -170,7 +258,7 @@ export default function Reports() {
           Department: record.profiles?.departemen || "-",
           "Overtime Date": record.overtime_date,
           Hours: record.hours,
-          Status: record.status,
+          Status: formatAttendanceStatus(record.status),
           Reason: record.reason,
         }));
         filename = `Overtime_Report_${startDate}_to_${endDate}.xlsx`;
@@ -212,7 +300,7 @@ export default function Reports() {
           "Start Date": record.start_date,
           "End Date": record.end_date,
           "Total Days": record.total_days,
-          Status: record.status,
+          Status: formatAttendanceStatus(record.status),
           Notes: record.notes || "-",
         }));
         filename = `Business_Travel_Report_${startDate}_to_${endDate}.xlsx`;
@@ -267,6 +355,26 @@ export default function Reports() {
 
         if (attendanceError) throw attendanceError;
 
+        // Fetch approved leave requests within date range
+        const { data: leaveData, error: leaveError } = await supabase
+          .from("leave_requests")
+          .select("*")
+          .eq("status", "approved")
+          .lte("start_date", endDate)
+          .gte("end_date", startDate);
+
+        if (leaveError) throw leaveError;
+
+        // Fetch approved business travel requests within date range
+        const { data: travelData, error: travelError } = await supabase
+          .from("business_travel_requests")
+          .select("*")
+          .eq("status", "approved")
+          .lte("start_date", endDate)
+          .gte("end_date", startDate);
+
+        if (travelError) throw travelError;
+
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, full_name, departemen, nik");
@@ -275,7 +383,8 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        let mergedData =
+        // Merge attendance data
+        let mergedAttendance =
           attendanceData
             ?.map((record) => ({
               ...record,
@@ -284,11 +393,13 @@ export default function Reports() {
             .filter((record) => record.profiles) || [];
 
         if (department !== "all") {
-          mergedData = mergedData.filter((record) => record.profiles?.departemen === department);
+          mergedAttendance = mergedAttendance.filter((record) => record.profiles?.departemen === department);
         }
 
         columns = ["Date", "NIK", "Name", "Department", "Check In", "Check Out", "Status"];
-        data = mergedData.map((record: any) => {
+
+        // Convert attendance to report format
+        const attendanceRows = mergedAttendance.map((record: any) => {
           const checkIn = new Date(record.check_in_time);
           const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
           return [
@@ -298,9 +409,72 @@ export default function Reports() {
             record.profiles?.departemen || "-",
             format(checkIn, "HH:mm"),
             checkOut ? format(checkOut, "HH:mm") : "-",
-            record.status,
+            formatAttendanceStatus(record.status),
           ];
         });
+
+        // Add leave records (expand each day within range)
+        const leaveRows: any[] = [];
+        const dateRangeStart = parseISO(startDate);
+        const dateRangeEnd = parseISO(endDate);
+
+        leaveData?.forEach((leave) => {
+          const profile = profilesMap.get(leave.user_id);
+          if (!profile) return;
+          if (department !== "all" && profile.departemen !== department) return;
+
+          const leaveStart = parseISO(leave.start_date);
+          const leaveEnd = parseISO(leave.end_date);
+          const days = eachDayOfInterval({ start: leaveStart, end: leaveEnd });
+
+          days.forEach((day) => {
+            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
+              leaveRows.push([
+                format(day, "yyyy-MM-dd"),
+                profile.nik || "-",
+                profile.full_name || "-",
+                profile.departemen || "-",
+                "-",
+                "-",
+                formatLeaveType(leave.leave_type),
+              ]);
+            }
+          });
+        });
+
+        // Add business travel records (expand each day within range)
+        const travelRows: any[] = [];
+        travelData?.forEach((travel) => {
+          const profile = profilesMap.get(travel.user_id);
+          if (!profile) return;
+          if (department !== "all" && profile.departemen !== department) return;
+
+          const travelStart = parseISO(travel.start_date);
+          const travelEnd = parseISO(travel.end_date);
+          const days = eachDayOfInterval({ start: travelStart, end: travelEnd });
+
+          days.forEach((day) => {
+            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
+              travelRows.push([
+                format(day, "yyyy-MM-dd"),
+                profile.nik || "-",
+                profile.full_name || "-",
+                profile.departemen || "-",
+                "-",
+                "-",
+                "Dinas",
+              ]);
+            }
+          });
+        });
+
+        // Combine and sort by date, then name
+        data = [...attendanceRows, ...leaveRows, ...travelRows].sort((a, b) => {
+          const dateCompare = a[0].localeCompare(b[0]);
+          if (dateCompare !== 0) return dateCompare;
+          return a[2].localeCompare(b[2]);
+        });
+
         title = `Laporan Absensi (${startDate} s.d ${endDate})`;
       } else if (reportType === "leave") {
         const { data: leaveData, error: leaveError } = await supabase
@@ -336,11 +510,11 @@ export default function Reports() {
           record.profiles?.nik || "-",
           record.profiles?.full_name || "-",
           record.profiles?.departemen || "-",
-          record.leave_type,
+          formatLeaveType(record.leave_type),
           record.start_date,
           record.end_date,
           record.total_days,
-          record.status,
+          formatAttendanceStatus(record.status),
         ]);
         title = `Laporan Cuti (${startDate} s.d ${endDate})`;
       } else if (reportType === "overtime") {
@@ -379,7 +553,7 @@ export default function Reports() {
           record.profiles?.departemen || "-",
           record.overtime_date,
           record.hours,
-          record.status,
+          formatAttendanceStatus(record.status),
           record.reason,
         ]);
         title = `Laporan Lembur (${startDate} s.d ${endDate})`;
@@ -422,7 +596,7 @@ export default function Reports() {
           record.start_date,
           record.end_date,
           record.total_days,
-          record.status,
+          formatAttendanceStatus(record.status),
         ]);
         title = `Laporan Perjalanan Dinas (${startDate} s.d ${endDate})`;
       }

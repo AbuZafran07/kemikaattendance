@@ -597,7 +597,8 @@ const Notifications = () => {
                     leaveNotifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
+                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
+                        onClick={() => navigate("/leave")}
                       >
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar
@@ -636,7 +637,8 @@ const Notifications = () => {
                     overtimeNotifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
+                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
+                        onClick={() => navigate("/overtime")}
                       >
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar
@@ -677,7 +679,8 @@ const Notifications = () => {
                     businessTravelNotifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
+                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
+                        onClick={() => navigate("/business-travel")}
                       >
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar

@@ -74,6 +74,7 @@ const Employees = () => {
     departemen: "",
     phone: "",
     address: "",
+    join_date: new Date().toISOString().split('T')[0],
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -250,6 +251,7 @@ const Employees = () => {
             phone: formData.phone,
             address: formData.address,
             photo_url: photoUrl,
+            join_date: formData.join_date,
           })
           .eq('id', authData.user.id);
 
@@ -374,6 +376,7 @@ const Employees = () => {
       departemen: "",
       phone: "",
       address: "",
+      join_date: new Date().toISOString().split('T')[0],
     });
     setEditFormData({
       nik: "",
@@ -672,6 +675,16 @@ const Employees = () => {
                         id="phone"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="join_date">Tanggal Bergabung *</Label>
+                      <Input
+                        id="join_date"
+                        type="date"
+                        value={formData.join_date}
+                        onChange={(e) => setFormData({ ...formData, join_date: e.target.value })}
+                        required
                       />
                     </div>
                     <div className="space-y-2 col-span-2">

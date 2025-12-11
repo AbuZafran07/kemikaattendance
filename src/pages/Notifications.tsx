@@ -465,7 +465,7 @@ const Notifications = () => {
 
           <Card 
             className="cursor-pointer hover:bg-accent/5 transition-colors"
-            onClick={() => navigate("/leave")}
+            onClick={() => navigate("/dashboard/leave")}
           >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Cuti Pending</CardTitle>
@@ -480,7 +480,7 @@ const Notifications = () => {
 
           <Card 
             className="cursor-pointer hover:bg-accent/5 transition-colors"
-            onClick={() => navigate("/overtime")}
+            onClick={() => navigate("/dashboard/overtime")}
           >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Lembur Pending</CardTitle>
@@ -495,7 +495,7 @@ const Notifications = () => {
 
           <Card 
             className="cursor-pointer hover:bg-accent/5 transition-colors"
-            onClick={() => navigate("/business-travel")}
+            onClick={() => navigate("/dashboard/business-travel")}
           >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pengajuan Perjalanan Dinas Pending</CardTitle>
@@ -598,7 +598,7 @@ const Notifications = () => {
                       <div
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
-                        onClick={() => navigate("/leave")}
+                        onClick={() => navigate("/dashboard/leave")}
                       >
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar
@@ -638,7 +638,7 @@ const Notifications = () => {
                       <div
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
-                        onClick={() => navigate("/overtime")}
+                        onClick={() => navigate("/dashboard/overtime")}
                       >
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar
@@ -680,7 +680,7 @@ const Notifications = () => {
                       <div
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
-                        onClick={() => navigate("/business-travel")}
+                        onClick={() => navigate("/dashboard/business-travel")}
                       >
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar

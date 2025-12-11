@@ -83,7 +83,73 @@ export default function EmployeeReports() {
 
       if (error) throw error;
 
-      if (!attendanceData || attendanceData.length === 0) {
+      // Fetch approved leave requests for this employee
+      const { data: leaveData } = await supabase
+        .from("leave_requests")
+        .select("*")
+        .eq("user_id", selectedEmployee)
+        .eq("status", "approved")
+        .gte("start_date", startDate)
+        .lte("end_date", endDate);
+
+      // Fetch approved business travel requests for this employee
+      const { data: travelData } = await supabase
+        .from("business_travel_requests")
+        .select("*")
+        .eq("user_id", selectedEmployee)
+        .eq("status", "approved")
+        .gte("start_date", startDate)
+        .lte("end_date", endDate);
+
+      // Format attendance data
+      const formattedAttendance = (attendanceData || []).map((record: any) => ({
+        Tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
+        "Check In": format(new Date(record.check_in_time), "HH:mm:ss"),
+        "Check Out": record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
+        "Durasi (menit)": record.duration_minutes || "-",
+        Status: formatAttendanceStatus(record.status),
+        Keterangan: record.notes || "-",
+      }));
+
+      // Format leave data as attendance entries
+      const formattedLeave: any[] = [];
+      (leaveData || []).forEach((leave: any) => {
+        const start = new Date(leave.start_date);
+        const end = new Date(leave.end_date);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          formattedLeave.push({
+            Tanggal: format(new Date(d), "yyyy-MM-dd"),
+            "Check In": "-",
+            "Check Out": "-",
+            "Durasi (menit)": "-",
+            Status: formatAttendanceStatus(leave.leave_type),
+            Keterangan: leave.reason || "-",
+          });
+        }
+      });
+
+      // Format business travel data as attendance entries
+      const formattedTravel: any[] = [];
+      (travelData || []).forEach((travel: any) => {
+        const start = new Date(travel.start_date);
+        const end = new Date(travel.end_date);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          formattedTravel.push({
+            Tanggal: format(new Date(d), "yyyy-MM-dd"),
+            "Check In": "-",
+            "Check Out": "-",
+            "Durasi (menit)": "-",
+            Status: formatAttendanceStatus("dinas"),
+            Keterangan: `${travel.destination} - ${travel.purpose}`,
+          });
+        }
+      });
+
+      // Combine and sort all data by date
+      const allData = [...formattedAttendance, ...formattedLeave, ...formattedTravel]
+        .sort((a, b) => b.Tanggal.localeCompare(a.Tanggal));
+
+      if (allData.length === 0) {
         toast({
           title: "Tidak Ada Data",
           description: "Tidak ada data kehadiran untuk periode yang dipilih",
@@ -93,19 +159,8 @@ export default function EmployeeReports() {
         return;
       }
 
-      // Format data for export
-      const formattedData = attendanceData.map((record: any) => ({
-        Tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
-        "Check In": format(new Date(record.check_in_time), "HH:mm:ss"),
-        "Check Out": record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
-        "Durasi (menit)": record.duration_minutes || "-",
-        Status: formatAttendanceStatus(record.status),
-        "GPS Valid": record.gps_validated ? "Ya" : "Tidak",
-        Catatan: record.notes || "-",
-      }));
-
       // Create workbook
-      const ws = XLSX.utils.json_to_sheet(formattedData);
+      const ws = XLSX.utils.json_to_sheet(allData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
 
@@ -168,7 +223,73 @@ export default function EmployeeReports() {
 
       if (error) throw error;
 
-      if (!attendanceData || attendanceData.length === 0) {
+      // Fetch approved leave requests for this employee
+      const { data: leaveData } = await supabase
+        .from("leave_requests")
+        .select("*")
+        .eq("user_id", selectedEmployee)
+        .eq("status", "approved")
+        .gte("start_date", startDate)
+        .lte("end_date", endDate);
+
+      // Fetch approved business travel requests for this employee
+      const { data: travelData } = await supabase
+        .from("business_travel_requests")
+        .select("*")
+        .eq("user_id", selectedEmployee)
+        .eq("status", "approved")
+        .gte("start_date", startDate)
+        .lte("end_date", endDate);
+
+      // Format attendance data for table
+      const formattedAttendance = (attendanceData || []).map((record: any) => ({
+        tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
+        checkIn: format(new Date(record.check_in_time), "HH:mm:ss"),
+        checkOut: record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
+        durasi: record.duration_minutes ? `${record.duration_minutes} min` : "-",
+        status: formatAttendanceStatus(record.status),
+        keterangan: record.notes || "-",
+      }));
+
+      // Format leave data as attendance entries
+      const formattedLeave: any[] = [];
+      (leaveData || []).forEach((leave: any) => {
+        const start = new Date(leave.start_date);
+        const end = new Date(leave.end_date);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          formattedLeave.push({
+            tanggal: format(new Date(d), "yyyy-MM-dd"),
+            checkIn: "-",
+            checkOut: "-",
+            durasi: "-",
+            status: formatAttendanceStatus(leave.leave_type),
+            keterangan: leave.reason || "-",
+          });
+        }
+      });
+
+      // Format business travel data as attendance entries
+      const formattedTravel: any[] = [];
+      (travelData || []).forEach((travel: any) => {
+        const start = new Date(travel.start_date);
+        const end = new Date(travel.end_date);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          formattedTravel.push({
+            tanggal: format(new Date(d), "yyyy-MM-dd"),
+            checkIn: "-",
+            checkOut: "-",
+            durasi: "-",
+            status: formatAttendanceStatus("dinas"),
+            keterangan: `${travel.destination} - ${travel.purpose}`,
+          });
+        }
+      });
+
+      // Combine and sort all data by date
+      const allData = [...formattedAttendance, ...formattedLeave, ...formattedTravel]
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+      if (allData.length === 0) {
         toast({
           title: "Tidak Ada Data",
           description: "Tidak ada data kehadiran untuk periode yang dipilih",
@@ -200,26 +321,29 @@ export default function EmployeeReports() {
       doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 45);
 
       // Summary statistics
-      const totalHadir = attendanceData.filter(r => r.status === 'hadir').length;
-      const totalTerlambat = attendanceData.filter(r => r.status === 'terlambat').length;
-      const totalPulangCepat = attendanceData.filter(r => r.status === 'pulang_cepat').length;
-      const totalDuration = attendanceData.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
+      const totalHadir = (attendanceData || []).filter(r => r.status === 'hadir').length;
+      const totalTerlambat = (attendanceData || []).filter(r => r.status === 'terlambat').length;
+      const totalPulangCepat = (attendanceData || []).filter(r => r.status === 'pulang_cepat').length;
+      const totalCuti = formattedLeave.length;
+      const totalDinas = formattedTravel.length;
+      const totalDuration = (attendanceData || []).reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
       
-      doc.text(`Total Kehadiran: ${attendanceData.length} hari`, 14, 55);
+      doc.text(`Total Kehadiran: ${(attendanceData || []).length} hari | Cuti: ${totalCuti} hari | Dinas: ${totalDinas} hari`, 14, 55);
       doc.text(`Hadir Tepat Waktu: ${totalHadir} | Terlambat: ${totalTerlambat} | Pulang Cepat: ${totalPulangCepat}`, 14, 60);
       doc.text(`Total Jam Kerja: ${Math.floor(totalDuration / 60)} jam ${totalDuration % 60} menit`, 14, 65);
 
       // Table
-      const tableData = attendanceData.map((record: any) => [
-        format(new Date(record.check_in_time), "yyyy-MM-dd"),
-        format(new Date(record.check_in_time), "HH:mm:ss"),
-        record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
-        record.duration_minutes ? `${record.duration_minutes} min` : "-",
-        formatAttendanceStatus(record.status),
+      const tableData = allData.map((record: any) => [
+        record.tanggal,
+        record.checkIn,
+        record.checkOut,
+        record.durasi,
+        record.status,
+        record.keterangan,
       ]);
 
       autoTable(doc, {
-        head: [["Tanggal", "Check In", "Check Out", "Durasi", "Status"]],
+        head: [["Tanggal", "Check In", "Check Out", "Durasi", "Status", "Keterangan"]],
         body: tableData,
         startY: 75,
         styles: { fontSize: 8 },

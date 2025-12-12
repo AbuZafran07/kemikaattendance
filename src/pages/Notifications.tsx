@@ -492,7 +492,7 @@ const Notifications = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-accent" />
+                <Clock className="h-5 w-5 text-secondary" />
                 <span className="text-3xl font-bold">{overtimeNotifications.length}</span>
               </div>
             </CardContent>

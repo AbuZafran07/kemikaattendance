@@ -1,12 +1,13 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Save } from "lucide-react";
+import { Clock, Save, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface WorkHoursConfig {
   check_in_start: string;
@@ -18,6 +19,7 @@ interface WorkHoursConfig {
 }
 
 export default function WorkHoursSettings() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -111,9 +113,14 @@ export default function WorkHoursSettings() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Jam Kerja</h1>
-          <p className="text-muted-foreground mt-1">Atur jam kerja dan toleransi keterlambatan</p>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Jam Kerja</h1>
+            <p className="text-muted-foreground mt-1">Atur jam kerja dan toleransi keterlambatan</p>
+          </div>
         </div>
 
         <Card>

@@ -42,8 +42,49 @@ export async function fetchOfficeLocations(): Promise<OfficeLocation[]> {
   return data as unknown as OfficeLocation[];
 }
 
+// Check if user is hybrid worker (can check in from anywhere)
+export async function isHybridWorker(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('work_type')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) {
+    console.error("Error fetching work type:", error);
+    return false;
+  }
+
+  return data.work_type === 'wfa';
+}
+
 // Validate GPS coordinates against all office locations
-export async function validateGPSLocation(userLat: number, userLon: number): Promise<ValidationResult> {
+export async function validateGPSLocation(userLat: number, userLon: number, userId?: string): Promise<ValidationResult> {
+  // If userId is provided, check if they are a hybrid worker
+  if (userId) {
+    const isHybrid = await isHybridWorker(userId);
+    if (isHybrid) {
+      // Hybrid workers can check in from anywhere
+      const offices = await fetchOfficeLocations();
+      let nearestOffice: OfficeLocation | null = null;
+      let minDistance = Infinity;
+
+      for (const office of offices) {
+        const distance = calculateDistance(userLat, userLon, office.latitude, office.longitude);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestOffice = office;
+        }
+      }
+
+      return {
+        isValid: true, // Always valid for hybrid workers
+        nearestOffice,
+        distance: Math.round(minDistance),
+      };
+    }
+  }
+
   const offices = await fetchOfficeLocations();
 
   if (offices.length === 0) {

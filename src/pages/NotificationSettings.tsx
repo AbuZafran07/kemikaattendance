@@ -146,7 +146,7 @@ const NotificationSettings = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/settings')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>

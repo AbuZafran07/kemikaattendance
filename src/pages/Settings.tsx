@@ -42,15 +42,15 @@ export default function Settings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-fadeIn">
+      <div className="space-y-4 sm:space-y-6 animate-fadeIn">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pengaturan Sistem</h1>
-          <p className="text-muted-foreground mt-1">Konfigurasi sistem dan pengaturan aplikasi</p>
+        <div className="px-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pengaturan Sistem</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Konfigurasi sistem dan pengaturan aplikasi</p>
         </div>
 
         {/* Grid Menu */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
           {settingsMenu.map((item) => {
             const Icon = item.icon;
             return (
@@ -59,12 +59,12 @@ export default function Settings() {
                 onClick={() => navigate(item.path)}
                 className="cursor-pointer border-primary/10 hover:border-primary/40 hover:shadow-md transition-all duration-200"
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon className="h-5 w-5 text-primary" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                     {item.title}
                   </CardTitle>
-                  <CardDescription>{item.description}</CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">{item.description}</CardDescription>
                 </CardHeader>
               </Card>
             );

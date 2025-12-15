@@ -342,7 +342,7 @@ const NotificationSettings = () => {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => navigate('/settings')}>
+          <Button variant="outline" onClick={() => navigate('/dashboard/settings')}>
             Batal
           </Button>
           <Button onClick={handleSave} disabled={isSaving || isLoading}>

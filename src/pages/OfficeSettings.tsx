@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, Plus, Trash2, Save, Loader2, Navigation } from "lucide-react";
+import { Building2, MapPin, Plus, Trash2, Save, Loader2, Navigation, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import mapboxgl from 'mapbox-gl';
@@ -20,6 +21,7 @@ interface OfficeLocation {
 }
 
 export default function OfficeSettings() {
+  const navigate = useNavigate();
   const [locations, setLocations] = useState<OfficeLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -281,9 +283,14 @@ export default function OfficeSettings() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Lokasi Kantor</h1>
-            <p className="text-muted-foreground mt-1">Kelola lokasi dan koordinat GPS kantor untuk validasi absensi</p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Lokasi Kantor</h1>
+              <p className="text-muted-foreground mt-1">Kelola lokasi dan koordinat GPS kantor untuk validasi absensi</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={addLocation}>

@@ -141,14 +141,11 @@ const EmployeeView = () => {
   };
   const fetchWorkHours = async () => {
     try {
-      const { data, error } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "work_hours")
-        .maybeSingle();
+      // Use SECURITY DEFINER function for secure access to work hours settings
+      const { data, error } = await supabase.rpc('get_work_hours');
       if (error) throw error;
       if (data) {
-        setWorkHours(data.value as unknown as WorkHoursConfig);
+        setWorkHours(data as unknown as WorkHoursConfig);
       }
     } catch (error) {
       console.error("Error fetching work hours:", error);

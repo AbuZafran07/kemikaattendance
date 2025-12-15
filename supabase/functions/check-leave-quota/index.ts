@@ -12,9 +12,7 @@ const corsHeaders = {
 interface LowQuotaEmployee {
   user_id: string;
   full_name: string;
-  email: string;
   remaining_leave: number;
-  fcm_token: string;
 }
 
 async function sendFCMNotification(fcmToken: string, title: string, body: string) {
@@ -109,9 +107,9 @@ Deno.serve(async (req) => {
       // Use default threshold if no body
     }
 
-    console.log(`Checking employees with leave quota <= ${threshold} days`);
+    console.log(`[AUDIT] Admin ${user.id} checking employees with leave quota <= ${threshold} days`);
 
-    // Get employees with low leave quota
+    // Get employees with low leave quota (no longer returns FCM tokens or emails)
     const { data: employees, error } = await supabase
       .rpc('get_low_leave_quota_employees', { threshold });
 
@@ -124,12 +122,29 @@ Deno.serve(async (req) => {
 
     const notifications: { employee: string; success: boolean; remaining: number }[] = [];
 
-    // Send notifications to each employee
+    // Send notifications to each employee - fetch FCM token separately for each
     for (const employee of (employees as LowQuotaEmployee[]) || []) {
+      // Fetch FCM token directly using service role (not exposed via RPC)
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('fcm_token')
+        .eq('id', employee.user_id)
+        .single();
+
+      if (profileError || !profileData?.fcm_token) {
+        console.log(`No FCM token found for ${employee.full_name}, skipping`);
+        notifications.push({
+          employee: employee.full_name,
+          success: false,
+          remaining: employee.remaining_leave
+        });
+        continue;
+      }
+
       const title = '⚠️ Reminder Kuota Cuti';
       const body = `Halo ${employee.full_name}, sisa kuota cuti tahunan Anda tinggal ${employee.remaining_leave} hari. Silakan rencanakan penggunaan cuti Anda dengan bijak.`;
       
-      const result = await sendFCMNotification(employee.fcm_token, title, body);
+      const result = await sendFCMNotification(profileData.fcm_token, title, body);
       
       notifications.push({
         employee: employee.full_name,
@@ -139,6 +154,8 @@ Deno.serve(async (req) => {
 
       console.log(`Notification sent to ${employee.full_name}: ${result ? 'success' : 'failed'}`);
     }
+
+    console.log(`[AUDIT] Admin ${user.id} sent ${notifications.filter(n => n.success).length}/${notifications.length} leave quota reminders`);
 
     return new Response(
       JSON.stringify({ 

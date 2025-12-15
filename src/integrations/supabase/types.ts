@@ -328,8 +328,6 @@ export type Database = {
       get_low_leave_quota_employees: {
         Args: { threshold?: number }
         Returns: {
-          email: string
-          fcm_token: string
           full_name: string
           remaining_leave: number
           user_id: string

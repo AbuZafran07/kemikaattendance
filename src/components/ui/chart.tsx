@@ -58,6 +58,39 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+// Sanitize CSS color values to prevent CSS injection attacks
+function sanitizeCssColor(color: string): string {
+  // Remove any characters that could break out of CSS context
+  const sanitized = color.replace(/[;{}]/g, '');
+  
+  // Validate against safe CSS color patterns
+  const safeColorPatterns = [
+    /^#[0-9a-fA-F]{3,8}$/, // hex colors
+    /^rgb\([^)]+\)$/, // rgb()
+    /^rgba\([^)]+\)$/, // rgba()
+    /^hsl\([^)]+\)$/, // hsl()
+    /^hsla\([^)]+\)$/, // hsla()
+    /^var\(--[a-zA-Z0-9-]+\)$/, // CSS variables
+    /^[a-z]+$/, // named colors (red, blue, etc.)
+  ];
+  
+  const trimmed = sanitized.trim();
+  const isValid = safeColorPatterns.some(pattern => pattern.test(trimmed));
+  
+  if (!isValid) {
+    console.warn(`[Chart] Unsafe color value rejected: ${color}`);
+    return 'transparent';
+  }
+  
+  return trimmed;
+}
+
+// Sanitize CSS key names to prevent injection
+function sanitizeCssKey(key: string): string {
+  // Only allow alphanumeric characters, hyphens, and underscores
+  return key.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
@@ -74,9 +107,13 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    const rawColor = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
+    if (!rawColor) return null;
+    const safeKey = sanitizeCssKey(key);
+    const safeColor = sanitizeCssColor(rawColor);
+    return `  --color-${safeKey}: ${safeColor};`;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, X, MapPin, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CameraCaptureProps {
   onCapture: (photoUrl: string, isInsideArea: boolean) => void;
@@ -77,14 +78,22 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     );
   };
 
-  // 🌍 Ambil nama alamat dari koordinat (reverse geocoding)
+  // 🌍 Ambil nama alamat dari koordinat (reverse geocoding via backend)
   const getAddressFromCoords = async (lat: number, lng: number) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
-      const data = await res.json();
-      if (data.display_name) {
-        const shortAddr = data.display_name.split(",").slice(0, 3).join(", ");
-        setAddress(shortAddr);
+      // Use server-side geocoding to avoid exposing coordinates to third party
+      const { data, error } = await supabase.functions.invoke('reverse-geocode', {
+        body: { lat, lng }
+      });
+      
+      if (error) {
+        console.error('Geocoding error:', error);
+        setAddress("Gagal memuat alamat");
+        return;
+      }
+      
+      if (data?.address) {
+        setAddress(data.address);
       } else {
         setAddress("Alamat tidak ditemukan");
       }

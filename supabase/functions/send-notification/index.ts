@@ -9,6 +9,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limiting: track notifications per admin (in-memory, resets on function restart)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 20; // Max 20 notifications per hour per admin
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in milliseconds
+
+function checkRateLimit(adminId: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = rateLimitMap.get(adminId);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(adminId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+  }
+  
+  if (record.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  record.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX - record.count };
+}
+
+// Sanitize text content to prevent any injection
+function sanitizeContent(text: string): string {
+  // Remove any HTML tags
+  let sanitized = text.replace(/<[^>]*>/g, '');
+  // Remove script-like patterns
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/on\w+=/gi, '');
+  // Remove control characters except newlines and tabs
+  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  return sanitized.trim();
+}
+
+// Validate URLs in content - only allow https URLs from known domains
+function validateUrls(text: string): { valid: boolean; reason?: string } {
+  const urlPattern = /https?:\/\/[^\s]+/gi;
+  const urls = text.match(urlPattern) || [];
+  
+  for (const url of urls) {
+    try {
+      const parsed = new URL(url);
+      // Only allow HTTPS
+      if (parsed.protocol !== 'https:') {
+        return { valid: false, reason: 'Only HTTPS URLs are allowed' };
+      }
+      // Block known suspicious patterns
+      if (parsed.hostname.includes('..') || parsed.hostname.startsWith('-')) {
+        return { valid: false, reason: 'Invalid URL hostname' };
+      }
+    } catch {
+      return { valid: false, reason: 'Invalid URL format' };
+    }
+  }
+  
+  return { valid: true };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -53,7 +111,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log('Admin verified, processing notification request');
+    // Check rate limit
+    const rateCheck = checkRateLimit(user.id);
+    if (!rateCheck.allowed) {
+      console.warn(`Rate limit exceeded for admin ${user.id}`);
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded. Maximum 20 notifications per hour.',
+        retryAfter: 'Please wait before sending more notifications'
+      }), { 
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`Admin ${user.id} verified, processing notification request (${rateCheck.remaining} remaining)`);
 
     const { fcmToken, title, body, data } = await req.json();
 
@@ -71,9 +142,29 @@ Deno.serve(async (req) => {
       throw new Error('Invalid data: must be an object if provided');
     }
 
+    // Sanitize content
+    const sanitizedTitle = sanitizeContent(title);
+    const sanitizedBody = sanitizeContent(body);
+
+    if (sanitizedTitle.length === 0) {
+      throw new Error('Title cannot be empty after sanitization');
+    }
+    if (sanitizedBody.length === 0) {
+      throw new Error('Body cannot be empty after sanitization');
+    }
+
+    // Validate URLs in body
+    const urlValidation = validateUrls(sanitizedBody);
+    if (!urlValidation.valid) {
+      throw new Error(`Invalid URL in notification body: ${urlValidation.reason}`);
+    }
+
     if (!FIREBASE_SERVER_KEY) {
       throw new Error('Firebase server key not configured');
     }
+
+    // Audit log: record notification being sent
+    console.log(`[AUDIT] Notification sent by admin ${user.id} (${user.email}) - Title: "${sanitizedTitle.substring(0, 50)}..." - Target FCM token: ${fcmToken.substring(0, 20)}...`);
 
     // Send FCM notification
     const response = await fetch('https://fcm.googleapis.com/fcm/send', {
@@ -85,8 +176,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         to: fcmToken,
         notification: {
-          title,
-          body,
+          title: sanitizedTitle,
+          body: sanitizedBody,
           icon: '/logo.png'
         },
         data: data || {}
@@ -94,6 +185,8 @@ Deno.serve(async (req) => {
     });
 
     const result = await response.json();
+    
+    console.log(`[AUDIT] Notification delivery result for admin ${user.id}: ${JSON.stringify(result)}`);
     
     return new Response(JSON.stringify({ success: true, result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

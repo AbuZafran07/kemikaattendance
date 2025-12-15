@@ -140,36 +140,36 @@ export default function OvertimeSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
-            <ArrowLeft className="h-5 w-5" />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-2 sm:gap-3 px-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/dashboard/settings")}>
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Kebijakan Lembur</h1>
-            <p className="text-muted-foreground mt-1">Atur aturan dan kompensasi lembur</p>
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Kebijakan Lembur</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Atur aturan dan kompensasi lembur</p>
           </div>
         </div>
 
         {isLoading ? (
           <Card>
-            <CardContent className="p-6">
-              <p className="text-muted-foreground">Memuat pengaturan...</p>
+            <CardContent className="p-4 sm:p-6">
+              <p className="text-sm text-muted-foreground">Memuat pengaturan...</p>
             </CardContent>
           </Card>
         ) : (
           <>
             {/* Batasan Jam Lembur */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                   Batasan Jam Lembur
                 </CardTitle>
-                <CardDescription>Atur batasan waktu lembur karyawan</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">Atur batasan waktu lembur karyawan</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="min_hours">Minimal Jam Lembur</Label>
                     <Input
@@ -233,11 +233,11 @@ export default function OvertimeSettings() {
 
             {/* Aturan Pengajuan */}
             <Card>
-              <CardHeader>
-                <CardTitle>Aturan Pengajuan Lembur</CardTitle>
-                <CardDescription>Konfigurasi aturan dan batasan pengajuan lembur</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Aturan Pengajuan Lembur</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Konfigurasi aturan dan batasan pengajuan lembur</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
                 <div className="space-y-2">
                   <Label htmlFor="min_days_advance">Minimal Pengajuan (hari sebelumnya)</Label>
                   <Input
@@ -310,12 +310,12 @@ export default function OvertimeSettings() {
 
             {/* Kompensasi Lembur */}
             <Card>
-              <CardHeader>
-                <CardTitle>Multiplier Upah Lembur</CardTitle>
-                <CardDescription>Atur perkalian upah untuk jenis hari lembur</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Multiplier Upah Lembur</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Atur perkalian upah untuk jenis hari lembur</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="weekday_rate">Hari Kerja</Label>
                     <Input
@@ -367,12 +367,12 @@ export default function OvertimeSettings() {
 
             {/* Tunjangan */}
             <Card>
-              <CardHeader>
-                <CardTitle>Tunjangan Lembur</CardTitle>
-                <CardDescription>Atur tunjangan tambahan untuk lembur</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Tunjangan Lembur</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Atur tunjangan tambahan untuk lembur</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="meal_threshold">Batas Jam untuk Uang Makan</Label>
                     <Input

@@ -134,36 +134,36 @@ export default function LeaveSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
-            <ArrowLeft className="h-5 w-5" />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-2 sm:gap-3 px-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/dashboard/settings")}>
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Kebijakan Cuti</h1>
-            <p className="text-muted-foreground mt-1">Kelola kuota dan aturan cuti</p>
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Kebijakan Cuti</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Kelola kuota dan aturan cuti</p>
           </div>
         </div>
 
         {isLoading ? (
           <Card>
-            <CardContent className="p-6">
-              <p className="text-muted-foreground">Memuat pengaturan...</p>
+            <CardContent className="p-4 sm:p-6">
+              <p className="text-sm text-muted-foreground">Memuat pengaturan...</p>
             </CardContent>
           </Card>
         ) : (
           <>
             {/* Kuota Cuti */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                   Kuota Cuti Tahunan
                 </CardTitle>
-                <CardDescription>Atur jumlah hari cuti yang diberikan kepada karyawan</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">Atur jumlah hari cuti yang diberikan kepada karyawan</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="annual_leave_quota">Cuti Tahunan (hari)</Label>
                     <Input
@@ -212,12 +212,12 @@ export default function LeaveSettings() {
 
             {/* Aturan Cuti */}
             <Card>
-              <CardHeader>
-                <CardTitle>Aturan Pengajuan Cuti</CardTitle>
-                <CardDescription>Konfigurasi aturan dan batasan pengajuan cuti</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Aturan Pengajuan Cuti</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Konfigurasi aturan dan batasan pengajuan cuti</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="min_days_advance">Minimal Pengajuan (hari sebelumnya)</Label>
                     <Input
@@ -268,12 +268,12 @@ export default function LeaveSettings() {
 
             {/* Carry Over */}
             <Card>
-              <CardHeader>
-                <CardTitle>Sisa Cuti & Reset</CardTitle>
-                <CardDescription>Pengaturan sisa cuti yang dapat dibawa ke tahun berikutnya</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Sisa Cuti & Reset</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Pengaturan sisa cuti yang dapat dibawa ke tahun berikutnya</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+                <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="carry_over" className="cursor-pointer">
                     <div>
                       <p className="font-medium">Izinkan Carry Over</p>
@@ -353,11 +353,11 @@ export default function LeaveSettings() {
               </AlertDescription>
             </Alert>
 
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => navigate("/dashboard/settings")}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+              <Button variant="outline" onClick={() => navigate("/dashboard/settings")} className="w-full sm:w-auto">
                 Batal
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
                 <Save className="h-4 w-4 mr-2" />
                 {isSaving ? "Menyimpan..." : "Simpan Pengaturan"}
               </Button>

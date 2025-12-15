@@ -136,7 +136,7 @@ export default function LeaveSettings() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -354,7 +354,7 @@ export default function LeaveSettings() {
             </Alert>
 
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => navigate("/settings")}>
+              <Button variant="outline" onClick={() => navigate("/dashboard/settings")}>
                 Batal
               </Button>
               <Button onClick={handleSave} disabled={isSaving}>

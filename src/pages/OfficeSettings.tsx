@@ -281,52 +281,52 @@ export default function OfficeSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
-              <ArrowLeft className="h-5 w-5" />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 px-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/dashboard/settings")}>
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Lokasi Kantor</h1>
-              <p className="text-muted-foreground mt-1">Kelola lokasi dan koordinat GPS kantor untuk validasi absensi</p>
+              <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Lokasi Kantor</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Kelola lokasi dan koordinat GPS kantor</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={addLocation}>
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Lokasi
+          <div className="flex gap-2 ml-10 sm:ml-0">
+            <Button variant="outline" size="sm" className="text-xs sm:text-sm" onClick={addLocation}>
+              <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              Tambah
             </Button>
-            <Button onClick={saveLocations} disabled={isSaving}>
-              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            <Button size="sm" className="text-xs sm:text-sm" onClick={saveLocations} disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" /> : <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />}
               Simpan
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
           <Card className="lg:row-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <MapPin className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 Peta Lokasi
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 {selectedLocation 
                   ? "Klik pada peta untuk mengubah posisi lokasi yang dipilih" 
                   : "Pilih lokasi di panel kanan untuk mengubah posisinya"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
               <div 
                 ref={mapContainer} 
-                className="w-full h-[400px] rounded-lg border"
-                style={{ minHeight: '400px' }}
+                className="w-full h-[250px] sm:h-[400px] rounded-lg border"
+                style={{ minHeight: '250px' }}
               />
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {locations.map((location) => (
               <Card 
                 key={location.id}
@@ -339,24 +339,25 @@ export default function OfficeSettings() {
                   selectedLocation === location.id ? null : location.id
                 )}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Building2 className="h-5 w-5" />
+                <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-lg">
+                      <Building2 className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                       <Input
                         value={location.name}
                         onChange={(e) => updateLocation(location.id, 'name', e.target.value)}
                         onClick={(e) => e.stopPropagation()}
-                        className="border-0 p-0 h-auto text-lg font-semibold focus-visible:ring-0"
+                        className="border-0 p-0 h-auto text-sm sm:text-lg font-semibold focus-visible:ring-0 max-w-[150px] sm:max-w-none"
                       />
                     </CardTitle>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
                       {selectedLocation === location.id && (
-                        <Badge variant="secondary">Dipilih</Badge>
+                        <Badge variant="secondary" className="text-xs px-1.5 sm:px-2">Dipilih</Badge>
                       )}
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={(e) => {
                           e.stopPropagation();
                           removeLocation(location.id);
@@ -367,47 +368,51 @@ export default function OfficeSettings() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Latitude</Label>
+                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-4 pt-0 sm:pt-0">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label className="text-xs sm:text-sm">Latitude</Label>
                       <Input
                         type="number"
                         step="0.0001"
                         value={location.latitude}
                         onChange={(e) => updateLocation(location.id, 'latitude', parseFloat(e.target.value) || 0)}
                         onClick={(e) => e.stopPropagation()}
+                        className="text-xs sm:text-sm h-8 sm:h-10"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Longitude</Label>
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label className="text-xs sm:text-sm">Longitude</Label>
                       <Input
                         type="number"
                         step="0.0001"
                         value={location.longitude}
                         onChange={(e) => updateLocation(location.id, 'longitude', parseFloat(e.target.value) || 0)}
                         onClick={(e) => e.stopPropagation()}
+                        className="text-xs sm:text-sm h-8 sm:h-10"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Radius Validasi (meter)</Label>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label className="text-xs sm:text-sm">Radius Validasi (meter)</Label>
                     <Input
                       type="number"
                       value={location.radius}
                       onChange={(e) => updateLocation(location.id, 'radius', parseInt(e.target.value) || 100)}
                       onClick={(e) => e.stopPropagation()}
+                      className="text-xs sm:text-sm h-8 sm:h-10"
                     />
                   </div>
                   <Button
+                    size="sm"
                     variant="outline"
-                    className="w-full"
+                    className="w-full text-xs sm:text-sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       getCurrentLocation(location.id);
                     }}
                   >
-                    <Navigation className="h-4 w-4 mr-2" />
+                    <Navigation className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     Gunakan Lokasi Saat Ini
                   </Button>
                 </CardContent>
@@ -417,13 +422,13 @@ export default function OfficeSettings() {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Petunjuk Penggunaan</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Petunjuk Penggunaan</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>1. <strong>Tambah Lokasi:</strong> Klik tombol "Tambah Lokasi" untuk menambah lokasi kantor baru.</p>
-            <p>2. <strong>Edit Koordinat:</strong> Pilih kartu lokasi, lalu klik pada peta untuk mengubah posisi, atau gunakan tombol "Gunakan Lokasi Saat Ini".</p>
-            <p>3. <strong>Radius Validasi:</strong> Tentukan jarak maksimal (dalam meter) karyawan dapat melakukan absensi dari titik lokasi.</p>
+          <CardContent className="space-y-2 text-xs sm:text-sm text-muted-foreground p-4 sm:p-6 pt-0 sm:pt-0">
+            <p>1. <strong>Tambah Lokasi:</strong> Klik tombol "Tambah" untuk menambah lokasi kantor baru.</p>
+            <p>2. <strong>Edit Koordinat:</strong> Pilih kartu lokasi, lalu klik pada peta untuk mengubah posisi.</p>
+            <p>3. <strong>Radius Validasi:</strong> Tentukan jarak maksimal (dalam meter) karyawan dapat melakukan absensi.</p>
             <p>4. <strong>Simpan:</strong> Jangan lupa klik "Simpan" setelah melakukan perubahan.</p>
           </CardContent>
         </Card>

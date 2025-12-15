@@ -112,33 +112,33 @@ export default function WorkHoursSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
-            <ArrowLeft className="h-5 w-5" />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-2 sm:gap-3 px-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/dashboard/settings")}>
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Jam Kerja</h1>
-            <p className="text-muted-foreground mt-1">Atur jam kerja dan toleransi keterlambatan</p>
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Jam Kerja</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Atur jam kerja dan toleransi keterlambatan</p>
           </div>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               Pengaturan Jam Kerja
             </CardTitle>
-            <CardDescription>Konfigurasi jam masuk, jam pulang, dan toleransi keterlambatan</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Konfigurasi jam masuk, jam pulang, dan toleransi keterlambatan</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
             {isLoading ? (
               <p className="text-muted-foreground">Memuat pengaturan...</p>
             ) : (
               <>
                 {/* Check-In Settings */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">Jam Masuk</h3>
+                <div className="space-y-3 sm:space-y-4">
+                  <h3 className="font-semibold text-base sm:text-lg">Jam Masuk</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="check_in_start">Waktu Mulai Check-In</Label>
@@ -180,9 +180,9 @@ export default function WorkHoursSettings() {
                 </div>
 
                 {/* Check-Out Settings */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">Jam Pulang</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3 sm:space-y-4">
+                  <h3 className="font-semibold text-base sm:text-lg">Jam Pulang</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="check_out_start">Waktu Mulai Check-Out</Label>
                       <Input
@@ -224,9 +224,9 @@ export default function WorkHoursSettings() {
                 </div>
 
                 {/* Example */}
-                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                  <h4 className="font-semibold text-sm">Contoh:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
+                <div className="bg-muted/50 p-3 sm:p-4 rounded-lg space-y-2">
+                  <h4 className="font-semibold text-xs sm:text-sm">Contoh:</h4>
+                  <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
                     <li>
                       • Check-in sebelum <strong>{config.check_in_end}</strong> + {config.late_tolerance_minutes} menit
                       (

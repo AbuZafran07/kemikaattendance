@@ -271,11 +271,16 @@ const EmployeeView = () => {
             if (officeLocations.length === 0) {
               throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
             }
+
+            // Check if user is a hybrid worker (can check in from anywhere)
+            const isHybridWorker = profile?.work_type === 'wfa';
+
             let nearestOffice: {
               name: string;
               distance: number;
               radius: number;
             } | null = null;
+            
             for (const office of officeLocations) {
               const distance = calculateDistance(
                 location.latitude,
@@ -283,30 +288,46 @@ const EmployeeView = () => {
                 office.latitude,
                 office.longitude,
               );
-              if (distance <= office.radius) {
-                if (!nearestOffice || distance < nearestOffice.distance) {
-                  nearestOffice = {
-                    name: office.name,
-                    distance,
-                    radius: office.radius,
-                  };
-                }
+              if (!nearestOffice || distance < nearestOffice.distance) {
+                nearestOffice = {
+                  name: office.name,
+                  distance,
+                  radius: office.radius,
+                };
               }
             }
-            if (!nearestOffice) {
-              const distances = officeLocations
-                .map((office) => {
-                  const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
-                  return `${office.name}: ${Math.round(d)}m`;
-                })
-                .join(", ");
-              toast({
-                title: "Lokasi Tidak Valid",
-                description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
-                variant: "destructive",
-              });
-              setIsProcessing(false);
-              return;
+
+            // Only validate location for non-hybrid workers
+            if (!isHybridWorker) {
+              let isWithinRadius = false;
+              for (const office of officeLocations) {
+                const distance = calculateDistance(
+                  location.latitude,
+                  location.longitude,
+                  office.latitude,
+                  office.longitude,
+                );
+                if (distance <= office.radius) {
+                  isWithinRadius = true;
+                  break;
+                }
+              }
+
+              if (!isWithinRadius) {
+                const distances = officeLocations
+                  .map((office) => {
+                    const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
+                    return `${office.name}: ${Math.round(d)}m`;
+                  })
+                  .join(", ");
+                toast({
+                  title: "Lokasi Tidak Valid",
+                  description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
+                  variant: "destructive",
+                });
+                setIsProcessing(false);
+                return;
+              }
             }
 
             // Step 4: Record check-in with status based on work hours settings
@@ -338,6 +359,10 @@ const EmployeeView = () => {
                 status = "terlambat";
               }
             }
+            const locationNote = isHybridWorker 
+              ? `Check-in Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
+              : `Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`;
+            
             const { data, error } = await supabase
               .from("attendance")
               .insert([
@@ -347,10 +372,10 @@ const EmployeeView = () => {
                   check_in_latitude: location.latitude,
                   check_in_longitude: location.longitude,
                   check_in_photo_url: base64Photo,
-                  gps_validated: true,
+                  gps_validated: !isHybridWorker ? true : false, // Hybrid workers don't need GPS validation
                   face_recognition_validated: false,
                   status: status,
-                  notes: `Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
+                  notes: locationNote,
                 },
               ])
               .select()
@@ -366,7 +391,9 @@ const EmployeeView = () => {
             );
             toast({
               title: "Check-In Berhasil",
-              description: `Terima kasih! Check-in di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`,
+              description: isHybridWorker 
+                ? `Check-in Hybrid berhasil! Lokasi: ${nearestOffice?.name || 'Lokasi saat ini'}`
+                : `Terima kasih! Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`,
             });
             fetchRecentAttendance();
             resolve(true);
@@ -402,8 +429,10 @@ const EmployeeView = () => {
             // Step 2: Get location and validate
             const location = await getCurrentLocation();
 
-            // Check if within range of any office
-            let isValidLocation = false;
+            // Check if user is a hybrid worker (can check out from anywhere)
+            const isHybridWorker = profile?.work_type === 'wfa';
+
+            // Find nearest office for notes
             let nearestOffice: {
               name: string;
               distance: number;
@@ -415,14 +444,11 @@ const EmployeeView = () => {
                 office.latitude,
                 office.longitude,
               );
-              if (distance <= office.radius) {
-                isValidLocation = true;
-                if (!nearestOffice || distance < nearestOffice.distance) {
-                  nearestOffice = {
-                    name: office.name,
-                    distance,
-                  };
-                }
+              if (!nearestOffice || distance < nearestOffice.distance) {
+                nearestOffice = {
+                  name: office.name,
+                  distance,
+                };
               }
             }
             const now = new Date();
@@ -456,6 +482,13 @@ const EmployeeView = () => {
                 finalStatus = "pulang_cepat";
               }
             }
+
+            const checkoutLocationNote = isHybridWorker
+              ? `${todayAttendance.notes}, Check-out Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
+              : nearestOffice
+                ? `${todayAttendance.notes}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
+                : todayAttendance.notes;
+
             const { data: updatedData, error } = await supabase
               .from("attendance")
               .update({
@@ -465,9 +498,7 @@ const EmployeeView = () => {
                 check_out_photo_url: base64Photo,
                 duration_minutes: durationMinutes,
                 status: finalStatus,
-                notes: nearestOffice
-                  ? `Check-in di ${todayAttendance.notes?.split(" di ")[1] || "kantor"}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-                  : todayAttendance.notes,
+                notes: checkoutLocationNote,
               })
               .eq("id", todayAttendance.id)
               .select()

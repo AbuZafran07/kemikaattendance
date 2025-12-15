@@ -75,6 +75,7 @@ const Employees = () => {
     phone: "",
     address: "",
     join_date: new Date().toISOString().split('T')[0],
+    work_type: "wfo",
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -85,6 +86,7 @@ const Employees = () => {
     phone: "",
     address: "",
     status: "",
+    work_type: "wfo",
   });
 
   useEffect(() => {
@@ -223,39 +225,38 @@ const Employees = () => {
     setIsUploading(true);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: result.data.email,
-        password: result.data.password,
-        options: {
-          data: {
+      // Use admin edge function to create user without auto-login
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: result.data.email,
+          password: result.data.password,
+          userData: {
             nik: result.data.nik,
             full_name: result.data.full_name,
             jabatan: result.data.jabatan,
-            departemen: result.data.departemen
+            departemen: result.data.departemen,
+            phone: formData.phone,
+            address: formData.address,
+            join_date: formData.join_date,
+            work_type: formData.work_type,
           }
         }
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (authData.user) {
-        let photoUrl: string | null = null;
-        
-        if (photoFile) {
-          photoUrl = await uploadPhoto(authData.user.id);
+      const userId = data?.userId;
+
+      // Upload photo if exists
+      if (userId && photoFile) {
+        const photoUrl = await uploadPhoto(userId);
+        if (photoUrl) {
+          await supabase
+            .from('profiles')
+            .update({ photo_url: photoUrl })
+            .eq('id', userId);
         }
-
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            phone: formData.phone,
-            address: formData.address,
-            photo_url: photoUrl,
-            join_date: formData.join_date,
-          })
-          .eq('id', authData.user.id);
-
-        if (profileError) throw profileError;
       }
 
       toast({
@@ -266,6 +267,7 @@ const Employees = () => {
       setIsDialogOpen(false);
       resetForm();
       fetchEmployees();
+      fetchEmployeeRoles();
     } catch (error: any) {
       toast({
         title: "Gagal Menambahkan Karyawan",
@@ -319,6 +321,7 @@ const Employees = () => {
           address: result.data.address || null,
           status: result.data.status,
           photo_url: photoUrl,
+          work_type: editFormData.work_type,
         })
         .eq('id', editingEmployee.id);
 
@@ -354,6 +357,7 @@ const Employees = () => {
       phone: employee.phone || "",
       address: employee.address || "",
       status: employee.status || "Active",
+      work_type: employee.work_type || "wfo",
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
@@ -377,6 +381,7 @@ const Employees = () => {
       phone: "",
       address: "",
       join_date: new Date().toISOString().split('T')[0],
+      work_type: "wfo",
     });
     setEditFormData({
       nik: "",
@@ -386,6 +391,7 @@ const Employees = () => {
       phone: "",
       address: "",
       status: "",
+      work_type: "wfo",
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -687,6 +693,25 @@ const Employees = () => {
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="work_type">Tipe Kerja *</Label>
+                      <Select
+                        value={formData.work_type}
+                        onValueChange={(value) => setFormData({ ...formData, work_type: value })}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih Tipe Kerja" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="wfo">WFO (Work From Office)</SelectItem>
+                          <SelectItem value="wfa">Hybrid (Work From Anywhere)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Hybrid: Bisa absen dari mana saja
+                      </p>
+                    </div>
                     <div className="space-y-2 col-span-2">
                       <Label htmlFor="address">Alamat</Label>
                       <Input
@@ -835,6 +860,24 @@ const Employees = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_work_type">Tipe Kerja *</Label>
+                  <Select
+                    value={editFormData.work_type}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, work_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Tipe Kerja" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="wfo">WFO (Work From Office)</SelectItem>
+                      <SelectItem value="wfa">Hybrid (Work From Anywhere)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Hybrid: Bisa absen dari mana saja
+                  </p>
+                </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="edit_address">Alamat</Label>
                   <Input
@@ -958,6 +1001,23 @@ const Employees = () => {
                   </div>
                 </div>
 
+                {/* Work Type Info */}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Tipe Kerja</p>
+                    <p className="font-medium flex items-center gap-2">
+                      {viewingEmployee.work_type === 'wfa' ? (
+                        <Badge variant="secondary">Hybrid (Work From Anywhere)</Badge>
+                      ) : (
+                        <Badge variant="outline">WFO (Work From Office)</Badge>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Leave Info */}
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                   <div className="text-center p-4 rounded-lg bg-primary/5">
@@ -1034,12 +1094,18 @@ const Employees = () => {
                         </TableCell>
                         <TableCell className="font-medium">{employee.nik}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {employee.full_name}
                             {employeeRoles[employee.id] === 'admin' && (
                               <Badge variant="outline" className="text-xs">
                                 <ShieldCheck className="h-3 w-3 mr-1" />
                                 Admin
+                              </Badge>
+                            )}
+                            {employee.work_type === 'wfa' && (
+                              <Badge variant="secondary" className="text-xs">
+                                <MapPin className="h-3 w-3 mr-1" />
+                                Hybrid
                               </Badge>
                             )}
                           </div>

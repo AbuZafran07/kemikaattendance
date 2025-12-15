@@ -230,6 +230,7 @@ export type Database = {
           remaining_leave: number | null
           status: string | null
           updated_at: string
+          work_type: string
         }
         Insert: {
           address?: string | null
@@ -248,6 +249,7 @@ export type Database = {
           remaining_leave?: number | null
           status?: string | null
           updated_at?: string
+          work_type?: string
         }
         Update: {
           address?: string | null
@@ -266,6 +268,7 @@ export type Database = {
           remaining_leave?: number | null
           status?: string | null
           updated_at?: string
+          work_type?: string
         }
         Relationships: []
       }

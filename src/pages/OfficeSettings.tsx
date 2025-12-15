@@ -138,9 +138,20 @@ export default function OfficeSettings() {
       el.style.backgroundColor = location.id === selectedLocation ? '#3b82f6' : '#ef4444';
       el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
 
+      // Use setText() instead of setHTML() to prevent XSS
+      const popup = new mapboxgl.Popup();
+      const popupContent = document.createElement('div');
+      const nameElement = document.createElement('strong');
+      nameElement.textContent = location.name;
+      const radiusText = document.createTextNode(`Radius: ${location.radius}m`);
+      popupContent.appendChild(nameElement);
+      popupContent.appendChild(document.createElement('br'));
+      popupContent.appendChild(radiusText);
+      popup.setDOMContent(popupContent);
+
       const marker = new mapboxgl.Marker(el)
         .setLngLat([location.longitude, location.latitude])
-        .setPopup(new mapboxgl.Popup().setHTML(`<strong>${location.name}</strong><br/>Radius: ${location.radius}m`))
+        .setPopup(popup)
         .addTo(map.current!);
 
       markers.current[location.id] = marker;

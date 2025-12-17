@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye } from "lucide-react";
+import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +45,16 @@ const Attendance = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; type: string } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { toast } = useToast();
+
+  // Pagination logic
+  const totalPages = Math.ceil(attendanceData.length / itemsPerPage);
+  const paginatedData = attendanceData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   useEffect(() => {
     // Set default date range to today
@@ -285,85 +294,117 @@ const Attendance = () => {
           </CardHeader>
           <CardContent>
             {attendanceData.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Karyawan</TableHead>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Check-In</TableHead>
-                      <TableHead>Check-Out</TableHead>
-                      <TableHead>Durasi</TableHead>
-                      <TableHead>Foto Absen</TableHead>
-                      <TableHead>Lokasi</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {attendanceData.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={record.photo_url || undefined} />
-                              <AvatarFallback className="text-xs">
-                                {getInitials(record.full_name || "U")}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{record.full_name}</p>
-                              <p className="text-xs text-muted-foreground">{record.departemen}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatDate(record.check_in_time)}</TableCell>
-                        <TableCell className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          {formatTime(record.check_in_time)}
-                        </TableCell>
-                        <TableCell>{record.check_out_time ? formatTime(record.check_out_time) : "-"}</TableCell>
-                        <TableCell>{calculateDuration(record.check_in_time, record.check_out_time)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {record.check_in_photo_url && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => openPhotoDialog(record.check_in_photo_url, "Check-In")}
-                              >
-                                <Camera className="h-4 w-4 text-primary" />
-                              </Button>
-                            )}
-                            {record.check_out_photo_url && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => openPhotoDialog(record.check_out_photo_url, "Check-Out")}
-                              >
-                                <Eye className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            )}
-                            {!record.check_in_photo_url && !record.check_out_photo_url && (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <MapPin
-                              className={`h-4 w-4 ${record.gps_validated ? "text-primary" : "text-destructive"}`}
-                            />
-                            <span className="text-sm">{record.gps_validated ? "Valid" : "Invalid"}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+              <>
+                <div className="overflow-auto max-h-[calc(100vh-500px)]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Karyawan</TableHead>
+                        <TableHead>Tanggal</TableHead>
+                        <TableHead>Check-In</TableHead>
+                        <TableHead>Check-Out</TableHead>
+                        <TableHead>Durasi</TableHead>
+                        <TableHead>Foto Absen</TableHead>
+                        <TableHead>Lokasi</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedData.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={record.photo_url || undefined} />
+                                <AvatarFallback className="text-xs">
+                                  {getInitials(record.full_name || "U")}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{record.full_name}</p>
+                                <p className="text-xs text-muted-foreground">{record.departemen}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(record.check_in_time)}</TableCell>
+                          <TableCell className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            {formatTime(record.check_in_time)}
+                          </TableCell>
+                          <TableCell>{record.check_out_time ? formatTime(record.check_out_time) : "-"}</TableCell>
+                          <TableCell>{calculateDuration(record.check_in_time, record.check_out_time)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {record.check_in_photo_url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => openPhotoDialog(record.check_in_photo_url, "Check-In")}
+                                >
+                                  <Camera className="h-4 w-4 text-primary" />
+                                </Button>
+                              )}
+                              {record.check_out_photo_url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => openPhotoDialog(record.check_out_photo_url, "Check-Out")}
+                                >
+                                  <Eye className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              )}
+                              {!record.check_in_photo_url && !record.check_out_photo_url && (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <MapPin
+                                className={`h-4 w-4 ${record.gps_validated ? "text-primary" : "text-destructive"}`}
+                              />
+                              <span className="text-sm">{record.gps_validated ? "Valid" : "Invalid"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(record.status)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, attendanceData.length)} dari {attendanceData.length} data
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm">
+                        {currentPage} / {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">Tidak ada data absensi pada periode ini</div>
             )}

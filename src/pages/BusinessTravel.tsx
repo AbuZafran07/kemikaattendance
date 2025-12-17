@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,6 +44,8 @@ interface BusinessTravelRequest {
 
 const BusinessTravel = () => {
   const [requests, setRequests] = useState<BusinessTravelRequest[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { userRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = userRole === "admin";
@@ -54,6 +56,13 @@ const BusinessTravel = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pagination
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const paginatedRequests = requests.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   useEffect(() => {
     fetchRequests();
@@ -390,7 +399,7 @@ const BusinessTravel = () => {
             <CardDescription>Semua permintaan perjalanan dinas karyawan</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[calc(100vh-400px)]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -407,8 +416,8 @@ const BusinessTravel = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {requests.length > 0 ? (
-                    requests.map((request) => (
+                  {paginatedRequests.length > 0 ? (
+                    paginatedRequests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="font-medium">{request.profiles?.full_name}</TableCell>
                         <TableCell>{request.profiles?.nik}</TableCell>
@@ -464,6 +473,36 @@ const BusinessTravel = () => {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, requests.length)} dari {requests.length} data
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

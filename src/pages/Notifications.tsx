@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
-import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -88,8 +88,18 @@ const Notifications = () => {
   const [overtimeNotifications, setOvertimeNotifications] = useState<RequestNotification[]>([]);
   const [businessTravelNotifications, setBusinessTravelNotifications] = useState<BusinessTravelNotification[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [attendancePage, setAttendancePage] = useState(1);
+  const [leavePage, setLeavePage] = useState(1);
+  const [overtimePage, setOvertimePage] = useState(1);
+  const [travelPage, setTravelPage] = useState(1);
+  const itemsPerPage = 10;
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Pagination helpers
+  const getPaginatedData = <T,>(data: T[], page: number) => 
+    data.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const getTotalPages = (total: number) => Math.ceil(total / itemsPerPage);
 
   useEffect(() => {
     fetchAllNotifications();
@@ -530,14 +540,13 @@ const Notifications = () => {
                 <CardDescription>Check-in dan check-out karyawan</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-auto">
                   {attendanceNotifications.length > 0 ? (
-                    attendanceNotifications.map((notification) => (
+                    getPaginatedData(attendanceNotifications, attendancePage).map((notification) => (
                       <div
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors"
                       >
-                        {/* Kiri: Foto + Info karyawan */}
                         <div className="flex items-center gap-4">
                           <EmployeeAvatar
                             src={notification.profiles.photo_url}
@@ -551,16 +560,11 @@ const Notifications = () => {
                             </p>
                           </div>
                         </div>
-
-                        {/* Kanan: Tanggal, jam, status, lokasi */}
                         <div className="text-right space-y-1">
-                          {/* ✅ Tanggal absen */}
                           <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3" />
                             <span>{formatDate(notification.check_in_time || notification.created_at)}</span>
                           </div>
-
-                          {/* Jam check-in / check-out */}
                           <div className="flex items-center gap-2 justify-end">
                             <Clock className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm font-medium">
@@ -568,11 +572,7 @@ const Notifications = () => {
                               {notification.check_out_time && ` - ${formatTime(notification.check_out_time)}`}
                             </span>
                           </div>
-
-                          {/* Status */}
                           {getStatusBadge(notification.status)}
-
-                          {/* Notes / lokasi */}
                           {notification.notes && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <MapPin className="h-3 w-3" />
@@ -586,6 +586,22 @@ const Notifications = () => {
                     <div className="text-center py-8 text-muted-foreground">Belum ada aktivitas absensi hari ini</div>
                   )}
                 </div>
+                {getTotalPages(attendanceNotifications.length) > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      {(attendancePage - 1) * itemsPerPage + 1} - {Math.min(attendancePage * itemsPerPage, attendanceNotifications.length)} dari {attendanceNotifications.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setAttendancePage(p => Math.max(1, p - 1))} disabled={attendancePage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm">{attendancePage} / {getTotalPages(attendanceNotifications.length)}</span>
+                      <Button variant="outline" size="sm" onClick={() => setAttendancePage(p => Math.min(getTotalPages(attendanceNotifications.length), p + 1))} disabled={attendancePage === getTotalPages(attendanceNotifications.length)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -597,9 +613,9 @@ const Notifications = () => {
                 <CardDescription>Tinjau dan setujui pengajuan cuti karyawan</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-auto">
                   {leaveNotifications.length > 0 ? (
-                    leaveNotifications.map((notification) => (
+                    getPaginatedData(leaveNotifications, leavePage).map((notification) => (
                       <div
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
@@ -626,6 +642,22 @@ const Notifications = () => {
                     <div className="text-center py-8 text-muted-foreground">Tidak ada pengajuan cuti yang pending</div>
                   )}
                 </div>
+                {getTotalPages(leaveNotifications.length) > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      {(leavePage - 1) * itemsPerPage + 1} - {Math.min(leavePage * itemsPerPage, leaveNotifications.length)} dari {leaveNotifications.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setLeavePage(p => Math.max(1, p - 1))} disabled={leavePage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm">{leavePage} / {getTotalPages(leaveNotifications.length)}</span>
+                      <Button variant="outline" size="sm" onClick={() => setLeavePage(p => Math.min(getTotalPages(leaveNotifications.length), p + 1))} disabled={leavePage === getTotalPages(leaveNotifications.length)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -637,9 +669,9 @@ const Notifications = () => {
                 <CardDescription>Tinjau dan setujui pengajuan lembur karyawan</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-auto">
                   {overtimeNotifications.length > 0 ? (
-                    overtimeNotifications.map((notification) => (
+                    getPaginatedData(overtimeNotifications, overtimePage).map((notification) => (
                       <div
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
@@ -668,6 +700,22 @@ const Notifications = () => {
                     </div>
                   )}
                 </div>
+                {getTotalPages(overtimeNotifications.length) > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      {(overtimePage - 1) * itemsPerPage + 1} - {Math.min(overtimePage * itemsPerPage, overtimeNotifications.length)} dari {overtimeNotifications.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setOvertimePage(p => Math.max(1, p - 1))} disabled={overtimePage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm">{overtimePage} / {getTotalPages(overtimeNotifications.length)}</span>
+                      <Button variant="outline" size="sm" onClick={() => setOvertimePage(p => Math.min(getTotalPages(overtimeNotifications.length), p + 1))} disabled={overtimePage === getTotalPages(overtimeNotifications.length)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -679,9 +727,9 @@ const Notifications = () => {
                 <CardDescription>Tinjau dan setujui pengajuan perjalanan dinas karyawan</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-auto">
                   {businessTravelNotifications.length > 0 ? (
-                    businessTravelNotifications.map((notification) => (
+                    getPaginatedData(businessTravelNotifications, travelPage).map((notification) => (
                       <div
                         key={notification.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
@@ -725,6 +773,22 @@ const Notifications = () => {
                     </div>
                   )}
                 </div>
+                {getTotalPages(businessTravelNotifications.length) > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      {(travelPage - 1) * itemsPerPage + 1} - {Math.min(travelPage * itemsPerPage, businessTravelNotifications.length)} dari {businessTravelNotifications.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setTravelPage(p => Math.max(1, p - 1))} disabled={travelPage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm">{travelPage} / {getTotalPages(businessTravelNotifications.length)}</span>
+                      <Button variant="outline" size="sm" onClick={() => setTravelPage(p => Math.min(getTotalPages(businessTravelNotifications.length), p + 1))} disabled={travelPage === getTotalPages(businessTravelNotifications.length)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

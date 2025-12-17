@@ -1067,7 +1067,7 @@ const Employees = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[calc(100vh-320px)]">
               <Table>
                 <TableHeader>
                   <TableRow>

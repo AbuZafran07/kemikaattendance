@@ -2,7 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -18,9 +18,18 @@ import { useToast } from "@/hooks/use-toast";
 
 const Overtime = () => {
   const [overtimeRequests, setOvertimeRequests] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { userRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = userRole === 'admin';
+
+  // Pagination
+  const totalPages = Math.ceil(overtimeRequests.length / itemsPerPage);
+  const paginatedRequests = overtimeRequests.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   useEffect(() => {
     fetchOvertimeRequests();
@@ -228,7 +237,7 @@ const Overtime = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[calc(100vh-400px)]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -243,8 +252,8 @@ const Overtime = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {overtimeRequests.length > 0 ? (
-                    overtimeRequests.map((request) => (
+                  {paginatedRequests.length > 0 ? (
+                    paginatedRequests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="font-medium">
                           {request.profiles?.full_name}
@@ -290,6 +299,36 @@ const Overtime = () => {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, overtimeRequests.length)} dari {overtimeRequests.length} data
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

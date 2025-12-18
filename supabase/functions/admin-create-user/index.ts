@@ -84,9 +84,11 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    if (password.length < 6) {
+    // Strong password validation: min 8 chars, uppercase, lowercase, number, special char
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    if (!passwordRegex.test(password)) {
       return new Response(
-        JSON.stringify({ error: "Password minimal 6 karakter" }),
+        JSON.stringify({ error: "Password minimal 8 karakter dan harus mengandung huruf besar, huruf kecil, angka, dan simbol" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }

@@ -18,6 +18,7 @@ export const JABATAN_OPTIONS = [
   "Admin Support",
   "Helper",
   "Purchasing + EXIM",
+  "Marketing Support",
 ] as const;
 
 export const DEPARTMENT_OPTIONS = [

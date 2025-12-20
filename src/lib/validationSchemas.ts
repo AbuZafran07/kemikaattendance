@@ -24,8 +24,12 @@ export const employeeSchema = z.object({
   password: z
     .string()
     .min(1, 'Password harus diisi')
-    .min(6, 'Password minimal 6 karakter')
-    .max(128, 'Password maksimal 128 karakter'),
+    .min(8, 'Password minimal 8 karakter')
+    .max(128, 'Password maksimal 128 karakter')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/,
+      'Password harus mengandung huruf besar, huruf kecil, angka, dan simbol'
+    ),
   nik: z
     .string()
     .trim()

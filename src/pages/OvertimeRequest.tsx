@@ -18,6 +18,7 @@ import { useOvertimePolicy, isHoliday, isWeekend } from "@/hooks/usePolicySettin
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
+import { notifyAdmins, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 
 const OvertimeRequest = () => {
   const navigate = useNavigate();
@@ -192,6 +193,15 @@ const OvertimeRequest = () => {
       ]);
 
       if (error) throw error;
+
+      // Send notification to admins
+      const formattedDate = formatDateForNotification(data.overtimeDate);
+      const notification = NotificationTemplates.overtimeRequestSubmitted(
+        profile?.full_name || 'Karyawan',
+        totalHours,
+        formattedDate
+      );
+      notifyAdmins(notification.title, notification.body, { type: 'overtime_request' });
 
       toast({
         title: "Berhasil",

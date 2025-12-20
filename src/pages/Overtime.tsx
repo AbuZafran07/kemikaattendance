@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 
 const Overtime = () => {
   const [overtimeRequests, setOvertimeRequests] = useState<any[]>([]);
@@ -112,6 +113,9 @@ const Overtime = () => {
   };
 
   const handleApprove = async (requestId: string) => {
+    // Get request details first
+    const request = overtimeRequests.find(r => r.id === requestId);
+    
     const { error } = await supabase
       .from('overtime_requests')
       .update({
@@ -131,11 +135,22 @@ const Overtime = () => {
         title: "Berhasil",
         description: "Permintaan lembur telah disetujui",
       });
+      
+      // Send notification to employee
+      if (request) {
+        const date = formatDateForNotification(request.overtime_date);
+        const notification = NotificationTemplates.overtimeRequestApproved(date, request.hours);
+        notifyEmployee(request.user_id, notification.title, notification.body, { type: 'overtime_approved' });
+      }
+      
       fetchOvertimeRequests();
     }
   };
 
   const handleReject = async (requestId: string) => {
+    // Get request details first
+    const request = overtimeRequests.find(r => r.id === requestId);
+    
     const { error } = await supabase
       .from('overtime_requests')
       .update({
@@ -154,6 +169,14 @@ const Overtime = () => {
         title: "Berhasil",
         description: "Permintaan lembur telah ditolak",
       });
+      
+      // Send notification to employee
+      if (request) {
+        const date = formatDateForNotification(request.overtime_date);
+        const notification = NotificationTemplates.overtimeRequestRejected(date);
+        notifyEmployee(request.user_id, notification.title, notification.body, { type: 'overtime_rejected' });
+      }
+      
       fetchOvertimeRequests();
     }
   };

@@ -17,6 +17,7 @@ import { leaveRequestSchema, LeaveRequestFormData } from "@/lib/validationSchema
 import { useLeavePolicy } from "@/hooks/usePolicySettings";
 import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
+import { notifyAdmins, NotificationTemplates, formatLeaveTypeForNotification } from "@/lib/notifications";
 
 const LeaveRequest = () => {
   const navigate = useNavigate();
@@ -181,6 +182,15 @@ const LeaveRequest = () => {
       ]);
 
       if (error) throw error;
+
+      // Send notification to admins
+      const leaveTypeName = formatLeaveTypeForNotification(data.leaveType);
+      const notification = NotificationTemplates.leaveRequestSubmitted(
+        profile?.full_name || 'Karyawan',
+        leaveTypeName,
+        totalDays
+      );
+      notifyAdmins(notification.title, notification.body, { type: 'leave_request' });
 
       toast({
         title: "Berhasil",

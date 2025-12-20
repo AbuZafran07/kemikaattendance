@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { notifyEmployee, NotificationTemplates, formatLeaveTypeForNotification, formatDateForNotification } from "@/lib/notifications";
 
 const Leave = () => {
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -105,6 +106,9 @@ const Leave = () => {
   };
 
   const handleApprove = async (requestId: string) => {
+    // Get request details first
+    const request = leaveRequests.find(r => r.id === requestId);
+    
     const { error } = await supabase
       .from("leave_requests")
       .update({
@@ -124,11 +128,24 @@ const Leave = () => {
         title: "Berhasil",
         description: "Permintaan cuti telah disetujui",
       });
+      
+      // Send notification to employee
+      if (request) {
+        const leaveType = formatLeaveTypeForNotification(request.leave_type);
+        const startDate = formatDateForNotification(request.start_date);
+        const endDate = formatDateForNotification(request.end_date);
+        const notification = NotificationTemplates.leaveRequestApproved(leaveType, startDate, endDate);
+        notifyEmployee(request.user_id, notification.title, notification.body, { type: 'leave_approved' });
+      }
+      
       fetchLeaveRequests();
     }
   };
 
   const handleReject = async (requestId: string) => {
+    // Get request details first
+    const request = leaveRequests.find(r => r.id === requestId);
+    
     const { error } = await supabase
       .from("leave_requests")
       .update({
@@ -148,6 +165,14 @@ const Leave = () => {
         title: "Berhasil",
         description: "Permintaan cuti telah ditolak",
       });
+      
+      // Send notification to employee
+      if (request) {
+        const leaveType = formatLeaveTypeForNotification(request.leave_type);
+        const notification = NotificationTemplates.leaveRequestRejected(leaveType, "Ditolak oleh admin");
+        notifyEmployee(request.user_id, notification.title, notification.body, { type: 'leave_rejected' });
+      }
+      
       fetchLeaveRequests();
     }
   };

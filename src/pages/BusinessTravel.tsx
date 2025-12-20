@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 
 interface BusinessTravelRequest {
   id: string;
@@ -225,6 +226,11 @@ const BusinessTravel = () => {
           : "Perjalanan dinas disetujui",
       });
 
+      // Send notification to employee
+      const startDate = formatDateForNotification(selectedRequest.start_date);
+      const notification = NotificationTemplates.businessTravelApproved(selectedRequest.destination, startDate);
+      notifyEmployee(selectedRequest.user_id, notification.title, notification.body, { type: 'business_travel_approved' });
+
       setUploadDialogOpen(false);
       setSelectedRequest(null);
       setUploadingFile(null);
@@ -261,6 +267,13 @@ const BusinessTravel = () => {
         title: "Berhasil",
         description: "Perjalanan dinas ditolak",
       });
+
+      // Send notification to employee
+      const notification = NotificationTemplates.businessTravelRejected(
+        selectedRequest.destination, 
+        rejectionReason || "Ditolak oleh admin"
+      );
+      notifyEmployee(selectedRequest.user_id, notification.title, notification.body, { type: 'business_travel_rejected' });
 
       setRejectDialogOpen(false);
       setSelectedRequest(null);

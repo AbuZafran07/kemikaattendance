@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
+import { notifyAdmins, NotificationTemplates } from "@/lib/notifications";
 
 const businessTravelSchema = z.object({
   destination: z.string().trim().min(1, "Tujuan harus diisi").max(200, "Tujuan maksimal 200 karakter"),
@@ -77,6 +78,14 @@ const BusinessTravelRequest = () => {
       ]);
 
       if (error) throw error;
+
+      // Send notification to admins
+      const notification = NotificationTemplates.businessTravelSubmitted(
+        profile?.full_name || 'Karyawan',
+        data.destination,
+        totalDays
+      );
+      notifyAdmins(notification.title, notification.body, { type: 'business_travel' });
 
       toast({
         title: "Berhasil",

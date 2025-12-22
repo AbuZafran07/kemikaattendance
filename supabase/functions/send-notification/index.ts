@@ -4,10 +4,23 @@ const FIREBASE_SERVER_KEY = Deno.env.get('FIREBASE_SERVER_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS configuration - restrict to allowed origins
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  
+  // Allow lovable.app subdomains
+  const isLovableApp = origin?.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/);
+  const isAllowed = origin && (allowedOrigins.includes(origin) || isLovableApp);
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 // Rate limiting: track notifications per admin (in-memory, resets on function restart)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -68,6 +81,9 @@ function validateUrls(text: string): { valid: boolean; reason?: string } {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -77,7 +93,6 @@ Deno.serve(async (req) => {
     // Verify the requesting user is an admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header provided');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -89,7 +104,6 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      console.error('Auth error:', authError?.message);
       return new Response(JSON.stringify({ error: 'Invalid token' }), { 
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -104,7 +118,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (roleError || roleData?.role !== 'admin') {
-      console.error('Admin check failed:', roleError?.message || 'User is not admin');
       return new Response(JSON.stringify({ error: 'Only admins can send notifications' }), { 
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -114,7 +127,6 @@ Deno.serve(async (req) => {
     // Check rate limit
     const rateCheck = checkRateLimit(user.id);
     if (!rateCheck.allowed) {
-      console.warn(`Rate limit exceeded for admin ${user.id}`);
       return new Response(JSON.stringify({ 
         error: 'Rate limit exceeded. Maximum 20 notifications per hour.',
         retryAfter: 'Please wait before sending more notifications'
@@ -124,7 +136,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Admin ${user.id} verified, processing notification request (${rateCheck.remaining} remaining)`);
+    console.log(`[AUDIT] Admin sending notification (${rateCheck.remaining} remaining)`);
 
     const { fcmToken, title, body, data } = await req.json();
 
@@ -163,8 +175,8 @@ Deno.serve(async (req) => {
       throw new Error('Firebase server key not configured');
     }
 
-    // Audit log: record notification being sent
-    console.log(`[AUDIT] Notification sent by admin ${user.id} (${user.email}) - Title: "${sanitizedTitle.substring(0, 50)}..." - Target FCM token: ${fcmToken.substring(0, 20)}...`);
+    // Audit log (server-side only, no sensitive data exposed)
+    console.log(`[AUDIT] Notification sent - Title: "${sanitizedTitle.substring(0, 30)}..."`);
 
     // Send FCM notification
     const response = await fetch('https://fcm.googleapis.com/fcm/send', {
@@ -186,13 +198,12 @@ Deno.serve(async (req) => {
 
     const result = await response.json();
     
-    console.log(`[AUDIT] Notification delivery result for admin ${user.id}: ${JSON.stringify(result)}`);
+    console.log(`[AUDIT] Notification delivery completed`);
     
     return new Response(JSON.stringify({ success: true, result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
-    console.error('Send notification error:', error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

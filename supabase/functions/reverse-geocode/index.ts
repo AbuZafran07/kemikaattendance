@@ -1,12 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// CORS configuration - restrict to allowed origins
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  
+  // Allow lovable.app subdomains
+  const isLovableApp = origin?.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/);
+  const isAllowed = origin && (allowedOrigins.includes(origin) || isLovableApp);
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -32,7 +48,6 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.error('Authentication error:', authError)
       return new Response(
         JSON.stringify({ error: 'Invalid or expired token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -61,14 +76,13 @@ serve(async (req) => {
     const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN')
     
     if (!mapboxToken) {
-      console.error('Mapbox token not configured')
       return new Response(
         JSON.stringify({ error: 'Geocoding service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`Reverse geocode requested by user ${user.id} for coordinates: ${lat}, ${lng}`)
+    console.log(`[AUDIT] Reverse geocode requested by authenticated user`)
 
     // Call Mapbox Geocoding API (server-side, coordinates not exposed to third party from client)
     const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&types=address,place,locality,neighborhood&limit=1`
@@ -76,7 +90,6 @@ serve(async (req) => {
     const response = await fetch(mapboxUrl)
     
     if (!response.ok) {
-      console.error('Mapbox API error:', response.status, response.statusText)
       return new Response(
         JSON.stringify({ error: 'Geocoding service unavailable' }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -102,7 +115,6 @@ serve(async (req) => {
     )
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('Error in reverse-geocode:', message)
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

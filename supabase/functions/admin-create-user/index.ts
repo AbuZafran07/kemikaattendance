@@ -1,10 +1,23 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS configuration - restrict to allowed origins
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  
+  // Allow lovable.app subdomains
+  const isLovableApp = origin?.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/);
+  const isAllowed = origin && (allowedOrigins.includes(origin) || isLovableApp);
+  
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : '',
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 interface CreateUserRequest {
   email: string;
@@ -22,6 +35,9 @@ interface CreateUserRequest {
 }
 
 serve(async (req: Request): Promise<Response> => {
+  const origin = req.headers.get("Origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -42,7 +58,6 @@ serve(async (req: Request): Promise<Response> => {
     // Verify the requesting user is an admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.error("No authorization header provided");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -53,7 +68,6 @@ serve(async (req: Request): Promise<Response> => {
     const { data: { user: requestingUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !requestingUser) {
-      console.error("Auth error:", authError);
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -68,7 +82,6 @@ serve(async (req: Request): Promise<Response> => {
       .single();
 
     if (roleError || roleData?.role !== "admin") {
-      console.error("User is not admin:", roleError);
       return new Response(
         JSON.stringify({ error: "Hanya admin yang dapat membuat karyawan baru" }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -93,7 +106,8 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Admin ${requestingUser.id} creating new user: ${email}`);
+    // Audit log (server-side only, no sensitive data)
+    console.log(`[AUDIT] Admin creating new user`);
 
     // Create user using admin API (no auto-login)
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -109,7 +123,6 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     if (createError) {
-      console.error("Error creating user:", createError);
       return new Response(
         JSON.stringify({ error: createError.message }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -118,7 +131,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Update profile with additional data
     if (newUser.user) {
-      const { error: profileError } = await supabaseAdmin
+      await supabaseAdmin
         .from("profiles")
         .update({
           phone: userData.phone || null,
@@ -127,14 +140,9 @@ serve(async (req: Request): Promise<Response> => {
           work_type: userData.work_type || 'wfo',
         })
         .eq("id", newUser.user.id);
-
-      if (profileError) {
-        console.error("Error updating profile:", profileError);
-        // Don't fail the request, just log the error
-      }
     }
 
-    console.log(`User ${email} created successfully with ID: ${newUser.user?.id}`);
+    console.log(`[AUDIT] User created successfully`);
 
     return new Response(
       JSON.stringify({ 
@@ -146,7 +154,6 @@ serve(async (req: Request): Promise<Response> => {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error in admin-create-user function:", error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

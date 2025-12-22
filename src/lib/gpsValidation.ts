@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import logger from "@/lib/logger";
 
 interface OfficeLocation {
   id: string;
@@ -35,7 +36,7 @@ export async function fetchOfficeLocations(): Promise<OfficeLocation[]> {
   const { data, error } = await supabase.rpc("get_office_locations");
 
   if (error || !data) {
-    console.error("Error fetching office locations:", error);
+    logger.error("Error fetching office locations:", error);
     return [];
   }
 
@@ -51,7 +52,7 @@ export async function isHybridWorker(userId: string): Promise<boolean> {
     .single();
 
   if (error || !data) {
-    console.error("Error fetching work type:", error);
+    logger.error("Error fetching work type:", error);
     return false;
   }
 
@@ -127,7 +128,7 @@ async function fetchWorkHoursSettings(): Promise<{
   const { data, error } = await supabase.rpc("get_work_hours");
 
   if (error || !data) {
-    console.error("Error fetching work hours:", error);
+    logger.error("Error fetching work hours:", error);
     return null;
   }
 

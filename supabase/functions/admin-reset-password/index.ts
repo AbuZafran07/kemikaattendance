@@ -1,10 +1,23 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS configuration - restrict to allowed origins
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  
+  // Allow lovable.app subdomains
+  const isLovableApp = origin?.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/);
+  const isAllowed = origin && (allowedOrigins.includes(origin) || isLovableApp);
+  
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : '',
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 interface ResetPasswordRequest {
   userId: string;
@@ -12,6 +25,9 @@ interface ResetPasswordRequest {
 }
 
 serve(async (req: Request): Promise<Response> => {
+  const origin = req.headers.get("Origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -32,7 +48,6 @@ serve(async (req: Request): Promise<Response> => {
     // Verify the requesting user is an admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.error("No authorization header provided");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -43,7 +58,6 @@ serve(async (req: Request): Promise<Response> => {
     const { data: { user: requestingUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
     if (authError || !requestingUser) {
-      console.error("Auth error:", authError);
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -58,7 +72,6 @@ serve(async (req: Request): Promise<Response> => {
       .single();
 
     if (roleError || roleData?.role !== "admin") {
-      console.error("User is not admin:", roleError);
       return new Response(
         JSON.stringify({ error: "Only admins can reset passwords" }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -83,7 +96,8 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Admin ${requestingUser.id} resetting password for user ${userId}`);
+    // Audit log (server-side only)
+    console.log(`[AUDIT] Admin resetting password for user`);
 
     // Reset the user's password using admin API
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
@@ -91,14 +105,13 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     if (updateError) {
-      console.error("Error updating password:", updateError);
       return new Response(
         JSON.stringify({ error: updateError.message }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    console.log(`Password successfully reset for user ${userId}`);
+    console.log(`[AUDIT] Password reset successful`);
 
     return new Response(
       JSON.stringify({ success: true, message: "Password reset successfully" }),
@@ -106,7 +119,6 @@ serve(async (req: Request): Promise<Response> => {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error in admin-reset-password function:", error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

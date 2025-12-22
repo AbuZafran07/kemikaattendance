@@ -4,10 +4,23 @@ const FIREBASE_SERVER_KEY = Deno.env.get('FIREBASE_SERVER_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS configuration - restrict to allowed origins
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  
+  // Allow lovable.app subdomains
+  const isLovableApp = origin?.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/);
+  const isAllowed = origin && (allowedOrigins.includes(origin) || isLovableApp);
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 interface LowQuotaEmployee {
   user_id: string;
@@ -43,12 +56,14 @@ async function sendFCMNotification(fcmToken: string, title: string, body: string
 
     return await response.json();
   } catch (error) {
-    console.error('Error sending FCM notification:', error);
     return null;
   }
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -89,7 +104,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (roleError || roleData?.role !== 'admin') {
-      console.log(`Unauthorized access attempt by user ${user.id}`);
       return new Response(
         JSON.stringify({ error: 'Only admins can send leave quota reminders' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -107,14 +121,13 @@ Deno.serve(async (req) => {
       // Use default threshold if no body
     }
 
-    console.log(`[AUDIT] Admin ${user.id} checking employees with leave quota <= ${threshold} days`);
+    console.log(`[AUDIT] Admin checking employees with leave quota <= ${threshold} days`);
 
     // Get employees with low leave quota (no longer returns FCM tokens or emails)
     const { data: employees, error } = await supabase
       .rpc('get_low_leave_quota_employees', { threshold });
 
     if (error) {
-      console.error('Error fetching employees:', error);
       throw error;
     }
 
@@ -132,7 +145,6 @@ Deno.serve(async (req) => {
         .single();
 
       if (profileError || !profileData?.fcm_token) {
-        console.log(`No FCM token found for ${employee.full_name}, skipping`);
         notifications.push({
           employee: employee.full_name,
           success: false,
@@ -151,11 +163,9 @@ Deno.serve(async (req) => {
         success: result !== null,
         remaining: employee.remaining_leave
       });
-
-      console.log(`Notification sent to ${employee.full_name}: ${result ? 'success' : 'failed'}`);
     }
 
-    console.log(`[AUDIT] Admin ${user.id} sent ${notifications.filter(n => n.success).length}/${notifications.length} leave quota reminders`);
+    console.log(`[AUDIT] Admin sent ${notifications.filter(n => n.success).length}/${notifications.length} leave quota reminders`);
 
     return new Response(
       JSON.stringify({ 
@@ -168,7 +178,6 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error('Check leave quota error:', error.message);
     return new Response(
       JSON.stringify({ error: error.message }), 
       {

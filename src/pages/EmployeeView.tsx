@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CameraCapture } from "@/components/CameraCapture";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { useNavigate } from "react-router-dom";
+import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
 
 // Office coordinates and work hours will be fetched from system settings
 
@@ -273,148 +274,141 @@ const EmployeeView = () => {
   const handleCheckIn = async (photoUrl: string) => {
     setIsProcessing(true);
     try {
-      // Step 1: Convert blob URL to base64
+      // Step 1: Convert blob URL to blob for storage upload
       const response = await fetch(photoUrl);
       const blob = await response.blob();
-      const reader = new FileReader();
-      await new Promise((resolve, reject) => {
-        reader.onloadend = async () => {
-          try {
-            const base64Photo = reader.result as string;
+      
+      // Step 2: Get current location
+      const location = await getCurrentLocation();
 
-            // Step 2: Get current location
-            const location = await getCurrentLocation();
+      // Step 3: Check distance from all office locations
+      if (officeLocations.length === 0) {
+        throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
+      }
 
-            // Step 3: Check distance from all office locations
-            if (officeLocations.length === 0) {
-              throw new Error("Lokasi kantor belum dikonfigurasi. Hubungi admin.");
-            }
+      // Check if user is a hybrid worker (can check in from anywhere)
+      const isHybridWorker = profile?.work_type === 'wfa';
 
-            // Check if user is a hybrid worker (can check in from anywhere)
-            const isHybridWorker = profile?.work_type === 'wfa';
+      let nearestOffice: {
+        name: string;
+        distance: number;
+        radius: number;
+      } | null = null;
+      
+      for (const office of officeLocations) {
+        const distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          office.latitude,
+          office.longitude,
+        );
+        if (!nearestOffice || distance < nearestOffice.distance) {
+          nearestOffice = {
+            name: office.name,
+            distance,
+            radius: office.radius,
+          };
+        }
+      }
 
-            let nearestOffice: {
-              name: string;
-              distance: number;
-              radius: number;
-            } | null = null;
-            
-            for (const office of officeLocations) {
-              const distance = calculateDistance(
-                location.latitude,
-                location.longitude,
-                office.latitude,
-                office.longitude,
-              );
-              if (!nearestOffice || distance < nearestOffice.distance) {
-                nearestOffice = {
-                  name: office.name,
-                  distance,
-                  radius: office.radius,
-                };
-              }
-            }
-
-            // Only validate location for non-hybrid workers
-            if (!isHybridWorker) {
-              let isWithinRadius = false;
-              for (const office of officeLocations) {
-                const distance = calculateDistance(
-                  location.latitude,
-                  location.longitude,
-                  office.latitude,
-                  office.longitude,
-                );
-                if (distance <= office.radius) {
-                  isWithinRadius = true;
-                  break;
-                }
-              }
-
-              if (!isWithinRadius) {
-                const distances = officeLocations
-                  .map((office) => {
-                    const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
-                    return `${office.name}: ${Math.round(d)}m`;
-                  })
-                  .join(", ");
-                toast({
-                  title: "Lokasi Tidak Valid",
-                  description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
-                  variant: "destructive",
-                });
-                setIsProcessing(false);
-                return;
-              }
-            }
-
-            // Step 4: Record check-in with status based on work hours settings
-            const now = new Date();
-            let status: "hadir" | "terlambat" = "hadir";
-            const checkInHour = now.getHours();
-            const checkInMinute = now.getMinutes();
-            const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-            if (workHours && workHours.check_in_end) {
-              // Parse check_in_end time (e.g., "09:00")
-              const [endHour, endMinute] = workHours.check_in_end.split(":").map(Number);
-              const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
-              logger.debug("Work hours check:", { isLate: checkInTotalMinutes > lateThreshold });
-              if (checkInTotalMinutes > lateThreshold) {
-                status = "terlambat";
-              }
-            } else {
-              // Default: jam 09:00 + 15 menit toleransi = 09:15 (555 menit)
-              const defaultLateThreshold = 9 * 60 + 15; // 555 menit
-              logger.debug("Default check:", { isLate: checkInTotalMinutes > defaultLateThreshold });
-              if (checkInTotalMinutes > defaultLateThreshold) {
-                status = "terlambat";
-              }
-            }
-            const locationNote = isHybridWorker 
-              ? `Check-in Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
-              : `Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`;
-            
-            const { data, error } = await supabase
-              .from("attendance")
-              .insert([
-                {
-                  user_id: profile?.id!,
-                  check_in_time: now.toISOString(),
-                  check_in_latitude: location.latitude,
-                  check_in_longitude: location.longitude,
-                  check_in_photo_url: base64Photo,
-                  gps_validated: !isHybridWorker ? true : false, // Hybrid workers don't need GPS validation
-                  face_recognition_validated: false,
-                  status: status,
-                  notes: locationNote,
-                },
-              ])
-              .select()
-              .single();
-            if (error) throw error;
-            setIsCheckedIn(true);
-            setTodayAttendance(data);
-            setCheckInTime(
-              now.toLocaleTimeString("id-ID", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            );
-            toast({
-              title: "Check-In Berhasil",
-              description: isHybridWorker 
-                ? `Check-in Hybrid berhasil! Lokasi: ${nearestOffice?.name || 'Lokasi saat ini'}`
-                : `Terima kasih! Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`,
-            });
-            fetchRecentAttendance();
-            resolve(true);
-          } catch (error) {
-            reject(error);
+      // Only validate location for non-hybrid workers
+      if (!isHybridWorker) {
+        let isWithinRadius = false;
+        for (const office of officeLocations) {
+          const distance = calculateDistance(
+            location.latitude,
+            location.longitude,
+            office.latitude,
+            office.longitude,
+          );
+          if (distance <= office.radius) {
+            isWithinRadius = true;
+            break;
           }
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+        }
+
+        if (!isWithinRadius) {
+          const distances = officeLocations
+            .map((office) => {
+              const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
+              return `${office.name}: ${Math.round(d)}m`;
+            })
+            .join(", ");
+          toast({
+            title: "Lokasi Tidak Valid",
+            description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
+            variant: "destructive",
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      // Step 4: Upload photo to storage
+      const photoPath = await uploadAttendancePhoto(blob, profile?.id!, 'checkin');
+
+      // Step 5: Record check-in with status based on work hours settings
+      const now = new Date();
+      let status: "hadir" | "terlambat" = "hadir";
+      const checkInHour = now.getHours();
+      const checkInMinute = now.getMinutes();
+      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+      if (workHours && workHours.check_in_end) {
+        // Parse check_in_end time (e.g., "09:00")
+        const [endHour, endMinute] = workHours.check_in_end.split(":").map(Number);
+        const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
+        logger.debug("Work hours check:", { isLate: checkInTotalMinutes > lateThreshold });
+        if (checkInTotalMinutes > lateThreshold) {
+          status = "terlambat";
+        }
+      } else {
+        // Default: jam 09:00 + 15 menit toleransi = 09:15 (555 menit)
+        const defaultLateThreshold = 9 * 60 + 15; // 555 menit
+        logger.debug("Default check:", { isLate: checkInTotalMinutes > defaultLateThreshold });
+        if (checkInTotalMinutes > defaultLateThreshold) {
+          status = "terlambat";
+        }
+      }
+      
+      const locationNote = isHybridWorker 
+        ? `Check-in Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
+        : `Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`;
+      
+      const { data, error } = await supabase
+        .from("attendance")
+        .insert([
+          {
+            user_id: profile?.id!,
+            check_in_time: now.toISOString(),
+            check_in_latitude: location.latitude,
+            check_in_longitude: location.longitude,
+            check_in_photo_url: photoPath,
+            gps_validated: !isHybridWorker ? true : false, // Hybrid workers don't need GPS validation
+            face_recognition_validated: false,
+            status: status,
+            notes: locationNote,
+          },
+        ])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setIsCheckedIn(true);
+      setTodayAttendance(data);
+      setCheckInTime(
+        now.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+      toast({
+        title: "Check-In Berhasil",
+        description: isHybridWorker 
+          ? `Check-in Hybrid berhasil! Lokasi: ${nearestOffice?.name || 'Lokasi saat ini'}`
+          : `Terima kasih! Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`,
       });
+      fetchRecentAttendance();
     } catch (error: any) {
       toast({
         title: "Check-In Gagal",
@@ -428,103 +422,95 @@ const EmployeeView = () => {
   const handleCheckOut = async (photoUrl: string) => {
     setIsProcessing(true);
     try {
-      // Step 1: Convert blob URL to base64
+      // Step 1: Convert blob URL to blob for storage upload
       const response = await fetch(photoUrl);
       const blob = await response.blob();
-      const reader = new FileReader();
-      await new Promise((resolve, reject) => {
-        reader.onloadend = async () => {
-          try {
-            const base64Photo = reader.result as string;
 
-            // Step 2: Get location and validate
-            const location = await getCurrentLocation();
+      // Step 2: Get location and validate
+      const location = await getCurrentLocation();
 
-            // Check if user is a hybrid worker (can check out from anywhere)
-            const isHybridWorker = profile?.work_type === 'wfa';
+      // Check if user is a hybrid worker (can check out from anywhere)
+      const isHybridWorker = profile?.work_type === 'wfa';
 
-            // Find nearest office for notes
-            let nearestOffice: {
-              name: string;
-              distance: number;
-            } | null = null;
-            for (const office of officeLocations) {
-              const distance = calculateDistance(
-                location.latitude,
-                location.longitude,
-                office.latitude,
-                office.longitude,
-              );
-              if (!nearestOffice || distance < nearestOffice.distance) {
-                nearestOffice = {
-                  name: office.name,
-                  distance,
-                };
-              }
-            }
-            const now = new Date();
-            const checkInTime = new Date(todayAttendance.check_in_time);
-            const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
+      // Find nearest office for notes
+      let nearestOffice: {
+        name: string;
+        distance: number;
+      } | null = null;
+      for (const office of officeLocations) {
+        const distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          office.latitude,
+          office.longitude,
+        );
+        if (!nearestOffice || distance < nearestOffice.distance) {
+          nearestOffice = {
+            name: office.name,
+            distance,
+          };
+        }
+      }
 
-            // Determine checkout status based on time
-            let finalStatus = todayAttendance.status;
-            const checkOutHour = now.getHours();
-            const checkOutMinute = now.getMinutes();
-            const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
-            if (workHours && workHours.check_out_start) {
-              const [startHour, startMinute] = workHours.check_out_start.split(":").map(Number);
-              const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
-              logger.debug("Checkout check:", { isEarly: checkOutTotalMinutes < earlyLeaveThreshold });
-              if (checkOutTotalMinutes < earlyLeaveThreshold) {
-                finalStatus = "pulang_cepat";
-              }
-            } else {
-              // Default: sebelum 16:45 (17:00 - 15 menit toleransi) = pulang cepat
-              const defaultEarlyLeaveThreshold = 17 * 60 - 15; // 1005 menit (16:45)
-              logger.debug("Default checkout:", { isEarly: checkOutTotalMinutes < defaultEarlyLeaveThreshold });
-              if (checkOutTotalMinutes < defaultEarlyLeaveThreshold) {
-                finalStatus = "pulang_cepat";
-              }
-            }
+      // Step 3: Upload photo to storage
+      const photoPath = await uploadAttendancePhoto(blob, profile?.id!, 'checkout');
 
-            const checkoutLocationNote = isHybridWorker
-              ? `${todayAttendance.notes}, Check-out Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
-              : nearestOffice
-                ? `${todayAttendance.notes}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-                : todayAttendance.notes;
+      const now = new Date();
+      const checkInTime = new Date(todayAttendance.check_in_time);
+      const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
 
-            const { data: updatedData, error } = await supabase
-              .from("attendance")
-              .update({
-                check_out_time: now.toISOString(),
-                check_out_latitude: location.latitude,
-                check_out_longitude: location.longitude,
-                check_out_photo_url: base64Photo,
-                duration_minutes: durationMinutes,
-                status: finalStatus,
-                notes: checkoutLocationNote,
-              })
-              .eq("id", todayAttendance.id)
-              .select()
-              .single();
-            if (error) throw error;
+      // Determine checkout status based on time
+      let finalStatus = todayAttendance.status;
+      const checkOutHour = now.getHours();
+      const checkOutMinute = now.getMinutes();
+      const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
+      if (workHours && workHours.check_out_start) {
+        const [startHour, startMinute] = workHours.check_out_start.split(":").map(Number);
+        const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
+        logger.debug("Checkout check:", { isEarly: checkOutTotalMinutes < earlyLeaveThreshold });
+        if (checkOutTotalMinutes < earlyLeaveThreshold) {
+          finalStatus = "pulang_cepat";
+        }
+      } else {
+        // Default: sebelum 16:45 (17:00 - 15 menit toleransi) = pulang cepat
+        const defaultEarlyLeaveThreshold = 17 * 60 - 15; // 1005 menit (16:45)
+        logger.debug("Default checkout:", { isEarly: checkOutTotalMinutes < defaultEarlyLeaveThreshold });
+        if (checkOutTotalMinutes < defaultEarlyLeaveThreshold) {
+          finalStatus = "pulang_cepat";
+        }
+      }
 
-            // Update state with checkout time - keep isCheckedIn true to show completed attendance
-            setTodayAttendance(updatedData);
-            toast({
-              title: "Check-Out Berhasil",
-              description:
-                finalStatus === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!",
-            });
-            fetchRecentAttendance();
-            resolve(true);
-          } catch (error) {
-            reject(error);
-          }
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      const checkoutLocationNote = isHybridWorker
+        ? `${todayAttendance.notes}, Check-out Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
+        : nearestOffice
+          ? `${todayAttendance.notes}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
+          : todayAttendance.notes;
+
+      const { data: updatedData, error } = await supabase
+        .from("attendance")
+        .update({
+          check_out_time: now.toISOString(),
+          check_out_latitude: location.latitude,
+          check_out_longitude: location.longitude,
+          check_out_photo_url: photoPath,
+          duration_minutes: durationMinutes,
+          status: finalStatus,
+          notes: checkoutLocationNote,
+        })
+        .eq("id", todayAttendance.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+
+      // Update state with checkout time - keep isCheckedIn true to show completed attendance
+      setTodayAttendance(updatedData);
+      toast({
+        title: "Check-Out Berhasil",
+        description:
+          finalStatus === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!",
       });
+      fetchRecentAttendance();
     } catch (error: any) {
       toast({
         title: "Check-Out Gagal",

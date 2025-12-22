@@ -6,6 +6,7 @@ import { ArrowLeft, Camera, CheckCircle2, AlertCircle } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import logger from "@/lib/logger";
 
 const FaceEnrollment = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const FaceEnrollment = () => {
     const faceioAppId = import.meta.env.VITE_FACEIO_APP_ID;
     
     if (!faceioAppId) {
-      console.warn('VITE_FACEIO_APP_ID tidak ditemukan');
+      logger.warn('VITE_FACEIO_APP_ID tidak ditemukan');
       toast({
         title: "Konfigurasi Error",
         description: "FaceIO belum dikonfigurasi. Hubungi administrator.",
@@ -36,9 +37,9 @@ const FaceEnrollment = () => {
       try {
         const fioInstance = new (window as any).faceIO(faceioAppId);
         setFaceIO(fioInstance);
-        console.log('FaceIO initialized successfully');
+        logger.debug('FaceIO initialized successfully');
       } catch (error) {
-        console.error('Failed to initialize FaceIO:', error);
+        logger.error('Failed to initialize FaceIO:', error);
         toast({
           title: "Error",
           description: "Gagal menginisialisasi FaceIO",
@@ -47,7 +48,7 @@ const FaceEnrollment = () => {
       }
     };
     script.onerror = () => {
-      console.error('Failed to load FaceIO script');
+      logger.error('Failed to load FaceIO script');
       toast({
         title: "Error",
         description: "Gagal memuat FaceIO script",
@@ -87,7 +88,7 @@ const FaceEnrollment = () => {
         }
       });
 
-      console.log('Face enrollment successful:', userInfo);
+      logger.debug('Face enrollment completed successfully');
       
       setEnrollmentStatus('success');
       toast({
@@ -101,7 +102,7 @@ const FaceEnrollment = () => {
       }, 2000);
 
     } catch (error: any) {
-      console.error('Face enrollment failed:', error);
+      logger.error('Face enrollment failed:', error);
       setEnrollmentStatus('error');
       
       let errorMessage = 'Gagal mendaftarkan wajah. Silakan coba lagi.';

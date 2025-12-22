@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import logger from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -357,21 +358,14 @@ const EmployeeView = () => {
               // Parse check_in_end time (e.g., "09:00")
               const [endHour, endMinute] = workHours.check_in_end.split(":").map(Number);
               const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
-              console.log("Work hours check:", {
-                checkInTotalMinutes,
-                lateThreshold,
-                checkInEnd: workHours.check_in_end,
-              });
+              logger.debug("Work hours check:", { isLate: checkInTotalMinutes > lateThreshold });
               if (checkInTotalMinutes > lateThreshold) {
                 status = "terlambat";
               }
             } else {
               // Default: jam 09:00 + 15 menit toleransi = 09:15 (555 menit)
               const defaultLateThreshold = 9 * 60 + 15; // 555 menit
-              console.log("Default check:", {
-                checkInTotalMinutes,
-                defaultLateThreshold,
-              });
+              logger.debug("Default check:", { isLate: checkInTotalMinutes > defaultLateThreshold });
               if (checkInTotalMinutes > defaultLateThreshold) {
                 status = "terlambat";
               }
@@ -480,21 +474,14 @@ const EmployeeView = () => {
             if (workHours && workHours.check_out_start) {
               const [startHour, startMinute] = workHours.check_out_start.split(":").map(Number);
               const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
-              console.log("Checkout check:", {
-                checkOutTotalMinutes,
-                earlyLeaveThreshold,
-                checkOutStart: workHours.check_out_start,
-              });
+              logger.debug("Checkout check:", { isEarly: checkOutTotalMinutes < earlyLeaveThreshold });
               if (checkOutTotalMinutes < earlyLeaveThreshold) {
                 finalStatus = "pulang_cepat";
               }
             } else {
               // Default: sebelum 16:45 (17:00 - 15 menit toleransi) = pulang cepat
               const defaultEarlyLeaveThreshold = 17 * 60 - 15; // 1005 menit (16:45)
-              console.log("Default checkout:", {
-                checkOutTotalMinutes,
-                defaultEarlyLeaveThreshold,
-              });
+              logger.debug("Default checkout:", { isEarly: checkOutTotalMinutes < defaultEarlyLeaveThreshold });
               if (checkOutTotalMinutes < defaultEarlyLeaveThreshold) {
                 finalStatus = "pulang_cepat";
               }

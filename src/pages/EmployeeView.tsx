@@ -152,13 +152,24 @@ const EmployeeView = () => {
     }
   };
   const fetchTodayAttendance = async () => {
+    if (!profile?.id) return;
+    
     const today = new Date().toISOString().split("T")[0];
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("attendance")
       .select("*")
+      .eq("user_id", profile.id)
       .gte("check_in_time", `${today}T00:00:00`)
       .lte("check_in_time", `${today}T23:59:59`)
-      .single();
+      .order("check_in_time", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Error fetching today attendance:", error);
+      return;
+    }
+    
     if (data) {
       setTodayAttendance(data);
       setIsCheckedIn(true);
@@ -176,13 +187,22 @@ const EmployeeView = () => {
     }
   };
   const fetchRecentAttendance = async () => {
-    const { data } = await supabase
+    if (!profile?.id) return;
+    
+    const { data, error } = await supabase
       .from("attendance")
       .select("*")
+      .eq("user_id", profile.id)
       .order("check_in_time", {
         ascending: false,
       })
       .limit(3);
+    
+    if (error) {
+      console.error("Error fetching recent attendance:", error);
+      return;
+    }
+    
     if (data) {
       setRecentAttendance(data);
     }

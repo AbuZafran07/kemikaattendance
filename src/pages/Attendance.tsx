@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getAttendancePhotoUrl } from "@/lib/attendancePhotoUpload";
 
 interface AttendanceRecord {
   id: string;
@@ -195,9 +196,13 @@ const Attendance = () => {
       .slice(0, 2);
   };
 
-  const openPhotoDialog = (url: string | null, type: string) => {
+  const openPhotoDialog = async (url: string | null, type: string) => {
     if (url) {
-      setSelectedPhoto({ url, type });
+      // Get signed URL for storage paths
+      const signedUrl = await getAttendancePhotoUrl(url);
+      if (signedUrl) {
+        setSelectedPhoto({ url: signedUrl, type });
+      }
     }
   };
 

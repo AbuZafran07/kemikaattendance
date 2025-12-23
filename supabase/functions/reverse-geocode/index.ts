@@ -19,6 +19,11 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
+// Round coordinates to 4 decimal places (~11 meters precision) for cache key
+function roundCoord(coord: number, decimals: number = 4): number {
+  return Math.round(coord * Math.pow(10, decimals)) / Math.pow(10, decimals);
+}
+
 serve(async (req) => {
   const origin = req.headers.get('Origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -40,12 +45,14 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    // User client for auth verification
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     })
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
     
     if (authError || !user) {
       return new Response(
@@ -53,6 +60,9 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Service client for cache operations
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey)
 
     // Parse request body
     const { lat, lng } = await req.json()
@@ -72,82 +82,85 @@ serve(async (req) => {
       )
     }
 
+    // Round coordinates for cache lookup (~11 meters precision)
+    const latRounded = roundCoord(lat)
+    const lngRounded = roundCoord(lng)
+
+    console.log(`[GEOCODE] Request for coords: ${lat}, ${lng} (rounded: ${latRounded}, ${lngRounded})`)
+
+    // Check cache first
+    const { data: cached, error: cacheError } = await supabaseService
+      .from('geocoding_cache')
+      .select('address, id, hit_count')
+      .eq('lat_rounded', latRounded)
+      .eq('lng_rounded', lngRounded)
+      .single()
+
+    if (cached && !cacheError) {
+      console.log(`[GEOCODE] Cache HIT - returning cached address: ${cached.address}`)
+      
+      // Update hit count and last_used_at asynchronously (fire and forget)
+      supabaseService
+        .from('geocoding_cache')
+        .update({ 
+          hit_count: cached.hit_count + 1, 
+          last_used_at: new Date().toISOString() 
+        })
+        .eq('id', cached.id)
+        .then(() => console.log('[GEOCODE] Cache stats updated'))
+
+      return new Response(
+        JSON.stringify({ address: cached.address, cached: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('[GEOCODE] Cache MISS - calling external API')
+
     // Get Mapbox token from secrets
     const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN')
     
-    if (!mapboxToken) {
-      console.error('MAPBOX_PUBLIC_TOKEN is not configured')
-      return new Response(
-        JSON.stringify({ error: 'Geocoding service not configured', address: `Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}` }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log(`[AUDIT] Reverse geocode requested by authenticated user for coords: ${lat}, ${lng}`)
-
-    // Call Mapbox Geocoding API - tanpa filter types untuk mendapat hasil lebih banyak
-    const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&limit=5&language=id`
-    
-    console.log(`Calling Mapbox API: ${mapboxUrl.replace(mapboxToken, 'HIDDEN')}`)
-    
-    const response = await fetch(mapboxUrl)
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`Mapbox API error: ${response.status} - ${errorText}`)
-      // Coba fallback ke Nominatim (OpenStreetMap)
-      try {
-        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=id`
-        const nominatimResponse = await fetch(nominatimUrl, {
-          headers: { 'User-Agent': 'AttendanceApp/1.0' }
-        })
-        if (nominatimResponse.ok) {
-          const nominatimData = await nominatimResponse.json()
-          if (nominatimData.display_name) {
-            const parts = nominatimData.display_name.split(', ')
-            const address = parts.slice(0, 3).join(', ')
-            console.log(`Nominatim fallback address: ${address}`)
-            return new Response(
-              JSON.stringify({ address }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-        }
-      } catch (fallbackError) {
-        console.error('Nominatim fallback also failed:', fallbackError)
-      }
-      
-      return new Response(
-        JSON.stringify({ address: `Lokasi: ${lat.toFixed(6)}, ${lng.toFixed(6)}` }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const data = await response.json()
-    console.log(`Mapbox response features count: ${data.features?.length || 0}`)
-    
     let address = ''
-    if (data.features && data.features.length > 0) {
-      // Cari feature yang paling spesifik (address > poi > place > locality > neighborhood)
-      const feature = data.features[0]
-      address = feature.place_name || ''
+
+    // Try Mapbox first if token is available
+    if (mapboxToken) {
+      const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&limit=5&language=id`
       
-      // Log semua features untuk debugging
-      console.log(`Mapbox features:`, JSON.stringify(data.features.map((f: { id: string; place_name: string }) => ({ id: f.id, place_name: f.place_name }))))
+      console.log('[GEOCODE] Calling Mapbox API...')
       
-      // Shorten to first 3-4 parts for display
-      if (address) {
-        const parts = address.split(', ')
-        if (parts.length > 4) {
-          address = parts.slice(0, 4).join(', ')
+      try {
+        const response = await fetch(mapboxUrl)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log(`[GEOCODE] Mapbox response features count: ${data.features?.length || 0}`)
+          
+          if (data.features && data.features.length > 0) {
+            address = data.features[0].place_name || ''
+            
+            // Shorten to first 4 parts for display
+            if (address) {
+              const parts = address.split(', ')
+              if (parts.length > 4) {
+                address = parts.slice(0, 4).join(', ')
+              }
+            }
+            console.log(`[GEOCODE] Mapbox resolved address: ${address}`)
+          }
+        } else {
+          const errorText = await response.text()
+          console.error(`[GEOCODE] Mapbox API error: ${response.status} - ${errorText}`)
         }
+      } catch (mapboxError) {
+        console.error('[GEOCODE] Mapbox fetch error:', mapboxError)
       }
-      console.log(`Resolved address: ${address}`)
+    } else {
+      console.warn('[GEOCODE] MAPBOX_PUBLIC_TOKEN not configured')
     }
-    
-    // Jika Mapbox tidak mengembalikan alamat, coba Nominatim
+
+    // Fallback to Nominatim (OpenStreetMap) if Mapbox failed
     if (!address) {
-      console.log('Mapbox returned no results, trying Nominatim fallback...')
+      console.log('[GEOCODE] Trying Nominatim fallback...')
       try {
         const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=id`
         const nominatimResponse = await fetch(nominatimUrl, {
@@ -158,25 +171,47 @@ serve(async (req) => {
           if (nominatimData.display_name) {
             const parts = nominatimData.display_name.split(', ')
             address = parts.slice(0, 3).join(', ')
-            console.log(`Nominatim fallback address: ${address}`)
+            console.log(`[GEOCODE] Nominatim resolved address: ${address}`)
           }
         }
-      } catch (fallbackError) {
-        console.error('Nominatim fallback failed:', fallbackError)
+      } catch (nominatimError) {
+        console.error('[GEOCODE] Nominatim fallback error:', nominatimError)
       }
     }
-    
-    // Final fallback jika semua gagal
+
+    // Final fallback if all APIs failed
     if (!address) {
       address = `Lokasi: ${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      console.log('[GEOCODE] All APIs failed, using coordinate fallback')
+    }
+
+    // Store in cache (only if we got a real address, not coordinates)
+    if (!address.startsWith('Lokasi:')) {
+      const { error: insertError } = await supabaseService
+        .from('geocoding_cache')
+        .upsert({
+          lat_rounded: latRounded,
+          lng_rounded: lngRounded,
+          address: address,
+          last_used_at: new Date().toISOString()
+        }, {
+          onConflict: 'lat_rounded,lng_rounded'
+        })
+
+      if (insertError) {
+        console.error('[GEOCODE] Failed to cache result:', insertError)
+      } else {
+        console.log('[GEOCODE] Result cached successfully')
+      }
     }
 
     return new Response(
-      JSON.stringify({ address }),
+      JSON.stringify({ address, cached: false }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[GEOCODE] Unexpected error:', message)
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

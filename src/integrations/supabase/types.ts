@@ -164,6 +164,36 @@ export type Database = {
         }
         Relationships: []
       }
+      geocoding_cache: {
+        Row: {
+          address: string
+          created_at: string
+          hit_count: number
+          id: string
+          last_used_at: string
+          lat_rounded: number
+          lng_rounded: number
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          hit_count?: number
+          id?: string
+          last_used_at?: string
+          lat_rounded: number
+          lng_rounded: number
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          hit_count?: number
+          id?: string
+          last_used_at?: string
+          lat_rounded?: number
+          lng_rounded?: number
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           approved_at: string | null

@@ -76,27 +76,33 @@ serve(async (req) => {
     const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN')
     
     if (!mapboxToken) {
+      console.error('MAPBOX_PUBLIC_TOKEN is not configured')
       return new Response(
-        JSON.stringify({ error: 'Geocoding service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Geocoding service not configured', address: `Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`[AUDIT] Reverse geocode requested by authenticated user`)
+    console.log(`[AUDIT] Reverse geocode requested by authenticated user for coords: ${lat}, ${lng}`)
 
     // Call Mapbox Geocoding API (server-side, coordinates not exposed to third party from client)
-    const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&types=address,place,locality,neighborhood&limit=1`
+    const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&types=address,place,locality,neighborhood&limit=1&language=id`
+    
+    console.log('Calling Mapbox API...')
     
     const response = await fetch(mapboxUrl)
     
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Mapbox API error: ${response.status} - ${errorText}`)
       return new Response(
-        JSON.stringify({ error: 'Geocoding service unavailable' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ address: `Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     const data = await response.json()
+    console.log(`Mapbox response features count: ${data.features?.length || 0}`)
     
     let address = 'Alamat tidak ditemukan'
     if (data.features && data.features.length > 0) {
@@ -107,6 +113,7 @@ serve(async (req) => {
       if (parts.length > 3) {
         address = parts.slice(0, 3).join(', ')
       }
+      console.log(`Resolved address: ${address}`)
     }
 
     return new Response(

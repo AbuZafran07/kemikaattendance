@@ -81,6 +81,8 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
   // 🌍 Ambil nama alamat dari koordinat (reverse geocoding via backend)
   const getAddressFromCoords = async (lat: number, lng: number) => {
     try {
+      setAddress("Memuat alamat...");
+      
       // Use server-side geocoding to avoid exposing coordinates to third party
       const { data, error } = await supabase.functions.invoke('reverse-geocode', {
         body: { lat, lng }
@@ -88,17 +90,24 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       
       if (error) {
         console.error('Geocoding error:', error);
-        setAddress("Gagal memuat alamat");
+        // Fallback: tampilkan koordinat sebagai alamat
+        setAddress(`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
         return;
       }
       
       if (data?.address) {
         setAddress(data.address);
+      } else if (data?.error) {
+        console.error('Geocoding service error:', data.error);
+        // Fallback: tampilkan koordinat sebagai alamat
+        setAddress(`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
       } else {
         setAddress("Alamat tidak ditemukan");
       }
-    } catch {
-      setAddress("Gagal memuat alamat");
+    } catch (err) {
+      console.error('Geocoding fetch error:', err);
+      // Fallback: tampilkan koordinat sebagai alamat
+      setAddress(`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     }
   };
 

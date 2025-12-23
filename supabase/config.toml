@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.check-leave-quota]
 verify_jwt = true
+
+[functions.cleanup-old-photos]
+verify_jwt = false

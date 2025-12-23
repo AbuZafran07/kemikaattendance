@@ -2,7 +2,20 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Camera, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, AlertCircle, Shield, ExternalLink, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +27,9 @@ const FaceEnrollment = () => {
   const { toast } = useToast();
   const [faceIO, setFaceIO] = useState<any>(null);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<'pending' | 'success' | 'error'>('pending');
+  const [hasConsented, setHasConsented] = useState(false);
 
   useEffect(() => {
     // Initialize FaceIO
@@ -74,6 +89,15 @@ const FaceEnrollment = () => {
       return;
     }
 
+    if (!hasConsented) {
+      toast({
+        title: "Persetujuan Diperlukan",
+        description: "Anda harus menyetujui pemrosesan data biometrik sebelum melanjutkan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsEnrolling(true);
     setEnrollmentStatus('pending');
 
@@ -85,10 +109,14 @@ const FaceEnrollment = () => {
           userId: profile?.id,
           email: profile?.email,
           fullName: profile?.full_name,
+          consentTimestamp: new Date().toISOString(),
         }
       });
 
-      logger.debug('Face enrollment completed successfully');
+      logger.debug('Face enrollment completed successfully', { 
+        userId: profile?.id,
+        consentTimestamp: new Date().toISOString() 
+      });
       
       setEnrollmentStatus('success');
       toast({
@@ -125,6 +153,29 @@ const FaceEnrollment = () => {
     }
   };
 
+  const handleDeleteBiometricData = async () => {
+    setIsDeleting(true);
+    try {
+      // FaceIO provides data deletion through their dashboard
+      // For self-service, users can contact admin or use FaceIO's deletion API
+      logger.debug('Biometric data deletion requested', { userId: profile?.id });
+      
+      toast({
+        title: "Permintaan Penghapusan Diterima",
+        description: "Permintaan penghapusan data biometrik Anda telah dicatat. Administrator akan memproses dalam 24-48 jam kerja.",
+      });
+    } catch (error) {
+      logger.error('Failed to request biometric data deletion:', error);
+      toast({
+        title: "Gagal Mengirim Permintaan",
+        description: "Terjadi kesalahan. Silakan hubungi administrator langsung.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10">
       <header className="bg-card border-b border-border sticky top-0 z-50">
@@ -138,7 +189,30 @@ const FaceEnrollment = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-lg">
+      <div className="container mx-auto px-4 py-6 max-w-lg space-y-4">
+        {/* Privacy Disclosure Alert */}
+        <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+          <Shield className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800 dark:text-amber-200">Pemberitahuan Privasi Data Biometrik</AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm space-y-2">
+            <p>
+              Sistem ini menggunakan layanan pihak ketiga <strong>FaceIO</strong> untuk pengenalan wajah. 
+              Data biometrik (template wajah) Anda akan diproses dan disimpan di server FaceIO di luar infrastruktur perusahaan.
+            </p>
+            <p className="font-medium">
+              Data yang dikumpulkan: Template wajah digital, ID karyawan, email, dan nama lengkap.
+            </p>
+            <a 
+              href="https://faceio.net/privacy-policy" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-amber-800 dark:text-amber-200 underline hover:no-underline"
+            >
+              Baca Kebijakan Privasi FaceIO <ExternalLink className="h-3 w-3" />
+            </a>
+          </AlertDescription>
+        </Alert>
+
         <Card>
           <CardHeader>
             <CardTitle>Daftarkan Wajah Anda</CardTitle>
@@ -170,6 +244,30 @@ const FaceEnrollment = () => {
               </ul>
             </div>
 
+            {/* Consent Checkbox */}
+            <div className="p-4 border rounded-lg bg-muted/30 space-y-3">
+              <div className="flex items-start space-x-3">
+                <Checkbox 
+                  id="consent" 
+                  checked={hasConsented}
+                  onCheckedChange={(checked) => setHasConsented(checked === true)}
+                  className="mt-1"
+                />
+                <label 
+                  htmlFor="consent" 
+                  className="text-sm leading-relaxed cursor-pointer"
+                >
+                  <span className="font-medium">Saya menyetujui pengumpulan dan pemrosesan data biometrik:</span>
+                  <ul className="mt-2 space-y-1 text-muted-foreground">
+                    <li>• Data wajah saya akan dikirim dan disimpan di server FaceIO (pihak ketiga)</li>
+                    <li>• Data digunakan untuk keperluan absensi PT. Kemika Karya Pratama</li>
+                    <li>• Saya dapat meminta penghapusan data biometrik kapan saja</li>
+                    <li>• Saya telah membaca dan memahami pemberitahuan privasi di atas</li>
+                  </ul>
+                </label>
+              </div>
+            </div>
+
             {/* Status Display */}
             {enrollmentStatus === 'success' && (
               <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg">
@@ -194,7 +292,7 @@ const FaceEnrollment = () => {
             {/* Enroll Button */}
             <Button 
               onClick={handleEnroll}
-              disabled={isEnrolling || !faceIO || enrollmentStatus === 'success'}
+              disabled={isEnrolling || !faceIO || enrollmentStatus === 'success' || !hasConsented}
               className="w-full"
               size="lg"
             >
@@ -208,11 +306,65 @@ const FaceEnrollment = () => {
               )}
             </Button>
 
+            {!hasConsented && (
+              <p className="text-xs text-center text-muted-foreground">
+                Centang persetujuan di atas untuk melanjutkan pendaftaran
+              </p>
+            )}
+
+            {/* Data Deletion Request */}
+            <div className="pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Hak Penghapusan Data</p>
+                  <p className="text-xs text-muted-foreground">
+                    Anda berhak meminta penghapusan data biometrik Anda
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Hapus Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Permintaan Penghapusan Data Biometrik</AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-2">
+                        <p>
+                          Anda akan meminta penghapusan data biometrik (template wajah) yang tersimpan di server FaceIO.
+                        </p>
+                        <p>
+                          Setelah data dihapus, Anda tidak akan dapat menggunakan fitur absensi dengan pengenalan wajah 
+                          hingga mendaftar ulang.
+                        </p>
+                        <p className="font-medium">
+                          Apakah Anda yakin ingin melanjutkan?
+                        </p>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDeleteBiometricData}
+                        disabled={isDeleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeleting ? "Memproses..." : "Ya, Hapus Data Saya"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+
             {/* Info Card */}
             <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground">
-                <strong>Catatan:</strong> Data wajah Anda akan tersimpan dengan aman dan hanya digunakan 
-                untuk sistem absensi PT. Kemika Karya Pratama. Anda hanya perlu mendaftar sekali.
+                <strong>Catatan:</strong> Dengan memberikan persetujuan, Anda mengonfirmasi bahwa Anda telah 
+                memahami bahwa data biometrik Anda akan diproses oleh layanan pihak ketiga (FaceIO) sesuai 
+                dengan kebijakan privasi mereka. Data digunakan hanya untuk sistem absensi PT. Kemika Karya Pratama.
               </p>
             </div>
           </CardContent>

@@ -334,7 +334,7 @@ const LeaveRequest = () => {
                           <FormControl>
                             <Textarea
                               rows={4}
-                              placeholder="Tuliskan alasan cuti..."
+                              placeholder="Tuliskan keterangan cuti, izin, sakit, atau jam kehadiran jika lupa absen..."
                               {...field}
                             />
                           </FormControl>

@@ -85,18 +85,40 @@ serve(async (req) => {
 
     console.log(`[AUDIT] Reverse geocode requested by authenticated user for coords: ${lat}, ${lng}`)
 
-    // Call Mapbox Geocoding API (server-side, coordinates not exposed to third party from client)
-    const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&types=address,place,locality,neighborhood&limit=1&language=id`
+    // Call Mapbox Geocoding API - tanpa filter types untuk mendapat hasil lebih banyak
+    const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&limit=5&language=id`
     
-    console.log('Calling Mapbox API...')
+    console.log(`Calling Mapbox API: ${mapboxUrl.replace(mapboxToken, 'HIDDEN')}`)
     
     const response = await fetch(mapboxUrl)
     
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`Mapbox API error: ${response.status} - ${errorText}`)
+      // Coba fallback ke Nominatim (OpenStreetMap)
+      try {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=id`
+        const nominatimResponse = await fetch(nominatimUrl, {
+          headers: { 'User-Agent': 'AttendanceApp/1.0' }
+        })
+        if (nominatimResponse.ok) {
+          const nominatimData = await nominatimResponse.json()
+          if (nominatimData.display_name) {
+            const parts = nominatimData.display_name.split(', ')
+            const address = parts.slice(0, 3).join(', ')
+            console.log(`Nominatim fallback address: ${address}`)
+            return new Response(
+              JSON.stringify({ address }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        }
+      } catch (fallbackError) {
+        console.error('Nominatim fallback also failed:', fallbackError)
+      }
+      
       return new Response(
-        JSON.stringify({ address: `Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}` }),
+        JSON.stringify({ address: `Lokasi: ${lat.toFixed(6)}, ${lng.toFixed(6)}` }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -104,16 +126,49 @@ serve(async (req) => {
     const data = await response.json()
     console.log(`Mapbox response features count: ${data.features?.length || 0}`)
     
-    let address = 'Alamat tidak ditemukan'
+    let address = ''
     if (data.features && data.features.length > 0) {
-      // Get the place name from Mapbox response
-      address = data.features[0].place_name || 'Alamat tidak ditemukan'
-      // Shorten to first 3 parts for display
-      const parts = address.split(', ')
-      if (parts.length > 3) {
-        address = parts.slice(0, 3).join(', ')
+      // Cari feature yang paling spesifik (address > poi > place > locality > neighborhood)
+      const feature = data.features[0]
+      address = feature.place_name || ''
+      
+      // Log semua features untuk debugging
+      console.log(`Mapbox features:`, JSON.stringify(data.features.map((f: { id: string; place_name: string }) => ({ id: f.id, place_name: f.place_name }))))
+      
+      // Shorten to first 3-4 parts for display
+      if (address) {
+        const parts = address.split(', ')
+        if (parts.length > 4) {
+          address = parts.slice(0, 4).join(', ')
+        }
       }
       console.log(`Resolved address: ${address}`)
+    }
+    
+    // Jika Mapbox tidak mengembalikan alamat, coba Nominatim
+    if (!address) {
+      console.log('Mapbox returned no results, trying Nominatim fallback...')
+      try {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=id`
+        const nominatimResponse = await fetch(nominatimUrl, {
+          headers: { 'User-Agent': 'AttendanceApp/1.0' }
+        })
+        if (nominatimResponse.ok) {
+          const nominatimData = await nominatimResponse.json()
+          if (nominatimData.display_name) {
+            const parts = nominatimData.display_name.split(', ')
+            address = parts.slice(0, 3).join(', ')
+            console.log(`Nominatim fallback address: ${address}`)
+          }
+        }
+      } catch (fallbackError) {
+        console.error('Nominatim fallback failed:', fallbackError)
+      }
+    }
+    
+    // Final fallback jika semua gagal
+    if (!address) {
+      address = `Lokasi: ${lat.toFixed(6)}, ${lng.toFixed(6)}`
     }
 
     return new Response(

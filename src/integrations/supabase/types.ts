@@ -71,6 +71,45 @@ export type Database = {
         }
         Relationships: []
       }
+      biometric_consent_records: {
+        Row: {
+          action_type: string
+          consent_given: boolean
+          consent_timestamp: string
+          created_at: string
+          faceio_facial_id: string | null
+          id: string
+          ip_address: string | null
+          notes: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          consent_given: boolean
+          consent_timestamp?: string
+          created_at?: string
+          faceio_facial_id?: string | null
+          id?: string
+          ip_address?: string | null
+          notes?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          consent_given?: boolean
+          consent_timestamp?: string
+          created_at?: string
+          faceio_facial_id?: string | null
+          id?: string
+          ip_address?: string | null
+          notes?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       business_travel_requests: {
         Row: {
           approved_at: string | null

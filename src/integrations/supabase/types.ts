@@ -403,6 +403,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_business_travel_request: {
+        Args: { document_url_param?: string; request_id: string }
+        Returns: undefined
+      }
+      approve_leave_request: {
+        Args: { notes?: string; request_id: string }
+        Returns: undefined
+      }
+      approve_overtime_request: {
+        Args: { notes?: string; request_id: string }
+        Returns: undefined
+      }
       get_low_leave_quota_employees: {
         Args: { threshold?: number }
         Returns: {
@@ -419,6 +431,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reject_business_travel_request: {
+        Args: { reason: string; request_id: string }
+        Returns: undefined
+      }
+      reject_leave_request: {
+        Args: { reason: string; request_id: string }
+        Returns: undefined
+      }
+      reject_overtime_request: {
+        Args: { reason: string; request_id: string }
+        Returns: undefined
       }
     }
     Enums: {

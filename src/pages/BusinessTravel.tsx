@@ -202,20 +202,11 @@ const BusinessTravel = () => {
         documentUrl = fileName;
       }
 
-      // Update request status
-      const updateData: any = {
-        status: "approved",
-        approved_at: new Date().toISOString(),
-      };
-
-      if (documentUrl) {
-        updateData.document_url = documentUrl;
-      }
-
-      const { error } = await supabase
-        .from("business_travel_requests")
-        .update(updateData)
-        .eq("id", selectedRequest.id);
+      // Use secure RPC function instead of direct update
+      const { error } = await supabase.rpc('approve_business_travel_request', {
+        request_id: selectedRequest.id,
+        document_url_param: documentUrl,
+      });
 
       if (error) throw error;
 
@@ -253,13 +244,11 @@ const BusinessTravel = () => {
     setIsProcessing(true);
 
     try {
-      const { error } = await supabase
-        .from("business_travel_requests")
-        .update({
-          status: "rejected",
-          rejection_reason: rejectionReason || "Ditolak oleh admin",
-        })
-        .eq("id", selectedRequest.id);
+      // Use secure RPC function instead of direct update
+      const { error } = await supabase.rpc('reject_business_travel_request', {
+        request_id: selectedRequest.id,
+        reason: rejectionReason || "Ditolak oleh admin",
+      });
 
       if (error) throw error;
 

@@ -129,14 +129,11 @@ const Overtime = () => {
     
     const request = overtimeRequests.find(r => r.id === selectedRequestId);
     
-    const { error } = await supabase
-      .from('overtime_requests')
-      .update({
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-        approval_notes: reason,
-      })
-      .eq('id', selectedRequestId);
+    // Use secure RPC function instead of direct update
+    const { error } = await supabase.rpc('approve_overtime_request', {
+      request_id: selectedRequestId,
+      notes: reason || null,
+    });
 
     if (error) {
       toast({
@@ -166,13 +163,11 @@ const Overtime = () => {
     
     const request = overtimeRequests.find(r => r.id === selectedRequestId);
     
-    const { error } = await supabase
-      .from('overtime_requests')
-      .update({
-        status: 'rejected',
-        rejection_reason: reason,
-      })
-      .eq('id', selectedRequestId);
+    // Use secure RPC function instead of direct update
+    const { error } = await supabase.rpc('reject_overtime_request', {
+      request_id: selectedRequestId,
+      reason: reason,
+    });
 
     if (error) {
       toast({

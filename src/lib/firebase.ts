@@ -24,11 +24,42 @@ const isFirebaseConfigured = () => {
 let app: any;
 let messaging: Messaging | null = null;
 
+// Initialize service worker and send Firebase config securely
+const initializeServiceWorker = async () => {
+  if (!('serviceWorker' in navigator)) {
+    logger.warn('Service workers are not supported in this browser');
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    
+    // Wait for the service worker to be ready
+    await navigator.serviceWorker.ready;
+    
+    // Send Firebase config to the service worker (only if configured)
+    if (isFirebaseConfigured() && registration.active) {
+      registration.active.postMessage({
+        type: 'FIREBASE_CONFIG',
+        config: firebaseConfig
+      });
+    }
+    
+    return registration;
+  } catch (error) {
+    logger.error('Service worker registration failed:', error);
+    return null;
+  }
+};
+
 // Only initialize if Firebase is properly configured
 if (isFirebaseConfigured()) {
   try {
     app = initializeApp(firebaseConfig);
     messaging = getMessaging(app);
+    
+    // Initialize the service worker
+    initializeServiceWorker();
   } catch (error) {
     logger.warn('Firebase initialization failed:', error);
   }
@@ -57,7 +88,13 @@ export const requestNotificationPermission = async () => {
         return null;
       }
 
-      const token = await getToken(messaging, { vapidKey });
+      // Ensure service worker is registered and configured before getting token
+      const swRegistration = await initializeServiceWorker();
+      
+      const token = await getToken(messaging, { 
+        vapidKey,
+        serviceWorkerRegistration: swRegistration || undefined
+      });
       
       if (token) {
         // Token retrieved successfully

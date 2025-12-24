@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
+import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
 
 const Overtime = () => {
   const [overtimeRequests, setOvertimeRequests] = useState<any[]>([]);
@@ -24,6 +25,11 @@ const Overtime = () => {
   const { userRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = userRole === 'admin';
+  
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState<"approve" | "reject">("approve");
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   // Pagination
   const totalPages = Math.ceil(overtimeRequests.length / itemsPerPage);
@@ -112,17 +118,25 @@ const Overtime = () => {
     setOvertimeRequests(combinedData);
   };
 
-  const handleApprove = async (requestId: string) => {
-    // Get request details first
-    const request = overtimeRequests.find(r => r.id === requestId);
+  const openApprovalDialog = (requestId: string, action: "approve" | "reject") => {
+    setSelectedRequestId(requestId);
+    setDialogAction(action);
+    setDialogOpen(true);
+  };
+
+  const handleApprove = async (reason: string) => {
+    if (!selectedRequestId) return;
+    
+    const request = overtimeRequests.find(r => r.id === selectedRequestId);
     
     const { error } = await supabase
       .from('overtime_requests')
       .update({
         status: 'approved',
-        approved_at: new Date().toISOString()
+        approved_at: new Date().toISOString(),
+        approval_notes: reason,
       })
-      .eq('id', requestId);
+      .eq('id', selectedRequestId);
 
     if (error) {
       toast({
@@ -130,13 +144,13 @@ const Overtime = () => {
         description: error.message,
         variant: "destructive",
       });
+      throw error;
     } else {
       toast({
         title: "Berhasil",
         description: "Permintaan lembur telah disetujui",
       });
       
-      // Send notification to employee
       if (request) {
         const date = formatDateForNotification(request.overtime_date);
         const notification = NotificationTemplates.overtimeRequestApproved(date, request.hours);
@@ -147,16 +161,18 @@ const Overtime = () => {
     }
   };
 
-  const handleReject = async (requestId: string) => {
-    // Get request details first
-    const request = overtimeRequests.find(r => r.id === requestId);
+  const handleReject = async (reason: string) => {
+    if (!selectedRequestId) return;
+    
+    const request = overtimeRequests.find(r => r.id === selectedRequestId);
     
     const { error } = await supabase
       .from('overtime_requests')
       .update({
-        status: 'rejected'
+        status: 'rejected',
+        rejection_reason: reason,
       })
-      .eq('id', requestId);
+      .eq('id', selectedRequestId);
 
     if (error) {
       toast({
@@ -164,13 +180,13 @@ const Overtime = () => {
         description: error.message,
         variant: "destructive",
       });
+      throw error;
     } else {
       toast({
         title: "Berhasil",
         description: "Permintaan lembur telah ditolak",
       });
       
-      // Send notification to employee
       if (request) {
         const date = formatDateForNotification(request.overtime_date);
         const notification = NotificationTemplates.overtimeRequestRejected(date);
@@ -295,14 +311,14 @@ const Overtime = () => {
                               <div className="flex gap-2">
                                 <Button 
                                   size="sm" 
-                                  onClick={() => handleApprove(request.id)}
+                                  onClick={() => openApprovalDialog(request.id, "approve")}
                                 >
                                   <CheckCircle2 className="h-4 w-4" />
                                 </Button>
                                 <Button 
                                   size="sm" 
                                   variant="destructive"
-                                  onClick={() => handleReject(request.id)}
+                                  onClick={() => openApprovalDialog(request.id, "reject")}
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
@@ -355,6 +371,14 @@ const Overtime = () => {
           </CardContent>
         </Card>
       </div>
+      
+      <ApprovalReasonDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        action={dialogAction}
+        onConfirm={dialogAction === "approve" ? handleApprove : handleReject}
+        title="Permintaan Lembur"
+      />
     </DashboardLayout>
   );
 };

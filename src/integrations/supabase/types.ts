@@ -196,6 +196,7 @@ export type Database = {
       }
       leave_requests: {
         Row: {
+          approval_notes: string | null
           approved_at: string | null
           approved_by: string | null
           created_at: string
@@ -211,6 +212,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approval_notes?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -226,6 +228,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approval_notes?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -244,6 +247,7 @@ export type Database = {
       }
       overtime_requests: {
         Row: {
+          approval_notes: string | null
           approved_at: string | null
           approved_by: string | null
           created_at: string
@@ -251,11 +255,13 @@ export type Database = {
           id: string
           overtime_date: string
           reason: string
+          rejection_reason: string | null
           status: Database["public"]["Enums"]["leave_status"]
           updated_at: string
           user_id: string
         }
         Insert: {
+          approval_notes?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -263,11 +269,13 @@ export type Database = {
           id?: string
           overtime_date: string
           reason: string
+          rejection_reason?: string | null
           status?: Database["public"]["Enums"]["leave_status"]
           updated_at?: string
           user_id: string
         }
         Update: {
+          approval_notes?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -275,6 +283,7 @@ export type Database = {
           id?: string
           overtime_date?: string
           reason?: string
+          rejection_reason?: string | null
           status?: Database["public"]["Enums"]["leave_status"]
           updated_at?: string
           user_id?: string

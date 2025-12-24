@@ -440,10 +440,13 @@ const Employees = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
+    // Validate password with same requirements as backend (admin-reset-password edge function)
+    // Minimum 8 characters, at least one uppercase, one lowercase, one number, one special character
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
       toast({
-        title: "Password Terlalu Pendek",
-        description: "Password minimal 6 karakter",
+        title: "Password Lemah",
+        description: "Password minimal 8 karakter dengan huruf besar, huruf kecil, angka, dan simbol (!@#$%^&*)",
         variant: "destructive",
       });
       return;

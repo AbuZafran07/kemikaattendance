@@ -176,27 +176,28 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       second: "2-digit",
     });
 
-    const locText =
-      location.lat && location.lng
-        ? `Lat: ${location.lat.toFixed(5)}, Lng: ${location.lng.toFixed(5)}`
-        : "Lokasi tidak tersedia";
+    // Prioritaskan alamat daripada koordinat
+    const addrText = address && !address.includes("Koordinat") && !address.includes("Lokasi:") 
+      ? address 
+      : (location.lat && location.lng 
+          ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}` 
+          : "Lokasi tidak tersedia");
 
-    const addrText = address || "Memuat alamat...";
     const areaStatus = locationStatus.inside ? `✅ Dalam area ${locationStatus.officeName}` : "❌ Di luar area kantor";
 
     // 🧾 Overlay informasi di foto
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    ctx.fillRect(10, canvas.height - 120, 520, 110);
+    ctx.fillRect(10, canvas.height - 100, 520, 90);
 
     ctx.fillStyle = "#fff";
     ctx.font = "bold 18px Arial";
-    ctx.fillText(timestamp, 20, canvas.height - 90);
-    ctx.font = "16px Arial";
-    ctx.fillText(locText, 20, canvas.height - 65);
+    ctx.fillText(timestamp, 20, canvas.height - 72);
     ctx.font = "14px Arial";
-    ctx.fillText(addrText, 20, canvas.height - 40);
+    // Tampilkan alamat dengan max length untuk mencegah overflow
+    const displayAddr = addrText.length > 60 ? addrText.substring(0, 57) + "..." : addrText;
+    ctx.fillText(displayAddr, 20, canvas.height - 48);
     ctx.fillStyle = locationStatus.inside ? "#00ff7f" : "#ff4d4f";
-    ctx.fillText(areaStatus, 20, canvas.height - 20);
+    ctx.fillText(areaStatus, 20, canvas.height - 24);
 
     // Simpan hasil foto ke blob
     canvas.toBlob(
@@ -248,13 +249,17 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
             <div>{formatTime()}</div>
             <div className="flex items-center gap-1">
               <MapPin className="h-3 w-3 text-red-400" />
-              {location.lat && location.lng ? (
+              {address && !address.includes("Memuat") ? (
+                <span className="max-w-[250px] truncate">{address}</span>
+              ) : location.lat && location.lng ? (
                 <span>{`${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}</span>
               ) : (
                 <span className="text-red-400">GPS belum siap</span>
               )}
             </div>
-            <div className="text-[10px] text-gray-200 max-w-[280px] truncate">{address || "Memuat alamat..."}</div>
+            {address && address.includes("Koordinat") && location.lat && location.lng && (
+              <div className="text-[10px] text-gray-200">{`${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}</div>
+            )}
             {locationStatus.officeName && (
               <div className={`flex items-center gap-1 ${locationStatus.inside ? "text-green-400" : "text-red-400"}`}>
                 {locationStatus.inside ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}

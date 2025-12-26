@@ -39,6 +39,8 @@ interface LeaveRequest {
   reason: string;
   status: string;
   created_at: string;
+  approval_notes: string | null;
+  rejection_reason: string | null;
 }
 
 interface OvertimeRequest {
@@ -48,6 +50,8 @@ interface OvertimeRequest {
   reason: string;
   status: string;
   created_at: string;
+  approval_notes: string | null;
+  rejection_reason: string | null;
 }
 
 interface BusinessTravelRequest {
@@ -61,6 +65,7 @@ interface BusinessTravelRequest {
   status: string;
   document_url: string | null;
   created_at: string;
+  rejection_reason: string | null;
 }
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
@@ -365,6 +370,17 @@ const RequestHistory = () => {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">{request.reason}</p>
+                    {/* Show approval notes or rejection reason */}
+                    {request.status === "approved" && request.approval_notes && (
+                      <p className="text-sm text-green-600 mb-2 italic">
+                        Catatan Persetujuan: {request.approval_notes}
+                      </p>
+                    )}
+                    {request.status === "rejected" && request.rejection_reason && (
+                      <p className="text-sm text-destructive mb-2 italic">
+                        Alasan Penolakan: {request.rejection_reason}
+                      </p>
+                    )}
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{request.total_days} hari</span>
                       <span>Diajukan: {format(new Date(request.created_at), "d MMM yyyy", { locale: id })}</span>
@@ -442,6 +458,17 @@ const RequestHistory = () => {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">{request.reason}</p>
+                    {/* Show approval notes or rejection reason */}
+                    {request.status === "approved" && request.approval_notes && (
+                      <p className="text-sm text-green-600 mb-2 italic">
+                        Catatan Persetujuan: {request.approval_notes}
+                      </p>
+                    )}
+                    {request.status === "rejected" && request.rejection_reason && (
+                      <p className="text-sm text-destructive mb-2 italic">
+                        Alasan Penolakan: {request.rejection_reason}
+                      </p>
+                    )}
                     <div className="text-xs text-muted-foreground">
                       Diajukan: {format(new Date(request.created_at), "d MMM yyyy", { locale: id })}
                     </div>
@@ -526,6 +553,12 @@ const RequestHistory = () => {
                     <p className="text-sm mb-2">{request.purpose}</p>
                     {request.notes && (
                       <p className="text-sm text-muted-foreground mb-2">Catatan: {request.notes}</p>
+                    )}
+                    {/* Show rejection reason */}
+                    {request.status === "rejected" && request.rejection_reason && (
+                      <p className="text-sm text-destructive mb-2 italic">
+                        Alasan Penolakan: {request.rejection_reason}
+                      </p>
                     )}
                     
                     <div className="flex items-center justify-between text-xs text-muted-foreground">

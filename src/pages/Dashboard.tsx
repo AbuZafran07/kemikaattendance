@@ -9,6 +9,7 @@ import PendingRequests from "@/components/dashboard/PendingRequests";
 import { format, subDays } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import logger from "@/lib/logger";
 
 // Helper to get signed URL for employee photos
 const getSignedPhotoUrl = async (filePath: string | null): Promise<string | null> => {
@@ -30,7 +31,7 @@ const getSignedPhotoUrl = async (filePath: string | null): Promise<string | null
     .createSignedUrl(path, 3600); // 1 hour expiry
   
   if (error) {
-    console.error('Error creating signed URL:', error);
+    logger.error('Error creating signed URL:', error);
     return null;
   }
   
@@ -66,7 +67,7 @@ const Dashboard = () => {
     const attendanceChannel = supabase
       .channel("realtime:attendance")
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, (payload) => {
-        console.log("Realtime attendance change:", payload);
+        logger.debug("Realtime attendance change:", payload);
 
         if (payload.eventType === "INSERT") {
           setRecentAttendance((prev) => [payload.new, ...prev]);
@@ -88,7 +89,7 @@ const Dashboard = () => {
     const leaveChannel = supabase
       .channel("realtime:leave_requests_dashboard")
       .on("postgres_changes", { event: "*", schema: "public", table: "leave_requests" }, (payload) => {
-        console.log("Realtime leave change:", payload);
+        logger.debug("Realtime leave change:", payload);
         
         if (payload.eventType === "INSERT") {
           toast({
@@ -105,7 +106,7 @@ const Dashboard = () => {
     const overtimeChannel = supabase
       .channel("realtime:overtime_requests_dashboard")
       .on("postgres_changes", { event: "*", schema: "public", table: "overtime_requests" }, (payload) => {
-        console.log("Realtime overtime change:", payload);
+        logger.debug("Realtime overtime change:", payload);
         
         if (payload.eventType === "INSERT") {
           toast({
@@ -122,7 +123,7 @@ const Dashboard = () => {
     const travelChannel = supabase
       .channel("realtime:business_travel_dashboard")
       .on("postgres_changes", { event: "*", schema: "public", table: "business_travel_requests" }, (payload) => {
-        console.log("Realtime business travel change:", payload);
+        logger.debug("Realtime business travel change:", payload);
         
         if (payload.eventType === "INSERT") {
           toast({

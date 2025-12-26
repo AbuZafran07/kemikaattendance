@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
+import logger from "@/lib/logger";
 
 const Overtime = () => {
   const [overtimeRequests, setOvertimeRequests] = useState<any[]>([]);
@@ -48,7 +49,7 @@ const Overtime = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "overtime_requests" },
         (payload) => {
-          console.log("Overtime request change:", payload);
+          logger.debug("Overtime request change:", payload);
           fetchOvertimeRequests();
           
           if (payload.eventType === "INSERT") {
@@ -67,7 +68,7 @@ const Overtime = () => {
   }, []);
 
   const fetchOvertimeRequests = async () => {
-    console.log("Fetching overtime requests...");
+    logger.debug("Fetching overtime requests...");
     
     // Fetch overtime requests first
     const { data: overtimeData, error: overtimeError } = await supabase
@@ -76,7 +77,7 @@ const Overtime = () => {
       .order('created_at', { ascending: false });
 
     if (overtimeError) {
-      console.error("Error fetching overtime requests:", overtimeError);
+      logger.error("Error fetching overtime requests:", overtimeError);
       toast({
         title: "Gagal Memuat Data",
         description: overtimeError.message,
@@ -100,7 +101,7 @@ const Overtime = () => {
       .in("id", userIds);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      logger.error("Error fetching profiles:", profilesError);
     }
 
     // Create a map of profiles
@@ -114,7 +115,7 @@ const Overtime = () => {
       profiles: profilesMap.get(request.user_id) || null
     }));
 
-    console.log("Overtime requests fetched:", combinedData);
+    logger.debug("Overtime requests fetched:", combinedData);
     setOvertimeRequests(combinedData);
   };
 

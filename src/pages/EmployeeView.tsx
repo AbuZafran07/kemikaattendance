@@ -116,7 +116,7 @@ const EmployeeView = () => {
         setNearestOffice(nearest);
         setGpsStatus("success");
       } catch (error) {
-        console.error("GPS error:", error);
+        logger.error("GPS error:", error);
         setGpsStatus("error");
       }
     };
@@ -138,7 +138,7 @@ const EmployeeView = () => {
         setOfficeLocations(locations);
       }
     } catch (error) {
-      console.error("Error fetching office locations:", error);
+      logger.error("Error fetching office locations:", error);
     }
   };
   const fetchWorkHours = async () => {
@@ -150,7 +150,7 @@ const EmployeeView = () => {
         setWorkHours(data as unknown as WorkHoursConfig);
       }
     } catch (error) {
-      console.error("Error fetching work hours:", error);
+      logger.error("Error fetching work hours:", error);
     }
   };
   const fetchTodayAttendance = async () => {
@@ -168,7 +168,7 @@ const EmployeeView = () => {
       .maybeSingle();
     
     if (error) {
-      console.error("Error fetching today attendance:", error);
+      logger.error("Error fetching today attendance:", error);
       return;
     }
     
@@ -201,7 +201,7 @@ const EmployeeView = () => {
       .limit(3);
     
     if (error) {
-      console.error("Error fetching recent attendance:", error);
+      logger.error("Error fetching recent attendance:", error);
       return;
     }
     
@@ -231,7 +231,7 @@ const EmployeeView = () => {
         attendanceCount: attendanceCount || 0,
       });
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      logger.error("Error fetching stats:", error);
     }
   };
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { differenceInDays, parseISO } from "date-fns";
+import logger from "@/lib/logger";
 
 interface LeaveRequest {
   id: string;
@@ -81,7 +82,7 @@ export const EditLeaveRequestDialog = ({
       onUpdated();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error updating leave request:", error);
+      logger.error("Error updating leave request:", error);
       toast.error("Gagal memperbarui pengajuan");
     } finally {
       setLoading(false);

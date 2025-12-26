@@ -15,6 +15,7 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import logoImage from "@/assets/logo.png";
 import { formatAttendanceStatus } from "@/lib/statusUtils";
+import logger from "@/lib/logger";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -186,7 +187,7 @@ export default function EmployeeReports() {
         description: "File Excel berhasil diunduh",
       });
     } catch (error: any) {
-      console.error("Export error:", error);
+      logger.error("Export error:", error);
       toast({
         title: "Export Gagal",
         description: error.message,
@@ -307,7 +308,7 @@ export default function EmployeeReports() {
         const logoBase64 = await loadImageAsBase64(logoImage);
         doc.addImage(logoBase64, "PNG", 14, 10, 30, 12);
       } catch (e) {
-        console.log("Could not load logo");
+        logger.debug("Could not load logo");
       }
       
       // Title and employee info
@@ -358,7 +359,7 @@ export default function EmployeeReports() {
         description: "File PDF berhasil diunduh",
       });
     } catch (error: any) {
-      console.error("Export error:", error);
+      logger.error("Export error:", error);
       toast({
         title: "Export Gagal",
         description: error.message,

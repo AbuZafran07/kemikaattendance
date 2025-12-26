@@ -28,6 +28,7 @@ import {
 import { EditLeaveRequestDialog } from "@/components/EditLeaveRequestDialog";
 import { EditOvertimeRequestDialog } from "@/components/EditOvertimeRequestDialog";
 import { EditBusinessTravelDialog } from "@/components/EditBusinessTravelDialog";
+import logger from "@/lib/logger";
 
 interface LeaveRequest {
   id: string;
@@ -109,7 +110,7 @@ const RequestHistory = () => {
       if (overtimeRes.data) setOvertimeRequests(overtimeRes.data);
       if (businessTravelRes.data) setBusinessTravelRequests(businessTravelRes.data);
     } catch (error) {
-      console.error("Error fetching requests:", error);
+      logger.error("Error fetching requests:", error);
     } finally {
       setLoading(false);
     }
@@ -128,7 +129,7 @@ const RequestHistory = () => {
       setLeaveRequests((prev) => prev.filter((r) => r.id !== id));
       toast.success("Pengajuan cuti berhasil dibatalkan");
     } catch (error) {
-      console.error("Error cancelling leave request:", error);
+      logger.error("Error cancelling leave request:", error);
       toast.error("Gagal membatalkan pengajuan");
     } finally {
       setCancellingId(null);
@@ -148,7 +149,7 @@ const RequestHistory = () => {
       setOvertimeRequests((prev) => prev.filter((r) => r.id !== id));
       toast.success("Pengajuan lembur berhasil dibatalkan");
     } catch (error) {
-      console.error("Error cancelling overtime request:", error);
+      logger.error("Error cancelling overtime request:", error);
       toast.error("Gagal membatalkan pengajuan");
     } finally {
       setCancellingId(null);
@@ -168,7 +169,7 @@ const RequestHistory = () => {
       setBusinessTravelRequests((prev) => prev.filter((r) => r.id !== id));
       toast.success("Pengajuan perjalanan dinas berhasil dibatalkan");
     } catch (error) {
-      console.error("Error cancelling business travel request:", error);
+      logger.error("Error cancelling business travel request:", error);
       toast.error("Gagal membatalkan pengajuan");
     } finally {
       setCancellingId(null);
@@ -204,7 +205,7 @@ const RequestHistory = () => {
 
       toast.success("Dokumen berhasil diunduh");
     } catch (error) {
-      console.error("Error downloading document:", error);
+      logger.error("Error downloading document:", error);
       toast.error("Gagal mengunduh dokumen");
     } finally {
       setDownloadingId(null);

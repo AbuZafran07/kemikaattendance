@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
+import logger from "@/lib/logger";
 
 interface BusinessTravelRequest {
   id: string;
@@ -75,7 +76,7 @@ const BusinessTravel = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "business_travel_requests" },
         (payload) => {
-          console.log("Business travel request change:", payload);
+          logger.debug("Business travel request change:", payload);
           fetchRequests();
 
           if (payload.eventType === "INSERT") {
@@ -94,7 +95,7 @@ const BusinessTravel = () => {
   }, []);
 
   const fetchRequests = async () => {
-    console.log("Fetching business travel requests...");
+    logger.debug("Fetching business travel requests...");
 
     const { data: requestsData, error: requestsError } = await supabase
       .from("business_travel_requests")
@@ -102,7 +103,7 @@ const BusinessTravel = () => {
       .order("created_at", { ascending: false });
 
     if (requestsError) {
-      console.error("Error fetching requests:", requestsError);
+      logger.error("Error fetching requests:", requestsError);
       toast({
         title: "Gagal Memuat Data",
         description: requestsError.message,
@@ -126,7 +127,7 @@ const BusinessTravel = () => {
       .in("id", userIds);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      logger.error("Error fetching profiles:", profilesError);
     }
 
     // Create profiles map
@@ -138,7 +139,7 @@ const BusinessTravel = () => {
       profiles: profilesMap.get(request.user_id) || null,
     }));
 
-    console.log("Business travel requests fetched:", combinedData);
+    logger.debug("Business travel requests fetched:", combinedData);
     setRequests(combinedData);
   };
 
@@ -227,7 +228,7 @@ const BusinessTravel = () => {
       setUploadingFile(null);
       fetchRequests();
     } catch (error: any) {
-      console.error("Error approving request:", error);
+      logger.error("Error approving request:", error);
       toast({
         title: "Gagal Menyetujui",
         description: error.message,
@@ -269,7 +270,7 @@ const BusinessTravel = () => {
       setRejectionReason("");
       fetchRequests();
     } catch (error: any) {
-      console.error("Error rejecting request:", error);
+      logger.error("Error rejecting request:", error);
       toast({
         title: "Gagal Menolak",
         description: error.message,
@@ -325,7 +326,7 @@ const BusinessTravel = () => {
       setUploadingFile(null);
       fetchRequests();
     } catch (error: any) {
-      console.error("Error uploading document:", error);
+      logger.error("Error uploading document:", error);
       toast({
         title: "Gagal Mengunggah",
         description: error.message,

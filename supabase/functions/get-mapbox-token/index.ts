@@ -53,7 +53,32 @@ serve(async (req) => {
       )
     }
 
-    console.log(`[AUDIT] Mapbox token requested by authenticated user`)
+    // SECURITY: Verify the user is an admin before exposing the token
+    // This restricts token access to admin users only (for OfficeSettings page)
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle()
+
+    if (roleError) {
+      console.error('[SECURITY] Role check error:', roleError.message)
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify permissions' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!roleData) {
+      console.warn(`[SECURITY] Non-admin user ${user.id} attempted to access Mapbox token`)
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log(`[AUDIT] Mapbox token requested by admin user ${user.id}`)
 
     const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN')
     
@@ -70,8 +95,9 @@ serve(async (req) => {
     )
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[ERROR] Unexpected error:', message)
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

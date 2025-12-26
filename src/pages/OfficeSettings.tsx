@@ -136,7 +136,29 @@ export default function OfficeSettings() {
       const el = document.createElement('div');
       el.className = 'w-8 h-8 rounded-full flex items-center justify-center cursor-pointer';
       el.style.backgroundColor = location.id === selectedLocation ? '#3b82f6' : '#ef4444';
-      el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
+      
+      // Create SVG icon using DOM manipulation instead of innerHTML to prevent XSS
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '20');
+      svg.setAttribute('height', '20');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'white');
+      svg.setAttribute('stroke-width', '2');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
+      
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z');
+      
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', '12');
+      circle.setAttribute('cy', '10');
+      circle.setAttribute('r', '3');
+      
+      svg.appendChild(path);
+      svg.appendChild(circle);
+      el.appendChild(svg);
 
       // Use setText() instead of setHTML() to prevent XSS
       const popup = new mapboxgl.Popup();

@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatLeaveTypeForNotification, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
+import logger from "@/lib/logger";
 
 const Leave = () => {
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
@@ -41,7 +42,7 @@ const Leave = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "leave_requests" },
         (payload) => {
-          console.log("Leave request change:", payload);
+          logger.debug("Leave request change:", payload);
           fetchLeaveRequests();
           
           if (payload.eventType === "INSERT") {
@@ -60,7 +61,7 @@ const Leave = () => {
   }, []);
 
   const fetchLeaveRequests = async () => {
-    console.log("Fetching leave requests...");
+    logger.debug("Fetching leave requests...");
     
     // Fetch leave requests first
     const { data: leaveData, error: leaveError } = await supabase
@@ -69,7 +70,7 @@ const Leave = () => {
       .order("created_at", { ascending: false });
 
     if (leaveError) {
-      console.error("Error fetching leave requests:", leaveError);
+      logger.error("Error fetching leave requests:", leaveError);
       toast({
         title: "Gagal Memuat Data",
         description: leaveError.message,
@@ -93,7 +94,7 @@ const Leave = () => {
       .in("id", userIds);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      logger.error("Error fetching profiles:", profilesError);
     }
 
     // Create a map of profiles
@@ -107,7 +108,7 @@ const Leave = () => {
       profiles: profilesMap.get(request.user_id) || null
     }));
 
-    console.log("Leave requests fetched:", combinedData);
+    logger.debug("Leave requests fetched:", combinedData);
     setLeaveRequests(combinedData);
   };
 

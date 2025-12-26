@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { JABATAN_OPTIONS, DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 import { employeeSchema, employeeEditSchema } from "@/lib/validationSchemas";
 import { compressEmployeePhoto, blobToFile } from "@/lib/imageCompression";
+import logger from "@/lib/logger";
 
 const Employees = () => {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -150,7 +151,7 @@ const Employees = () => {
       .createSignedUrl(filePath, 3600); // 1 hour expiry
     
     if (error) {
-      console.error('Error creating signed URL:', error);
+      logger.error('Error creating signed URL:', error);
       return null;
     }
     
@@ -196,7 +197,7 @@ const Employees = () => {
       // Return the file path - we'll generate signed URLs when displaying
       return filePath;
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      logger.error('Error uploading photo:', error);
       throw error;
     }
   };

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Camera, X, MapPin, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import logger from "@/lib/logger";
 
 interface CameraCaptureProps {
   onCapture: (photoUrl: string, isInsideArea: boolean) => void;
@@ -73,7 +74,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
 
         await getAddressFromCoords(latitude, longitude);
       },
-      (err) => console.error("Gagal ambil lokasi:", err),
+      (err) => logger.error("Gagal ambil lokasi:", err),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
@@ -89,7 +90,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       });
       
       if (error) {
-        console.error('Geocoding error:', error);
+        logger.error('Geocoding error:', error);
         // Fallback: tampilkan koordinat sebagai alamat
         setAddress(`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
         return;
@@ -98,14 +99,14 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       if (data?.address) {
         setAddress(data.address);
       } else if (data?.error) {
-        console.error('Geocoding service error:', data.error);
+        logger.error('Geocoding service error:', data.error);
         // Fallback: tampilkan koordinat sebagai alamat
         setAddress(`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
       } else {
         setAddress("Alamat tidak ditemukan");
       }
     } catch (err) {
-      console.error('Geocoding fetch error:', err);
+      logger.error('Geocoding fetch error:', err);
       // Fallback: tampilkan koordinat sebagai alamat
       setAddress(`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     }

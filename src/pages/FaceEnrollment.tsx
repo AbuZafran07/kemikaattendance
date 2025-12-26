@@ -20,6 +20,7 @@ import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import logger from "@/lib/logger";
+import { supabase } from "@/integrations/supabase/client";
 
 const FaceEnrollment = () => {
   const navigate = useNavigate();
@@ -156,19 +157,38 @@ const FaceEnrollment = () => {
   const handleDeleteBiometricData = async () => {
     setIsDeleting(true);
     try {
-      // FaceIO provides data deletion through their dashboard
-      // For self-service, users can contact admin or use FaceIO's deletion API
-      logger.debug('Biometric data deletion requested', { userId: profile?.id });
+      if (!profile?.id) {
+        throw new Error("User profile not found");
+      }
+
+      // Record the deletion request in the database for audit trail
+      const { error: insertError } = await supabase
+        .from('biometric_consent_records')
+        .insert({
+          user_id: profile.id,
+          consent_given: false,
+          action_type: 'deletion_requested',
+          notes: 'User requested biometric data deletion via self-service portal',
+          ip_address: null, // Could be captured via edge function if needed
+          user_agent: navigator.userAgent,
+        });
+
+      if (insertError) {
+        logger.error('Failed to record deletion request:', insertError);
+        throw new Error("Gagal mencatat permintaan penghapusan");
+      }
+
+      logger.debug('Biometric data deletion request recorded', { userId: profile.id });
       
       toast({
         title: "Permintaan Penghapusan Diterima",
-        description: "Permintaan penghapusan data biometrik Anda telah dicatat. Administrator akan memproses dalam 24-48 jam kerja.",
+        description: "Permintaan penghapusan data biometrik Anda telah dicatat dalam sistem. Administrator akan memproses melalui dashboard FaceIO dalam 24-48 jam kerja.",
       });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to request biometric data deletion:', error);
       toast({
         title: "Gagal Mengirim Permintaan",
-        description: "Terjadi kesalahan. Silakan hubungi administrator langsung.",
+        description: error.message || "Terjadi kesalahan. Silakan hubungi administrator langsung.",
         variant: "destructive",
       });
     } finally {

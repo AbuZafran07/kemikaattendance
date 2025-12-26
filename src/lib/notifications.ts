@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import logger from "@/lib/logger";
 
 interface NotificationPayload {
   fcmToken: string;
@@ -17,14 +18,14 @@ export const sendPushNotification = async (payload: NotificationPayload): Promis
     });
 
     if (error) {
-      console.error('Error sending notification:', error);
+      logger.error('Error sending notification:', error);
       return false;
     }
 
-    console.log('Notification sent successfully:', data);
+    logger.debug('Notification sent successfully:', data);
     return true;
   } catch (error) {
-    console.error('Failed to send notification:', error);
+    logger.error('Failed to send notification:', error);
     return false;
   }
 };
@@ -41,7 +42,7 @@ export const notifyAdmins = async (title: string, body: string, data?: Record<st
       .eq('role', 'admin');
 
     if (rolesError || !adminRoles?.length) {
-      console.log('No admins found or error:', rolesError);
+      logger.debug('No admins found or error:', rolesError);
       return;
     }
 
@@ -55,7 +56,7 @@ export const notifyAdmins = async (title: string, body: string, data?: Record<st
       .not('fcm_token', 'is', null);
 
     if (profilesError || !profiles?.length) {
-      console.log('No admin profiles with FCM tokens found:', profilesError);
+      logger.debug('No admin profiles with FCM tokens found:', profilesError);
       return;
     }
 
@@ -71,7 +72,7 @@ export const notifyAdmins = async (title: string, body: string, data?: Record<st
       }
     }
   } catch (error) {
-    console.error('Failed to notify admins:', error);
+    logger.error('Failed to notify admins:', error);
   }
 };
 
@@ -93,7 +94,7 @@ export const notifyEmployee = async (
       .single();
 
     if (error || !profile?.fcm_token) {
-      console.log('No FCM token found for employee:', userId);
+      logger.debug('No FCM token found for employee:', userId);
       return false;
     }
 
@@ -104,7 +105,7 @@ export const notifyEmployee = async (
       data
     });
   } catch (error) {
-    console.error('Failed to notify employee:', error);
+    logger.error('Failed to notify employee:', error);
     return false;
   }
 };

@@ -1,9 +1,16 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, X, MapPin, AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import logger from "@/lib/logger";
+
+interface OfficeLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+}
 
 interface CameraCaptureProps {
   onCapture: (photoUrl: string, isInsideArea: boolean) => void;
@@ -28,12 +35,38 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     officeName?: string;
   }>({ inside: false });
   const [showInstruction, setShowInstruction] = useState(true);
+  const [officeLocations, setOfficeLocations] = useState<OfficeLocation[]>([]);
 
-  // 🏢 Daftar lokasi kantor (bisa diubah sesuai kebutuhan)
-  const OFFICE_LOCATIONS = [
-    { name: "Head Office", lat: -6.2318, lng: 106.72395, radius: 50 },
-    { name: "Warehouse", lat: -6.23133, lng: 106.72716, radius: 100 },
-  ];
+  // 📏 Hitung jarak antar dua titik (meter)
+  const getDistanceInMeters = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3;
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+    const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, []);
+
+  // 🏢 Fetch lokasi kantor dari database
+  useEffect(() => {
+    const fetchOfficeLocations = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_office_locations');
+        if (error) {
+          logger.error('Error fetching office locations:', error);
+          return;
+        }
+        if (data && Array.isArray(data)) {
+          setOfficeLocations(data as unknown as OfficeLocation[]);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch office locations:', err);
+      }
+    };
+    fetchOfficeLocations();
+  }, []);
 
   // 🕒 Update waktu real-time setiap detik
   useEffect(() => {
@@ -45,12 +78,40 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
   useEffect(() => {
     if (isOpen) {
       startCamera();
-      getCurrentLocation();
-      setShowInstruction(true); // tetap tampil sampai ambil foto
+      setShowInstruction(true);
     } else {
       stopCamera();
     }
   }, [isOpen]);
+
+  // 📍 Validasi lokasi terhadap office locations
+  const validateLocation = useCallback((latitude: number, longitude: number) => {
+    let inside = false;
+    let officeName = "";
+    for (const office of officeLocations) {
+      const distance = getDistanceInMeters(latitude, longitude, office.latitude, office.longitude);
+      if (distance <= office.radius) {
+        inside = true;
+        officeName = office.name;
+        break;
+      }
+    }
+    setLocationStatus({ inside, officeName });
+  }, [officeLocations, getDistanceInMeters]);
+
+  // Fetch lokasi saat kamera dibuka dan office locations sudah tersedia
+  useEffect(() => {
+    if (isOpen && officeLocations.length > 0) {
+      getCurrentLocation();
+    }
+  }, [isOpen, officeLocations]);
+
+  // Re-validate lokasi saat office locations berubah
+  useEffect(() => {
+    if (location.lat && location.lng && officeLocations.length > 0) {
+      validateLocation(location.lat, location.lng);
+    }
+  }, [officeLocations, location.lat, location.lng, validateLocation]);
 
   // 📍 Ambil lokasi user
   const getCurrentLocation = () => {
@@ -59,19 +120,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         setLocation({ lat: latitude, lng: longitude });
-
-        let inside = false;
-        let officeName = "";
-        for (const office of OFFICE_LOCATIONS) {
-          const distance = getDistanceInMeters(latitude, longitude, office.lat, office.lng);
-          if (distance <= office.radius) {
-            inside = true;
-            officeName = office.name;
-            break;
-          }
-        }
-        setLocationStatus({ inside, officeName });
-
+        validateLocation(latitude, longitude);
         await getAddressFromCoords(latitude, longitude);
       },
       (err) => logger.error("Gagal ambil lokasi:", err),
@@ -110,18 +159,6 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
       // Fallback: tampilkan koordinat sebagai alamat
       setAddress(`Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     }
-  };
-
-  // 📏 Hitung jarak antar dua titik (meter)
-  const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3;
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-    const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
   };
 
   // 🎥 Start kamera depan

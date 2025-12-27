@@ -49,17 +49,43 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
     return R * c;
   }, []);
 
-  // 🏢 Fetch lokasi kantor dari database
+  // 🏢 Fetch lokasi kantor dari database dengan cache localStorage
   useEffect(() => {
+    const CACHE_KEY = 'office_locations_cache';
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
+
     const fetchOfficeLocations = async () => {
       try {
+        // Cek cache terlebih dahulu
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setOfficeLocations(data as OfficeLocation[]);
+            logger.info('Office locations loaded from cache');
+            return;
+          }
+        }
+
+        // Fetch dari database jika cache expired atau tidak ada
         const { data, error } = await supabase.rpc('get_office_locations');
         if (error) {
           logger.error('Error fetching office locations:', error);
+          // Gunakan cache lama jika ada error
+          if (cached) {
+            const { data: cachedData } = JSON.parse(cached);
+            setOfficeLocations(cachedData as OfficeLocation[]);
+          }
           return;
         }
         if (data && Array.isArray(data)) {
           setOfficeLocations(data as unknown as OfficeLocation[]);
+          // Simpan ke cache
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            data,
+            timestamp: Date.now()
+          }));
+          logger.info('Office locations cached');
         }
       } catch (err) {
         logger.error('Failed to fetch office locations:', err);

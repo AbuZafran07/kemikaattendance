@@ -113,16 +113,23 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
   // 📍 Validasi lokasi terhadap office locations
   const validateLocation = useCallback((latitude: number, longitude: number) => {
     let inside = false;
-    let officeName = "";
+    let nearestOfficeName = "";
+    let nearestDistance = Infinity;
+    
     for (const office of officeLocations) {
       const distance = getDistanceInMeters(latitude, longitude, office.latitude, office.longitude);
       if (distance <= office.radius) {
         inside = true;
-        officeName = office.name;
+        nearestOfficeName = office.name;
         break;
       }
+      // Track nearest office for display even if outside
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestOfficeName = office.name;
+      }
     }
-    setLocationStatus({ inside, officeName });
+    setLocationStatus({ inside, officeName: nearestOfficeName });
   }, [officeLocations, getDistanceInMeters]);
 
   // Fetch lokasi saat kamera dibuka dan office locations sudah tersedia
@@ -324,7 +331,7 @@ export const CameraCapture = ({ onCapture, onClose, isOpen, title = "Ambil Foto 
             {address && address.includes("Koordinat") && location.lat && location.lng && (
               <div className="text-[10px] text-gray-200">{`${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}</div>
             )}
-            {locationStatus.officeName && (
+            {officeLocations.length > 0 && location.lat && location.lng && (
               <div className={`flex items-center gap-1 ${locationStatus.inside ? "text-green-400" : "text-red-400"}`}>
                 {locationStatus.inside ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
                 <span>{locationStatus.inside ? `Dalam area ${locationStatus.officeName}` : "Di luar area kantor"}</span>

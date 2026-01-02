@@ -76,16 +76,31 @@ const LeaveRequest = () => {
     fetchUsedQuotas();
   }, [profile?.id]);
 
-  const calculateDays = (start: string, end: string) => {
+  // Calculate working days only (exclude Saturday and Sunday)
+  const calculateWorkingDays = (start: string, end: string) => {
     if (!start || !end) return 0;
     const startDate = new Date(start);
     const endDate = new Date(end);
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    
+    if (endDate < startDate) return 0;
+    
+    let workingDays = 0;
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      // 0 = Sunday, 6 = Saturday - skip these
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDays++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return workingDays;
   };
 
   const totalDays = useMemo(() => {
-    return calculateDays(startDate, endDate);
+    return calculateWorkingDays(startDate, endDate);
   }, [startDate, endDate]);
 
   // Validate based on policy settings
@@ -303,7 +318,7 @@ const LeaveRequest = () => {
                           </FormControl>
                           {totalDays > 0 && (
                             <p className="text-xs text-muted-foreground">
-                              Total: {totalDays} hari
+                              Total: {totalDays} hari kerja (tidak termasuk Sabtu & Minggu)
                             </p>
                           )}
                           <FormMessage />

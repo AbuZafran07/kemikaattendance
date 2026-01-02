@@ -19,6 +19,12 @@ import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { notifyAdmins, NotificationTemplates, formatLeaveTypeForNotification } from "@/lib/notifications";
 
+interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+}
+
 const LeaveRequest = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -26,6 +32,7 @@ const LeaveRequest = () => {
   const { policy, isLoading: isPolicyLoading } = useLeavePolicy();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usedQuotas, setUsedQuotas] = useState({ annual: 0, sick: 0, permission: 0 });
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const form = useForm<LeaveRequestFormData>({
@@ -76,21 +83,48 @@ const LeaveRequest = () => {
     fetchUsedQuotas();
   }, [profile?.id]);
 
-  // Calculate working days only (exclude Saturday and Sunday)
-  const calculateWorkingDays = (start: string, end: string) => {
+  // Fetch national holidays from overtime_policy settings
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      try {
+        const { data } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "overtime_policy")
+          .single();
+
+        if (data?.value && typeof data.value === 'object' && 'holidays' in data.value) {
+          const policyValue = data.value as { holidays?: Holiday[] };
+          setHolidays(policyValue.holidays || []);
+        }
+      } catch (error) {
+        console.error("Error fetching holidays:", error);
+      }
+    };
+
+    fetchHolidays();
+  }, []);
+
+  // Calculate working days only (exclude Saturday, Sunday, and national holidays)
+  const calculateWorkingDays = (start: string, end: string, holidayList: Holiday[]) => {
     if (!start || !end) return 0;
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    const startDateObj = new Date(start);
+    const endDateObj = new Date(end);
     
-    if (endDate < startDate) return 0;
+    if (endDateObj < startDateObj) return 0;
+    
+    // Create a Set of holiday dates for quick lookup (format: YYYY-MM-DD)
+    const holidayDates = new Set(holidayList.map(h => h.date));
     
     let workingDays = 0;
-    const currentDate = new Date(startDate);
+    const currentDate = new Date(startDateObj);
     
-    while (currentDate <= endDate) {
+    while (currentDate <= endDateObj) {
       const dayOfWeek = currentDate.getDay();
-      // 0 = Sunday, 6 = Saturday - skip these
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const dateStr = currentDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      
+      // Skip if Saturday (6), Sunday (0), or a national holiday
+      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
         workingDays++;
       }
       currentDate.setDate(currentDate.getDate() + 1);
@@ -100,8 +134,8 @@ const LeaveRequest = () => {
   };
 
   const totalDays = useMemo(() => {
-    return calculateWorkingDays(startDate, endDate);
-  }, [startDate, endDate]);
+    return calculateWorkingDays(startDate, endDate, holidays);
+  }, [startDate, endDate, holidays]);
 
   // Validate based on policy settings
   useEffect(() => {
@@ -318,7 +352,7 @@ const LeaveRequest = () => {
                           </FormControl>
                           {totalDays > 0 && (
                             <p className="text-xs text-muted-foreground">
-                              Total: {totalDays} hari kerja (tidak termasuk Sabtu & Minggu)
+                              Total: {totalDays} hari kerja (tidak termasuk Sabtu, Minggu & libur nasional)
                             </p>
                           )}
                           <FormMessage />

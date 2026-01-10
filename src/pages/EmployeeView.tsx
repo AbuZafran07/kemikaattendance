@@ -71,16 +71,31 @@ const EmployeeView = () => {
     name: string;
     distance: number;
   } | null>(null);
-  const { signOut, profile } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { signOut, profile, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   useEffect(() => {
+    checkAdminStatus();
     fetchOfficeLocation();
     fetchWorkHours();
     fetchTodayAttendance();
     fetchRecentAttendance();
     fetchStats();
-  }, [profile?.id]);
+  }, [profile?.id, user?.id]);
+
+  // Check if user is admin - admins don't need attendance
+  const checkAdminStatus = async () => {
+    if (!user?.id) return;
+    
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+    
+    setIsAdmin(roleData?.role === 'admin');
+  };
 
   // Real-time clock update
   useEffect(() => {
@@ -570,123 +585,158 @@ const EmployeeView = () => {
           </CardHeader>
         </Card>
 
-        {/* Check-In/Out Card */}
-        <Card>
-          <CardContent className="pt-6 space-y-4">
-            {/* Real-time Clock */}
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary tabular-nums tracking-wider">
-                {currentTime.getHours().toString().padStart(2, "0")}
-                <span className="animate-pulse">.</span>
-                {currentTime.getMinutes().toString().padStart(2, "0")}
+        {/* Check-In/Out Card - Hidden for Admin */}
+        {isAdmin ? (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-6 space-y-4">
+              {/* Real-time Clock */}
+              <div className="text-center">
+                <div className="text-4xl font-bold text-primary tabular-nums tracking-wider">
+                  {currentTime.getHours().toString().padStart(2, "0")}
+                  <span className="animate-pulse">.</span>
+                  {currentTime.getMinutes().toString().padStart(2, "0")}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {currentTime.toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {currentTime.toLocaleDateString("id-ID", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-            </div>
-
-            {/* GPS Status */}
-            <div className="flex items-center justify-center gap-2 text-sm">
-              {gpsStatus === "loading" && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  <span className="text-muted-foreground">Mendeteksi lokasi...</span>
-                </>
-              )}
-              {gpsStatus === "success" && nearestOffice && (
-                <>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-muted-foreground">
-                    {nearestOffice.name} •{" "}
-                    <span className={nearestOffice.distance <= 100 ? "text-green-600 font-medium" : "text-destructive"}>
-                      {Math.round(nearestOffice.distance)}m
-                    </span>
+              
+              <div className="text-center py-4">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    Admin tidak perlu melakukan absensi
                   </span>
-                </>
-              )}
-              {gpsStatus === "error" && (
-                <>
-                  <XCircle className="h-4 w-4 text-destructive" />
-                  <span className="text-destructive">Gagal mendeteksi lokasi</span>
-                </>
-              )}
-              {gpsStatus === "idle" && (
-                <>
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">GPS akan divalidasi</span>
-                </>
-              )}
-            </div>
-
-            {/* Check-in/Check-out Time Pills */}
-            <div className="flex gap-2">
-              <div className="flex-1 bg-primary/10 rounded-lg px-5 py-2 pl-[5px] pr-[26px]">
-                <span className="font-medium text-foreground text-xs">
-                  Check-in:{" "}
-                  {todayAttendance?.check_in_time ? (
-                    <span className="text-primary font-semibold">
-                      {new Date(todayAttendance.check_in_time).toLocaleTimeString("id-ID", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Akun admin dikecualikan dari sistem absensi harian
+                </p>
               </div>
-              <div className="flex-1 rounded-lg px-5 py-2 pl-[5px] pr-[24px] bg-red-100">
-                <span className="font-medium text-foreground text-xs">
-                  Check-out:{" "}
-                  {todayAttendance?.check_out_time ? (
-                    <span className="text-primary font-semibold">
-                      {new Date(todayAttendance.check_out_time).toLocaleTimeString("id-ID", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </span>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              {/* Real-time Clock */}
+              <div className="text-center">
+                <div className="text-4xl font-bold text-primary tabular-nums tracking-wider">
+                  {currentTime.getHours().toString().padStart(2, "0")}
+                  <span className="animate-pulse">.</span>
+                  {currentTime.getMinutes().toString().padStart(2, "0")}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {currentTime.toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
               </div>
-            </div>
 
-            {/* Action Button */}
-            {todayAttendance?.check_out_time ? (
-              <div className="text-center py-3 text-muted-foreground">Absensi hari ini selesai</div>
-            ) : todayAttendance ? (
-              <Button
-                onClick={() => {
-                  setCameraMode("checkout");
-                  setShowCamera(true);
-                }}
-                disabled={isProcessing}
-                className="w-full h-10 font-semibold text-lg bg-primary hover:bg-primary/90"
-              >
-                <Camera className="h-5 w-5 mr-2" />
-                {isProcessing ? "Memproses..." : "Check Out"}
-              </Button>
-            ) : (
-              <Button
-                onClick={() => {
-                  setCameraMode("checkin");
-                  setShowCamera(true);
-                }}
-                disabled={isProcessing}
-                className="w-full h-10 font-semibold bg-primary hover:bg-primary/90 text-base"
-              >
-                <Camera className="h-5 w-5 mr-2" />
-                {isProcessing ? "Memproses..." : "Check In"}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+              {/* GPS Status */}
+              <div className="flex items-center justify-center gap-2 text-sm">
+                {gpsStatus === "loading" && (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="text-muted-foreground">Mendeteksi lokasi...</span>
+                  </>
+                )}
+                {gpsStatus === "success" && nearestOffice && (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span className="text-muted-foreground">
+                      {nearestOffice.name} •{" "}
+                      <span className={nearestOffice.distance <= 100 ? "text-green-600 font-medium" : "text-destructive"}>
+                        {Math.round(nearestOffice.distance)}m
+                      </span>
+                    </span>
+                  </>
+                )}
+                {gpsStatus === "error" && (
+                  <>
+                    <XCircle className="h-4 w-4 text-destructive" />
+                    <span className="text-destructive">Gagal mendeteksi lokasi</span>
+                  </>
+                )}
+                {gpsStatus === "idle" && (
+                  <>
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">GPS akan divalidasi</span>
+                  </>
+                )}
+              </div>
+
+              {/* Check-in/Check-out Time Pills */}
+              <div className="flex gap-2">
+                <div className="flex-1 bg-primary/10 rounded-lg px-5 py-2 pl-[5px] pr-[26px]">
+                  <span className="font-medium text-foreground text-xs">
+                    Check-in:{" "}
+                    {todayAttendance?.check_in_time ? (
+                      <span className="text-primary font-semibold">
+                        {new Date(todayAttendance.check_in_time).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex-1 rounded-lg px-5 py-2 pl-[5px] pr-[24px] bg-red-100">
+                  <span className="font-medium text-foreground text-xs">
+                    Check-out:{" "}
+                    {todayAttendance?.check_out_time ? (
+                      <span className="text-primary font-semibold">
+                        {new Date(todayAttendance.check_out_time).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              {todayAttendance?.check_out_time ? (
+                <div className="text-center py-3 text-muted-foreground">Absensi hari ini selesai</div>
+              ) : todayAttendance ? (
+                <Button
+                  onClick={() => {
+                    setCameraMode("checkout");
+                    setShowCamera(true);
+                  }}
+                  disabled={isProcessing}
+                  className="w-full h-10 font-semibold text-lg bg-primary hover:bg-primary/90"
+                >
+                  <Camera className="h-5 w-5 mr-2" />
+                  {isProcessing ? "Memproses..." : "Check Out"}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setCameraMode("checkin");
+                    setShowCamera(true);
+                  }}
+                  disabled={isProcessing}
+                  className="w-full h-10 font-semibold bg-primary hover:bg-primary/90 text-base"
+                >
+                  <Camera className="h-5 w-5 mr-2" />
+                  {isProcessing ? "Memproses..." : "Check In"}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Card */}
         <Card className="bg-primary/5 border-primary/20">

@@ -151,8 +151,8 @@ const Dashboard = () => {
 
     // Fetch all data without joins first
     const [
-      { count: employeeCount },
       { data: profiles },
+      { data: adminRoles },
       { data: todayAttendance },
       { data: recentData },
       { data: leaveData },
@@ -161,8 +161,8 @@ const Dashboard = () => {
       { data: approvedLeaveToday },
       { data: travelData },
     ] = await Promise.all([
-      supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("id, full_name, departemen, photo_url"),
+      supabase.from("user_roles").select("user_id").eq("role", "admin"),
       supabase
         .from("attendance")
         .select("*")
@@ -199,6 +199,13 @@ const Dashboard = () => {
         .order("created_at", { ascending: false })
         .limit(5),
     ]);
+
+    // Create set of admin user IDs - admins are excluded from attendance requirements
+    const adminUserIds = new Set((adminRoles || []).map(r => r.user_id));
+    
+    // Filter out admin accounts from profiles for attendance tracking
+    const nonAdminProfiles = (profiles || []).filter(p => !adminUserIds.has(p.id));
+    const employeeCount = nonAdminProfiles.length;
 
     // Create profiles map with signed URLs for photos
     const profilesWithSignedUrls = await Promise.all(
@@ -259,11 +266,11 @@ const Dashboard = () => {
       totalOvertimeHours: 0,
     });
 
-    // Find employees who are absent today
+    // Find employees who are absent today (excluding admins)
     const todayUserIds = new Set(todayAttendance?.map(a => a.user_id) || []);
     const leaveUserIds = new Map((approvedLeaveToday || []).map(l => [l.user_id, l.leave_type]));
     
-    const absentList = (profiles || [])
+    const absentList = nonAdminProfiles
       .filter(p => !todayUserIds.has(p.id))
       .map(p => {
         const leaveType = leaveUserIds.get(p.id);
@@ -314,15 +321,18 @@ const Dashboard = () => {
     }));
     setWeeklyData(chartData);
 
+    // Department breakdown (excluding admins)
     const deptMap: Record<string, { total: number; present: number }> = {};
-    profiles?.forEach((p) => {
+    nonAdminProfiles.forEach((p) => {
       const dept = p.departemen || "Lainnya";
       if (!deptMap[dept]) deptMap[dept] = { total: 0, present: 0 };
       deptMap[dept].total++;
     });
 
     todayAttendance?.forEach((a) => {
-      const profile = profiles?.find((p) => p.id === a.user_id);
+      // Only count non-admin attendance
+      if (adminUserIds.has(a.user_id)) return;
+      const profile = nonAdminProfiles.find((p) => p.id === a.user_id);
       const dept = profile?.departemen || "Lainnya";
       if (deptMap[dept]) deptMap[dept].present++;
     });

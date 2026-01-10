@@ -79,6 +79,14 @@ const Attendance = () => {
     const endDateTime = new Date(endDate);
     endDateTime.setHours(23, 59, 59, 999);
 
+    // Fetch admin user IDs first - admins are excluded from attendance tracking
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    
+    const adminUserIds = new Set((adminRoles || []).map(r => r.user_id));
+
     // Fetch ALL attendance data within date range
     const { data: attendanceRecords, error: attendanceError } = await supabase
       .from("attendance")
@@ -98,14 +106,19 @@ const Attendance = () => {
       return;
     }
 
-    if (!attendanceRecords || attendanceRecords.length === 0) {
+    // Filter out admin attendance records
+    const nonAdminAttendance = (attendanceRecords || []).filter(
+      record => !adminUserIds.has(record.user_id)
+    );
+
+    if (nonAdminAttendance.length === 0) {
       setAttendanceData([]);
       setStats({ totalRecords: 0, lateCount: 0, onTimeCount: 0 });
       setIsRefreshing(false);
       return;
     }
 
-    // Fetch all profiles
+    // Fetch all profiles (excluding admins for display)
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, full_name, departemen, photo_url");
@@ -120,7 +133,7 @@ const Attendance = () => {
     }
 
     // Merge attendance with profiles
-    const mergedData: AttendanceRecord[] = attendanceRecords.map((record) => {
+    const mergedData: AttendanceRecord[] = nonAdminAttendance.map((record) => {
       const profile = profilesMap.get(record.user_id);
       return {
         ...record,

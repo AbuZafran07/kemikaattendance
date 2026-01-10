@@ -45,11 +45,23 @@ export default function Reports() {
   const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [department, setDepartment] = useState<string>("all");
 
+  // Helper function to fetch admin user IDs
+  const fetchAdminUserIds = async (): Promise<Set<string>> => {
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    return new Set(adminRoles?.map((r) => r.user_id) || []);
+  };
+
   const exportToExcel = async () => {
     setLoading(true);
     try {
       let data: any[] = [];
       let filename = "";
+
+      // Fetch admin IDs to exclude from reports
+      const adminUserIds = await fetchAdminUserIds();
 
       if (reportType === "attendance") {
         const { data: attendanceData, error: attendanceError } = await supabase
@@ -88,9 +100,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge attendance data
+        // Merge attendance data and exclude admins
         let mergedAttendance =
           attendanceData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -123,6 +136,8 @@ export default function Reports() {
         const dateRangeEnd = parseISO(endDate);
 
         leaveData?.forEach((leave) => {
+          // Skip admin users
+          if (adminUserIds.has(leave.user_id)) return;
           const profile = profilesMap.get(leave.user_id);
           if (!profile) return;
           if (department !== "all" && profile.departemen !== department) return;
@@ -150,6 +165,8 @@ export default function Reports() {
         // Add business travel records (expand each day within range)
         const travelRows: any[] = [];
         travelData?.forEach((travel) => {
+          // Skip admin users
+          if (adminUserIds.has(travel.user_id)) return;
           const profile = profilesMap.get(travel.user_id);
           if (!profile) return;
           if (department !== "all" && profile.departemen !== department) return;
@@ -199,8 +216,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
+        // Exclude admin users from leave report
         let mergedData =
           leaveData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -240,8 +259,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
+        // Exclude admin users from overtime report
         let mergedData =
           overtimeData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -279,8 +300,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
+        // Exclude admin users from business travel report
         let mergedData =
           travelData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -311,7 +334,10 @@ export default function Reports() {
         const { data: employeeData, error } = await query;
         if (error) throw error;
 
-        data = employeeData.map((emp: any) => ({
+        // Exclude admin users from employee database report
+        const filteredEmployees = employeeData?.filter((emp) => !adminUserIds.has(emp.id)) || [];
+
+        data = filteredEmployees.map((emp: any) => ({
           NIK: emp.nik,
           "Full Name": emp.full_name,
           Email: emp.email,
@@ -345,6 +371,9 @@ export default function Reports() {
       let data: any[] = [];
       let columns: string[] = [];
       let title = "";
+
+      // Fetch admin IDs to exclude from reports
+      const adminUserIds = await fetchAdminUserIds();
 
       if (reportType === "attendance") {
         const { data: attendanceData, error: attendanceError } = await supabase
@@ -383,9 +412,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge attendance data
+        // Merge attendance data and exclude admins
         let mergedAttendance =
           attendanceData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -419,6 +449,8 @@ export default function Reports() {
         const dateRangeEnd = parseISO(endDate);
 
         leaveData?.forEach((leave) => {
+          // Skip admin users
+          if (adminUserIds.has(leave.user_id)) return;
           const profile = profilesMap.get(leave.user_id);
           if (!profile) return;
           if (department !== "all" && profile.departemen !== department) return;
@@ -445,6 +477,8 @@ export default function Reports() {
         // Add business travel records (expand each day within range)
         const travelRows: any[] = [];
         travelData?.forEach((travel) => {
+          // Skip admin users
+          if (adminUserIds.has(travel.user_id)) return;
           const profile = profilesMap.get(travel.user_id);
           if (!profile) return;
           if (department !== "all" && profile.departemen !== department) return;
@@ -493,8 +527,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
+        // Exclude admin users from leave PDF report
         let mergedData =
           leaveData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -534,8 +570,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
+        // Exclude admin users from overtime PDF report
         let mergedData =
           overtimeData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -574,8 +612,10 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
+        // Exclude admin users from business travel PDF report
         let mergedData =
           travelData
+            ?.filter((record) => !adminUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),

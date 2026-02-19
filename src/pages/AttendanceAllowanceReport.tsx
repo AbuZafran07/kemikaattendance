@@ -22,6 +22,7 @@ interface AllowanceConfig {
   work_hours_per_day: number;
   excluded_employee_ids: string[];
   enabled: boolean;
+  cutoff_day: number;
 }
 
 interface Holiday {
@@ -104,13 +105,14 @@ export default function AttendanceAllowanceReport() {
     const now = new Date();
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      options.push({
-        value: format(d, "yyyy-MM"),
-        label: format(d, "MMMM yyyy", { locale: idLocale }),
-      });
+      const value = format(d, "yyyy-MM");
+      const cutoff = config?.cutoff_day || 21;
+      const periodEnd = cutoff - 1 || 28;
+      const label = `${format(d, "MMMM yyyy", { locale: idLocale })} (Tgl ${cutoff} ${format(new Date(d.getFullYear(), d.getMonth() - 1), "MMM", { locale: idLocale })} - ${periodEnd} ${format(d, "MMM", { locale: idLocale })})`;
+      options.push({ value, label });
     }
     return options;
-  }, []);
+  }, [config?.cutoff_day]);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(val);
@@ -124,11 +126,15 @@ export default function AttendanceAllowanceReport() {
     setCalculating(true);
     try {
       const [year, month] = selectedMonth.split("-").map(Number);
-      const monthStart = startOfMonth(new Date(year, month - 1));
-      const monthEnd = endOfMonth(new Date(year, month - 1));
+      const cutoffDay = config.cutoff_day || 21;
+      
+      // Cut-off period: cutoff_day of previous month to (cutoff_day - 1) of selected month
+      const periodStart = new Date(year, month - 2, cutoffDay); // e.g., 21 Jan
+      const periodEndDay = cutoffDay - 1 || 28;
+      const periodEnd = new Date(year, month - 1, periodEndDay); // e.g., 20 Feb
 
       // Calculate working days (excluding weekends and holidays)
-      const allDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+      const allDays = eachDayOfInterval({ start: periodStart, end: periodEnd });
       const holidayDates = new Set(holidays.map((h) => h.date));
       const workingDays = allDays.filter((d) => {
         const dateStr = format(d, "yyyy-MM-dd");
@@ -161,8 +167,8 @@ export default function AttendanceAllowanceReport() {
       const { data: attendanceData } = await supabase
         .from("attendance")
         .select("user_id, check_in_time, status")
-        .gte("check_in_time", format(monthStart, "yyyy-MM-dd'T'00:00:00"))
-        .lte("check_in_time", format(monthEnd, "yyyy-MM-dd'T'23:59:59"));
+        .gte("check_in_time", format(periodStart, "yyyy-MM-dd'T'00:00:00"))
+        .lte("check_in_time", format(periodEnd, "yyyy-MM-dd'T'23:59:59"));
 
       // Group attendance by user
       const attendanceByUser = new Map<string, { present: number; late: number; totalLateHours: number }>();
@@ -235,7 +241,11 @@ export default function AttendanceAllowanceReport() {
     if (results.length === 0) return;
 
     const [year, month] = selectedMonth.split("-").map(Number);
-    const monthLabel = format(new Date(year, month - 1), "MMMM yyyy", { locale: idLocale });
+    const cutoffDay = config?.cutoff_day || 21;
+    const periodEndDay = cutoffDay - 1 || 28;
+    const prevMonth = new Date(year, month - 2);
+    const curMonth = new Date(year, month - 1);
+    const monthLabel = `${cutoffDay} ${format(prevMonth, "MMMM", { locale: idLocale })} - ${periodEndDay} ${format(curMonth, "MMMM yyyy", { locale: idLocale })}`;
 
     const wsData = results.map((r, idx) => ({
       "No.": idx + 1,
@@ -265,7 +275,11 @@ export default function AttendanceAllowanceReport() {
     setLoading(true);
     try {
       const [year, month] = selectedMonth.split("-").map(Number);
-      const monthLabel = format(new Date(year, month - 1), "MMMM yyyy", { locale: idLocale });
+      const cutoffDay = config?.cutoff_day || 21;
+      const periodEndDay = cutoffDay - 1 || 28;
+      const prevMonth = new Date(year, month - 2);
+      const curMonth = new Date(year, month - 1);
+      const monthLabel = `${cutoffDay} ${format(prevMonth, "MMMM", { locale: idLocale })} - ${periodEndDay} ${format(curMonth, "MMMM yyyy", { locale: idLocale })}`;
 
       const doc = new jsPDF({ orientation: "landscape" });
 
@@ -342,7 +356,7 @@ export default function AttendanceAllowanceReport() {
         <Card>
           <CardHeader>
             <CardTitle>Pilih Periode</CardTitle>
-            <CardDescription>Pilih bulan untuk menghitung tunjangan kehadiran</CardDescription>
+            <CardDescription>Pilih bulan untuk menghitung tunjangan kehadiran (sistem cut-off tgl {config?.cutoff_day || 21})</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
@@ -375,6 +389,7 @@ export default function AttendanceAllowanceReport() {
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline">Maks: {formatCurrency(config.max_amount)}</Badge>
                 <Badge variant="outline">{config.work_hours_per_day} jam/hari</Badge>
+                <Badge variant="outline">Cut-off: Tgl {config.cutoff_day}</Badge>
                 <Badge variant="outline">{config.excluded_employee_ids.length} karyawan dikecualikan</Badge>
               </div>
             )}

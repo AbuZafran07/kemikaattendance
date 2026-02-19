@@ -17,6 +17,7 @@ interface AllowanceConfig {
   work_hours_per_day: number;
   excluded_employee_ids: string[];
   enabled: boolean;
+  cutoff_day: number;
 }
 
 const DEFAULT_CONFIG: AllowanceConfig = {
@@ -24,6 +25,7 @@ const DEFAULT_CONFIG: AllowanceConfig = {
   work_hours_per_day: 8,
   excluded_employee_ids: [],
   enabled: true,
+  cutoff_day: 21,
 };
 
 interface EmployeeOption {
@@ -171,7 +173,7 @@ export default function AttendanceAllowanceSettings() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Nilai Maksimal Tunjangan (per bulan)</Label>
                 <Input
@@ -189,6 +191,17 @@ export default function AttendanceAllowanceSettings() {
                   onChange={(e) => setConfig((prev) => ({ ...prev, work_hours_per_day: Number(e.target.value) }))}
                 />
                 <p className="text-xs text-muted-foreground">Digunakan untuk menghitung tarif potongan per jam</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Tanggal Cut-off</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={28}
+                  value={config.cutoff_day}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, cutoff_day: Math.min(28, Math.max(1, Number(e.target.value))) }))}
+                />
+                <p className="text-xs text-muted-foreground">Periode: tgl {config.cutoff_day} bulan sebelumnya s/d tgl {config.cutoff_day - 1 || 28} bulan berjalan</p>
               </div>
             </div>
 

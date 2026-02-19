@@ -415,6 +415,7 @@ export type Database = {
         Args: { notes?: string; request_id: string }
         Returns: undefined
       }
+      get_effective_work_hours: { Args: never; Returns: Json }
       get_low_leave_quota_employees: {
         Args: { threshold?: number }
         Returns: {

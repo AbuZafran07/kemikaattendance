@@ -158,7 +158,13 @@ const EmployeeView = () => {
   };
   const fetchWorkHours = async () => {
     try {
-      // Use SECURITY DEFINER function for secure access to work hours settings
+      // Try effective work hours first (considers special periods like Ramadhan)
+      const { data: effectiveData, error: effectiveError } = await supabase.rpc('get_effective_work_hours');
+      if (!effectiveError && effectiveData) {
+        setWorkHours(effectiveData as unknown as WorkHoursConfig);
+        return;
+      }
+      // Fallback to normal work hours
       const { data, error } = await supabase.rpc('get_work_hours');
       if (error) throw error;
       if (data) {

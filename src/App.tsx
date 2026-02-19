@@ -27,6 +27,7 @@ import OfficeSettings from "./pages/OfficeSettings";
 import WorkHoursSettings from "./pages/WorkHoursSettings";
 import LeaveSettings from "./pages/LeaveSettings";
 import OvertimeSettings from "./pages/OvertimeSettings";
+import SpecialWorkHoursSettings from "./pages/SpecialWorkHoursSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import EmployeeSelfService from "./pages/EmployeeSelfService";
@@ -59,6 +60,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/office" element={<ProtectedRoute requireAdmin><OfficeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/work-hours" element={<ProtectedRoute requireAdmin><WorkHoursSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/special-work-hours" element={<ProtectedRoute requireAdmin><SpecialWorkHoursSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/leave" element={<ProtectedRoute requireAdmin><LeaveSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/overtime" element={<ProtectedRoute requireAdmin><OvertimeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />

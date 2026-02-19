@@ -2,15 +2,18 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { getAttendancePhotoUrl } from "@/lib/attendancePhotoUpload";
 
 interface AttendanceRecord {
@@ -36,6 +39,8 @@ interface Profile {
 }
 
 const Attendance = () => {
+  const { user, userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -49,6 +54,17 @@ const Attendance = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
+
+  // Edit state
+  const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
+  const [editCheckIn, setEditCheckIn] = useState("");
+  const [editCheckOut, setEditCheckOut] = useState("");
+  const [editReason, setEditReason] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Delete state
+  const [deleteRecord, setDeleteRecord] = useState<AttendanceRecord | null>(null);
+  const [isDeletingRecord, setIsDeletingRecord] = useState(false);
 
   // Pagination logic
   const totalPages = Math.ceil(attendanceData.length / itemsPerPage);
@@ -219,6 +235,109 @@ const Attendance = () => {
     }
   };
 
+  // Open edit dialog
+  const openEditDialog = (record: AttendanceRecord) => {
+    setEditRecord(record);
+    // Format datetime-local value
+    const ciDate = new Date(record.check_in_time);
+    const ciLocal = new Date(ciDate.getTime() - ciDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setEditCheckIn(ciLocal);
+    if (record.check_out_time) {
+      const coDate = new Date(record.check_out_time);
+      const coLocal = new Date(coDate.getTime() - coDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      setEditCheckOut(coLocal);
+    } else {
+      setEditCheckOut("");
+    }
+    setEditReason("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editRecord || !editReason.trim()) {
+      toast({ title: "Error", description: "Alasan perubahan wajib diisi", variant: "destructive" });
+      return;
+    }
+    setIsSavingEdit(true);
+    try {
+      const oldData = {
+        check_in_time: editRecord.check_in_time,
+        check_out_time: editRecord.check_out_time,
+      };
+      const newCheckIn = new Date(editCheckIn).toISOString();
+      const newCheckOut = editCheckOut ? new Date(editCheckOut).toISOString() : null;
+      const newData = { check_in_time: newCheckIn, check_out_time: newCheckOut };
+
+      // Calculate duration
+      let durationMinutes: number | null = null;
+      if (newCheckOut) {
+        durationMinutes = Math.round((new Date(newCheckOut).getTime() - new Date(newCheckIn).getTime()) / 60000);
+      }
+
+      // Update attendance record
+      const { error: updateError } = await supabase
+        .from("attendance")
+        .update({ check_in_time: newCheckIn, check_out_time: newCheckOut, duration_minutes: durationMinutes })
+        .eq("id", editRecord.id);
+
+      if (updateError) throw updateError;
+
+      // Insert audit log
+      await supabase.from("attendance_audit_logs").insert({
+        attendance_id: editRecord.id,
+        action_type: "edit",
+        changed_by: user!.id,
+        old_data: oldData,
+        new_data: newData,
+        reason: editReason.trim(),
+      });
+
+      toast({ title: "Berhasil", description: "Data absensi berhasil diperbarui" });
+      setEditRecord(null);
+      fetchAttendanceData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Gagal memperbarui data", variant: "destructive" });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteRecord = async () => {
+    if (!deleteRecord) return;
+    setIsDeletingRecord(true);
+    try {
+      const oldData = {
+        id: deleteRecord.id,
+        user_id: deleteRecord.user_id,
+        full_name: deleteRecord.full_name,
+        check_in_time: deleteRecord.check_in_time,
+        check_out_time: deleteRecord.check_out_time,
+        status: deleteRecord.status,
+      };
+
+      // Insert audit log first
+      await supabase.from("attendance_audit_logs").insert({
+        attendance_id: deleteRecord.id,
+        action_type: "delete",
+        changed_by: user!.id,
+        old_data: oldData,
+        new_data: null,
+        reason: `Dihapus oleh admin`,
+      });
+
+      // Delete the record
+      const { error } = await supabase.from("attendance").delete().eq("id", deleteRecord.id);
+      if (error) throw error;
+
+      toast({ title: "Berhasil", description: "Data absensi berhasil dihapus" });
+      setDeleteRecord(null);
+      fetchAttendanceData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Gagal menghapus data", variant: "destructive" });
+    } finally {
+      setIsDeletingRecord(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -325,6 +444,7 @@ const Attendance = () => {
                         <TableHead>Foto Absen</TableHead>
                         <TableHead>Lokasi</TableHead>
                         <TableHead>Status</TableHead>
+                        {isAdmin && <TableHead>Aksi</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -387,6 +507,18 @@ const Attendance = () => {
                             </div>
                           </TableCell>
                           <TableCell>{getStatusBadge(record.status)}</TableCell>
+                          {isAdmin && (
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEditDialog(record)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => setDeleteRecord(record)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -448,6 +580,56 @@ const Attendance = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Attendance Dialog */}
+      <Dialog open={!!editRecord} onOpenChange={(open) => !open && setEditRecord(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Waktu Absensi</DialogTitle>
+            <DialogDescription>
+              {editRecord?.full_name} - {editRecord && formatDate(editRecord.check_in_time)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Check-In</Label>
+              <Input type="datetime-local" value={editCheckIn} onChange={(e) => setEditCheckIn(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Check-Out</Label>
+              <Input type="datetime-local" value={editCheckOut} onChange={(e) => setEditCheckOut(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Alasan Perubahan <span className="text-destructive">*</span></Label>
+              <Textarea placeholder="Contoh: Koreksi waktu check-in karena lupa absen" value={editReason} onChange={(e) => setEditReason(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRecord(null)} disabled={isSavingEdit}>Batal</Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit || !editReason.trim()}>
+              {isSavingEdit ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Attendance Confirmation */}
+      <AlertDialog open={!!deleteRecord} onOpenChange={(open) => !open && setDeleteRecord(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Data Absensi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus data absensi <strong>{deleteRecord?.full_name}</strong> pada tanggal <strong>{deleteRecord && formatDate(deleteRecord.check_in_time)}</strong>? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingRecord}>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRecord} disabled={isDeletingRecord} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeletingRecord ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

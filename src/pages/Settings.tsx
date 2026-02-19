@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -39,10 +39,16 @@ export default function Settings() {
       path: "/dashboard/settings/overtime",
     },
     {
+      title: "Tunjangan Kehadiran",
+      description: "Konfigurasi perhitungan tunjangan kehadiran",
+      icon: Coins,
+      path: "/dashboard/settings/attendance-allowance",
+    },
+    {
       title: "Pengaturan Notifikasi",
       description: "Kelola notifikasi push untuk admin",
       icon: Bell,
-      path: "/dashboard/settings/notifications", // ✅ disamakan juga, biar tidak 404
+      path: "/dashboard/settings/notifications",
     },
   ];
 

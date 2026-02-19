@@ -12,10 +12,12 @@ import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format, eachDayOfInterval, parseISO, isWithinInterval } from "date-fns";
+import { format, eachDayOfInterval, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 import logoImage from "@/assets/logo.png";
 import { formatAttendanceStatus, formatLeaveType } from "@/lib/statusUtils";
+import { isWeekend } from "@/hooks/usePolicySettings";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -38,7 +40,7 @@ export default function Reports() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [reportType, setReportType] = useState<"attendance" | "leave" | "overtime" | "employees" | "business_travel">(
+  const [reportType, setReportType] = useState<"attendance" | "leave" | "overtime" | "employees" | "business_travel" | "payroll">(
     "attendance",
   );
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -327,6 +329,120 @@ export default function Reports() {
           Notes: record.notes || "-",
         }));
         filename = `Business_Travel_Report_${startDate}_to_${endDate}.xlsx`;
+      } else if (reportType === "payroll") {
+        // Payroll report: per-employee summary with attendance allowance
+        const monthStart = startDate;
+        const monthEnd = endDate;
+
+        // Fetch all needed data in parallel
+        const [attendanceRes, leaveRes, travelRes, profilesRes, configRes, holidaysRes, workHoursRes] = await Promise.all([
+          supabase.from("attendance").select("*").gte("check_in_time", `${monthStart}T00:00:00`).lte("check_in_time", `${monthEnd}T23:59:59`),
+          supabase.from("leave_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
+          supabase.from("business_travel_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
+          supabase.from("profiles").select("id, full_name, departemen, nik, jabatan"),
+          supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
+          supabase.from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle(),
+          supabase.rpc("get_work_hours"),
+        ]);
+
+        if (attendanceRes.error) throw attendanceRes.error;
+        if (leaveRes.error) throw leaveRes.error;
+        if (profilesRes.error) throw profilesRes.error;
+
+        const profilesMap = new Map(profilesRes.data?.map((p) => [p.id, p]) || []);
+        const allowanceConfig = configRes.data?.value as any || { max_amount: 500000, work_hours_per_day: 8, excluded_employee_ids: [], enabled: true };
+        const holidaysList = (holidaysRes.data?.value as any)?.holidays || [];
+        const holidayDates = new Set(holidaysList.map((h: any) => h.date));
+        const whParsed = workHoursRes.data as Record<string, any> | null;
+        const checkInEnd = whParsed?.check_in_end || "08:00";
+        const lateTolerance = whParsed?.late_tolerance_minutes || 0;
+        const [deadlineH, deadlineM] = checkInEnd.split(":").map(Number);
+        const deadlineTotalMinutes = deadlineH * 60 + deadlineM + lateTolerance;
+
+        // Calculate working days
+        const rangeStart = parseISO(monthStart);
+        const rangeEnd = parseISO(monthEnd);
+        const allDays = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+        const totalWorkingDays = allDays.filter((d) => {
+          const ds = format(d, "yyyy-MM-dd");
+          return !isWeekend(ds) && !holidayDates.has(ds);
+        }).length;
+
+        // Group attendance by user
+        const attByUser = new Map<string, { present: number; late: number; lateHours: number }>();
+        for (const rec of attendanceRes.data || []) {
+          if (adminUserIds.has(rec.user_id)) continue;
+          if (!attByUser.has(rec.user_id)) attByUser.set(rec.user_id, { present: 0, late: 0, lateHours: 0 });
+          const u = attByUser.get(rec.user_id)!;
+          if (rec.status === "hadir" || rec.status === "terlambat") u.present++;
+          if (rec.status === "terlambat" && rec.check_in_time) {
+            const ci = new Date(rec.check_in_time);
+            const ciMin = ci.getHours() * 60 + ci.getMinutes();
+            const lateMins = Math.max(0, ciMin - deadlineTotalMinutes);
+            u.late++;
+            u.lateHours += Math.ceil(lateMins / 60);
+          }
+        }
+
+        // Group leave days by user
+        const leaveByUser = new Map<string, { cuti: number; izin: number; sakit: number }>();
+        for (const leave of leaveRes.data || []) {
+          if (adminUserIds.has(leave.user_id)) continue;
+          if (!leaveByUser.has(leave.user_id)) leaveByUser.set(leave.user_id, { cuti: 0, izin: 0, sakit: 0 });
+          const u = leaveByUser.get(leave.user_id)!;
+          const days = eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) });
+          const count = days.filter((d) => isWithinInterval(d, { start: rangeStart, end: rangeEnd })).length;
+          if (leave.leave_type === "cuti_tahunan") u.cuti += count;
+          else if (leave.leave_type === "izin") u.izin += count;
+          else if (leave.leave_type === "sakit") u.sakit += count;
+        }
+
+        // Group travel days by user
+        const travelByUser = new Map<string, number>();
+        for (const t of travelRes.data || []) {
+          if (adminUserIds.has(t.user_id)) continue;
+          const days = eachDayOfInterval({ start: parseISO(t.start_date), end: parseISO(t.end_date) });
+          const count = days.filter((d) => isWithinInterval(d, { start: rangeStart, end: rangeEnd })).length;
+          travelByUser.set(t.user_id, (travelByUser.get(t.user_id) || 0) + count);
+        }
+
+        // Calculate allowance
+        const ratePerDay = totalWorkingDays > 0 ? allowanceConfig.max_amount / totalWorkingDays : 0;
+        const ratePerHour = (allowanceConfig.work_hours_per_day || 8) > 0 ? ratePerDay / (allowanceConfig.work_hours_per_day || 8) : 0;
+
+        // Build payroll rows
+        const employees = (profilesRes.data || []).filter((p) => !adminUserIds.has(p.id));
+        let filteredEmployees = department !== "all" ? employees.filter((p) => p.departemen === department) : employees;
+
+        data = filteredEmployees.map((p) => {
+          const att = attByUser.get(p.id) || { present: 0, late: 0, lateHours: 0 };
+          const lv = leaveByUser.get(p.id) || { cuti: 0, izin: 0, sakit: 0 };
+          const dinas = travelByUser.get(p.id) || 0;
+          const isExcluded = (allowanceConfig.excluded_employee_ids || []).includes(p.id);
+          const baseAllowance = isExcluded ? 0 : ratePerDay * att.present;
+          const lateDeduction = isExcluded ? 0 : ratePerHour * att.lateHours;
+          const finalAllowance = Math.max(0, Math.round(baseAllowance - lateDeduction));
+
+          return {
+            NIK: p.nik || "-",
+            Nama: p.full_name || "-",
+            Jabatan: p.jabatan || "-",
+            Departemen: p.departemen || "-",
+            "Hari Kerja": totalWorkingDays,
+            Hadir: att.present,
+            Terlambat: att.late,
+            "Jam Telat": att.lateHours,
+            Cuti: lv.cuti,
+            Izin: lv.izin,
+            Sakit: lv.sakit,
+            Dinas: dinas,
+            "Tunjangan Maks": isExcluded ? "Dikecualikan" : allowanceConfig.max_amount,
+            "Potongan Terlambat": isExcluded ? "-" : Math.round(lateDeduction),
+            "Tunjangan Kehadiran": isExcluded ? "Dikecualikan" : finalAllowance,
+          };
+        });
+
+        filename = `Laporan_Payroll_${monthStart}_to_${monthEnd}.xlsx`;
       } else {
         let query = supabase.from("profiles").select("*");
         if (department !== "all") query = query.eq("departemen", department);
@@ -639,9 +755,117 @@ export default function Reports() {
           formatAttendanceStatus(record.status),
         ]);
         title = `Laporan Perjalanan Dinas (${startDate} s.d ${endDate})`;
+      } else if (reportType === "payroll") {
+        // Reuse same payroll logic for PDF
+        const monthStart = startDate;
+        const monthEnd = endDate;
+
+        const [attendanceRes, leaveRes, travelRes, profilesRes, configRes, holidaysRes, workHoursRes] = await Promise.all([
+          supabase.from("attendance").select("*").gte("check_in_time", `${monthStart}T00:00:00`).lte("check_in_time", `${monthEnd}T23:59:59`),
+          supabase.from("leave_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
+          supabase.from("business_travel_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
+          supabase.from("profiles").select("id, full_name, departemen, nik, jabatan"),
+          supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
+          supabase.from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle(),
+          supabase.rpc("get_work_hours"),
+        ]);
+
+        if (attendanceRes.error) throw attendanceRes.error;
+        if (leaveRes.error) throw leaveRes.error;
+        if (profilesRes.error) throw profilesRes.error;
+
+        const profilesMap = new Map(profilesRes.data?.map((p) => [p.id, p]) || []);
+        const allowanceConfig = configRes.data?.value as any || { max_amount: 500000, work_hours_per_day: 8, excluded_employee_ids: [], enabled: true };
+        const holidaysList = (holidaysRes.data?.value as any)?.holidays || [];
+        const holidayDates = new Set(holidaysList.map((h: any) => h.date));
+        const whParsed = workHoursRes.data as Record<string, any> | null;
+        const checkInEnd = whParsed?.check_in_end || "08:00";
+        const lateTolerance = whParsed?.late_tolerance_minutes || 0;
+        const [deadlineH, deadlineM] = checkInEnd.split(":").map(Number);
+        const deadlineTotalMinutes = deadlineH * 60 + deadlineM + lateTolerance;
+
+        const rangeStart = parseISO(monthStart);
+        const rangeEnd = parseISO(monthEnd);
+        const allDays = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+        const totalWorkingDays = allDays.filter((d) => {
+          const ds = format(d, "yyyy-MM-dd");
+          return !isWeekend(ds) && !holidayDates.has(ds);
+        }).length;
+
+        const attByUser = new Map<string, { present: number; late: number; lateHours: number }>();
+        for (const rec of attendanceRes.data || []) {
+          if (adminUserIds.has(rec.user_id)) continue;
+          if (!attByUser.has(rec.user_id)) attByUser.set(rec.user_id, { present: 0, late: 0, lateHours: 0 });
+          const u = attByUser.get(rec.user_id)!;
+          if (rec.status === "hadir" || rec.status === "terlambat") u.present++;
+          if (rec.status === "terlambat" && rec.check_in_time) {
+            const ci = new Date(rec.check_in_time);
+            const ciMin = ci.getHours() * 60 + ci.getMinutes();
+            const lateMins = Math.max(0, ciMin - deadlineTotalMinutes);
+            u.late++;
+            u.lateHours += Math.ceil(lateMins / 60);
+          }
+        }
+
+        const leaveByUser = new Map<string, { cuti: number; izin: number; sakit: number }>();
+        for (const leave of leaveRes.data || []) {
+          if (adminUserIds.has(leave.user_id)) continue;
+          if (!leaveByUser.has(leave.user_id)) leaveByUser.set(leave.user_id, { cuti: 0, izin: 0, sakit: 0 });
+          const u = leaveByUser.get(leave.user_id)!;
+          const days = eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) });
+          const count = days.filter((d) => isWithinInterval(d, { start: rangeStart, end: rangeEnd })).length;
+          if (leave.leave_type === "cuti_tahunan") u.cuti += count;
+          else if (leave.leave_type === "izin") u.izin += count;
+          else if (leave.leave_type === "sakit") u.sakit += count;
+        }
+
+        const travelByUser = new Map<string, number>();
+        for (const t of travelRes.data || []) {
+          if (adminUserIds.has(t.user_id)) continue;
+          const days = eachDayOfInterval({ start: parseISO(t.start_date), end: parseISO(t.end_date) });
+          const count = days.filter((d) => isWithinInterval(d, { start: rangeStart, end: rangeEnd })).length;
+          travelByUser.set(t.user_id, (travelByUser.get(t.user_id) || 0) + count);
+        }
+
+        const ratePerDay = totalWorkingDays > 0 ? allowanceConfig.max_amount / totalWorkingDays : 0;
+        const ratePerHour = (allowanceConfig.work_hours_per_day || 8) > 0 ? ratePerDay / (allowanceConfig.work_hours_per_day || 8) : 0;
+
+        const employees = (profilesRes.data || []).filter((p) => !adminUserIds.has(p.id));
+        let filteredEmployees = department !== "all" ? employees.filter((p) => p.departemen === department) : employees;
+
+        const formatCurrency = (val: number) =>
+          new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(val);
+
+        columns = ["NIK", "Nama", "Jabatan", "Dept", "Kerja", "Hadir", "Telat", "Jam", "Cuti", "Izin", "Sakit", "Dinas", "Potongan", "Tunjangan"];
+        data = filteredEmployees.map((p) => {
+          const att = attByUser.get(p.id) || { present: 0, late: 0, lateHours: 0 };
+          const lv = leaveByUser.get(p.id) || { cuti: 0, izin: 0, sakit: 0 };
+          const dinas = travelByUser.get(p.id) || 0;
+          const isExcluded = (allowanceConfig.excluded_employee_ids || []).includes(p.id);
+          const baseAllowance = isExcluded ? 0 : ratePerDay * att.present;
+          const lateDeduction = isExcluded ? 0 : ratePerHour * att.lateHours;
+          const finalAllowance = Math.max(0, Math.round(baseAllowance - lateDeduction));
+          return [
+            p.nik || "-",
+            p.full_name || "-",
+            p.jabatan || "-",
+            p.departemen || "-",
+            totalWorkingDays,
+            att.present,
+            att.late,
+            att.lateHours,
+            lv.cuti,
+            lv.izin,
+            lv.sakit,
+            dinas,
+            isExcluded ? "-" : formatCurrency(Math.round(lateDeduction)),
+            isExcluded ? "Dikecualikan" : formatCurrency(finalAllowance),
+          ];
+        });
+        title = `Laporan Payroll (${startDate} s.d ${endDate})`;
       }
 
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: reportType === "payroll" ? "landscape" : "portrait" });
 
       // Add logo
       try {
@@ -660,7 +884,7 @@ export default function Reports() {
         head: [columns],
         body: data,
         startY: 32,
-        styles: { fontSize: 8 },
+        styles: { fontSize: reportType === "payroll" ? 7 : 8 },
         headStyles: { fillColor: [0, 135, 81] },
       });
 
@@ -755,6 +979,7 @@ export default function Reports() {
                     <SelectItem value="leave">Laporan Cuti</SelectItem>
                     <SelectItem value="overtime">Laporan Lembur</SelectItem>
                     <SelectItem value="business_travel">Laporan Perjalanan Dinas</SelectItem>
+                    <SelectItem value="payroll">Laporan Payroll (Absensi + Tunjangan)</SelectItem>
                     <SelectItem value="employees">Database Karyawan</SelectItem>
                   </SelectContent>
                 </Select>

@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,6 +57,7 @@ const BusinessTravel = () => {
   const [uploadingFile, setUploadingFile] = useState<File | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [detailRequest, setDetailRequest] = useState<BusinessTravelRequest | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination
@@ -446,6 +447,9 @@ const BusinessTravel = () => {
                         {isAdmin && (
                           <TableCell>
                             <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => setDetailRequest(request)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
                               {request.status === "pending" && (
                                 <>
                                   <Button size="sm" onClick={() => handleApproveClick(request)}>
@@ -608,6 +612,78 @@ const BusinessTravel = () => {
               {isProcessing ? "Memproses..." : "Tolak Perjalanan Dinas"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailRequest} onOpenChange={(open) => !open && setDetailRequest(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Detail Perjalanan Dinas</DialogTitle>
+            <DialogDescription>Informasi lengkap permohonan perjalanan dinas karyawan</DialogDescription>
+          </DialogHeader>
+          {detailRequest && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Nama</p>
+                  <p className="font-medium">{detailRequest.profiles?.full_name || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">NIK</p>
+                  <p className="font-medium">{detailRequest.profiles?.nik || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Departemen</p>
+                  <p className="font-medium">{detailRequest.profiles?.departemen || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tujuan</p>
+                  <p className="font-medium">{detailRequest.destination}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tanggal Mulai</p>
+                  <p className="font-medium">{format(new Date(detailRequest.start_date), "d MMMM yyyy", { locale: id })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tanggal Selesai</p>
+                  <p className="font-medium">{format(new Date(detailRequest.end_date), "d MMMM yyyy", { locale: id })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Durasi</p>
+                  <p className="font-medium">{detailRequest.total_days} hari</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  {getStatusBadge(detailRequest.status)}
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Dokumen</p>
+                  <p className="font-medium">{detailRequest.document_url ? "Ada" : "Belum Ada"}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Keperluan</p>
+                <p className="font-medium whitespace-pre-wrap">{detailRequest.purpose}</p>
+              </div>
+              {detailRequest.notes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Catatan</p>
+                  <p className="font-medium whitespace-pre-wrap">{detailRequest.notes}</p>
+                </div>
+              )}
+              {detailRequest.rejection_reason && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Alasan Penolakan</p>
+                  <p className="font-medium whitespace-pre-wrap text-destructive">{detailRequest.rejection_reason}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Tanggal Pengajuan</p>
+                <p className="font-medium">{format(new Date(detailRequest.created_at), "d MMMM yyyy, HH:mm", { locale: id })}</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </DashboardLayout>

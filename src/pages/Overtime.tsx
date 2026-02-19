@@ -2,7 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +32,7 @@ const Overtime = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState<"approve" | "reject">("approve");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [detailRequest, setDetailRequest] = useState<any | null>(null);
 
   // Pagination
   const totalPages = Math.ceil(overtimeRequests.length / itemsPerPage);
@@ -303,23 +305,28 @@ const Overtime = () => {
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         {isAdmin && (
                           <TableCell>
-                            {request.status === 'pending' && (
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  onClick={() => openApprovalDialog(request.id, "approve")}
-                                >
-                                  <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive"
-                                  onClick={() => openApprovalDialog(request.id, "reject")}
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => setDetailRequest(request)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {request.status === 'pending' && (
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => openApprovalDialog(request.id, "approve")}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive"
+                                    onClick={() => openApprovalDialog(request.id, "reject")}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
@@ -375,6 +382,66 @@ const Overtime = () => {
         onConfirm={dialogAction === "approve" ? handleApprove : handleReject}
         title="Permintaan Lembur"
       />
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailRequest} onOpenChange={(open) => !open && setDetailRequest(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Detail Permintaan Lembur</DialogTitle>
+            <DialogDescription>Informasi lengkap permohonan lembur karyawan</DialogDescription>
+          </DialogHeader>
+          {detailRequest && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Nama</p>
+                  <p className="font-medium">{detailRequest.profiles?.full_name || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">NIK</p>
+                  <p className="font-medium">{detailRequest.profiles?.nik || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Departemen</p>
+                  <p className="font-medium">{detailRequest.profiles?.departemen || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tanggal Lembur</p>
+                  <p className="font-medium">{new Date(detailRequest.overtime_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Jumlah Jam</p>
+                  <p className="font-medium">{detailRequest.hours} jam</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  {getStatusBadge(detailRequest.status)}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Alasan</p>
+                <p className="font-medium whitespace-pre-wrap">{detailRequest.reason}</p>
+              </div>
+              {detailRequest.approval_notes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Catatan Persetujuan</p>
+                  <p className="font-medium whitespace-pre-wrap">{detailRequest.approval_notes}</p>
+                </div>
+              )}
+              {detailRequest.rejection_reason && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Alasan Penolakan</p>
+                  <p className="font-medium whitespace-pre-wrap text-destructive">{detailRequest.rejection_reason}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Tanggal Pengajuan</p>
+                <p className="font-medium">{new Date(detailRequest.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

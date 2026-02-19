@@ -119,12 +119,26 @@ export async function validateGPSLocation(userLat: number, userLon: number, user
 }
 
 // Fetch work hours settings from database using SECURITY DEFINER function
+// Uses get_effective_work_hours which automatically considers special periods (Ramadhan, etc.)
 async function fetchWorkHoursSettings(): Promise<{
   check_in_end: string;
   check_out_start: string;
   late_tolerance_minutes: number;
   early_leave_tolerance_minutes: number;
 } | null> {
+  // Try effective work hours first (considers special periods)
+  const { data: effectiveData, error: effectiveError } = await supabase.rpc("get_effective_work_hours");
+
+  if (!effectiveError && effectiveData) {
+    return effectiveData as {
+      check_in_end: string;
+      check_out_start: string;
+      late_tolerance_minutes: number;
+      early_leave_tolerance_minutes: number;
+    };
+  }
+
+  // Fallback to normal work hours
   const { data, error } = await supabase.rpc("get_work_hours");
 
   if (error || !data) {

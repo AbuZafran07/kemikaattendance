@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -19,6 +19,12 @@ export default function Settings() {
       description: "Atur jam kerja dan toleransi keterlambatan",
       icon: Clock,
       path: "/dashboard/settings/work-hours",
+    },
+    {
+      title: "Jam Kerja Khusus",
+      description: "Atur jam kerja untuk periode khusus (Ramadhan, event, dll)",
+      icon: CalendarClock,
+      path: "/dashboard/settings/special-work-hours",
     },
     {
       title: "Kebijakan Cuti",

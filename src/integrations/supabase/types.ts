@@ -71,6 +71,39 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_audit_logs: {
+        Row: {
+          action_type: string
+          attendance_id: string
+          changed_by: string
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json
+          reason: string | null
+        }
+        Insert: {
+          action_type: string
+          attendance_id: string
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data: Json
+          reason?: string | null
+        }
+        Update: {
+          action_type?: string
+          attendance_id?: string
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json
+          reason?: string | null
+        }
+        Relationships: []
+      }
       biometric_consent_records: {
         Row: {
           action_type: string

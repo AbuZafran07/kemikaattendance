@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, FileSpreadsheet, FileText, Loader2, User } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Loader2, User, Coins } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -711,6 +711,27 @@ export default function Reports() {
               </p>
               <Button variant="link" className="mt-2 p-0 h-auto">
                 Buka Laporan Per Karyawan →
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="border-primary/20 hover:border-primary/40 transition-colors cursor-pointer"
+            onClick={() => navigate("/dashboard/reports/attendance-allowance")}
+          >
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Coins className="h-5 w-5 text-primary" />
+                <CardTitle>Tunjangan Kehadiran</CardTitle>
+              </div>
+              <CardDescription>Perhitungan tunjangan kehadiran bulanan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Hitung tunjangan kehadiran berdasarkan data absensi dengan potongan keterlambatan otomatis
+              </p>
+              <Button variant="link" className="mt-2 p-0 h-auto">
+                Buka Laporan Tunjangan →
               </Button>
             </CardContent>
           </Card>

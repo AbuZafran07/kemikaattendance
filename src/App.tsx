@@ -37,6 +37,8 @@ import EmployeeProfile from "./pages/EmployeeProfile";
 import BusinessTravelRequest from "./pages/BusinessTravelRequest";
 import BusinessTravelHistory from "./pages/BusinessTravelHistory";
 import BusinessTravel from "./pages/BusinessTravel";
+import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
+import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -63,6 +65,8 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/special-work-hours" element={<ProtectedRoute requireAdmin><SpecialWorkHoursSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/leave" element={<ProtectedRoute requireAdmin><LeaveSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/overtime" element={<ProtectedRoute requireAdmin><OvertimeSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/reports/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceReport /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />

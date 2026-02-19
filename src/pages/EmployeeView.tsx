@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Clock,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";
@@ -677,6 +678,22 @@ const EmployeeView = () => {
                   </>
                 )}
               </div>
+
+              {/* Work Hours Info */}
+              {workHours && (
+                <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-accent/50 border border-border">
+                  <Clock className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-xs text-muted-foreground">
+                    Jam kerja hari ini:{" "}
+                    <span className="font-semibold text-foreground">
+                      {workHours.check_in_start || "08:00"} - {workHours.check_out_end || "17:00"}
+                    </span>
+                    <span className="ml-1 text-muted-foreground">
+                      (toleransi terlambat {workHours.late_tolerance_minutes || 0} menit)
+                    </span>
+                  </span>
+                </div>
+              )}
 
               {/* Check-in/Check-out Time Pills */}
               <div className="flex gap-2">

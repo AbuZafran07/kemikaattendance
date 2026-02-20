@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileSpreadsheet, FileText, Loader2, User, Coins } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
+import { exportToExcelFile } from "@/lib/excelExport";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, eachDayOfInterval, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
@@ -468,10 +468,7 @@ export default function Reports() {
         filename = `Employee_Database_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
       }
 
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Report");
-      XLSX.writeFile(wb, filename);
+      await exportToExcelFile(data, "Report", filename);
 
       toast({ title: "Berhasil", description: "Laporan berhasil diekspor ke Excel" });
     } catch (error: any) {

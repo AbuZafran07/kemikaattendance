@@ -15,7 +15,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "d
 import { id as idLocale } from "date-fns/locale";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import { exportToExcelFile } from "@/lib/excelExport";
 
 interface AllowanceConfig {
   max_amount: number;
@@ -237,7 +237,7 @@ export default function AttendanceAllowanceReport() {
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (results.length === 0) return;
 
     const [year, month] = selectedMonth.split("-").map(Number);
@@ -262,10 +262,7 @@ export default function AttendanceAllowanceReport() {
       "Tunjangan Kehadiran": r.excluded ? "Dikecualikan" : r.final_allowance,
     }));
 
-    const ws = XLSX.utils.json_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Tunjangan Kehadiran");
-    XLSX.writeFile(wb, `Tunjangan_Kehadiran_${selectedMonth}.xlsx`);
+    await exportToExcelFile(wsData, "Tunjangan Kehadiran", `Tunjangan_Kehadiran_${selectedMonth}.xlsx`);
     toast.success("File Excel berhasil diunduh");
   };
 

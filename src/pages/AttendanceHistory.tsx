@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from 'xlsx';
+import { exportToExcelFile } from '@/lib/excelExport';
 import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 
@@ -44,7 +44,7 @@ const AttendanceHistory = () => {
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     const exportData = attendanceRecords.map(record => ({
       'Tanggal': new Date(record.check_in_time).toLocaleDateString('id-ID'),
       'Check-In': new Date(record.check_in_time).toLocaleTimeString('id-ID'),
@@ -56,12 +56,8 @@ const AttendanceHistory = () => {
       'Catatan': record.notes || '-'
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Absensi');
-    
     const fileName = `Absensi_${profile?.full_name}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    await exportToExcelFile(exportData, 'Riwayat Absensi', fileName);
 
     toast({
       title: "Berhasil",

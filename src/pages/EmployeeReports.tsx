@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileSpreadsheet, FileText, Loader2, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
+import { exportToExcelFile } from "@/lib/excelExport";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
@@ -160,27 +160,18 @@ export default function EmployeeReports() {
         return;
       }
 
-      // Create workbook
-      const ws = XLSX.utils.json_to_sheet(allData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
-
-      // Add employee info at the top
-      XLSX.utils.sheet_add_aoa(ws, [
-        [`Laporan Kehadiran: ${employee?.full_name}`],
-        [`NIK: ${employee?.nik}`],
-        [`Departemen: ${employee?.departemen}`],
-        [`Periode: ${startDate} s/d ${endDate}`],
-        [],
-      ], { origin: "A1" });
-
-      // Adjust the data starting row
-      const dataRange = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      dataRange.s.r = 5;
-      ws['!ref'] = XLSX.utils.encode_range(dataRange);
-
-      // Download
-      XLSX.writeFile(wb, `Kehadiran_${employee?.full_name}_${startDate}_${endDate}.xlsx`);
+      // Create workbook and download
+      await exportToExcelFile(
+        allData,
+        "Kehadiran",
+        `Kehadiran_${employee?.full_name}_${startDate}_${endDate}.xlsx`,
+        [
+          [`Laporan Kehadiran: ${employee?.full_name}`],
+          [`NIK: ${employee?.nik}`],
+          [`Departemen: ${employee?.departemen}`],
+          [`Periode: ${startDate} s/d ${endDate}`],
+        ]
+      );
 
       toast({
         title: "Export Berhasil",

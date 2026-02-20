@@ -193,7 +193,7 @@ const BusinessTravel = () => {
       // Upload document if provided
       if (uploadingFile) {
         const fileExt = uploadingFile.name.split('.').pop();
-        const fileName = `${selectedRequest.id}_${Date.now()}.${fileExt}`;
+        const fileName = `${selectedRequest.user_id}/${selectedRequest.id}_${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from("business-travel-docs")
@@ -295,7 +295,7 @@ const BusinessTravel = () => {
 
     try {
       const fileExt = uploadingFile.name.split('.').pop();
-      const fileName = `${selectedRequest.id}_${Date.now()}.${fileExt}`;
+      const fileName = `${selectedRequest.user_id}/${selectedRequest.id}_${Date.now()}.${fileExt}`;
 
       // Delete old file if exists
       if (selectedRequest.document_url) {

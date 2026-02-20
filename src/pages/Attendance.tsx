@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ interface Profile {
 }
 
 const Attendance = () => {
+  const navigate = useNavigate();
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin';
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
@@ -346,9 +348,17 @@ const Attendance = () => {
             <h1 className="text-3xl font-bold tracking-tight">Rekap Absensi</h1>
             <p className="text-muted-foreground mt-1">Data rekap absensi seluruh karyawan</p>
           </div>
-          <Button variant="outline" size="icon" onClick={fetchAttendanceData} disabled={isRefreshing}>
-            <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/audit-log")}>
+                <Calendar className="h-4 w-4 mr-1" />
+                Audit Log
+              </Button>
+            )}
+            <Button variant="outline" size="icon" onClick={fetchAttendanceData} disabled={isRefreshing}>
+              <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
 
         {/* Date Filter */}

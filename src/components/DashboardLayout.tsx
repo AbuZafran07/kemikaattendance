@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -20,6 +20,8 @@ import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { EmployeeAvatar } from "@/components/ui/employee-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +69,48 @@ const navigationGroups = [
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
+  const [pendingCount, setPendingCount] = useState(0);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  // Fetch signed photo URL
+  useEffect(() => {
+    const fetchPhoto = async () => {
+      if (!profile?.photo_url) return;
+      let path = profile.photo_url;
+      if (path.startsWith("http")) {
+        const match = path.match(/employee-photos\/(.+)$/);
+        if (match) path = match[1];
+        else { setPhotoUrl(path); return; }
+      }
+      const { data } = await supabase.storage.from("employee-photos").createSignedUrl(path, 3600);
+      if (data) setPhotoUrl(data.signedUrl);
+    };
+    fetchPhoto();
+  }, [profile?.photo_url]);
+
+  // Fetch pending requests count for notification badge
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      const [leaveRes, overtimeRes, travelRes] = await Promise.all([
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("overtime_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("business_travel_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      ]);
+      const total = (leaveRes.count || 0) + (overtimeRes.count || 0) + (travelRes.count || 0);
+      setPendingCount(total);
+    };
+    fetchPendingCount();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel("pending-requests-badge")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leave_requests" }, fetchPendingCount)
+      .on("postgres_changes", { event: "*", schema: "public", table: "overtime_requests" }, fetchPendingCount)
+      .on("postgres_changes", { event: "*", schema: "public", table: "business_travel_requests" }, fetchPendingCount)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const handleLogout = () => {
     signOut();
@@ -76,15 +120,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {mobile ? (
-          <button className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center text-white text-xs font-semibold">
-            {profile?.full_name?.charAt(0) || "U"}
+          <button className="h-8 w-8 rounded-full overflow-hidden flex items-center justify-center">
+            <EmployeeAvatar
+              src={photoUrl}
+              name={profile?.full_name}
+              size="sm"
+              lazy={false}
+              className="h-8 w-8"
+              fallbackClassName="bg-white/15 text-white"
+            />
           </button>
         ) : (
           <button className="flex items-center gap-3 hover:opacity-80 transition-opacity outline-none">
             <div className="relative">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm border-2 border-primary/20">
-                {profile?.full_name?.charAt(0) || "U"}
-              </div>
+              <EmployeeAvatar
+                src={photoUrl}
+                name={profile?.full_name}
+                size="md"
+                lazy={false}
+                className="h-10 w-10 border-2 border-primary/20"
+              />
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-primary border-2 border-card" />
             </div>
             <div className="text-left">
@@ -109,6 +164,20 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+
+  const NotificationBell = ({ className = "" }: { className?: string }) => (
+    <button
+      className={`relative cursor-pointer ${className}`}
+      onClick={() => navigate("/dashboard/notifications")}
+    >
+      <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+      {pendingCount > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+          {pendingCount > 99 ? "99+" : pendingCount}
+        </span>
+      )}
+    </button>
   );
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
@@ -162,9 +231,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {/* Right: Bell + User dropdown */}
           {profile && (
             <div className="flex items-center gap-4">
-              <div className="relative cursor-pointer">
-                <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-              </div>
+              <NotificationBell />
               <UserDropdown />
             </div>
           )}

@@ -65,6 +65,8 @@ interface PayrollData {
   thr?: number;
   insentif_kinerja?: number;
   bonus_lainnya?: number;
+  pengembalian_employee?: number;
+  insentif_penjualan?: number;
 }
 
 interface PayrollPeriod {
@@ -88,6 +90,8 @@ interface IncomeAddition {
   thr: number;
   insentif_kinerja: number;
   bonus_lainnya: number;
+  pengembalian_employee: number;
+  insentif_penjualan: number;
 }
 
 const MONTHS = [
@@ -151,10 +155,10 @@ const Payroll = () => {
 
       const userIds = [...new Set(payrolls.map((p) => p.user_id))];
       const { data: profiles } = await supabase
-        .from("profiles").select("id, full_name, departemen, jabatan, nik").in("id", userIds);
+        .from("profiles").select("id, full_name, departemen, jabatan, nik, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").in("id", userIds);
 
       const profileMap = new Map(
-        (profiles || []).map((p) => [p.id, { name: p.full_name, dept: p.departemen, jabatan: p.jabatan, nik: p.nik }])
+        (profiles || []).map((p: any) => [p.id, { name: p.full_name, dept: p.departemen, jabatan: p.jabatan, nik: p.nik, tunjangan_komunikasi: Number(p.tunjangan_komunikasi) || 0, tunjangan_jabatan: Number(p.tunjangan_jabatan) || 0, tunjangan_operasional: Number(p.tunjangan_operasional) || 0 }])
       );
 
       const enriched: PayrollData[] = payrolls.map((p) => ({
@@ -163,6 +167,9 @@ const Payroll = () => {
         departemen: profileMap.get(p.user_id)?.dept || "-",
         jabatan: profileMap.get(p.user_id)?.jabatan || "-",
         nik: profileMap.get(p.user_id)?.nik || "-",
+        tunjangan_komunikasi: profileMap.get(p.user_id)?.tunjangan_komunikasi || 0,
+        tunjangan_jabatan: profileMap.get(p.user_id)?.tunjangan_jabatan || 0,
+        tunjangan_operasional: profileMap.get(p.user_id)?.tunjangan_operasional || 0,
       }));
 
       enriched.sort((a, b) => (a.employee_name || "").localeCompare(b.employee_name || ""));
@@ -276,7 +283,7 @@ const Payroll = () => {
     const additions = new Map<string, IncomeAddition>();
     for (const emp of emps || []) {
       additions.set(emp.id, incomeAdditions.get(emp.id) || {
-        tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+        tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0,
       });
     }
     setIncomeAdditions(additions);
@@ -286,7 +293,7 @@ const Payroll = () => {
   const updateIncome = (userId: string, field: keyof IncomeAddition, value: string) => {
     setIncomeAdditions(prev => {
       const next = new Map(prev);
-      const current = next.get(userId) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0 };
+      const current = next.get(userId) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
       next.set(userId, { ...current, [field]: Number(value) || 0 });
       return next;
     });
@@ -391,7 +398,9 @@ const Payroll = () => {
         const thr = inc?.thr || 0;
         const insentifKinerja = inc?.insentif_kinerja || 0;
         const bonusLainnya = inc?.bonus_lainnya || 0;
-        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya;
+        const pengembalianEmployee = inc?.pengembalian_employee || 0;
+        const insentifPenjualan = inc?.insentif_penjualan || 0;
+        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya + pengembalianEmployee + insentifPenjualan;
 
         // Total allowance = attendance + fixed + incidental
         const totalAllowance = attendanceAllowance + fixedAllowances + incidentalIncome;
@@ -408,7 +417,20 @@ const Payroll = () => {
           deductionNotes: ded?.deduction_notes || (autoLoanDeduction > 0 ? "Cicilan pinjaman otomatis" : ""),
         });
 
-        return { user_id: emp.id, period_id: periodId, ...result };
+        return {
+          user_id: emp.id, period_id: periodId, ...result,
+          // Breakdown data (client-side only, not persisted to DB)
+          tunjangan_komunikasi: tunjanganKomunikasi,
+          tunjangan_jabatan: tunjanganJabatan,
+          tunjangan_operasional: tunjanganOperasional,
+          tunjangan_kesehatan: tunjanganKesehatan,
+          bonus_tahunan: bonusTahunan,
+          thr,
+          insentif_kinerja: insentifKinerja,
+          bonus_lainnya: bonusLainnya,
+          pengembalian_employee: pengembalianEmployee,
+          insentif_penjualan: insentifPenjualan,
+        };
       });
 
       const { error: insertError } = await supabase.from("payroll").insert(payrollRecords);
@@ -516,9 +538,21 @@ const Payroll = () => {
     }
     y += 3;
 
-    const rows = [
+    const rows: string[][] = [
       ["Gaji Pokok", formatRupiah(item.basic_salary), ""],
-      ["Tunjangan Kehadiran", formatRupiah(item.allowance), ""],
+      ["Tunjangan Kehadiran", formatRupiah(item.allowance - (item.tunjangan_komunikasi || 0) - (item.tunjangan_jabatan || 0) - (item.tunjangan_operasional || 0) - (item.tunjangan_kesehatan || 0) - (item.bonus_tahunan || 0) - (item.thr || 0) - (item.insentif_kinerja || 0) - (item.bonus_lainnya || 0) - (item.pengembalian_employee || 0) - (item.insentif_penjualan || 0)), ""],
+      // Fixed allowances
+      ...(item.tunjangan_komunikasi ? [["Tunjangan Komunikasi", formatRupiah(item.tunjangan_komunikasi), ""]] : []),
+      ...(item.tunjangan_jabatan ? [["Tunjangan Jabatan", formatRupiah(item.tunjangan_jabatan), ""]] : []),
+      ...(item.tunjangan_operasional ? [["Tunjangan Operasional", formatRupiah(item.tunjangan_operasional), ""]] : []),
+      // Incidental income
+      ...(item.tunjangan_kesehatan ? [["Tunjangan Kesehatan", formatRupiah(item.tunjangan_kesehatan), ""]] : []),
+      ...(item.bonus_tahunan ? [["Bonus Tahunan", formatRupiah(item.bonus_tahunan), ""]] : []),
+      ...(item.thr ? [["THR", formatRupiah(item.thr), ""]] : []),
+      ...(item.insentif_kinerja ? [["Insentif Kinerja", formatRupiah(item.insentif_kinerja), ""]] : []),
+      ...(item.bonus_lainnya ? [["Bonus Lainnya", formatRupiah(item.bonus_lainnya), ""]] : []),
+      ...(item.pengembalian_employee ? [["Pengembalian Employee", formatRupiah(item.pengembalian_employee), ""]] : []),
+      ...(item.insentif_penjualan ? [["Insentif Penjualan", formatRupiah(item.insentif_penjualan), ""]] : []),
       [`Lembur (${item.overtime_hours} jam)`, formatRupiah(item.overtime_total), ""],
       ["", "", ""],
       ["BRUTO", "", formatRupiah(item.bruto_income)],
@@ -720,10 +754,62 @@ const Payroll = () => {
                   <span className="text-muted-foreground">Gaji Pokok</span>
                   <span className="text-right font-medium">{formatRupiah(detailItem.basic_salary)}</span>
                   <span className="text-muted-foreground">Tunjangan Kehadiran</span>
-                  <span className="text-right">{formatRupiah(detailItem.allowance)}</span>
+                  <span className="text-right">{formatRupiah(detailItem.allowance - (detailItem.tunjangan_komunikasi || 0) - (detailItem.tunjangan_jabatan || 0) - (detailItem.tunjangan_operasional || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.thr || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - (detailItem.insentif_penjualan || 0))}</span>
                   <span className="text-muted-foreground">Lembur ({detailItem.overtime_hours} jam)</span>
                   <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>
                 </div>
+                {/* Fixed Allowances Breakdown */}
+                {((detailItem.tunjangan_komunikasi || 0) + (detailItem.tunjangan_jabatan || 0) + (detailItem.tunjangan_operasional || 0)) > 0 && (
+                  <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
+                    <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">📋 Tunjangan Tetap</span>
+                    {(detailItem.tunjangan_komunikasi || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Tunjangan Komunikasi</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_komunikasi!)}</span>
+                    </>}
+                    {(detailItem.tunjangan_jabatan || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Tunjangan Jabatan</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_jabatan!)}</span>
+                    </>}
+                    {(detailItem.tunjangan_operasional || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Tunjangan Operasional</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_operasional!)}</span>
+                    </>}
+                  </div>
+                )}
+                {/* Incidental Income Breakdown */}
+                {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0)) > 0 && (
+                  <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-primary/5 rounded p-2">
+                    <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">💰 Penghasilan Insidental</span>
+                    {(detailItem.tunjangan_kesehatan || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Tunjangan Kesehatan</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_kesehatan!)}</span>
+                    </>}
+                    {(detailItem.bonus_tahunan || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Bonus Tahunan</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.bonus_tahunan!)}</span>
+                    </>}
+                    {(detailItem.thr || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">THR</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.thr!)}</span>
+                    </>}
+                    {(detailItem.insentif_kinerja || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Insentif Kinerja</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.insentif_kinerja!)}</span>
+                    </>}
+                    {(detailItem.bonus_lainnya || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Bonus Lainnya</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.bonus_lainnya!)}</span>
+                    </>}
+                    {(detailItem.pengembalian_employee || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Pengembalian Employee</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.pengembalian_employee!)}</span>
+                    </>}
+                    {(detailItem.insentif_penjualan || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Insentif Penjualan</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.insentif_penjualan!)}</span>
+                    </>}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
                   <span className="font-semibold">Bruto</span>
                   <span className="text-right font-semibold">{formatRupiah(detailItem.bruto_income)}</span>
@@ -830,7 +916,7 @@ const Payroll = () => {
             </DialogHeader>
             <div className="space-y-4">
               {employees.map((emp) => {
-                const inc = incomeAdditions.get(emp.id) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0 };
+                const inc = incomeAdditions.get(emp.id) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
                 const hasValue = Object.values(inc).some(v => v > 0);
                 return (
                   <div key={emp.id} className={`border rounded-lg p-3 space-y-2 ${hasValue ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
@@ -860,6 +946,16 @@ const Payroll = () => {
                         <Label className="text-xs">Bonus Lainnya</Label>
                         <Input type="number" value={inc.bonus_lainnya || ""} placeholder="0"
                           onChange={(e) => updateIncome(emp.id, "bonus_lainnya", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Pengembalian Employee</Label>
+                        <Input type="number" value={inc.pengembalian_employee || ""} placeholder="0"
+                          onChange={(e) => updateIncome(emp.id, "pengembalian_employee", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Insentif Penjualan</Label>
+                        <Input type="number" value={inc.insentif_penjualan || ""} placeholder="0"
+                          onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
                       </div>
                     </div>
                   </div>

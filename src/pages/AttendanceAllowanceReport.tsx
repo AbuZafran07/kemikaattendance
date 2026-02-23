@@ -41,8 +41,11 @@ interface EmployeeAllowance {
   days_present: number;
   days_late: number;
   total_late_hours: number;
+  days_early_leave: number;
+  total_early_leave_hours: number;
   base_allowance: number;
   late_deduction: number;
+  early_leave_deduction: number;
   final_allowance: number;
   excluded: boolean;
 }
@@ -163,25 +166,50 @@ export default function AttendanceAllowanceReport() {
         .select("id, full_name, jabatan, departemen, nik")
         .order("full_name");
 
-      // Fetch attendance for the month
+      // Get checkout boundary for early departure calculation
+      const checkOutStart = whParsed?.check_out_start || "17:00";
+      const earlyLeaveTolerance = whParsed?.early_leave_tolerance_minutes || 0;
+      const [checkOutH, checkOutM] = checkOutStart.split(":").map(Number);
+      const checkOutTotalMinutes = checkOutH * 60 + checkOutM - earlyLeaveTolerance;
+
+      // Check for special work hours that may override for specific dates
+      const { data: specialWhData } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "special_work_hours")
+        .maybeSingle();
+      const specialPeriods = (specialWhData?.value as any)?.periods || [];
+
+      const getCheckOutMinutesForDate = (dateStr: string): number => {
+        for (const sp of specialPeriods) {
+          if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
+            const [h, m] = (sp.check_out_start || "17:00").split(":").map(Number);
+            const tol = sp.early_leave_tolerance_minutes || 0;
+            return h * 60 + m - tol;
+          }
+        }
+        return checkOutTotalMinutes;
+      };
+
+      // Fetch attendance for the month (include check_out_time for early departure)
       const { data: attendanceData } = await supabase
         .from("attendance")
-        .select("user_id, check_in_time, status")
+        .select("user_id, check_in_time, check_out_time, status")
         .gte("check_in_time", format(periodStart, "yyyy-MM-dd'T'00:00:00"))
         .lte("check_in_time", format(periodEnd, "yyyy-MM-dd'T'23:59:59"));
 
       // Group attendance by user
-      const attendanceByUser = new Map<string, { present: number; late: number; totalLateHours: number }>();
+      const attendanceByUser = new Map<string, { present: number; late: number; totalLateHours: number; earlyLeave: number; totalEarlyLeaveHours: number }>();
 
       for (const record of attendanceData || []) {
         const userId = record.user_id;
         if (!attendanceByUser.has(userId)) {
-          attendanceByUser.set(userId, { present: 0, late: 0, totalLateHours: 0 });
+          attendanceByUser.set(userId, { present: 0, late: 0, totalLateHours: 0, earlyLeave: 0, totalEarlyLeaveHours: 0 });
         }
         const userAtt = attendanceByUser.get(userId)!;
 
-        // Count as present (hadir or terlambat)
-        if (record.status === "hadir" || record.status === "terlambat") {
+        // Count as present (hadir, terlambat, or pulang_cepat)
+        if (record.status === "hadir" || record.status === "terlambat" || record.status === "pulang_cepat") {
           userAtt.present += 1;
         }
 
@@ -190,9 +218,23 @@ export default function AttendanceAllowanceReport() {
           const checkInDate = new Date(record.check_in_time);
           const checkInMinutes = checkInDate.getHours() * 60 + checkInDate.getMinutes();
           const lateMinutes = Math.max(0, checkInMinutes - deadlineTotalMinutes);
-          const lateHours = Math.ceil(lateMinutes / 60); // 1 menit = 1 jam
+          const lateHours = Math.ceil(lateMinutes / 60); // pembulatan ke atas per jam
           userAtt.late += 1;
           userAtt.totalLateHours += lateHours;
+        }
+
+        // Calculate early departure
+        if (record.status === "pulang_cepat" && record.check_out_time) {
+          const checkOutDate = new Date(record.check_out_time);
+          const checkOutMinutes = checkOutDate.getHours() * 60 + checkOutDate.getMinutes();
+          const dateStr = format(checkOutDate, "yyyy-MM-dd");
+          const expectedCheckOut = getCheckOutMinutesForDate(dateStr);
+          const earlyMinutes = Math.max(0, expectedCheckOut - checkOutMinutes);
+          if (earlyMinutes > 0) {
+            const earlyHours = Math.ceil(earlyMinutes / 60); // pembulatan ke atas per jam
+            userAtt.earlyLeave += 1;
+            userAtt.totalEarlyLeaveHours += earlyHours;
+          }
         }
       }
 
@@ -204,11 +246,12 @@ export default function AttendanceAllowanceReport() {
         .filter((p) => !adminIds.has(p.id))
         .map((p) => {
           const isExcluded = config.excluded_employee_ids.includes(p.id);
-          const att = attendanceByUser.get(p.id) || { present: 0, late: 0, totalLateHours: 0 };
+          const att = attendanceByUser.get(p.id) || { present: 0, late: 0, totalLateHours: 0, earlyLeave: 0, totalEarlyLeaveHours: 0 };
 
           const baseAllowance = isExcluded ? 0 : ratePerDay * att.present;
           const lateDeduction = isExcluded ? 0 : ratePerHour * att.totalLateHours;
-          const finalAllowance = Math.max(0, Math.round(baseAllowance - lateDeduction));
+          const earlyLeaveDeduction = isExcluded ? 0 : ratePerHour * att.totalEarlyLeaveHours;
+          const finalAllowance = Math.max(0, Math.round(baseAllowance - lateDeduction - earlyLeaveDeduction));
 
           return {
             id: p.id,
@@ -220,8 +263,11 @@ export default function AttendanceAllowanceReport() {
             days_present: att.present,
             days_late: att.late,
             total_late_hours: att.totalLateHours,
+            days_early_leave: att.earlyLeave,
+            total_early_leave_hours: att.totalEarlyLeaveHours,
             base_allowance: Math.round(baseAllowance),
             late_deduction: Math.round(lateDeduction),
+            early_leave_deduction: Math.round(earlyLeaveDeduction),
             final_allowance: finalAllowance,
             excluded: isExcluded,
           };
@@ -256,9 +302,12 @@ export default function AttendanceAllowanceReport() {
       "Hari Kerja": r.total_working_days,
       "Hari Hadir": r.days_present,
       "Hari Terlambat": r.days_late,
-      "Total Jam Terlambat": r.total_late_hours,
+      "Jam Terlambat": r.total_late_hours,
+      "Hari Pulang Cepat": r.days_early_leave,
+      "Jam Pulang Cepat": r.total_early_leave_hours,
       "Base Tunjangan": r.excluded ? "-" : r.base_allowance,
       "Potongan Terlambat": r.excluded ? "-" : r.late_deduction,
+      "Potongan Pulang Cepat": r.excluded ? "-" : r.early_leave_deduction,
       "Tunjangan Kehadiran": r.excluded ? "Dikecualikan" : r.final_allowance,
     }));
 
@@ -308,19 +357,22 @@ export default function AttendanceAllowanceReport() {
         r.days_present,
         r.days_late,
         r.total_late_hours,
+        r.days_early_leave,
+        r.total_early_leave_hours,
         r.excluded ? "-" : formatCurrency(r.base_allowance),
         r.excluded ? "-" : formatCurrency(r.late_deduction),
+        r.excluded ? "-" : formatCurrency(r.early_leave_deduction),
         r.excluded ? "Dikecualikan" : formatCurrency(r.final_allowance),
       ]);
 
       const totalAllowance = results.reduce((s, r) => s + (r.excluded ? 0 : r.final_allowance), 0);
-      tableData.push(["", "", "", "TOTAL", "", "", "", "", "", formatCurrency(totalAllowance)]);
+      tableData.push(["", "", "", "TOTAL", "", "", "", "", "", "", "", "", formatCurrency(totalAllowance)]);
 
       autoTable(doc, {
         startY: 40,
-        head: [["No", "NIK", "Nama", "Jabatan", "Hadir", "Terlambat", "Jam Telat", "Base", "Potongan", "Tunjangan"]],
+        head: [["No", "NIK", "Nama", "Jabatan", "Hadir", "Telat", "Jam Telat", "P.Cepat", "Jam P.Cepat", "Base", "Pot. Telat", "Pot. P.Cepat", "Tunjangan"]],
         body: tableData,
-        styles: { fontSize: 8 },
+        styles: { fontSize: 7 },
         headStyles: { fillColor: [41, 128, 185] },
       });
 
@@ -334,7 +386,9 @@ export default function AttendanceAllowanceReport() {
   };
 
   const totalAllowance = results.reduce((s, r) => s + (r.excluded ? 0 : r.final_allowance), 0);
-  const totalDeduction = results.reduce((s, r) => s + (r.excluded ? 0 : r.late_deduction), 0);
+  const totalDeduction = results.reduce((s, r) => s + (r.excluded ? 0 : r.late_deduction + r.early_leave_deduction), 0);
+  const totalEarlyDeduction = results.reduce((s, r) => s + (r.excluded ? 0 : r.early_leave_deduction), 0);
+  const totalLateDeduction = results.reduce((s, r) => s + (r.excluded ? 0 : r.late_deduction), 0);
 
   return (
     <DashboardLayout>
@@ -397,7 +451,7 @@ export default function AttendanceAllowanceReport() {
         {results.length > 0 && (
           <>
             {/* Summary */}
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground">Total Karyawan</p>
@@ -406,8 +460,14 @@ export default function AttendanceAllowanceReport() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Total Potongan Terlambat</p>
-                  <p className="text-2xl font-bold text-destructive">{formatCurrency(totalDeduction)}</p>
+                  <p className="text-sm text-muted-foreground">Potongan Terlambat</p>
+                  <p className="text-2xl font-bold text-destructive">{formatCurrency(totalLateDeduction)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">Potongan Pulang Cepat</p>
+                  <p className="text-2xl font-bold text-destructive">{formatCurrency(totalEarlyDeduction)}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -447,8 +507,11 @@ export default function AttendanceAllowanceReport() {
                         <TableHead className="text-center">Hadir</TableHead>
                         <TableHead className="text-center">Terlambat</TableHead>
                         <TableHead className="text-center">Jam Telat</TableHead>
+                        <TableHead className="text-center">P. Cepat</TableHead>
+                        <TableHead className="text-center">Jam P. Cepat</TableHead>
                         <TableHead className="text-right">Base</TableHead>
-                        <TableHead className="text-right">Potongan</TableHead>
+                        <TableHead className="text-right">Pot. Telat</TableHead>
+                        <TableHead className="text-right">Pot. P.Cepat</TableHead>
                         <TableHead className="text-right">Tunjangan</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -468,11 +531,22 @@ export default function AttendanceAllowanceReport() {
                             )}
                           </TableCell>
                           <TableCell className="text-center">{r.total_late_hours}</TableCell>
+                          <TableCell className="text-center">
+                            {r.days_early_leave > 0 ? (
+                              <Badge variant="destructive" className="text-xs">{r.days_early_leave}</Badge>
+                            ) : (
+                              "0"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">{r.total_early_leave_hours}</TableCell>
                           <TableCell className="text-right">
                             {r.excluded ? "-" : formatCurrency(r.base_allowance)}
                           </TableCell>
                           <TableCell className="text-right text-destructive">
                             {r.excluded ? "-" : r.late_deduction > 0 ? `-${formatCurrency(r.late_deduction)}` : "-"}
+                          </TableCell>
+                          <TableCell className="text-right text-destructive">
+                            {r.excluded ? "-" : r.early_leave_deduction > 0 ? `-${formatCurrency(r.early_leave_deduction)}` : "-"}
                           </TableCell>
                           <TableCell className="text-right font-semibold">
                             {r.excluded ? (
@@ -485,12 +559,15 @@ export default function AttendanceAllowanceReport() {
                       ))}
                       {/* Total row */}
                       <TableRow className="font-bold border-t-2">
-                        <TableCell colSpan={7}>TOTAL</TableCell>
+                        <TableCell colSpan={9}>TOTAL</TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(results.reduce((s, r) => s + (r.excluded ? 0 : r.base_allowance), 0))}
                         </TableCell>
                         <TableCell className="text-right text-destructive">
-                          -{formatCurrency(totalDeduction)}
+                          -{formatCurrency(totalLateDeduction)}
+                        </TableCell>
+                        <TableCell className="text-right text-destructive">
+                          -{formatCurrency(totalEarlyDeduction)}
                         </TableCell>
                         <TableCell className="text-right text-primary">
                           {formatCurrency(totalAllowance)}

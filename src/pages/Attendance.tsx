@@ -295,7 +295,7 @@ const Attendance = () => {
         }
       }
 
-      // Fallback to normal work hours
+      // Fallback to normal work hours (with Friday override)
       const { data: normalSettings } = await supabase
         .from("system_settings")
         .select("value")
@@ -304,6 +304,18 @@ const Attendance = () => {
 
       if (normalSettings?.value) {
         const config = normalSettings.value as any;
+        const dayOfWeek = date.getDay(); // 0=Sunday, 5=Friday
+        
+        // Apply Friday overrides if enabled
+        if (dayOfWeek === 5 && config.friday_enabled) {
+          return {
+            check_in_end: config.check_in_end,
+            check_out_start: config.friday_check_out_start || config.check_out_start,
+            late_tolerance_minutes: config.late_tolerance_minutes || 0,
+            early_leave_tolerance_minutes: config.friday_early_leave_tolerance_minutes ?? config.early_leave_tolerance_minutes ?? 0,
+          };
+        }
+        
         return {
           check_in_end: config.check_in_end,
           check_out_start: config.check_out_start,

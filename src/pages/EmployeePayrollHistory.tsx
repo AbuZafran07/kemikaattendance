@@ -155,17 +155,27 @@ const EmployeePayrollHistory = () => {
     }
     y += 3;
 
-    const rows = [
+    // Calculate attendance-only allowance (total allowance minus fixed allowances from profile)
+    const tunjanganKomunikasi = Number((profile as any)?.tunjangan_komunikasi) || 0;
+    const tunjanganJabatan = Number((profile as any)?.tunjangan_jabatan) || 0;
+    const tunjanganOperasional = Number((profile as any)?.tunjangan_operasional) || 0;
+    const fixedTotal = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
+    const attendanceAllowance = Math.max(0, item.allowance - fixedTotal);
+
+    const rows: string[][] = [
       ["Gaji Pokok", formatRupiah(item.basic_salary), ""],
-      ["Tunjangan Kehadiran", formatRupiah(item.allowance), ""],
+      ["Tunjangan Kehadiran", formatRupiah(attendanceAllowance), ""],
+      ...(tunjanganKomunikasi > 0 ? [["Tunjangan Komunikasi", formatRupiah(tunjanganKomunikasi), ""]] : []),
+      ...(tunjanganJabatan > 0 ? [["Tunjangan Jabatan", formatRupiah(tunjanganJabatan), ""]] : []),
+      ...(tunjanganOperasional > 0 ? [["Tunjangan Operasional", formatRupiah(tunjanganOperasional), ""]] : []),
       [`Lembur (${item.overtime_hours} jam)`, formatRupiah(item.overtime_total), ""],
       ["", "", ""],
       ["BRUTO", "", formatRupiah(item.bruto_income)],
       ["", "", ""],
       ["Pot. BPJS Kesehatan (1%)", "", `- ${formatRupiah(item.bpjs_kesehatan)}`],
       ["Pot. BPJS TK + JP (3%)", "", `- ${formatRupiah(item.bpjs_ketenagakerjaan)}`],
-      ["Pot. Pinjaman/Kasbon", "", item.loan_deduction > 0 ? `- ${formatRupiah(item.loan_deduction)}` : "-"],
-      ["Pot. Lainnya", "", item.other_deduction > 0 ? `- ${formatRupiah(item.other_deduction)}` : "-"],
+      ...(item.loan_deduction > 0 ? [["Pot. Pinjaman/Kasbon", "", `- ${formatRupiah(item.loan_deduction)}`]] : []),
+      ...(item.other_deduction > 0 ? [["Pot. Lainnya", "", `- ${formatRupiah(item.other_deduction)}`]] : []),
       ["", "", ""],
       ["NETTO", "", formatRupiah(item.netto_income)],
       ["", "", ""],
@@ -281,11 +291,29 @@ const EmployeePayrollHistory = () => {
               <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
                 <span className="text-muted-foreground">Gaji Pokok</span>
                 <span className="text-right font-medium">{formatRupiah(detailItem.basic_salary)}</span>
-                <span className="text-muted-foreground">Tunjangan</span>
-                <span className="text-right">{formatRupiah(detailItem.allowance)}</span>
+                <span className="text-muted-foreground">Tunjangan Kehadiran</span>
+                <span className="text-right">{formatRupiah(Math.max(0, detailItem.allowance - (Number((profile as any)?.tunjangan_komunikasi) || 0) - (Number((profile as any)?.tunjangan_jabatan) || 0) - (Number((profile as any)?.tunjangan_operasional) || 0)))}</span>
                 <span className="text-muted-foreground">Lembur ({detailItem.overtime_hours} jam)</span>
                 <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>
               </div>
+              {/* Fixed Allowances Breakdown */}
+              {((Number((profile as any)?.tunjangan_komunikasi) || 0) + (Number((profile as any)?.tunjangan_jabatan) || 0) + (Number((profile as any)?.tunjangan_operasional) || 0)) > 0 && (
+                <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
+                  <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">📋 Tunjangan Tetap</span>
+                  {(Number((profile as any)?.tunjangan_komunikasi) || 0) > 0 && <>
+                    <span className="text-muted-foreground text-xs">Tunjangan Komunikasi</span>
+                    <span className="text-right text-xs">{formatRupiah(Number((profile as any)?.tunjangan_komunikasi))}</span>
+                  </>}
+                  {(Number((profile as any)?.tunjangan_jabatan) || 0) > 0 && <>
+                    <span className="text-muted-foreground text-xs">Tunjangan Jabatan</span>
+                    <span className="text-right text-xs">{formatRupiah(Number((profile as any)?.tunjangan_jabatan))}</span>
+                  </>}
+                  {(Number((profile as any)?.tunjangan_operasional) || 0) > 0 && <>
+                    <span className="text-muted-foreground text-xs">Tunjangan Operasional</span>
+                    <span className="text-right text-xs">{formatRupiah(Number((profile as any)?.tunjangan_operasional))}</span>
+                  </>}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
                 <span className="font-semibold">Bruto</span>

@@ -323,10 +323,103 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll: {
+        Row: {
+          allowance: number
+          basic_salary: number
+          bpjs_kesehatan: number
+          bpjs_ketenagakerjaan: number
+          bruto_income: number
+          created_at: string
+          id: string
+          netto_income: number
+          overtime_hours: number
+          overtime_total: number
+          period_id: string
+          pkp: number
+          pph21_monthly: number
+          ptkp_status: string
+          ptkp_value: number
+          take_home_pay: number
+          user_id: string
+        }
+        Insert: {
+          allowance?: number
+          basic_salary?: number
+          bpjs_kesehatan?: number
+          bpjs_ketenagakerjaan?: number
+          bruto_income?: number
+          created_at?: string
+          id?: string
+          netto_income?: number
+          overtime_hours?: number
+          overtime_total?: number
+          period_id: string
+          pkp?: number
+          pph21_monthly?: number
+          ptkp_status?: string
+          ptkp_value?: number
+          take_home_pay?: number
+          user_id: string
+        }
+        Update: {
+          allowance?: number
+          basic_salary?: number
+          bpjs_kesehatan?: number
+          bpjs_ketenagakerjaan?: number
+          bruto_income?: number
+          created_at?: string
+          id?: string
+          netto_income?: number
+          overtime_hours?: number
+          overtime_total?: number
+          period_id?: string
+          pkp?: number
+          pph21_monthly?: number
+          ptkp_status?: string
+          ptkp_value?: number
+          take_home_pay?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_periods: {
+        Row: {
+          created_at: string
+          id: string
+          month: number
+          status: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: number
+          status?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number
+          status?: string
+          year?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
           annual_leave_quota: number | null
+          basic_salary: number | null
           created_at: string
           departemen: string
           email: string
@@ -338,6 +431,7 @@ export type Database = {
           nik: string
           phone: string | null
           photo_url: string | null
+          ptkp_status: string | null
           remaining_leave: number | null
           status: string | null
           updated_at: string
@@ -346,6 +440,7 @@ export type Database = {
         Insert: {
           address?: string | null
           annual_leave_quota?: number | null
+          basic_salary?: number | null
           created_at?: string
           departemen: string
           email: string
@@ -357,6 +452,7 @@ export type Database = {
           nik: string
           phone?: string | null
           photo_url?: string | null
+          ptkp_status?: string | null
           remaining_leave?: number | null
           status?: string | null
           updated_at?: string
@@ -365,6 +461,7 @@ export type Database = {
         Update: {
           address?: string | null
           annual_leave_quota?: number | null
+          basic_salary?: number | null
           created_at?: string
           departemen?: string
           email?: string
@@ -376,6 +473,7 @@ export type Database = {
           nik?: string
           phone?: string | null
           photo_url?: string | null
+          ptkp_status?: string | null
           remaining_leave?: number | null
           status?: string | null
           updated_at?: string

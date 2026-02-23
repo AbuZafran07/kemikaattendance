@@ -14,7 +14,8 @@ import {
   Menu,
   Plane,
   ChevronDown,
-  UserCircle
+  UserCircle,
+  DollarSign
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,12 @@ const navigationGroups = [
       { name: "Cuti", href: "/dashboard/leave", icon: Calendar },
       { name: "Lembur", href: "/dashboard/overtime", icon: Clock },
       { name: "Perjalanan Dinas", href: "/dashboard/business-travel", icon: Plane },
+    ],
+  },
+  {
+    label: "KEUANGAN",
+    items: [
+      { name: "Payroll", href: "/dashboard/payroll", icon: DollarSign },
     ],
   },
   {

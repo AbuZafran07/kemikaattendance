@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface AttendanceChartProps {
@@ -12,38 +12,44 @@ interface AttendanceChartProps {
 
 const AttendanceChart = ({ data }: AttendanceChartProps) => {
   return (
-    <Card className="col-span-2">
-      <CardHeader>
-        <CardTitle>Tren Kehadiran Mingguan</CardTitle>
-        <CardDescription>
-          Statistik kehadiran 7 hari terakhir
-        </CardDescription>
+    <Card className="lg:col-span-2">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold">Tren Kehadiran Mingguan</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
+        <div className="h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <BarChart data={data} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
               <XAxis 
                 dataKey="day" 
+                axisLine={false}
+                tickLine={false}
                 className="text-xs"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
               />
               <YAxis 
+                axisLine={false}
+                tickLine={false}
                 className="text-xs"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
               />
               <Tooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  fontSize: '12px'
                 }}
               />
-              <Legend />
-              <Bar dataKey="hadir" name="Hadir" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="terlambat" name="Terlambat" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="tidak_hadir" name="Tidak Hadir" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+              <Legend 
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }}
+              />
+              <Bar dataKey="hadir" name="Hadir" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="terlambat" name="Terlambat" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="tidak_hadir" name="Tidak Hadir" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -150,8 +150,8 @@ export default function AttendanceAllowanceSettings() {
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            <strong>Formula:</strong> Tunjangan = (Maks ÷ Hari Kerja × Hari Hadir) - (Σ ceil(menit terlambat ÷ 60) × Maks ÷ Hari Kerja ÷ Jam Kerja/hari). 
-            Keterlambatan dihitung setelah batas check-in + toleransi. 1 menit terlambat = 1 jam potongan.
+            <strong>Formula:</strong> Tunjangan = (Maks ÷ Hari Kerja × Hari Hadir) - Potongan Terlambat - Potongan Pulang Cepat.
+            <br />Potongan = Σ ceil(menit ÷ 60) × Tarif/jam. Pembulatan ke atas per jam berlaku untuk <strong>keterlambatan</strong> maupun <strong>pulang cepat</strong> (misal 30 menit = 1 jam potongan).
           </AlertDescription>
         </Alert>
 
@@ -205,12 +205,33 @@ export default function AttendanceAllowanceSettings() {
               </div>
             </div>
 
-            <div className="bg-muted/50 rounded-lg p-4 space-y-1 text-sm">
-              <p><strong>Contoh Perhitungan (22 hari kerja):</strong></p>
-              <p>• Tarif per hari: {formatCurrency(config.max_amount / 22)}</p>
-              <p>• Tarif potongan per jam terlambat: {formatCurrency(config.max_amount / 22 / config.work_hours_per_day)}</p>
-              <p>• Hadir 20 hari, terlambat 2x (masing-masing 30 menit = 1 jam):</p>
-              <p className="ml-4">Base = {formatCurrency((config.max_amount / 22) * 22)} - Potongan = {formatCurrency((config.max_amount / 22 / config.work_hours_per_day) * 2)} = {formatCurrency(config.max_amount - (config.max_amount / 22 / config.work_hours_per_day) * 2)}</p>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+              <p><strong>Contoh Perhitungan ({config.work_hours_per_day} jam/hari, 22 hari kerja):</strong></p>
+              <p>• Tarif per hari: {formatCurrency(config.max_amount)} ÷ 22 = <strong>{formatCurrency(config.max_amount / 22)}</strong></p>
+              <p>• Tarif potongan per jam: {formatCurrency(config.max_amount / 22)} ÷ {config.work_hours_per_day} = <strong>{formatCurrency(config.max_amount / 22 / config.work_hours_per_day)}</strong></p>
+
+              <div className="border-t border-border pt-2 mt-2 space-y-1">
+                <p className="font-semibold">Skenario 1 — Terlambat:</p>
+                <p className="ml-4">Karyawan hadir 22 hari, terlambat 2× (masing-masing 30 menit → dibulatkan jadi 1 jam)</p>
+                <p className="ml-4">Potongan = 2 × {formatCurrency(config.max_amount / 22 / config.work_hours_per_day)} = <span className="text-destructive font-medium">{formatCurrency((config.max_amount / 22 / config.work_hours_per_day) * 2)}</span></p>
+                <p className="ml-4">Tunjangan = {formatCurrency(config.max_amount)} - {formatCurrency((config.max_amount / 22 / config.work_hours_per_day) * 2)} = <span className="text-primary font-medium">{formatCurrency(config.max_amount - (config.max_amount / 22 / config.work_hours_per_day) * 2)}</span></p>
+              </div>
+
+              <div className="border-t border-border pt-2 mt-2 space-y-1">
+                <p className="font-semibold">Skenario 2 — Pulang Cepat:</p>
+                <p className="ml-4">Karyawan hadir 22 hari, pulang cepat 1× (45 menit sebelum jam pulang → dibulatkan jadi 1 jam)</p>
+                <p className="ml-4">Potongan = 1 × {formatCurrency(config.max_amount / 22 / config.work_hours_per_day)} = <span className="text-destructive font-medium">{formatCurrency(config.max_amount / 22 / config.work_hours_per_day)}</span></p>
+                <p className="ml-4">Tunjangan = {formatCurrency(config.max_amount)} - {formatCurrency(config.max_amount / 22 / config.work_hours_per_day)} = <span className="text-primary font-medium">{formatCurrency(config.max_amount - config.max_amount / 22 / config.work_hours_per_day)}</span></p>
+              </div>
+
+              <div className="border-t border-border pt-2 mt-2 space-y-1">
+                <p className="font-semibold">Skenario 3 — Kombinasi:</p>
+                <p className="ml-4">Hadir 20 hari, terlambat 1× (15 menit → 1 jam), pulang cepat 1× (1 jam 10 menit → 2 jam)</p>
+                <p className="ml-4">Base = 20 × {formatCurrency(config.max_amount / 22)} = <strong>{formatCurrency((config.max_amount / 22) * 20)}</strong></p>
+                <p className="ml-4">Potongan telat = 1 × {formatCurrency(config.max_amount / 22 / config.work_hours_per_day)} = <span className="text-destructive font-medium">{formatCurrency(config.max_amount / 22 / config.work_hours_per_day)}</span></p>
+                <p className="ml-4">Potongan p.cepat = 2 × {formatCurrency(config.max_amount / 22 / config.work_hours_per_day)} = <span className="text-destructive font-medium">{formatCurrency((config.max_amount / 22 / config.work_hours_per_day) * 2)}</span></p>
+                <p className="ml-4">Tunjangan = {formatCurrency((config.max_amount / 22) * 20)} - {formatCurrency((config.max_amount / 22 / config.work_hours_per_day) * 3)} = <span className="text-primary font-medium">{formatCurrency((config.max_amount / 22) * 20 - (config.max_amount / 22 / config.work_hours_per_day) * 3)}</span></p>
+              </div>
             </div>
           </CardContent>
         </Card>

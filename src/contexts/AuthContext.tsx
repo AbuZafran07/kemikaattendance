@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const role = roleData?.role || 'employee';
       
       // Navigate based on role
-      if (role === 'admin') {
+      if (role === 'admin' || role === 'hr') {
         navigate('/dashboard');
       } else {
         navigate('/employee');

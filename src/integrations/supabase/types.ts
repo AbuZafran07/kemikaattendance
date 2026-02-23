@@ -327,12 +327,18 @@ export type Database = {
         Row: {
           allowance: number
           basic_salary: number
+          bpjs_jht_employer: number
+          bpjs_jp_employer: number
+          bpjs_kes_employer: number
           bpjs_kesehatan: number
           bpjs_ketenagakerjaan: number
           bruto_income: number
           created_at: string
+          deduction_notes: string | null
           id: string
+          loan_deduction: number
           netto_income: number
+          other_deduction: number
           overtime_hours: number
           overtime_total: number
           period_id: string
@@ -346,12 +352,18 @@ export type Database = {
         Insert: {
           allowance?: number
           basic_salary?: number
+          bpjs_jht_employer?: number
+          bpjs_jp_employer?: number
+          bpjs_kes_employer?: number
           bpjs_kesehatan?: number
           bpjs_ketenagakerjaan?: number
           bruto_income?: number
           created_at?: string
+          deduction_notes?: string | null
           id?: string
+          loan_deduction?: number
           netto_income?: number
+          other_deduction?: number
           overtime_hours?: number
           overtime_total?: number
           period_id: string
@@ -365,12 +377,18 @@ export type Database = {
         Update: {
           allowance?: number
           basic_salary?: number
+          bpjs_jht_employer?: number
+          bpjs_jp_employer?: number
+          bpjs_kes_employer?: number
           bpjs_kesehatan?: number
           bpjs_ketenagakerjaan?: number
           bruto_income?: number
           created_at?: string
+          deduction_notes?: string | null
           id?: string
+          loan_deduction?: number
           netto_income?: number
+          other_deduction?: number
           overtime_hours?: number
           overtime_total?: number
           period_id?: string
@@ -578,7 +596,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "employee"
+      app_role: "admin" | "employee" | "hr"
       attendance_status: "hadir" | "terlambat" | "pulang_cepat" | "tidak_hadir"
       leave_status: "pending" | "approved" | "rejected"
       leave_type: "cuti_tahunan" | "izin" | "sakit" | "lupa_absen"
@@ -709,7 +727,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "employee"],
+      app_role: ["admin", "employee", "hr"],
       attendance_status: ["hadir", "terlambat", "pulang_cepat", "tidak_hadir"],
       leave_status: ["pending", "approved", "rejected"],
       leave_type: ["cuti_tahunan", "izin", "sakit", "lupa_absen"],

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import logger from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import { CameraCapture } from "@/components/CameraCapture";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { useNavigate } from "react-router-dom";
 import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
+import LateReasonDialog from "@/components/LateReasonDialog";
 
 // Office coordinates and work hours will be fetched from system settings
 
@@ -73,6 +74,12 @@ const EmployeeView = () => {
     distance: number;
   } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [lateReasonDialog, setLateReasonDialog] = useState<{
+    open: boolean;
+    type: "terlambat" | "pulang_cepat";
+    durationText: string;
+  }>({ open: false, type: "terlambat", durationText: "" });
+  const pendingAttendanceRef = useRef<any>(null);
   const { signOut, profile, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -397,6 +404,7 @@ const EmployeeView = () => {
         : `Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`;
       
       // Add lateness detail to notes
+      let lateText = "";
       if (status === "terlambat") {
         let lateMinutes = 0;
         if (workHours && workHours.check_in_end) {
@@ -410,48 +418,52 @@ const EmployeeView = () => {
         if (lateMinutes > 0) {
           const lateHours = Math.floor(lateMinutes / 60);
           const lateRemMins = lateMinutes % 60;
-          const lateText = lateHours > 0 
+          lateText = lateHours > 0 
             ? `Terlambat ${lateHours} jam ${lateRemMins > 0 ? `${lateRemMins} menit` : ''}`
             : `Terlambat ${lateRemMins} menit`;
           locationNote += ` | ${lateText.trim()}`;
         }
       }
 
-      const { data, error } = await supabase
-        .from("attendance")
-        .insert([
-          {
+      // If late, show reason dialog before saving
+      if (status === "terlambat") {
+        pendingAttendanceRef.current = {
+          type: "checkin",
+          insertData: {
             user_id: profile?.id!,
             check_in_time: now.toISOString(),
             check_in_latitude: location.latitude,
             check_in_longitude: location.longitude,
             check_in_photo_url: photoPath,
-            gps_validated: !isHybridWorker ? true : false, // Hybrid workers don't need GPS validation
+            gps_validated: !isHybridWorker ? true : false,
             face_recognition_validated: false,
             status: status,
             notes: locationNote,
           },
-        ])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setIsCheckedIn(true);
-      setTodayAttendance(data);
-      setCheckInTime(
-        now.toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      );
-      toast({
-        title: "Check-In Berhasil",
-        description: isHybridWorker 
-          ? `Check-in Hybrid berhasil! Lokasi: ${nearestOffice?.name || 'Lokasi saat ini'}`
-          : `Terima kasih! Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`,
-      });
-      fetchRecentAttendance();
+          nearestOffice,
+          isHybridWorker,
+        };
+        setLateReasonDialog({
+          open: true,
+          type: "terlambat",
+          durationText: lateText.trim(),
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Not late - proceed directly
+      await completeCheckIn({
+        user_id: profile?.id!,
+        check_in_time: now.toISOString(),
+        check_in_latitude: location.latitude,
+        check_in_longitude: location.longitude,
+        check_in_photo_url: photoPath,
+        gps_validated: !isHybridWorker ? true : false,
+        face_recognition_validated: false,
+        status: status,
+        notes: locationNote,
+      }, nearestOffice, isHybridWorker);
     } catch (error: any) {
       toast({
         title: "Check-In Gagal",
@@ -530,6 +542,7 @@ const EmployeeView = () => {
           : todayAttendance.notes;
 
       // Add early departure detail to notes
+      let earlyText = "";
       if (finalStatus === "pulang_cepat") {
         let earlyMinutes = 0;
         if (workHours && workHours.check_out_start) {
@@ -543,38 +556,47 @@ const EmployeeView = () => {
         if (earlyMinutes > 0) {
           const earlyHours = Math.floor(earlyMinutes / 60);
           const earlyRemMins = earlyMinutes % 60;
-          const earlyText = earlyHours > 0 
+          earlyText = earlyHours > 0 
             ? `Pulang cepat ${earlyHours} jam ${earlyRemMins > 0 ? `${earlyRemMins} menit` : ''}`
             : `Pulang cepat ${earlyRemMins} menit`;
           checkoutLocationNote += ` | ${earlyText.trim()}`;
         }
       }
 
-      const { data: updatedData, error } = await supabase
-        .from("attendance")
-        .update({
-          check_out_time: now.toISOString(),
-          check_out_latitude: location.latitude,
-          check_out_longitude: location.longitude,
-          check_out_photo_url: photoPath,
-          duration_minutes: durationMinutes,
-          status: finalStatus,
-          notes: checkoutLocationNote,
-        })
-        .eq("id", todayAttendance.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
+      // If early departure, show reason dialog before saving
+      if (finalStatus === "pulang_cepat") {
+        pendingAttendanceRef.current = {
+          type: "checkout",
+          updateData: {
+            check_out_time: now.toISOString(),
+            check_out_latitude: location.latitude,
+            check_out_longitude: location.longitude,
+            check_out_photo_url: photoPath,
+            duration_minutes: durationMinutes,
+            status: finalStatus,
+            notes: checkoutLocationNote,
+          },
+          attendanceId: todayAttendance.id,
+        };
+        setLateReasonDialog({
+          open: true,
+          type: "pulang_cepat",
+          durationText: earlyText.trim(),
+        });
+        setIsProcessing(false);
+        return;
+      }
 
-      // Update state with checkout time - keep isCheckedIn true to show completed attendance
-      setTodayAttendance(updatedData);
-      toast({
-        title: "Check-Out Berhasil",
-        description:
-          finalStatus === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!",
-      });
-      fetchRecentAttendance();
+      // Not early - proceed directly
+      await completeCheckOut({
+        check_out_time: now.toISOString(),
+        check_out_latitude: location.latitude,
+        check_out_longitude: location.longitude,
+        check_out_photo_url: photoPath,
+        duration_minutes: durationMinutes,
+        status: finalStatus,
+        notes: checkoutLocationNote,
+      }, todayAttendance.id);
     } catch (error: any) {
       toast({
         title: "Check-Out Gagal",
@@ -585,6 +607,102 @@ const EmployeeView = () => {
       setIsProcessing(false);
     }
   };
+  const completeCheckIn = async (insertData: any, nearestOffice: any, isHybridWorker: boolean) => {
+    try {
+      const { data, error } = await supabase
+        .from("attendance")
+        .insert([insertData])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setIsCheckedIn(true);
+      setTodayAttendance(data);
+      setCheckInTime(
+        new Date(insertData.check_in_time).toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+      toast({
+        title: "Check-In Berhasil",
+        description: isHybridWorker 
+          ? `Check-in Hybrid berhasil! Lokasi: ${nearestOffice?.name || 'Lokasi saat ini'}`
+          : `Terima kasih! Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`,
+      });
+      fetchRecentAttendance();
+    } catch (error: any) {
+      toast({
+        title: "Check-In Gagal",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const completeCheckOut = async (updateData: any, attendanceId: string) => {
+    try {
+      const { data: updatedData, error } = await supabase
+        .from("attendance")
+        .update(updateData)
+        .eq("id", attendanceId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+
+      setTodayAttendance(updatedData);
+      toast({
+        title: "Check-Out Berhasil",
+        description:
+          updateData.status === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!",
+      });
+      fetchRecentAttendance();
+    } catch (error: any) {
+      toast({
+        title: "Check-Out Gagal",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLateReasonConfirm = async (reason: string) => {
+    const pending = pendingAttendanceRef.current;
+    if (!pending) return;
+
+    setLateReasonDialog({ ...lateReasonDialog, open: false });
+    setIsProcessing(true);
+
+    if (pending.type === "checkin") {
+      const insertData = {
+        ...pending.insertData,
+        notes: `${pending.insertData.notes} | Alasan: ${reason}`,
+      };
+      await completeCheckIn(insertData, pending.nearestOffice, pending.isHybridWorker);
+    } else {
+      const updateData = {
+        ...pending.updateData,
+        notes: `${pending.updateData.notes} | Alasan: ${reason}`,
+      };
+      await completeCheckOut(updateData, pending.attendanceId);
+    }
+
+    pendingAttendanceRef.current = null;
+    setIsProcessing(false);
+  };
+
+  const handleLateReasonCancel = () => {
+    setLateReasonDialog({ ...lateReasonDialog, open: false });
+    pendingAttendanceRef.current = null;
+    toast({
+      title: "Dibatalkan",
+      description: "Absensi dibatalkan karena alasan tidak diisi.",
+      variant: "destructive",
+    });
+  };
+
   const formatStatus = (status: string) => {
     const statusMap: Record<string, string> = {
       hadir: "Hadir",
@@ -887,6 +1005,14 @@ const EmployeeView = () => {
           }
         }}
         title={cameraMode === "checkin" ? "Check-In" : "Check-Out"}
+      />
+
+      <LateReasonDialog
+        open={lateReasonDialog.open}
+        type={lateReasonDialog.type}
+        durationText={lateReasonDialog.durationText}
+        onConfirm={handleLateReasonConfirm}
+        onCancel={handleLateReasonCancel}
       />
     </div>
   );

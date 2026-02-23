@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, TrendingUp, ChevronRight, History, Plane, FileText, DollarSign } from "lucide-react";
+import { Calendar, Clock, TrendingUp, ChevronRight, History, Plane, FileText, DollarSign, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -64,6 +64,13 @@ const services: ServiceItem[] = [
     icon: DollarSign,
     path: "/employee/payroll-history",
     color: "bg-yellow-500/10 text-yellow-600",
+  },
+  {
+    label: "Pinjaman Saya",
+    description: "Lihat daftar pinjaman dan progress cicilan",
+    icon: Wallet,
+    path: "/employee/loans",
+    color: "bg-red-500/10 text-red-600",
   },
 ];
 

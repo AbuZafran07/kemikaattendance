@@ -43,6 +43,7 @@ import AttendanceAuditLog from "./pages/AttendanceAuditLog";
 import Payroll from "./pages/Payroll";
 import LoanManagement from "./pages/LoanManagement";
 import EmployeePayrollHistory from "./pages/EmployeePayrollHistory";
+import EmployeeLoanHistory from "./pages/EmployeeLoanHistory";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -88,6 +89,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/employee/request-history" element={<ProtectedRoute><RequestHistory /></ProtectedRoute>} />
             <Route path="/employee/profile" element={<ProtectedRoute><EmployeeProfile /></ProtectedRoute>} />
             <Route path="/employee/payroll-history" element={<ProtectedRoute><EmployeePayrollHistory /></ProtectedRoute>} />
+            <Route path="/employee/loans" element={<ProtectedRoute><EmployeeLoanHistory /></ProtectedRoute>} />
             <Route path="/dashboard/settings/notifications" element={<ProtectedRoute requireAdmin><NotificationSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

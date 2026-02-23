@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -166,20 +167,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     </DropdownMenu>
   );
 
-  const NotificationBell = ({ className = "" }: { className?: string }) => (
-    <button
-      className={`relative cursor-pointer ${className}`}
-      onClick={() => navigate("/dashboard/notifications")}
-    >
-      <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-      {pendingCount > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-          {pendingCount > 99 ? "99+" : pendingCount}
-        </span>
-      )}
-    </button>
-  );
-
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="flex flex-col h-full bg-[hsl(161,80%,14%)] text-white">
       {/* Navigation - no header */}
@@ -231,7 +218,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {/* Right: Bell + User dropdown */}
           {profile && (
             <div className="flex items-center gap-4">
-              <NotificationBell />
+              <NotificationDropdown pendingCount={pendingCount} />
               <UserDropdown />
             </div>
           )}

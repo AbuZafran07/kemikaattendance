@@ -268,6 +268,80 @@ const Attendance = () => {
     setEditReason("");
   };
 
+  // Fetch effective work hours for a specific date (considers special work hours)
+  const getEffectiveWorkHoursForDate = async (date: Date) => {
+    try {
+      // Check special work hours first
+      const { data: specialSettings } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "special_work_hours")
+        .maybeSingle();
+
+      if (specialSettings?.value) {
+        const config = specialSettings.value as any;
+        const periods = config.periods || [];
+        const dateStr = date.toISOString().split("T")[0];
+        
+        for (const period of periods) {
+          if (period.is_active && dateStr >= period.start_date && dateStr <= period.end_date) {
+            return {
+              check_in_end: period.check_in_end,
+              check_out_start: period.check_out_start,
+              late_tolerance_minutes: period.late_tolerance_minutes || 0,
+              early_leave_tolerance_minutes: period.early_leave_tolerance_minutes || 0,
+            };
+          }
+        }
+      }
+
+      // Fallback to normal work hours
+      const { data: normalSettings } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "work_hours")
+        .maybeSingle();
+
+      if (normalSettings?.value) {
+        const config = normalSettings.value as any;
+        return {
+          check_in_end: config.check_in_end,
+          check_out_start: config.check_out_start,
+          late_tolerance_minutes: config.late_tolerance_minutes || 0,
+          early_leave_tolerance_minutes: config.early_leave_tolerance_minutes || 0,
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Determine status based on check-in/out times and work hours config
+  const recalculateStatus = async (checkInTime: Date, checkOutTime: Date | null): Promise<"hadir" | "terlambat" | "pulang_cepat"> => {
+    const workHours = await getEffectiveWorkHoursForDate(checkInTime);
+    if (!workHours) return "hadir";
+
+    // Check late
+    const [lateH, lateM] = workHours.check_in_end.split(":").map(Number);
+    const lateDeadline = new Date(checkInTime);
+    lateDeadline.setHours(lateH, lateM + (workHours.late_tolerance_minutes || 0), 0, 0);
+
+    if (checkInTime > lateDeadline) return "terlambat";
+
+    // Check early leave
+    if (checkOutTime) {
+      const [earlyH, earlyM] = workHours.check_out_start.split(":").map(Number);
+      const earlyThreshold = new Date(checkOutTime);
+      earlyThreshold.setHours(earlyH, earlyM - (workHours.early_leave_tolerance_minutes || 0), 0, 0);
+
+      if (checkOutTime < earlyThreshold) return "pulang_cepat";
+    }
+
+    return "hadir";
+  };
+
   const handleSaveEdit = async () => {
     if (!editRecord || !editReason.trim()) {
       toast({ title: "Error", description: "Alasan perubahan wajib diisi", variant: "destructive" });
@@ -278,10 +352,10 @@ const Attendance = () => {
       const oldData = {
         check_in_time: editRecord.check_in_time,
         check_out_time: editRecord.check_out_time,
+        status: editRecord.status,
       };
       const newCheckIn = new Date(editCheckIn).toISOString();
       const newCheckOut = editCheckOut ? new Date(editCheckOut).toISOString() : null;
-      const newData = { check_in_time: newCheckIn, check_out_time: newCheckOut };
 
       // Calculate duration
       let durationMinutes: number | null = null;
@@ -289,10 +363,15 @@ const Attendance = () => {
         durationMinutes = Math.round((new Date(newCheckOut).getTime() - new Date(newCheckIn).getTime()) / 60000);
       }
 
-      // Update attendance record
+      // Recalculate status based on effective work hours (including special work hours)
+      const newStatus = await recalculateStatus(new Date(newCheckIn), newCheckOut ? new Date(newCheckOut) : null);
+
+      const newData = { check_in_time: newCheckIn, check_out_time: newCheckOut, status: newStatus };
+
+      // Update attendance record with recalculated status
       const { error: updateError } = await supabase
         .from("attendance")
-        .update({ check_in_time: newCheckIn, check_out_time: newCheckOut, duration_minutes: durationMinutes })
+        .update({ check_in_time: newCheckIn, check_out_time: newCheckOut, duration_minutes: durationMinutes, status: newStatus })
         .eq("id", editRecord.id);
 
       if (updateError) throw updateError;
@@ -307,7 +386,7 @@ const Attendance = () => {
         reason: editReason.trim(),
       });
 
-      toast({ title: "Berhasil", description: "Data absensi berhasil diperbarui" });
+      toast({ title: "Berhasil", description: `Data absensi berhasil diperbarui. Status: ${newStatus === 'hadir' ? 'Hadir' : newStatus === 'terlambat' ? 'Terlambat' : 'Pulang Cepat'}` });
       setEditRecord(null);
       fetchAttendanceData();
     } catch (error: any) {

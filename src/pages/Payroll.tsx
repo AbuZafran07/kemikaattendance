@@ -307,6 +307,23 @@ const Payroll = () => {
 
       const allowanceMap = await calculateAttendanceAllowances();
 
+      // Fetch active loans for auto-deduction
+      const { data: activeLoans } = await supabase
+        .from("employee_loans")
+        .select("id, user_id, monthly_installment, paid_installments, total_installments, remaining_amount")
+        .eq("status", "active");
+
+      // Build loan deduction map: sum of all active loan installments per employee
+      const loanDeductionMap = new Map<string, { amount: number; loanIds: { id: string; amount: number }[] }>();
+      for (const loan of activeLoans || []) {
+        if (loan.paid_installments >= loan.total_installments) continue;
+        const installmentAmount = Math.min(loan.monthly_installment, loan.remaining_amount);
+        const existing = loanDeductionMap.get(loan.user_id) || { amount: 0, loanIds: [] };
+        existing.amount += installmentAmount;
+        existing.loanIds.push({ id: loan.id, amount: installmentAmount });
+        loanDeductionMap.set(loan.user_id, existing);
+      }
+
       const payrollRecords = emps.map((emp) => {
         const basicSalary = Number(emp.basic_salary) || 0;
         const overtimeHours = overtimeMap.get(emp.id) || 0;
@@ -314,12 +331,19 @@ const Payroll = () => {
         const ptkpStatus = emp.ptkp_status || "TK/0";
         const allowance = allowanceMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);
+        const loanDed = loanDeductionMap.get(emp.id);
+
+        // Combine manual loan override with auto loan deduction
+        const autoLoanDeduction = loanDed?.amount || 0;
+        const manualLoanDeduction = ded?.loan_deduction || 0;
+        // Use auto if no manual override, otherwise use manual
+        const finalLoanDeduction = manualLoanDeduction > 0 ? manualLoanDeduction : autoLoanDeduction;
 
         const result = calculatePayroll({
           basicSalary, allowance, overtimeTotal, ptkpStatus, overtimeHours,
-          loanDeduction: ded?.loan_deduction || 0,
+          loanDeduction: finalLoanDeduction,
           otherDeduction: ded?.other_deduction || 0,
-          deductionNotes: ded?.deduction_notes || "",
+          deductionNotes: ded?.deduction_notes || (autoLoanDeduction > 0 ? "Cicilan pinjaman otomatis" : ""),
         });
 
         return { user_id: emp.id, period_id: periodId, ...result };
@@ -328,6 +352,50 @@ const Payroll = () => {
       const { error: insertError } = await supabase.from("payroll").insert(payrollRecords);
       if (insertError) throw insertError;
 
+      // Mark loan installments as paid and update loan records
+      for (const [userId, loanDed] of loanDeductionMap.entries()) {
+        const manualOverride = deductionOverrides.get(userId)?.loan_deduction || 0;
+        if (manualOverride > 0) continue; // Skip auto-update if manual override used
+
+        for (const { id: loanId, amount } of loanDed.loanIds) {
+          // Find next pending installment
+          const { data: nextInst } = await supabase
+            .from("loan_installments")
+            .select("id")
+            .eq("loan_id", loanId)
+            .eq("status", "pending")
+            .order("installment_number")
+            .limit(1)
+            .maybeSingle();
+
+          if (nextInst) {
+            await supabase.from("loan_installments").update({
+              status: "paid",
+              payment_date: new Date().toISOString().split("T")[0],
+              payroll_period_id: periodId,
+              amount,
+            }).eq("id", nextInst.id);
+          }
+
+          // Update loan record
+          const { data: loanRecord } = await supabase
+            .from("employee_loans")
+            .select("paid_installments, total_installments, remaining_amount")
+            .eq("id", loanId)
+            .single();
+
+          if (loanRecord) {
+            const newPaid = loanRecord.paid_installments + 1;
+            const newRemaining = Math.max(0, loanRecord.remaining_amount - amount);
+            const newStatus = newPaid >= loanRecord.total_installments ? "completed" : "active";
+            await supabase.from("employee_loans").update({
+              paid_installments: newPaid,
+              remaining_amount: newRemaining,
+              status: newStatus,
+            }).eq("id", loanId);
+          }
+        }
+      }
       toast({
         title: "Payroll Berhasil Di-generate",
         description: `${payrollRecords.length} karyawan dihitung untuk ${MONTHS[selectedMonth - 1].label} ${selectedYear}.`,

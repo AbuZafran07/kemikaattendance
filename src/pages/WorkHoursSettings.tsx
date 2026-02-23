@@ -4,6 +4,7 @@ import { Clock, Save, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
@@ -16,6 +17,10 @@ interface WorkHoursConfig {
   check_out_end: string;
   late_tolerance_minutes: number;
   early_leave_tolerance_minutes: number;
+  friday_enabled?: boolean;
+  friday_check_out_start?: string;
+  friday_check_out_end?: string;
+  friday_early_leave_tolerance_minutes?: number;
 }
 
 export default function WorkHoursSettings() {
@@ -221,6 +226,65 @@ export default function WorkHoursSettings() {
                       Cepat"
                     </p>
                   </div>
+                </div>
+
+                {/* Friday Settings */}
+                <div className="space-y-3 sm:space-y-4 border-t pt-4 sm:pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-base sm:text-lg">Jam Kerja Jumat</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Atur jam pulang berbeda untuk hari Jumat</p>
+                    </div>
+                    <Switch
+                      checked={config.friday_enabled || false}
+                      onCheckedChange={(checked) => setConfig({ ...config, friday_enabled: checked })}
+                    />
+                  </div>
+                  {config.friday_enabled && (
+                    <div className="space-y-4 pl-0 sm:pl-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="friday_check_out_start">Waktu Mulai Check-Out (Jumat)</Label>
+                          <Input
+                            id="friday_check_out_start"
+                            type="time"
+                            value={config.friday_check_out_start || config.check_out_start}
+                            onChange={(e) => setConfig({ ...config, friday_check_out_start: e.target.value })}
+                          />
+                          <p className="text-xs text-muted-foreground">Waktu paling awal check-out di hari Jumat</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="friday_check_out_end">Batas Waktu Check-Out (Jumat)</Label>
+                          <Input
+                            id="friday_check_out_end"
+                            type="time"
+                            value={config.friday_check_out_end || config.check_out_end}
+                            onChange={(e) => setConfig({ ...config, friday_check_out_end: e.target.value })}
+                          />
+                          <p className="text-xs text-muted-foreground">Batas waktu check-out maksimal di hari Jumat</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="friday_early_leave_tolerance">Toleransi Pulang Cepat Jumat (menit)</Label>
+                        <Input
+                          id="friday_early_leave_tolerance"
+                          type="number"
+                          min="0"
+                          max="60"
+                          value={config.friday_early_leave_tolerance_minutes ?? config.early_leave_tolerance_minutes}
+                          onChange={(e) =>
+                            setConfig({ ...config, friday_early_leave_tolerance_minutes: parseInt(e.target.value) || 0 })
+                          }
+                        />
+                      </div>
+                      <div className="bg-muted/50 p-3 rounded-lg">
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          <strong>Jumat:</strong> Check-out mulai jam <strong>{config.friday_check_out_start || config.check_out_start}</strong>.
+                          {" "}Prioritas: Jam Khusus {">"} Jam Jumat {">"} Jam Normal.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Example */}

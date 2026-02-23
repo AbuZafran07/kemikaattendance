@@ -69,21 +69,8 @@ const Attendance = () => {
   const [deleteRecord, setDeleteRecord] = useState<AttendanceRecord | null>(null);
   const [isDeletingRecord, setIsDeletingRecord] = useState(false);
 
-  // Filter by search query
-  const filteredData = attendanceData.filter((record) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    const name = (record.full_name || "").toLowerCase();
-    const date = formatDate(record.check_in_time).toLowerCase();
-    return name.includes(query) || date.includes(query);
-  });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+
 
   useEffect(() => {
     // Set default date range to today
@@ -201,6 +188,23 @@ const Attendance = () => {
       year: "numeric",
     });
   };
+
+  // Filter by search query
+  const filteredData = attendanceData.filter((record) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const name = (record.full_name || "").toLowerCase();
+    const date = formatDate(record.check_in_time).toLowerCase();
+    return name.includes(query) || date.includes(query);
+  });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
 
   const calculateDuration = (checkIn: string, checkOut: string | null) => {
     if (!checkOut) return "-";

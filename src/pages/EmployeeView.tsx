@@ -25,6 +25,7 @@ import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { useNavigate } from "react-router-dom";
 import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
 import LateReasonDialog from "@/components/LateReasonDialog";
+import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
 
 // Office coordinates and work hours will be fetched from system settings
 
@@ -987,9 +988,12 @@ const EmployeeView = () => {
                   <p className="text-lg font-bold text-primary">Lihat</p>
                 </div>
               </div>
-            </div>
+        </div>
           </CardContent>
         </Card>
+
+        {/* Company Calendar */}
+        <CompanyCalendar />
       </div>
 
       <EmployeeBottomNav />

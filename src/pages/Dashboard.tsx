@@ -6,6 +6,7 @@ import AttendanceChart from "@/components/dashboard/AttendanceChart";
 import DepartmentBreakdown from "@/components/dashboard/DepartmentBreakdown";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import PendingRequests from "@/components/dashboard/PendingRequests";
+import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
 import { format, subDays } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -364,6 +365,8 @@ const Dashboard = () => {
           <RecentActivity data={recentAttendance} absentEmployees={absentEmployees} />
           <PendingRequests leaveRequests={pendingLeave} overtimeRequests={pendingOvertime} businessTravelRequests={pendingTravel} />
         </div>
+
+        <CompanyCalendar />
       </div>
     </DashboardLayout>
   );

@@ -392,10 +392,31 @@ const EmployeeView = () => {
         }
       }
       
-      const locationNote = isHybridWorker 
+      let locationNote = isHybridWorker 
         ? `Check-in Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
         : `Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`;
       
+      // Add lateness detail to notes
+      if (status === "terlambat") {
+        let lateMinutes = 0;
+        if (workHours && workHours.check_in_end) {
+          const [endHour, endMinute] = workHours.check_in_end.split(":").map(Number);
+          const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
+          lateMinutes = checkInTotalMinutes - lateThreshold;
+        } else {
+          const defaultLateThreshold = 9 * 60 + 15;
+          lateMinutes = checkInTotalMinutes - defaultLateThreshold;
+        }
+        if (lateMinutes > 0) {
+          const lateHours = Math.floor(lateMinutes / 60);
+          const lateRemMins = lateMinutes % 60;
+          const lateText = lateHours > 0 
+            ? `Terlambat ${lateHours} jam ${lateRemMins > 0 ? `${lateRemMins} menit` : ''}`
+            : `Terlambat ${lateRemMins} menit`;
+          locationNote += ` | ${lateText.trim()}`;
+        }
+      }
+
       const { data, error } = await supabase
         .from("attendance")
         .insert([
@@ -502,11 +523,32 @@ const EmployeeView = () => {
         }
       }
 
-      const checkoutLocationNote = isHybridWorker
+      let checkoutLocationNote = isHybridWorker
         ? `${todayAttendance.notes}, Check-out Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
         : nearestOffice
           ? `${todayAttendance.notes}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
           : todayAttendance.notes;
+
+      // Add early departure detail to notes
+      if (finalStatus === "pulang_cepat") {
+        let earlyMinutes = 0;
+        if (workHours && workHours.check_out_start) {
+          const [startHour, startMinute] = workHours.check_out_start.split(":").map(Number);
+          const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
+          earlyMinutes = earlyLeaveThreshold - checkOutTotalMinutes;
+        } else {
+          const defaultEarlyLeaveThreshold = 17 * 60 - 15;
+          earlyMinutes = defaultEarlyLeaveThreshold - checkOutTotalMinutes;
+        }
+        if (earlyMinutes > 0) {
+          const earlyHours = Math.floor(earlyMinutes / 60);
+          const earlyRemMins = earlyMinutes % 60;
+          const earlyText = earlyHours > 0 
+            ? `Pulang cepat ${earlyHours} jam ${earlyRemMins > 0 ? `${earlyRemMins} menit` : ''}`
+            : `Pulang cepat ${earlyRemMins} menit`;
+          checkoutLocationNote += ` | ${earlyText.trim()}`;
+        }
+      }
 
       const { data: updatedData, error } = await supabase
         .from("attendance")

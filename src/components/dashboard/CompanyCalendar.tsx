@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameMonth, isToday, isSameDay } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 
 interface Holiday {
@@ -23,14 +24,32 @@ interface SpecialPeriod {
   check_out_start?: string;
 }
 
+interface LeaveDay {
+  leave_type: string;
+  label: string;
+}
+
+const leaveTypeLabels: Record<string, string> = {
+  cuti_tahunan: "Cuti Tahunan",
+  izin: "Izin",
+  sakit: "Sakit",
+  lupa_absen: "Lupa Absen",
+};
+
 const CompanyCalendar = () => {
+  const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [specialPeriods, setSpecialPeriods] = useState<SpecialPeriod[]>([]);
+  const [leaveDaysMap, setLeaveDaysMap] = useState<Map<string, LeaveDay[]>>(new Map());
 
   useEffect(() => {
     fetchCalendarData();
   }, []);
+
+  useEffect(() => {
+    if (user) fetchLeaveData();
+  }, [user, currentMonth]);
 
   const fetchCalendarData = async () => {
     const [{ data: overtimeSettings }, { data: specialSettings }] = await Promise.all([
@@ -49,19 +68,49 @@ const CompanyCalendar = () => {
     }
   };
 
+  const fetchLeaveData = async () => {
+    if (!user) return;
+    const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+    const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+
+    const { data } = await supabase
+      .from("leave_requests")
+      .select("start_date, end_date, leave_type")
+      .eq("user_id", user.id)
+      .eq("status", "approved")
+      .gte("end_date", monthStart)
+      .lte("start_date", monthEnd);
+
+    const map = new Map<string, LeaveDay[]>();
+    if (data) {
+      data.forEach((leave) => {
+        const start = parseISO(leave.start_date);
+        const end = parseISO(leave.end_date);
+        const days = eachDayOfInterval({ start, end });
+        days.forEach((d) => {
+          const key = format(d, "yyyy-MM-dd");
+          const existing = map.get(key) || [];
+          existing.push({
+            leave_type: leave.leave_type,
+            label: leaveTypeLabels[leave.leave_type] || leave.leave_type,
+          });
+          map.set(key, existing);
+        });
+      });
+    }
+    setLeaveDaysMap(map);
+  };
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  // Pad start of month with empty cells
-  const startDayOfWeek = getDay(monthStart); // 0=Sun
+  const startDayOfWeek = getDay(monthStart);
   const paddingDays = startDayOfWeek;
 
   const holidayMap = useMemo(() => {
     const map = new Map<string, string>();
-    holidays.forEach(h => {
-      map.set(h.date, h.name);
-    });
+    holidays.forEach(h => map.set(h.date, h.name));
     return map;
   }, [holidays]);
 
@@ -112,7 +161,6 @@ const CompanyCalendar = () => {
 
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-0.5">
-          {/* Empty padding cells */}
           {Array.from({ length: paddingDays }).map((_, i) => (
             <div key={`pad-${i}`} className="aspect-square" />
           ))}
@@ -123,12 +171,14 @@ const CompanyCalendar = () => {
             const specialPeriod = getSpecialPeriodForDate(date);
             const weekend = isWeekend(date);
             const today = isToday(date);
+            const leaveDays = leaveDaysMap.get(dateStr);
 
-            const hasEvent = !!holidayName || !!specialPeriod;
+            const hasEvent = !!holidayName || !!specialPeriod || !!leaveDays;
 
             let bgClass = "bg-background hover:bg-accent/50";
             if (today) bgClass = "bg-primary/10 ring-1 ring-primary";
             else if (holidayName) bgClass = "bg-destructive/10";
+            else if (leaveDays) bgClass = "bg-blue-500/10";
             else if (specialPeriod) bgClass = "bg-chart-4/20";
             else if (weekend) bgClass = "bg-muted/50";
 
@@ -139,11 +189,11 @@ const CompanyCalendar = () => {
                 <span className={`font-medium ${weekend ? "text-destructive/70" : ""} ${holidayName ? "text-destructive" : ""} ${today ? "text-primary font-bold" : ""}`}>
                   {format(date, "d")}
                 </span>
-                {/* Indicator dots */}
                 {hasEvent && (
                   <div className="flex gap-0.5 mt-0.5">
                     {holidayName && <div className="h-1 w-1 rounded-full bg-destructive" />}
                     {specialPeriod && <div className="h-1 w-1 rounded-full bg-chart-4" />}
+                    {leaveDays && <div className="h-1 w-1 rounded-full bg-blue-500" />}
                   </div>
                 )}
               </div>
@@ -173,6 +223,12 @@ const CompanyCalendar = () => {
                           )}
                         </div>
                       )}
+                      {leaveDays && leaveDays.map((l, i) => (
+                        <div key={i} className="flex items-center gap-1 text-xs">
+                          <Briefcase className="h-3 w-3 text-blue-500" />
+                          <span>{l.label}</span>
+                        </div>
+                      ))}
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -192,6 +248,10 @@ const CompanyCalendar = () => {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-chart-4" />
             Jam Kerja Khusus
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="h-2 w-2 rounded-full bg-blue-500" />
+            Cuti Saya
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-primary" />

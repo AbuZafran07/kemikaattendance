@@ -165,42 +165,60 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
-        {/* Top Bar */}
-        <div className="hidden lg:flex items-center justify-between h-14 px-6 border-b border-border bg-card">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-foreground">PT. KEMIKA KARYA PRATAMA</h2>
-            <span className="text-xs text-muted-foreground">Enterprise Attendance & HR System</span>
-          </div>
-          {profile && (
+        {/* Top Bar - matching reference design */}
+        <div className="hidden lg:block">
+          <div className="flex items-center justify-between h-16 px-6 bg-card border-b border-border">
+            {/* Left: Logo + Company name */}
             <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2.5 hover:opacity-80 transition-opacity outline-none">
-                    <div className="text-right">
-                      <p className="text-sm font-medium leading-tight">{profile.full_name}</p>
-                      <p className="text-[11px] text-muted-foreground">{profile.jabatan}</p>
-                    </div>
-                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-                      {profile.full_name?.charAt(0) || "U"}
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => navigate("/dashboard/employee-profile")}>
-                    <UserCircle className="h-4 w-4 mr-2" />
-                    My Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Keluar
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <img src={logo} alt="Kemika" className="h-9 object-contain" />
+              <div>
+                <h2 className="text-sm font-bold text-foreground leading-tight">PT. KEMIKA KARYA PRATAMA</h2>
+                <p className="text-[11px] text-muted-foreground">Attendance & HR Management System</p>
+              </div>
             </div>
-          )}
+
+            {/* Right: Bell + Avatar + Name + Dropdown */}
+            {profile && (
+              <div className="flex items-center gap-4">
+                <div className="relative cursor-pointer">
+                  <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-3 hover:opacity-80 transition-opacity outline-none">
+                      <div className="relative">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm border-2 border-primary/20">
+                          {profile.full_name?.charAt(0) || "U"}
+                        </div>
+                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-primary border-2 border-card" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold leading-tight">{profile.full_name}</p>
+                        <span className="inline-block mt-0.5 text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                          Admin
+                        </span>
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => navigate("/dashboard/employee-profile")}>
+                      <UserCircle className="h-4 w-4 mr-2" />
+                      My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Keluar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
+          {/* Green accent line below header */}
+          <div className="h-1 bg-primary" />
         </div>
         <div className="p-6">
           {children}

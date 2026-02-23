@@ -63,23 +63,23 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={`flex flex-col h-full bg-[hsl(161,93%,12%)] text-white ${mobile ? "" : ""}`}>
+    <div className={`flex flex-col h-full bg-[hsl(210,50%,10%)] text-white ${mobile ? "" : ""}`}>
       {/* Logo & Company */}
-      <div className="p-5 border-b border-white/10">
+      <div className="p-5 border-b border-white/8">
         <div className="flex items-center gap-3">
           <img src={logo} alt="Kemika" className="h-10 w-10 object-contain rounded-lg bg-white/10 p-1" />
           <div className="min-w-0">
-            <h2 className="font-bold text-sm tracking-wide truncate">PT. KEMIKA KARYA PRATAMA</h2>
-            <p className="text-[11px] text-white/60 truncate">Sistem Absensi & HR</p>
+            <h2 className="font-bold text-[13px] tracking-wide truncate">PT. KEMIKA KARYA PRATAMA</h2>
+            <p className="text-[10px] text-white/50 truncate">Sistem Absensi & HR</p>
           </div>
         </div>
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 py-3 px-3 space-y-4 overflow-y-auto">
+      <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
         {navigationGroups.map((group) => (
           <div key={group.label}>
-            <p className="px-3 mb-1.5 text-[10px] font-semibold tracking-widest text-white/40 uppercase">
+            <p className="px-3 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/35 uppercase select-none">
               {group.label}
             </p>
             <div className="space-y-0.5">
@@ -88,11 +88,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   key={item.name}
                   to={item.href}
                   end={item.href === "/dashboard"}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors text-sm"
-                  activeClassName="bg-primary text-white font-medium hover:bg-primary hover:text-white"
+                  className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/60 hover:bg-white/8 hover:text-white transition-all duration-200 ease-out text-[13px] hover:translate-x-0.5"
+                  activeClassName="!bg-primary !text-white font-semibold shadow-lg shadow-primary/20 hover:!bg-primary hover:!text-white hover:!translate-x-0"
                 >
-                  <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
-                  <span>{item.name}</span>
+                  <item.icon className="h-[18px] w-[18px] flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                  <span className="transition-all duration-200">{item.name}</span>
                 </NavLink>
               ))}
             </div>
@@ -101,15 +101,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-white/10">
+      <div className="p-3 border-t border-white/8">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors text-sm"
+          className="group flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-white/50 hover:bg-white/8 hover:text-white transition-all duration-200 ease-out text-[13px] hover:translate-x-0.5"
         >
-          <LogOut className="h-[18px] w-[18px]" />
+          <LogOut className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
           <span>Keluar</span>
         </button>
-        <p className="text-[10px] text-white/30 text-center mt-3">© 2026 PT. Kemika Karya Pratama</p>
+        <p className="text-[9px] text-white/25 text-center mt-3 tracking-wide">© 2026 PT. Kemika Karya Pratama</p>
       </div>
     </div>
   );
@@ -122,7 +122,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </aside>
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[hsl(161,93%,12%)] flex items-center justify-between px-4 z-50">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[hsl(210,50%,10%)] flex items-center justify-between px-4 z-50">
         <div className="flex items-center gap-2">
           <img src={logo} alt="Kemika" className="h-8 w-8 object-contain rounded bg-white/10 p-0.5" />
           <span className="text-white font-semibold text-sm">KEMIKA</span>

@@ -72,20 +72,48 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     signOut();
   };
 
+  const UserDropdown = ({ mobile = false }: { mobile?: boolean }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {mobile ? (
+          <button className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center text-white text-xs font-semibold">
+            {profile?.full_name?.charAt(0) || "U"}
+          </button>
+        ) : (
+          <button className="flex items-center gap-3 hover:opacity-80 transition-opacity outline-none">
+            <div className="relative">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm border-2 border-primary/20">
+                {profile?.full_name?.charAt(0) || "U"}
+              </div>
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-primary border-2 border-card" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold leading-tight">{profile?.full_name}</p>
+              <span className="inline-block mt-0.5 text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                Admin
+              </span>
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={() => navigate("/employee/profile")}>
+          <UserCircle className="h-4 w-4 mr-2" />
+          My Profile
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+          <LogOut className="h-4 w-4 mr-2" />
+          Keluar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="flex flex-col h-full bg-[hsl(161,80%,14%)] text-white">
-      {/* Logo & Company */}
-      <div className="p-5 border-b border-white/8">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Kemika" className="h-10 w-10 object-contain rounded-lg bg-white/10 p-1" />
-          <div className="min-w-0">
-            <h2 className="font-bold text-[13px] tracking-wide truncate">PT. KEMIKA KARYA PRATAMA</h2>
-            <p className="text-[10px] text-white/50 truncate">Sistem Absensi & HR</p>
-          </div>
-        </div>
-      </div>
-      
-      {/* Navigation */}
+      {/* Navigation - no header */}
       <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
         {navigationGroups.map((group) => (
           <div key={group.label}>
@@ -110,7 +138,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         ))}
       </nav>
 
-      {/* Footer - copyright only */}
+      {/* Footer */}
       <div className="p-3 border-t border-white/8">
         <p className="text-[9px] text-white/25 text-center tracking-wide">© 2026 PT. Kemika Karya Pratama</p>
       </div>
@@ -118,11 +146,30 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   );
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-[250px] flex-shrink-0">
-        <Sidebar />
-      </aside>
+    <div className="flex flex-col h-screen bg-background">
+      {/* Full-width Top Header (desktop) */}
+      <div className="hidden lg:block flex-shrink-0">
+        <div className="flex items-center justify-between h-16 px-6 bg-card border-b border-border">
+          {/* Left: Logo + Company name */}
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="Kemika" className="h-9 object-contain" />
+            <div>
+              <h2 className="text-sm font-bold text-foreground leading-tight">PT. KEMIKA KARYA PRATAMA</h2>
+              <p className="text-[11px] text-muted-foreground">Attendance & HR Management System</p>
+            </div>
+          </div>
+
+          {/* Right: Bell + User dropdown */}
+          {profile && (
+            <div className="flex items-center gap-4">
+              <div className="relative cursor-pointer">
+                <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+              </div>
+              <UserDropdown />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[hsl(161,80%,14%)] flex items-center justify-between px-4 z-50">
@@ -131,25 +178,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <span className="text-white font-semibold text-sm">KEMIKA</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Mobile user dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="h-8 w-8 rounded-full bg-white/15 flex items-center justify-center text-white text-xs font-semibold">
-                {profile?.full_name?.charAt(0) || "U"}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => navigate("/dashboard/employee-profile")}>
-                <UserCircle className="h-4 w-4 mr-2" />
-                My Profile
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                <LogOut className="h-4 w-4 mr-2" />
-                Keluar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserDropdown mobile />
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
@@ -163,67 +192,20 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
-        {/* Top Bar - matching reference design */}
-        <div className="hidden lg:block">
-          <div className="flex items-center justify-between h-16 px-6 bg-card border-b border-border">
-            {/* Left: Logo + Company name */}
-            <div className="flex items-center gap-3">
-              <img src={logo} alt="Kemika" className="h-9 object-contain" />
-              <div>
-                <h2 className="text-sm font-bold text-foreground leading-tight">PT. KEMIKA KARYA PRATAMA</h2>
-                <p className="text-[11px] text-muted-foreground">Attendance & HR Management System</p>
-              </div>
-            </div>
+      {/* Body: Sidebar + Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:block w-[250px] flex-shrink-0">
+          <Sidebar />
+        </aside>
 
-            {/* Right: Bell + Avatar + Name + Dropdown */}
-            {profile && (
-              <div className="flex items-center gap-4">
-                <div className="relative cursor-pointer">
-                  <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-                </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-3 hover:opacity-80 transition-opacity outline-none">
-                      <div className="relative">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm border-2 border-primary/20">
-                          {profile.full_name?.charAt(0) || "U"}
-                        </div>
-                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-primary border-2 border-card" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-semibold leading-tight">{profile.full_name}</p>
-                        <span className="inline-block mt-0.5 text-[10px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                          Admin
-                        </span>
-                      </div>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => navigate("/dashboard/employee-profile")}>
-                      <UserCircle className="h-4 w-4 mr-2" />
-                      My Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Keluar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
+          <div className="p-6">
+            {children}
           </div>
-          {/* Green accent line below header */}
-          <div className="h-1 bg-primary" />
-        </div>
-        <div className="p-6">
-          {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

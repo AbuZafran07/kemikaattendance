@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight, Pencil, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +50,7 @@ const Attendance = () => {
     onTimeCount: 0,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; type: string } | null>(null);
@@ -68,9 +69,18 @@ const Attendance = () => {
   const [deleteRecord, setDeleteRecord] = useState<AttendanceRecord | null>(null);
   const [isDeletingRecord, setIsDeletingRecord] = useState(false);
 
+  // Filter by search query
+  const filteredData = attendanceData.filter((record) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const name = (record.full_name || "").toLowerCase();
+    const date = formatDate(record.check_in_time).toLowerCase();
+    return name.includes(query) || date.includes(query);
+  });
+
   // Pagination logic
-  const totalPages = Math.ceil(attendanceData.length / itemsPerPage);
-  const paginatedData = attendanceData.slice(
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -434,10 +444,26 @@ const Attendance = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Data Rekap Absensi</CardTitle>
-            <CardDescription>
-              Periode: {startDate && formatDate(startDate)} - {endDate && formatDate(endDate)}
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle>Data Rekap Absensi</CardTitle>
+                <CardDescription>
+                  Periode: {startDate && formatDate(startDate)} - {endDate && formatDate(endDate)}
+                </CardDescription>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cari nama atau tanggal..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {attendanceData.length > 0 ? (

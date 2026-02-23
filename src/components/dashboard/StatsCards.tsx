@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Users, UserCheck, UserX, Clock, Timer, CalendarOff } from "lucide-react";
 
 interface StatsCardsProps {
@@ -25,68 +25,64 @@ const StatsCards = ({ stats }: StatsCardsProps) => {
       value: stats.totalEmployees.toString(),
       icon: Users,
       description: "Karyawan aktif",
-      color: "text-primary",
-      bgColor: "bg-primary/10",
+      iconBg: "bg-primary/10",
+      iconColor: "text-primary",
     },
     {
       title: "Hadir Hari Ini",
       value: stats.presentToday.toString(),
       icon: UserCheck,
       description: `${stats.totalEmployees > 0 ? Math.round((stats.presentToday / stats.totalEmployees) * 100) : 0}% kehadiran`,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
+      iconBg: "bg-primary/10",
+      iconColor: "text-primary",
     },
     {
       title: "Terlambat",
       value: stats.lateToday.toString(),
       icon: Clock,
       description: `${stats.totalEmployees > 0 ? Math.round((stats.lateToday / stats.totalEmployees) * 100) : 0}% dari total`,
-      color: "text-amber-600",
-      bgColor: "bg-amber-100",
+      iconBg: "bg-accent",
+      iconColor: "text-accent-foreground",
     },
     {
       title: "Pulang Cepat",
       value: stats.earlyLeaveToday.toString(),
       icon: Timer,
       description: "Hari ini",
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
+      iconBg: "bg-accent",
+      iconColor: "text-accent-foreground",
     },
     {
       title: "Tidak Hadir",
       value: stats.absentToday.toString(),
       icon: UserX,
       description: `${stats.totalEmployees > 0 ? Math.round((stats.absentToday / stats.totalEmployees) * 100) : 0}% dari total`,
-      color: "text-destructive",
-      bgColor: "bg-destructive/10",
+      iconBg: "bg-destructive/10",
+      iconColor: "text-destructive",
     },
     {
       title: "Pending",
       value: totalPending.toString(),
       icon: CalendarOff,
       description: `${stats.pendingLeave} cuti, ${stats.pendingOvertime} lembur${pendingTravel > 0 ? `, ${pendingTravel} dinas` : ''}`,
-      color: "text-secondary",
-      bgColor: "bg-secondary/10",
+      iconBg: "bg-primary/10",
+      iconColor: "text-primary",
     },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
       {statsData.map((stat) => (
-        <Card key={stat.title}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
-              {stat.title}
-            </CardTitle>
-            <div className={`p-2 rounded-full ${stat.bgColor}`}>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+        <Card key={stat.title} className="border border-border/50 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-xs font-medium text-muted-foreground leading-tight">{stat.title}</p>
+              <div className={`p-2 rounded-lg ${stat.iconBg}`}>
+                <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stat.value}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stat.description}
-            </p>
+            <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
+            <p className="text-[11px] text-muted-foreground mt-1">{stat.description}</p>
           </CardContent>
         </Card>
       ))}

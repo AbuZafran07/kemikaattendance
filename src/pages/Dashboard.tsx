@@ -349,14 +349,19 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fadeIn">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">{format(new Date(), "EEEE, d MMMM yyyy", { locale: id })}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">Dashboard</h1>
+              <span className="text-xs font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-full">Admin</span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">{format(new Date(), "EEEE, d MMMM yyyy", { locale: id })}</p>
+          </div>
         </div>
 
         <StatsCards stats={stats} />
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           <AttendanceChart data={weeklyData} />
           <DepartmentBreakdown data={departmentData} />
         </div>

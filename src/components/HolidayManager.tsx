@@ -4,10 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Calendar, Copy } from "lucide-react";
+import { Plus, Trash2, Calendar, Copy, Download, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export interface Holiday {
   id: string;
@@ -23,7 +25,8 @@ interface HolidayManagerProps {
 export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerProps) {
   const { toast } = useToast();
   const [newHoliday, setNewHoliday] = useState({ name: "", date: "" });
-
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchYear, setFetchYear] = useState(String(new Date().getFullYear()));
   // Detect years present in current holidays
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -74,6 +77,54 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
     }
   };
 
+  const handleAutoFetch = async () => {
+    setIsFetching(true);
+    try {
+      const year = parseInt(fetchYear);
+      const { data, error } = await supabase.functions.invoke("fetch-indonesia-holidays", {
+        body: { year },
+      });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || "Gagal mengambil data");
+      }
+
+      const fetched: Holiday[] = data.holidays;
+      const existingDates = new Set(holidays.map(h => h.date));
+      let added = 0;
+      const merged = [...holidays];
+
+      fetched.forEach(h => {
+        if (!existingDates.has(h.date)) {
+          merged.push(h);
+          added++;
+        }
+      });
+
+      if (added > 0) {
+        onHolidaysChange(merged.sort((a, b) => a.date.localeCompare(b.date)));
+        toast({
+          title: "Berhasil",
+          description: `${added} hari libur nasional ${year} berhasil ditambahkan. Jangan lupa simpan perubahan.`,
+        });
+      } else {
+        toast({
+          title: "Tidak ada yang ditambahkan",
+          description: `Semua hari libur nasional ${year} sudah ada dalam daftar.`,
+        });
+      }
+    } catch (err: any) {
+      console.error("Error fetching holidays:", err);
+      toast({
+        title: "Gagal mengambil data",
+        description: err.message || "Terjadi kesalahan saat mengambil data hari libur",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
   const handleAddHoliday = () => {
     if (!newHoliday.name.trim() || !newHoliday.date) return;
 
@@ -111,6 +162,41 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Auto-fetch from API */}
+        <div className="flex flex-wrap items-center gap-2 p-3 bg-primary/5 rounded-lg border border-border">
+          <Download className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground">Auto-fetch hari libur nasional:</span>
+          <Select value={fetchYear} onValueChange={setFetchYear}>
+            <SelectTrigger className="w-24 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => currentYear - 1 + i).map(y => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleAutoFetch}
+            disabled={isFetching}
+            className="h-8 text-xs"
+          >
+            {isFetching ? (
+              <>
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Mengambil...
+              </>
+            ) : (
+              <>
+                <Download className="h-3 w-3 mr-1" />
+                Ambil dari API
+              </>
+            )}
+          </Button>
+        </div>
+
         {/* Copy from previous year */}
         {availableYears.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 p-3 bg-accent/50 rounded-lg border border-border">

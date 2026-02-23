@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, TrendingUp, ChevronRight, History, Plane, FileText } from "lucide-react";
+import { Calendar, Clock, TrendingUp, ChevronRight, History, Plane, FileText, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -57,6 +57,13 @@ const services: ServiceItem[] = [
     icon: TrendingUp,
     path: "/employee/performance",
     color: "bg-emerald-500/10 text-emerald-600",
+  },
+  {
+    label: "Slip Gaji",
+    description: "Lihat riwayat slip gaji bulanan Anda",
+    icon: DollarSign,
+    path: "/employee/payroll-history",
+    color: "bg-yellow-500/10 text-yellow-600",
   },
 ];
 

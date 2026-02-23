@@ -64,8 +64,8 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/" replace />;
   }
 
-  // Redirect non-admins away from admin routes
-  if (requireAdmin && verifiedRole !== 'admin') {
+  // Redirect non-admins and non-hr away from admin routes
+  if (requireAdmin && verifiedRole !== 'admin' && verifiedRole !== 'hr') {
     return <Navigate to="/employee" replace />;
   }
 

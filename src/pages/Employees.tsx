@@ -90,6 +90,8 @@ const Employees = () => {
     address: "",
     status: "",
     work_type: "wfo",
+    basic_salary: "",
+    ptkp_status: "TK/0",
   });
 
   useEffect(() => {
@@ -325,6 +327,8 @@ const Employees = () => {
           status: result.data.status,
           photo_url: photoUrl,
           work_type: editFormData.work_type,
+          basic_salary: Number(editFormData.basic_salary) || 0,
+          ptkp_status: editFormData.ptkp_status || "TK/0",
         })
         .eq('id', editingEmployee.id);
 
@@ -361,6 +365,8 @@ const Employees = () => {
       address: employee.address || "",
       status: employee.status || "Active",
       work_type: employee.work_type || "wfo",
+      basic_salary: String(employee.basic_salary || ""),
+      ptkp_status: employee.ptkp_status || "TK/0",
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
@@ -395,6 +401,8 @@ const Employees = () => {
       address: "",
       status: "",
       work_type: "wfo",
+      basic_salary: "",
+      ptkp_status: "TK/0",
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -895,6 +903,51 @@ const Employees = () => {
                     Hybrid: Bisa absen dari mana saja
                   </p>
                 </div>
+
+                {/* Payroll Info Section */}
+                <div className="col-span-2 border-t border-border pt-3 mt-2">
+                  <p className="text-sm font-semibold text-muted-foreground mb-3">💰 Informasi Payroll</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_basic_salary">Gaji Pokok (Rp)</Label>
+                  <Input
+                    id="edit_basic_salary"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={editFormData.basic_salary}
+                    onChange={(e) => setEditFormData({ ...editFormData, basic_salary: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_ptkp_status">Status PTKP</Label>
+                  <Select
+                    value={editFormData.ptkp_status}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, ptkp_status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih PTKP" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TK/0">TK/0 - Tidak Kawin</SelectItem>
+                      <SelectItem value="TK/1">TK/1 - Tidak Kawin, 1 Tanggungan</SelectItem>
+                      <SelectItem value="TK/2">TK/2 - Tidak Kawin, 2 Tanggungan</SelectItem>
+                      <SelectItem value="TK/3">TK/3 - Tidak Kawin, 3 Tanggungan</SelectItem>
+                      <SelectItem value="K/0">K/0 - Kawin, 0 Tanggungan</SelectItem>
+                      <SelectItem value="K/1">K/1 - Kawin, 1 Tanggungan</SelectItem>
+                      <SelectItem value="K/2">K/2 - Kawin, 2 Tanggungan</SelectItem>
+                      <SelectItem value="K/3">K/3 - Kawin, 3 Tanggungan</SelectItem>
+                      <SelectItem value="K/I/0">K/I/0 - Kawin, Istri Digabung, 0 Tanggungan</SelectItem>
+                      <SelectItem value="K/I/1">K/I/1 - Kawin, Istri Digabung, 1 Tanggungan</SelectItem>
+                      <SelectItem value="K/I/2">K/I/2 - Kawin, Istri Digabung, 2 Tanggungan</SelectItem>
+                      <SelectItem value="K/I/3">K/I/3 - Kawin, Istri Digabung, 3 Tanggungan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Penghasilan Tidak Kena Pajak
+                  </p>
+                </div>
+
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="edit_address">Alamat</Label>
                   <Input

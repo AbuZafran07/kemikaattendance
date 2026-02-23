@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight, Pencil, Trash2, Search, RotateCcw } from "lucide-react";
+import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight, Pencil, Trash2, Search, RotateCcw, UserPlus } from "lucide-react";
+import ManualAttendanceDialog from "@/components/ManualAttendanceDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +70,7 @@ const Attendance = () => {
   const [deleteRecord, setDeleteRecord] = useState<AttendanceRecord | null>(null);
   const [isDeletingRecord, setIsDeletingRecord] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
-
+  const [showManualInput, setShowManualInput] = useState(false);
 
 
   useEffect(() => {
@@ -483,6 +484,12 @@ const Attendance = () => {
           </div>
           <div className="flex items-center gap-2">
             {isAdmin && (
+              <Button variant="default" size="sm" onClick={() => setShowManualInput(true)}>
+                <UserPlus className="h-4 w-4 mr-1" />
+                Input Manual
+              </Button>
+            )}
+            {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/audit-log")}>
                 <Calendar className="h-4 w-4 mr-1" />
                 Audit Log
@@ -795,6 +802,12 @@ const Attendance = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Manual Attendance Input Dialog */}
+      <ManualAttendanceDialog
+        open={showManualInput}
+        onOpenChange={setShowManualInput}
+        onSuccess={fetchAttendanceData}
+      />
     </DashboardLayout>
   );
 };

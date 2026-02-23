@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight, Pencil, Trash2, Search } from "lucide-react";
+import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, ChevronLeft, ChevronRight, Pencil, Trash2, Search, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +68,7 @@ const Attendance = () => {
   // Delete state
   const [deleteRecord, setDeleteRecord] = useState<AttendanceRecord | null>(null);
   const [isDeletingRecord, setIsDeletingRecord] = useState(false);
-
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
 
 
@@ -445,6 +445,34 @@ const Attendance = () => {
     }
   };
 
+  // Bulk recalculate statuses for all records in current view
+  const handleRecalculateAll = async () => {
+    if (attendanceData.length === 0) return;
+    setIsRecalculating(true);
+    let updated = 0;
+    try {
+      for (const record of attendanceData) {
+        const checkIn = new Date(record.check_in_time);
+        const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
+        const newStatus = await recalculateStatus(checkIn, checkOut);
+        
+        if (newStatus !== record.status) {
+          const { error } = await supabase
+            .from("attendance")
+            .update({ status: newStatus })
+            .eq("id", record.id);
+          if (!error) updated++;
+        }
+      }
+      toast({ title: "Berhasil", description: `${updated} record diperbarui statusnya` });
+      fetchAttendanceData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Gagal menghitung ulang", variant: "destructive" });
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -458,6 +486,12 @@ const Attendance = () => {
               <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/audit-log")}>
                 <Calendar className="h-4 w-4 mr-1" />
                 Audit Log
+              </Button>
+            )}
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={handleRecalculateAll} disabled={isRecalculating || attendanceData.length === 0}>
+                <RotateCcw className={`h-4 w-4 mr-1 ${isRecalculating ? "animate-spin" : ""}`} />
+                Hitung Ulang Status
               </Button>
             )}
             <Button variant="outline" size="icon" onClick={fetchAttendanceData} disabled={isRefreshing}>

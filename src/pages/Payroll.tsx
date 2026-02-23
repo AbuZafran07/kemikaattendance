@@ -55,6 +55,16 @@ interface PayrollData {
   departemen?: string;
   jabatan?: string;
   nik?: string;
+  // Fixed allowances
+  tunjangan_komunikasi?: number;
+  tunjangan_jabatan?: number;
+  tunjangan_operasional?: number;
+  // Incidental income
+  tunjangan_kesehatan?: number;
+  bonus_tahunan?: number;
+  thr?: number;
+  insentif_kinerja?: number;
+  bonus_lainnya?: number;
 }
 
 interface PayrollPeriod {
@@ -69,6 +79,15 @@ interface DeductionOverride {
   loan_deduction: number;
   other_deduction: number;
   deduction_notes: string;
+}
+
+// Income additions per employee before generating
+interface IncomeAddition {
+  tunjangan_kesehatan: number;
+  bonus_tahunan: number;
+  thr: number;
+  insentif_kinerja: number;
+  bonus_lainnya: number;
 }
 
 const MONTHS = [
@@ -105,7 +124,9 @@ const Payroll = () => {
   const [generating, setGenerating] = useState(false);
   const [detailItem, setDetailItem] = useState<PayrollData | null>(null);
   const [showDeductionDialog, setShowDeductionDialog] = useState(false);
+  const [showIncomeDialog, setShowIncomeDialog] = useState(false);
   const [deductionOverrides, setDeductionOverrides] = useState<Map<string, DeductionOverride>>(new Map());
+  const [incomeAdditions, setIncomeAdditions] = useState<Map<string, IncomeAddition>>(new Map());
   const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
   const { toast } = useToast();
 
@@ -247,6 +268,30 @@ const Payroll = () => {
     setShowDeductionDialog(true);
   };
 
+  const openIncomeDialog = async () => {
+    const { data: emps } = await supabase
+      .from("profiles").select("id, full_name").eq("status", "Active").order("full_name");
+    setEmployees(emps || []);
+
+    const additions = new Map<string, IncomeAddition>();
+    for (const emp of emps || []) {
+      additions.set(emp.id, incomeAdditions.get(emp.id) || {
+        tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+      });
+    }
+    setIncomeAdditions(additions);
+    setShowIncomeDialog(true);
+  };
+
+  const updateIncome = (userId: string, field: keyof IncomeAddition, value: string) => {
+    setIncomeAdditions(prev => {
+      const next = new Map(prev);
+      const current = next.get(userId) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0 };
+      next.set(userId, { ...current, [field]: Number(value) || 0 });
+      return next;
+    });
+  };
+
   const updateDeduction = (userId: string, field: keyof DeductionOverride, value: string) => {
     setDeductionOverrides(prev => {
       const next = new Map(prev);
@@ -285,7 +330,7 @@ const Payroll = () => {
       }
 
       const { data: emps } = await supabase
-        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status").eq("status", "Active");
+        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").eq("status", "Active");
 
       if (!emps || emps.length === 0) {
         toast({ title: "Tidak ada karyawan", description: "Tidak ditemukan karyawan aktif.", variant: "destructive" });
@@ -324,23 +369,40 @@ const Payroll = () => {
         loanDeductionMap.set(loan.user_id, existing);
       }
 
-      const payrollRecords = emps.map((emp) => {
+      const payrollRecords = emps.map((emp: any) => {
         const basicSalary = Number(emp.basic_salary) || 0;
         const overtimeHours = overtimeMap.get(emp.id) || 0;
         const overtimeTotal = calculateOvertimePay(basicSalary, overtimeHours);
         const ptkpStatus = emp.ptkp_status || "TK/0";
-        const allowance = allowanceMap.get(emp.id) || 0;
+        const attendanceAllowance = allowanceMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);
+        const inc = incomeAdditions.get(emp.id);
         const loanDed = loanDeductionMap.get(emp.id);
+
+        // Fixed allowances from profile
+        const tunjanganKomunikasi = Number(emp.tunjangan_komunikasi) || 0;
+        const tunjanganJabatan = Number(emp.tunjangan_jabatan) || 0;
+        const tunjanganOperasional = Number(emp.tunjangan_operasional) || 0;
+        const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
+
+        // Incidental income from dialog
+        const tunjanganKesehatan = inc?.tunjangan_kesehatan || 0;
+        const bonusTahunan = inc?.bonus_tahunan || 0;
+        const thr = inc?.thr || 0;
+        const insentifKinerja = inc?.insentif_kinerja || 0;
+        const bonusLainnya = inc?.bonus_lainnya || 0;
+        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya;
+
+        // Total allowance = attendance + fixed + incidental
+        const totalAllowance = attendanceAllowance + fixedAllowances + incidentalIncome;
 
         // Combine manual loan override with auto loan deduction
         const autoLoanDeduction = loanDed?.amount || 0;
         const manualLoanDeduction = ded?.loan_deduction || 0;
-        // Use auto if no manual override, otherwise use manual
         const finalLoanDeduction = manualLoanDeduction > 0 ? manualLoanDeduction : autoLoanDeduction;
 
         const result = calculatePayroll({
-          basicSalary, allowance, overtimeTotal, ptkpStatus, overtimeHours,
+          basicSalary, allowance: totalAllowance, overtimeTotal, ptkpStatus, overtimeHours,
           loanDeduction: finalLoanDeduction,
           otherDeduction: ded?.other_deduction || 0,
           deductionNotes: ded?.deduction_notes || (autoLoanDeduction > 0 ? "Cicilan pinjaman otomatis" : ""),
@@ -532,6 +594,9 @@ const Payroll = () => {
             </Select>
             <Button variant="outline" onClick={openDeductionDialog} disabled={period?.status === "finalized"} className="gap-2">
               <FileText className="h-4 w-4" /> Potongan
+            </Button>
+            <Button variant="outline" onClick={openIncomeDialog} disabled={period?.status === "finalized"} className="gap-2">
+              <TrendingUp className="h-4 w-4" /> Tambahan Penghasilan
             </Button>
             <Button onClick={handleGenerate} disabled={generating || period?.status === "finalized"} className="gap-2">
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
@@ -752,6 +817,55 @@ const Payroll = () => {
                 );
               })}
               <Button onClick={() => setShowDeductionDialog(false)} className="w-full">Simpan & Tutup</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Income Additions Dialog */}
+        <Dialog open={showIncomeDialog} onOpenChange={setShowIncomeDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Tambahan Penghasilan Insidental</DialogTitle>
+              <DialogDescription>Isi tunjangan kesehatan, bonus, THR, atau insentif kinerja sebelum generate payroll. Tunjangan tetap (Komunikasi, Jabatan, Operasional) diambil otomatis dari data karyawan.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {employees.map((emp) => {
+                const inc = incomeAdditions.get(emp.id) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0 };
+                const hasValue = Object.values(inc).some(v => v > 0);
+                return (
+                  <div key={emp.id} className={`border rounded-lg p-3 space-y-2 ${hasValue ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
+                    <p className="font-medium text-sm">{emp.full_name}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Tunjangan Kesehatan</Label>
+                        <Input type="number" value={inc.tunjangan_kesehatan || ""} placeholder="0"
+                          onChange={(e) => updateIncome(emp.id, "tunjangan_kesehatan", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Bonus Tahunan</Label>
+                        <Input type="number" value={inc.bonus_tahunan || ""} placeholder="0"
+                          onChange={(e) => updateIncome(emp.id, "bonus_tahunan", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">THR</Label>
+                        <Input type="number" value={inc.thr || ""} placeholder="0"
+                          onChange={(e) => updateIncome(emp.id, "thr", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Insentif Kinerja</Label>
+                        <Input type="number" value={inc.insentif_kinerja || ""} placeholder="0"
+                          onChange={(e) => updateIncome(emp.id, "insentif_kinerja", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Bonus Lainnya</Label>
+                        <Input type="number" value={inc.bonus_lainnya || ""} placeholder="0"
+                          onChange={(e) => updateIncome(emp.id, "bonus_lainnya", e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <Button onClick={() => setShowIncomeDialog(false)} className="w-full">Simpan & Tutup</Button>
             </div>
           </DialogContent>
         </Dialog>

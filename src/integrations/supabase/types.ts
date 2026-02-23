@@ -554,6 +554,9 @@ export type Database = {
           ptkp_status: string | null
           remaining_leave: number | null
           status: string | null
+          tunjangan_jabatan: number | null
+          tunjangan_komunikasi: number | null
+          tunjangan_operasional: number | null
           updated_at: string
           work_type: string
         }
@@ -575,6 +578,9 @@ export type Database = {
           ptkp_status?: string | null
           remaining_leave?: number | null
           status?: string | null
+          tunjangan_jabatan?: number | null
+          tunjangan_komunikasi?: number | null
+          tunjangan_operasional?: number | null
           updated_at?: string
           work_type?: string
         }
@@ -596,6 +602,9 @@ export type Database = {
           ptkp_status?: string | null
           remaining_leave?: number | null
           status?: string | null
+          tunjangan_jabatan?: number | null
+          tunjangan_komunikasi?: number | null
+          tunjangan_operasional?: number | null
           updated_at?: string
           work_type?: string
         }

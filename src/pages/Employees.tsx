@@ -92,6 +92,9 @@ const Employees = () => {
     work_type: "wfo",
     basic_salary: "",
     ptkp_status: "TK/0",
+    tunjangan_komunikasi: "",
+    tunjangan_jabatan: "",
+    tunjangan_operasional: "",
   });
 
   useEffect(() => {
@@ -329,6 +332,9 @@ const Employees = () => {
           work_type: editFormData.work_type,
           basic_salary: Number(editFormData.basic_salary) || 0,
           ptkp_status: editFormData.ptkp_status || "TK/0",
+          tunjangan_komunikasi: Number(editFormData.tunjangan_komunikasi) || 0,
+          tunjangan_jabatan: Number(editFormData.tunjangan_jabatan) || 0,
+          tunjangan_operasional: Number(editFormData.tunjangan_operasional) || 0,
         })
         .eq('id', editingEmployee.id);
 
@@ -367,6 +373,9 @@ const Employees = () => {
       work_type: employee.work_type || "wfo",
       basic_salary: String(employee.basic_salary || ""),
       ptkp_status: employee.ptkp_status || "TK/0",
+      tunjangan_komunikasi: String(employee.tunjangan_komunikasi || ""),
+      tunjangan_jabatan: String(employee.tunjangan_jabatan || ""),
+      tunjangan_operasional: String(employee.tunjangan_operasional || ""),
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
@@ -403,6 +412,9 @@ const Employees = () => {
       work_type: "wfo",
       basic_salary: "",
       ptkp_status: "TK/0",
+      tunjangan_komunikasi: "",
+      tunjangan_jabatan: "",
+      tunjangan_operasional: "",
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -946,6 +958,44 @@ const Employees = () => {
                   <p className="text-xs text-muted-foreground">
                     Penghasilan Tidak Kena Pajak
                   </p>
+                </div>
+
+                {/* Tunjangan Tetap Section */}
+                <div className="col-span-2 border-t border-border pt-3 mt-2">
+                  <p className="text-sm font-semibold text-muted-foreground mb-3">📋 Tunjangan Tetap (per bulan)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_tunjangan_komunikasi">Tunjangan Komunikasi (Rp)</Label>
+                  <Input
+                    id="edit_tunjangan_komunikasi"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={editFormData.tunjangan_komunikasi}
+                    onChange={(e) => setEditFormData({ ...editFormData, tunjangan_komunikasi: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_tunjangan_jabatan">Tunjangan Jabatan (Rp)</Label>
+                  <Input
+                    id="edit_tunjangan_jabatan"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={editFormData.tunjangan_jabatan}
+                    onChange={(e) => setEditFormData({ ...editFormData, tunjangan_jabatan: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_tunjangan_operasional">Tunjangan Operasional (Rp)</Label>
+                  <Input
+                    id="edit_tunjangan_operasional"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={editFormData.tunjangan_operasional}
+                    onChange={(e) => setEditFormData({ ...editFormData, tunjangan_operasional: e.target.value })}
+                  />
                 </div>
 
                 <div className="space-y-2 col-span-2">

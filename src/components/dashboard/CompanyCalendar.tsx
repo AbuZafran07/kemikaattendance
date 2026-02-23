@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday, parseISO } from "date-fns";
@@ -29,6 +29,11 @@ interface LeaveDay {
   label: string;
 }
 
+interface TravelDay {
+  destination: string;
+  purpose: string;
+}
+
 const leaveTypeLabels: Record<string, string> = {
   cuti_tahunan: "Cuti Tahunan",
   izin: "Izin",
@@ -42,13 +47,17 @@ const CompanyCalendar = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [specialPeriods, setSpecialPeriods] = useState<SpecialPeriod[]>([]);
   const [leaveDaysMap, setLeaveDaysMap] = useState<Map<string, LeaveDay[]>>(new Map());
+  const [travelDaysMap, setTravelDaysMap] = useState<Map<string, TravelDay[]>>(new Map());
 
   useEffect(() => {
     fetchCalendarData();
   }, []);
 
   useEffect(() => {
-    if (user) fetchLeaveData();
+    if (user) {
+      fetchLeaveData();
+      fetchTravelData();
+    }
   }, [user, currentMonth]);
 
   const fetchCalendarData = async () => {
@@ -99,6 +108,35 @@ const CompanyCalendar = () => {
       });
     }
     setLeaveDaysMap(map);
+  };
+
+  const fetchTravelData = async () => {
+    if (!user) return;
+    const mStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+    const mEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+
+    const { data } = await supabase
+      .from("business_travel_requests")
+      .select("start_date, end_date, destination, purpose")
+      .eq("user_id", user.id)
+      .eq("status", "approved")
+      .gte("end_date", mStart)
+      .lte("start_date", mEnd);
+
+    const map = new Map<string, TravelDay[]>();
+    if (data) {
+      data.forEach((t) => {
+        const start = parseISO(t.start_date);
+        const end = parseISO(t.end_date);
+        eachDayOfInterval({ start, end }).forEach((d) => {
+          const key = format(d, "yyyy-MM-dd");
+          const existing = map.get(key) || [];
+          existing.push({ destination: t.destination, purpose: t.purpose });
+          map.set(key, existing);
+        });
+      });
+    }
+    setTravelDaysMap(map);
   };
 
   const monthStart = startOfMonth(currentMonth);
@@ -172,12 +210,14 @@ const CompanyCalendar = () => {
             const weekend = isWeekend(date);
             const today = isToday(date);
             const leaveDays = leaveDaysMap.get(dateStr);
+            const travelDays = travelDaysMap.get(dateStr);
 
-            const hasEvent = !!holidayName || !!specialPeriod || !!leaveDays;
+            const hasEvent = !!holidayName || !!specialPeriod || !!leaveDays || !!travelDays;
 
             let bgClass = "bg-background hover:bg-accent/50";
             if (today) bgClass = "bg-primary/10 ring-1 ring-primary";
             else if (holidayName) bgClass = "bg-destructive/10";
+            else if (travelDays) bgClass = "bg-green-500/10";
             else if (leaveDays) bgClass = "bg-blue-500/10";
             else if (specialPeriod) bgClass = "bg-chart-4/20";
             else if (weekend) bgClass = "bg-muted/50";
@@ -194,6 +234,7 @@ const CompanyCalendar = () => {
                     {holidayName && <div className="h-1 w-1 rounded-full bg-destructive" />}
                     {specialPeriod && <div className="h-1 w-1 rounded-full bg-chart-4" />}
                     {leaveDays && <div className="h-1 w-1 rounded-full bg-blue-500" />}
+                    {travelDays && <div className="h-1 w-1 rounded-full bg-green-500" />}
                   </div>
                 )}
               </div>
@@ -229,6 +270,12 @@ const CompanyCalendar = () => {
                           <span>{l.label}</span>
                         </div>
                       ))}
+                      {travelDays && travelDays.map((t, i) => (
+                        <div key={`t-${i}`} className="flex items-center gap-1 text-xs">
+                          <Plane className="h-3 w-3 text-green-500" />
+                          <span>Dinas: {t.destination}</span>
+                        </div>
+                      ))}
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -252,6 +299,10 @@ const CompanyCalendar = () => {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-blue-500" />
             Cuti Saya
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="h-2 w-2 rounded-full bg-green-500" />
+            Dinas
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-primary" />

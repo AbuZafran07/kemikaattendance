@@ -197,6 +197,57 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_loans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          loan_type: string
+          monthly_installment: number
+          paid_installments: number
+          remaining_amount: number
+          start_date: string
+          status: string
+          total_amount: number
+          total_installments: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          loan_type?: string
+          monthly_installment?: number
+          paid_installments?: number
+          remaining_amount?: number
+          start_date?: string
+          status?: string
+          total_amount?: number
+          total_installments?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          loan_type?: string
+          monthly_installment?: number
+          paid_installments?: number
+          remaining_amount?: number
+          start_date?: string
+          status?: string
+          total_amount?: number
+          total_installments?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       geocoding_cache: {
         Row: {
           address: string
@@ -277,6 +328,57 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      loan_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          installment_number: number
+          loan_id: string
+          notes: string | null
+          payment_date: string | null
+          payroll_period_id: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          installment_number: number
+          loan_id: string
+          notes?: string | null
+          payment_date?: string | null
+          payroll_period_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          installment_number?: number
+          loan_id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payroll_period_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_installments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "employee_loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_installments_payroll_period_id_fkey"
+            columns: ["payroll_period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       overtime_requests: {
         Row: {

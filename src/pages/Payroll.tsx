@@ -136,6 +136,10 @@ const Payroll = () => {
   const [deductionOverrides, setDeductionOverrides] = useState<Map<string, DeductionOverride>>(new Map());
   const [incomeAdditions, setIncomeAdditions] = useState<Map<string, IncomeAddition>>(new Map());
   const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [deductionSearch, setDeductionSearch] = useState("");
+  const [incomeSearch, setIncomeSearch] = useState("");
+  const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);
+  const [selectedIncomeEmp, setSelectedIncomeEmp] = useState<string | null>(null);
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -1020,99 +1024,157 @@ const Payroll = () => {
         </Dialog>
 
         {/* Deduction Dialog */}
-        <Dialog open={showDeductionDialog} onOpenChange={setShowDeductionDialog}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <Dialog open={showDeductionDialog} onOpenChange={(open) => { setShowDeductionDialog(open); if (!open) { setDeductionSearch(""); setSelectedDeductionEmp(null); } }}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>Potongan Tambahan Karyawan</DialogTitle>
-              <DialogDescription>Isi potongan pinjaman, kasbon, atau potongan lain sebelum generate payroll</DialogDescription>
+              <DialogDescription>Klik nama karyawan untuk mengisi potongan. Karyawan dengan potongan akan ditandai.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              {employees.map((emp) => {
-                const ded = deductionOverrides.get(emp.id) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
-                return (
-                  <div key={emp.id} className="border border-border rounded-lg p-3 space-y-2">
-                    <p className="font-medium text-sm">{emp.full_name}</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Pinjaman/Kasbon</Label>
-                        <Input type="number" value={ded.loan_deduction || ""} placeholder="0"
-                          onChange={(e) => updateDeduction(emp.id, "loan_deduction", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Potongan Lain</Label>
-                        <Input type="number" value={ded.other_deduction || ""} placeholder="0"
-                          onChange={(e) => updateDeduction(emp.id, "other_deduction", e.target.value)} />
-                      </div>
+            <Input
+              placeholder="🔍 Cari karyawan..."
+              value={deductionSearch}
+              onChange={(e) => setDeductionSearch(e.target.value)}
+              className="mb-2"
+            />
+            <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+              {employees
+                .filter(emp => emp.full_name.toLowerCase().includes(deductionSearch.toLowerCase()))
+                .map((emp) => {
+                  const ded = deductionOverrides.get(emp.id) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
+                  const hasValue = (ded.loan_deduction > 0 || ded.other_deduction > 0);
+                  const isExpanded = selectedDeductionEmp === emp.id;
+                  return (
+                    <div key={emp.id} className={`border rounded-lg transition-colors ${hasValue ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-3 text-left hover:bg-accent/50 rounded-lg"
+                        onClick={() => setSelectedDeductionEmp(isExpanded ? null : emp.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{emp.full_name}</span>
+                          {hasValue && <Badge variant="outline" className="text-[10px]">Ada potongan</Badge>}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {hasValue && (
+                            <span>{formatRupiah(ded.loan_deduction + ded.other_deduction)}</span>
+                          )}
+                          <span className="text-muted-foreground">{isExpanded ? "▲" : "▼"}</span>
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Pinjaman/Kasbon</Label>
+                              <Input type="number" value={ded.loan_deduction || ""} placeholder="0"
+                                onChange={(e) => updateDeduction(emp.id, "loan_deduction", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Potongan Lain</Label>
+                              <Input type="number" value={ded.other_deduction || ""} placeholder="0"
+                                onChange={(e) => updateDeduction(emp.id, "other_deduction", e.target.value)} />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Catatan</Label>
+                            <Textarea rows={1} value={ded.deduction_notes} placeholder="Keterangan potongan..."
+                              onChange={(e) => updateDeduction(emp.id, "deduction_notes", e.target.value)} />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <Label className="text-xs">Catatan</Label>
-                      <Textarea rows={1} value={ded.deduction_notes} placeholder="Keterangan potongan..."
-                        onChange={(e) => updateDeduction(emp.id, "deduction_notes", e.target.value)} />
-                    </div>
-                  </div>
-                );
-              })}
-              <Button onClick={() => setShowDeductionDialog(false)} className="w-full">Simpan & Tutup</Button>
+                  );
+                })}
             </div>
+            <Button onClick={() => setShowDeductionDialog(false)} className="w-full mt-2">Simpan & Tutup</Button>
           </DialogContent>
         </Dialog>
 
         {/* Income Additions Dialog */}
-        <Dialog open={showIncomeDialog} onOpenChange={setShowIncomeDialog}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <Dialog open={showIncomeDialog} onOpenChange={(open) => { setShowIncomeDialog(open); if (!open) { setIncomeSearch(""); setSelectedIncomeEmp(null); } }}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>Tambahan Penghasilan Insidental</DialogTitle>
-              <DialogDescription>Isi tunjangan kesehatan, bonus, THR, atau insentif kinerja sebelum generate payroll. Tunjangan tetap (Komunikasi, Jabatan, Operasional) diambil otomatis dari data karyawan.</DialogDescription>
+              <DialogDescription>Klik nama karyawan untuk mengisi tambahan penghasilan. Tunjangan tetap diambil otomatis dari data karyawan.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              {employees.map((emp) => {
-                const inc = incomeAdditions.get(emp.id) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
-                const hasValue = Object.values(inc).some(v => v > 0);
-                return (
-                  <div key={emp.id} className={`border rounded-lg p-3 space-y-2 ${hasValue ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
-                    <p className="font-medium text-sm">{emp.full_name}</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-xs">Tunjangan Kesehatan</Label>
-                        <Input type="number" value={inc.tunjangan_kesehatan || ""} placeholder="0"
-                          onChange={(e) => updateIncome(emp.id, "tunjangan_kesehatan", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Bonus Tahunan</Label>
-                        <Input type="number" value={inc.bonus_tahunan || ""} placeholder="0"
-                          onChange={(e) => updateIncome(emp.id, "bonus_tahunan", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">THR</Label>
-                        <Input type="number" value={inc.thr || ""} placeholder="0"
-                          onChange={(e) => updateIncome(emp.id, "thr", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Insentif Kinerja</Label>
-                        <Input type="number" value={inc.insentif_kinerja || ""} placeholder="0"
-                          onChange={(e) => updateIncome(emp.id, "insentif_kinerja", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Bonus Lainnya</Label>
-                        <Input type="number" value={inc.bonus_lainnya || ""} placeholder="0"
-                          onChange={(e) => updateIncome(emp.id, "bonus_lainnya", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Pengembalian Employee</Label>
-                        <Input type="number" value={inc.pengembalian_employee || ""} placeholder="0"
-                          onChange={(e) => updateIncome(emp.id, "pengembalian_employee", e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Insentif Penjualan</Label>
-                        <Input type="number" value={inc.insentif_penjualan || ""} placeholder="0"
-                          onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
-                      </div>
+            <Input
+              placeholder="🔍 Cari karyawan..."
+              value={incomeSearch}
+              onChange={(e) => setIncomeSearch(e.target.value)}
+              className="mb-2"
+            />
+            <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+              {employees
+                .filter(emp => emp.full_name.toLowerCase().includes(incomeSearch.toLowerCase()))
+                .map((emp) => {
+                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+                  const totalInc = Object.values(inc).reduce((s, v) => s + (Number(v) || 0), 0);
+                  const hasValue = totalInc > 0;
+                  const isExpanded = selectedIncomeEmp === emp.id;
+                  return (
+                    <div key={emp.id} className={`border rounded-lg transition-colors ${hasValue ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-3 text-left hover:bg-accent/50 rounded-lg"
+                        onClick={() => setSelectedIncomeEmp(isExpanded ? null : emp.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{emp.full_name}</span>
+                          {hasValue && <Badge variant="outline" className="text-[10px]">Ada tambahan</Badge>}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {hasValue && (
+                            <span>{formatRupiah(totalInc)}</span>
+                          )}
+                          <span className="text-muted-foreground">{isExpanded ? "▲" : "▼"}</span>
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-xs">Tunj. Kesehatan</Label>
+                              <Input type="number" value={inc.tunjangan_kesehatan || ""} placeholder="0"
+                                onChange={(e) => updateIncome(emp.id, "tunjangan_kesehatan", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Bonus Tahunan</Label>
+                              <Input type="number" value={inc.bonus_tahunan || ""} placeholder="0"
+                                onChange={(e) => updateIncome(emp.id, "bonus_tahunan", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">THR</Label>
+                              <Input type="number" value={inc.thr || ""} placeholder="0"
+                                onChange={(e) => updateIncome(emp.id, "thr", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Insentif Kinerja</Label>
+                              <Input type="number" value={inc.insentif_kinerja || ""} placeholder="0"
+                                onChange={(e) => updateIncome(emp.id, "insentif_kinerja", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Bonus Lainnya</Label>
+                              <Input type="number" value={inc.bonus_lainnya || ""} placeholder="0"
+                                onChange={(e) => updateIncome(emp.id, "bonus_lainnya", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Pengembalian</Label>
+                              <Input type="number" value={inc.pengembalian_employee || ""} placeholder="0"
+                                onChange={(e) => updateIncome(emp.id, "pengembalian_employee", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Insentif Penjualan</Label>
+                              <Input type="number" value={inc.insentif_penjualan || ""} placeholder="0"
+                                onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-              <Button onClick={() => setShowIncomeDialog(false)} className="w-full">Simpan & Tutup</Button>
+                  );
+                })}
             </div>
+            <Button onClick={() => setShowIncomeDialog(false)} className="w-full mt-2">Simpan & Tutup</Button>
           </DialogContent>
         </Dialog>
       </div>

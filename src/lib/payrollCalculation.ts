@@ -90,7 +90,7 @@ export function findTERRate(brutoMonthly: number, terRates: TERRate[]): TERRate 
 export function calculatePPh21TER(brutoMonthly: number, terRates: TERRate[]): { tax: number; rate: number; mode: "TER" } {
   const rateRow = findTERRate(brutoMonthly, terRates);
   if (!rateRow) return { tax: 0, rate: 0, mode: "TER" };
-  const tax = Math.floor(brutoMonthly * (rateRow.tarif_efektif / 100));
+  const tax = Math.round(brutoMonthly * (rateRow.tarif_efektif / 100));
   return { tax, rate: rateRow.tarif_efektif, mode: "TER" };
 }
 
@@ -173,17 +173,17 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   // Use Math.floor() on individual components to match Excel INT() behavior
   const bpjsKesSalary = Math.min(basicSalary, BPJS_KES_MAX_SALARY);
   const bpjsJpSalary = Math.min(basicSalary, BPJS_JP_MAX_SALARY);
-  const bpjsKesehatan = bpjsKesehatanEnabled ? Math.floor(bpjsKesSalary * BPJS_KESEHATAN_RATE) : 0;
-  const bpjsJhtEmployee = Math.floor(basicSalary * BPJS_KETENAGAKERJAAN_RATE);
-  const bpjsJpEmployee = Math.floor(bpjsJpSalary * BPJS_JP_RATE);
+  const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KESEHATAN_RATE) : 0;
+  const bpjsJhtEmployee = Math.round(basicSalary * BPJS_KETENAGAKERJAAN_RATE);
+  const bpjsJpEmployee = Math.round(bpjsJpSalary * BPJS_JP_RATE);
   const bpjsKetenagakerjaan = bpjsJhtEmployee + bpjsJpEmployee;
 
   // Employer BPJS - based on basic salary only
-  const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.floor(bpjsKesSalary * BPJS_KES_EMPLOYER_RATE) : 0;
-  const bpjsJhtEmployer = Math.floor(basicSalary * BPJS_JHT_EMPLOYER_RATE);
-  const bpjsJpEmployer = Math.floor(bpjsJpSalary * BPJS_JP_EMPLOYER_RATE);
-  const bpjsJkkEmployer = Math.floor(basicSalary * BPJS_JKK_EMPLOYER_RATE);
-  const bpjsJkmEmployer = Math.floor(basicSalary * BPJS_JKM_EMPLOYER_RATE);
+  const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KES_EMPLOYER_RATE) : 0;
+  const bpjsJhtEmployer = Math.round(basicSalary * BPJS_JHT_EMPLOYER_RATE);
+  const bpjsJpEmployer = Math.round(bpjsJpSalary * BPJS_JP_EMPLOYER_RATE);
+  const bpjsJkkEmployer = Math.round(basicSalary * BPJS_JKK_EMPLOYER_RATE);
+  const bpjsJkmEmployer = Math.round(basicSalary * BPJS_JKM_EMPLOYER_RATE);
 
   // Bruto = Gaji Pokok + Semua Tunjangan/Tambahan + BPJS Perusahaan
   const totalBpjsEmployer = bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer;
@@ -228,7 +228,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   }
 
   // THP = Netto - PPh21 - Pinjaman - Potongan Lain
-  const takeHomePay = Math.floor(nettoIncome - pph21Monthly - loanDeduction - otherDeduction);
+  const takeHomePay = Math.round(nettoIncome - pph21Monthly - loanDeduction - otherDeduction);
 
   return {
     basic_salary: basicSalary,

@@ -147,7 +147,89 @@ const Payroll = () => {
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
-  useEffect(() => { fetchPayrollData(); }, [selectedMonth, selectedYear]);
+  useEffect(() => { fetchPayrollData(); loadOverridesFromDB(); }, [selectedMonth, selectedYear]);
+
+  const loadOverridesFromDB = async () => {
+    try {
+      const { data } = await supabase
+        .from("payroll_overrides")
+        .select("*")
+        .eq("period_month", selectedMonth)
+        .eq("period_year", selectedYear);
+
+      const newIncome = new Map<string, IncomeAddition>();
+      const newDeductions = new Map<string, DeductionOverride>();
+
+      for (const row of data || []) {
+        newIncome.set(row.user_id, {
+          tunjangan_kehadiran: Number(row.tunjangan_kehadiran) || 0,
+          tunjangan_kesehatan: Number(row.tunjangan_kesehatan) || 0,
+          bonus_tahunan: Number(row.bonus_tahunan) || 0,
+          thr: Number(row.thr) || 0,
+          insentif_kinerja: Number(row.insentif_kinerja) || 0,
+          bonus_lainnya: Number(row.bonus_lainnya) || 0,
+          pengembalian_employee: Number(row.pengembalian_employee) || 0,
+          insentif_penjualan: Number(row.insentif_penjualan) || 0,
+        });
+        newDeductions.set(row.user_id, {
+          loan_deduction: Number(row.loan_deduction) || 0,
+          other_deduction: Number(row.other_deduction) || 0,
+          deduction_notes: row.deduction_notes || "",
+        });
+      }
+
+      setIncomeAdditions(newIncome);
+      setDeductionOverrides(newDeductions);
+    } catch (error) {
+      console.error("Error loading overrides:", error);
+    }
+  };
+
+  const saveOverridesToDB = async (type: 'income' | 'deduction' | 'both') => {
+    try {
+      // Merge both income and deduction maps into upsert records
+      const allUserIds = new Set<string>();
+      if (type === 'income' || type === 'both') {
+        incomeAdditions.forEach((_, uid) => allUserIds.add(uid));
+      }
+      if (type === 'deduction' || type === 'both') {
+        deductionOverrides.forEach((_, uid) => allUserIds.add(uid));
+      }
+
+      const records = Array.from(allUserIds).map(userId => {
+        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+        const ded = deductionOverrides.get(userId) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
+        // Only save if there's any non-zero value
+        const hasData = Object.values(inc).some(v => Number(v) > 0) || ded.loan_deduction > 0 || ded.other_deduction > 0 || ded.deduction_notes.trim().length > 0;
+        return hasData ? {
+          user_id: userId,
+          period_month: selectedMonth,
+          period_year: selectedYear,
+          ...inc,
+          ...ded,
+        } : null;
+      }).filter(Boolean);
+
+      // Delete old records for this period, then insert new ones
+      await supabase
+        .from("payroll_overrides")
+        .delete()
+        .eq("period_month", selectedMonth)
+        .eq("period_year", selectedYear);
+
+      if (records.length > 0) {
+        const { error } = await supabase
+          .from("payroll_overrides")
+          .insert(records as any[]);
+        if (error) throw error;
+      }
+
+      toast({ title: "Data Tersimpan", description: `Override ${MONTHS[selectedMonth - 1].label} ${selectedYear} berhasil disimpan.` });
+    } catch (error: any) {
+      console.error("Error saving overrides:", error);
+      toast({ title: "Gagal Simpan", description: error.message, variant: "destructive" });
+    }
+  };
 
   const fetchPayrollData = async () => {
     setLoading(true);
@@ -277,20 +359,16 @@ const Payroll = () => {
   };
 
   const openDeductionDialog = async () => {
-    // Fetch active employees
     const { data: emps } = await supabase
       .from("profiles").select("id, full_name").eq("status", "Active").order("full_name");
     setEmployees(emps || []);
 
-    // Load existing overrides from current payroll data or blank
-    const overrides = new Map<string, DeductionOverride>();
+    // Merge existing DB overrides with employee list (fill missing with defaults)
+    const overrides = new Map<string, DeductionOverride>(deductionOverrides);
     for (const emp of emps || []) {
-      const existing = payrollData.find(p => p.user_id === emp.id);
-      overrides.set(emp.id, {
-        loan_deduction: existing?.loan_deduction || 0,
-        other_deduction: existing?.other_deduction || 0,
-        deduction_notes: existing?.deduction_notes || "",
-      });
+      if (!overrides.has(emp.id)) {
+        overrides.set(emp.id, { loan_deduction: 0, other_deduction: 0, deduction_notes: "" });
+      }
     }
     setDeductionOverrides(overrides);
     setShowDeductionDialog(true);
@@ -301,11 +379,11 @@ const Payroll = () => {
       .from("profiles").select("id, full_name").eq("status", "Active").order("full_name");
     setEmployees(emps || []);
 
-    const additions = new Map<string, IncomeAddition>();
+    const additions = new Map<string, IncomeAddition>(incomeAdditions);
     for (const emp of emps || []) {
-      additions.set(emp.id, incomeAdditions.get(emp.id) || {
-        tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0,
-      });
+      if (!additions.has(emp.id)) {
+        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 });
+      }
     }
     setIncomeAdditions(additions);
     setShowIncomeDialog(true);
@@ -1098,7 +1176,7 @@ const Payroll = () => {
                   );
                 })}
             </div>
-            <Button onClick={() => setShowDeductionDialog(false)} className="w-full mt-2">Simpan & Tutup</Button>
+            <Button onClick={async () => { await saveOverridesToDB('deduction'); setShowDeductionDialog(false); }} className="w-full mt-2">Simpan & Tutup</Button>
           </DialogContent>
         </Dialog>
 
@@ -1192,7 +1270,7 @@ const Payroll = () => {
                   );
                 })}
             </div>
-            <Button onClick={() => setShowIncomeDialog(false)} className="w-full mt-2">Simpan & Tutup</Button>
+            <Button onClick={async () => { await saveOverridesToDB('income'); setShowIncomeDialog(false); }} className="w-full mt-2">Simpan & Tutup</Button>
           </DialogContent>
         </Dialog>
       </div>

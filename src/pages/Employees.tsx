@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, ChevronLeft, ChevronRight, Wallet, CreditCard, Laptop } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
 import {
   Table,
   TableBody,
@@ -1019,213 +1020,16 @@ const Employees = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Employee Detail Dialog */}
-        <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
-          setIsDetailDialogOpen(open);
-          if (!open) setViewingEmployee(null);
-        }}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Detail Karyawan</DialogTitle>
-              <DialogDescription>
-                Informasi lengkap karyawan
-              </DialogDescription>
-            </DialogHeader>
-            {viewingEmployee && (
-              <div className="space-y-6">
-                {/* Profile Header */}
-                <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-border">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={viewingEmployee.photo_url} alt={viewingEmployee.full_name} />
-                    <AvatarFallback className="text-2xl">{getInitials(viewingEmployee.full_name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="text-center sm:text-left">
-                    <h3 className="text-2xl font-bold">{viewingEmployee.full_name}</h3>
-                    <p className="text-muted-foreground">{viewingEmployee.jabatan}</p>
-                    <div className="flex items-center gap-2 mt-2 justify-center sm:justify-start flex-wrap">
-                      <Badge variant={viewingEmployee.status === 'Active' ? 'default' : 'secondary'}>
-                        {viewingEmployee.status}
-                      </Badge>
-                      {employeeRoles[viewingEmployee.id] === 'admin' && (
-                        <Badge variant="destructive">Admin</Badge>
-                      )}
-                      {viewingEmployee.work_type === 'wfa' ? (
-                        <Badge variant="secondary">Hybrid</Badge>
-                      ) : (
-                        <Badge variant="outline">WFO</Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informasi Pribadi */}
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground mb-3">👤 Informasi Pribadi</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <User className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">NIK</p>
-                        <p className="font-medium text-sm truncate">{viewingEmployee.nik}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Mail className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Email</p>
-                        <p className="font-medium text-sm truncate">{viewingEmployee.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Phone className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Telepon</p>
-                        <p className="font-medium text-sm">{viewingEmployee.phone || '-'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Calendar className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Tanggal Bergabung</p>
-                        <p className="font-medium text-sm">{new Date(viewingEmployee.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 sm:col-span-2">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <MapPin className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Alamat</p>
-                        <p className="font-medium text-sm">{viewingEmployee.address || '-'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informasi Pekerjaan */}
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground mb-3">💼 Informasi Pekerjaan</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Briefcase className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Jabatan</p>
-                        <p className="font-medium text-sm">{viewingEmployee.jabatan}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Building2 className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Departemen</p>
-                        <p className="font-medium text-sm">{viewingEmployee.departemen}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Laptop className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Tipe Kerja</p>
-                        <p className="font-medium text-sm">{viewingEmployee.work_type === 'wfa' ? 'Hybrid (Work From Anywhere)' : 'WFO (Work From Office)'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Shield className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Role</p>
-                        <p className="font-medium text-sm capitalize">{employeeRoles[viewingEmployee.id] || 'employee'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informasi Payroll */}
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground mb-3">💰 Informasi Payroll</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Wallet className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Gaji Pokok</p>
-                        <p className="font-medium text-sm">Rp {Number(viewingEmployee.basic_salary || 0).toLocaleString('id-ID')}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <CreditCard className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Status PTKP</p>
-                        <p className="font-medium text-sm">{viewingEmployee.ptkp_status || 'TK/0'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tunjangan */}
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground mb-3">📋 Tunjangan Tetap</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-xs text-muted-foreground">Komunikasi</p>
-                      <p className="font-semibold text-sm">Rp {Number(viewingEmployee.tunjangan_komunikasi || 0).toLocaleString('id-ID')}</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-xs text-muted-foreground">Jabatan</p>
-                      <p className="font-semibold text-sm">Rp {Number(viewingEmployee.tunjangan_jabatan || 0).toLocaleString('id-ID')}</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-xs text-muted-foreground">Operasional</p>
-                      <p className="font-semibold text-sm">Rp {Number(viewingEmployee.tunjangan_operasional || 0).toLocaleString('id-ID')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Leave Info */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                  <div className="text-center p-4 rounded-lg bg-primary/5">
-                    <p className="text-sm text-muted-foreground">Kuota Cuti Tahunan</p>
-                    <p className="text-2xl font-bold text-primary">{viewingEmployee.annual_leave_quota || 12}</p>
-                  </div>
-                  <div className="text-center p-4 rounded-lg bg-primary/5">
-                    <p className="text-sm text-muted-foreground">Sisa Cuti</p>
-                    <p className="text-2xl font-bold text-primary">{viewingEmployee.remaining_leave || 12}</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex justify-end gap-2 pt-4 border-t border-border">
-                  <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
-                    Tutup
-                  </Button>
-                  <Button onClick={() => {
-                    setIsDetailDialogOpen(false);
-                    openEditDialog(viewingEmployee);
-                  }}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Data
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <EmployeeDetailDialog
+          open={isDetailDialogOpen}
+          onOpenChange={(open) => {
+            setIsDetailDialogOpen(open);
+            if (!open) setViewingEmployee(null);
+          }}
+          employee={viewingEmployee}
+          employeeRoles={employeeRoles}
+          onEdit={(emp) => openEditDialog(emp)}
+        />
 
         <Card>
           <CardHeader>

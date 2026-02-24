@@ -429,6 +429,8 @@ export type Database = {
         Row: {
           allowance: number
           basic_salary: number
+          bonus_lainnya: number
+          bonus_tahunan: number
           bpjs_jht_employer: number
           bpjs_jp_employer: number
           bpjs_kes_employer: number
@@ -438,11 +440,14 @@ export type Database = {
           created_at: string
           deduction_notes: string | null
           id: string
+          insentif_kinerja: number
+          insentif_penjualan: number
           loan_deduction: number
           netto_income: number
           other_deduction: number
           overtime_hours: number
           overtime_total: number
+          pengembalian_employee: number
           period_id: string
           pkp: number
           pph21_mode: string
@@ -451,11 +456,18 @@ export type Database = {
           ptkp_status: string
           ptkp_value: number
           take_home_pay: number
+          thr: number
+          tunjangan_jabatan: number
+          tunjangan_kesehatan: number
+          tunjangan_komunikasi: number
+          tunjangan_operasional: number
           user_id: string
         }
         Insert: {
           allowance?: number
           basic_salary?: number
+          bonus_lainnya?: number
+          bonus_tahunan?: number
           bpjs_jht_employer?: number
           bpjs_jp_employer?: number
           bpjs_kes_employer?: number
@@ -465,11 +477,14 @@ export type Database = {
           created_at?: string
           deduction_notes?: string | null
           id?: string
+          insentif_kinerja?: number
+          insentif_penjualan?: number
           loan_deduction?: number
           netto_income?: number
           other_deduction?: number
           overtime_hours?: number
           overtime_total?: number
+          pengembalian_employee?: number
           period_id: string
           pkp?: number
           pph21_mode?: string
@@ -478,11 +493,18 @@ export type Database = {
           ptkp_status?: string
           ptkp_value?: number
           take_home_pay?: number
+          thr?: number
+          tunjangan_jabatan?: number
+          tunjangan_kesehatan?: number
+          tunjangan_komunikasi?: number
+          tunjangan_operasional?: number
           user_id: string
         }
         Update: {
           allowance?: number
           basic_salary?: number
+          bonus_lainnya?: number
+          bonus_tahunan?: number
           bpjs_jht_employer?: number
           bpjs_jp_employer?: number
           bpjs_kes_employer?: number
@@ -492,11 +514,14 @@ export type Database = {
           created_at?: string
           deduction_notes?: string | null
           id?: string
+          insentif_kinerja?: number
+          insentif_penjualan?: number
           loan_deduction?: number
           netto_income?: number
           other_deduction?: number
           overtime_hours?: number
           overtime_total?: number
+          pengembalian_employee?: number
           period_id?: string
           pkp?: number
           pph21_mode?: string
@@ -505,6 +530,11 @@ export type Database = {
           ptkp_status?: string
           ptkp_value?: number
           take_home_pay?: number
+          thr?: number
+          tunjangan_jabatan?: number
+          tunjangan_kesehatan?: number
+          tunjangan_komunikasi?: number
+          tunjangan_operasional?: number
           user_id?: string
         }
         Relationships: [

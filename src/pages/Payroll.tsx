@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2 } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet } from "lucide-react";
+import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
   calculateOvertimePay,
@@ -669,6 +670,76 @@ const Payroll = () => {
   const totalPPh = payrollData.reduce((s, p) => s + p.pph21_monthly, 0);
   const totalEmployerBpjs = payrollData.reduce((s, p) => s + p.bpjs_kes_employer + p.bpjs_jht_employer + p.bpjs_jp_employer, 0);
 
+  const handleExportExcel = async () => {
+    if (payrollData.length === 0) return;
+    const data = payrollData.map((item, idx) => ({
+      "No": idx + 1,
+      "Nama": item.employee_name || "-",
+      "NIK": item.nik || "-",
+      "Departemen": item.departemen || "-",
+      "Jabatan": item.jabatan || "-",
+      "Status PTKP": item.ptkp_status,
+      "Gaji Pokok": item.basic_salary,
+      "Tunj. Komunikasi": item.tunjangan_komunikasi || 0,
+      "Tunj. Jabatan": item.tunjangan_jabatan || 0,
+      "Tunj. Operasional": item.tunjangan_operasional || 0,
+      "Tunj. Kehadiran": item.allowance - (item.tunjangan_komunikasi || 0) - (item.tunjangan_jabatan || 0) - (item.tunjangan_operasional || 0) - (item.tunjangan_kesehatan || 0) - (item.bonus_tahunan || 0) - (item.thr || 0) - (item.insentif_kinerja || 0) - (item.bonus_lainnya || 0) - (item.pengembalian_employee || 0) - (item.insentif_penjualan || 0),
+      "Tunj. Kesehatan": item.tunjangan_kesehatan || 0,
+      "Bonus Tahunan": item.bonus_tahunan || 0,
+      "THR": item.thr || 0,
+      "Insentif Kinerja": item.insentif_kinerja || 0,
+      "Insentif Penjualan": item.insentif_penjualan || 0,
+      "Bonus Lainnya": item.bonus_lainnya || 0,
+      "Pengembalian": item.pengembalian_employee || 0,
+      "Lembur (Jam)": item.overtime_hours,
+      "Lembur (Rp)": item.overtime_total,
+      "Bruto": item.bruto_income,
+      "BPJS Kes (1%)": item.bpjs_kesehatan,
+      "BPJS TK+JP (3%)": item.bpjs_ketenagakerjaan,
+      "Pot. Pinjaman": item.loan_deduction,
+      "Pot. Lainnya": item.other_deduction,
+      "Netto": item.netto_income,
+      "Nilai PTKP": item.ptkp_value,
+      "PKP": item.pkp,
+      "PPh 21 Mode": item.pph21_mode,
+      "PPh 21": item.pph21_monthly,
+      "Take Home Pay": item.take_home_pay,
+      "BPJS Kes Perusahaan (4%)": item.bpjs_kes_employer,
+      "JHT Perusahaan (3.7%)": item.bpjs_jht_employer,
+      "JP Perusahaan (2%)": item.bpjs_jp_employer,
+    }));
+    const monthLabel = MONTHS[selectedMonth - 1].label;
+    await exportToExcelFile(
+      data,
+      `Payroll ${monthLabel} ${selectedYear}`,
+      `Payroll_${monthLabel}_${selectedYear}.xlsx`,
+      [
+        ["PT. KEMIKA KARYA PRATAMA"],
+        [`Data Payroll — ${monthLabel} ${selectedYear}`],
+        [`Digenerate: ${new Date().toLocaleString("id-ID")}`],
+      ]
+    );
+    toast({ title: "Export Berhasil", description: `Data payroll ${monthLabel} ${selectedYear} berhasil diexport ke Excel.` });
+  };
+
+  const [downloadingAllPDF, setDownloadingAllPDF] = useState(false);
+  const handleDownloadAllPDF = async () => {
+    if (payrollData.length === 0) return;
+    setDownloadingAllPDF(true);
+    try {
+      for (const item of payrollData) {
+        await generateSlipPDF(item);
+        // Small delay to prevent browser blocking multiple downloads
+        await new Promise(r => setTimeout(r, 300));
+      }
+      toast({ title: "Download Selesai", description: `${payrollData.length} slip gaji berhasil di-download.` });
+    } catch (error: any) {
+      toast({ title: "Gagal Download", description: error.message, variant: "destructive" });
+    } finally {
+      setDownloadingAllPDF(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -704,6 +775,17 @@ const Payroll = () => {
               <Button variant="outline" onClick={handleFinalize} className="gap-2">
                 <Lock className="h-4 w-4" /> Finalisasi
               </Button>
+            )}
+            {payrollData.length > 0 && (
+              <>
+                <Button variant="outline" onClick={handleExportExcel} className="gap-2">
+                  <FileSpreadsheet className="h-4 w-4" /> Export Excel
+                </Button>
+                <Button variant="outline" onClick={handleDownloadAllPDF} disabled={downloadingAllPDF} className="gap-2">
+                  {downloadingAllPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Semua Slip PDF
+                </Button>
+              </>
             )}
           </div>
         </div>

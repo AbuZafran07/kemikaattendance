@@ -45,6 +45,8 @@ import LoanManagement from "./pages/LoanManagement";
 import EmployeePayrollHistory from "./pages/EmployeePayrollHistory";
 import EmployeeLoanHistory from "./pages/EmployeeLoanHistory";
 import TERManagement from "./pages/TERManagement";
+import BuktiPotong1721A1 from "./pages/BuktiPotong1721A1";
+import PayrollAnalytics from "./pages/PayrollAnalytics";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -77,6 +79,8 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/payroll" element={<ProtectedRoute requireAdmin><Payroll /></ProtectedRoute>} />
             <Route path="/dashboard/loans" element={<ProtectedRoute requireAdmin><LoanManagement /></ProtectedRoute>} />
             <Route path="/dashboard/ter-management" element={<ProtectedRoute requireAdmin><TERManagement /></ProtectedRoute>} />
+            <Route path="/dashboard/bukti-potong" element={<ProtectedRoute requireAdmin><BuktiPotong1721A1 /></ProtectedRoute>} />
+            <Route path="/dashboard/payroll-analytics" element={<ProtectedRoute requireAdmin><PayrollAnalytics /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />

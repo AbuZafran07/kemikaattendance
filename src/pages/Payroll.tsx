@@ -792,7 +792,7 @@ const Payroll = () => {
       "Netto": item.netto_income,
       "Nilai PTKP": item.ptkp_value,
       "PKP": item.pkp,
-      "PPh 21 Mode": item.pph21_mode === 'TER' && item.pph21_ter_rate != null ? `TER (${(item.pph21_ter_rate * 100).toFixed(2)}%)` : item.pph21_mode,
+      "PPh 21 Mode": item.pph21_mode === 'TER' && item.pph21_ter_rate != null ? `TER (${item.pph21_ter_rate.toFixed(2)}%)` : item.pph21_mode,
       "PPh 21": item.pph21_monthly,
       "Take Home Pay": item.take_home_pay,
       "BPJS Kes Perusahaan (4%)": item.bpjs_kes_employer,
@@ -935,6 +935,7 @@ const Payroll = () => {
                       <TableHead className="text-right">Bruto</TableHead>
                       <TableHead className="text-right">BPJS</TableHead>
                       <TableHead className="text-right">Potongan</TableHead>
+                      <TableHead className="text-center">PPh 21 Mode</TableHead>
                       <TableHead className="text-right">PPh 21</TableHead>
                       <TableHead className="text-right">THP</TableHead>
                       <TableHead className="w-[100px]"></TableHead>
@@ -954,15 +955,16 @@ const Payroll = () => {
                         <TableCell className="text-right text-sm text-muted-foreground">
                           {(item.loan_deduction + item.other_deduction) > 0 ? formatRupiah(item.loan_deduction + item.other_deduction) : <span>-</span>}
                         </TableCell>
-                        <TableCell className="text-right text-sm text-destructive">
-                          <div>{formatRupiah(item.pph21_monthly)}</div>
-                          {item.pph21_mode === "TER" && item.pph21_ter_rate != null && (
-                            <div className="text-[10px] text-muted-foreground font-normal">TER {(item.pph21_ter_rate * 100).toFixed(2)}%</div>
-                          )}
-                          {item.pph21_mode === "REKONSILIASI" && (
-                            <div className="text-[10px] text-muted-foreground font-normal">Rekonsiliasi</div>
+                        <TableCell className="text-center text-sm">
+                          {item.pph21_mode === "TER" && item.pph21_ter_rate != null ? (
+                            <Badge variant="outline" className="text-[10px]">TER {item.pph21_ter_rate.toFixed(2)}%</Badge>
+                          ) : item.pph21_mode === "REKONSILIASI" ? (
+                            <Badge variant="secondary" className="text-[10px]">Rekonsiliasi</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">{item.pph21_mode}</span>
                           )}
                         </TableCell>
+                        <TableCell className="text-right text-sm text-destructive">{formatRupiah(item.pph21_monthly)}</TableCell>
                         <TableCell className="text-right text-sm font-bold text-primary">{formatRupiah(item.take_home_pay)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -982,6 +984,7 @@ const Payroll = () => {
                       <TableCell className="text-right">{formatRupiah(totalBruto)}</TableCell>
                       <TableCell className="text-right">{formatRupiah(payrollData.reduce((s, p) => s + p.bpjs_kesehatan + p.bpjs_ketenagakerjaan, 0))}</TableCell>
                       <TableCell className="text-right">{formatRupiah(payrollData.reduce((s, p) => s + p.loan_deduction + p.other_deduction, 0))}</TableCell>
+                      <TableCell />
                       <TableCell className="text-right text-destructive">{formatRupiah(totalPPh)}</TableCell>
                       <TableCell className="text-right text-primary">{formatRupiah(totalTHP)}</TableCell>
                       <TableCell />

@@ -172,6 +172,17 @@ export const EmployeeDetailDialog = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <InfoItem icon={Wallet} label="Gaji Pokok" value={formatRupiah(employee.basic_salary)} />
                 <InfoItem icon={CreditCard} label="Status PTKP" value={employee.ptkp_status || "TK/0"} />
+                <InfoItem icon={CreditCard} label="NPWP" value={employee.npwp || "-"} />
+                <InfoItem icon={Briefcase} label="Tipe Kontrak" value={employee.contract_type === "contract" ? "Contract Employee" : "Permanent Employee"} />
+              </div>
+            </div>
+
+            {/* Bank Info */}
+            <div>
+              <p className="text-sm font-semibold text-muted-foreground mb-2">🏦 Informasi Bank</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <InfoItem icon={CreditCard} label="Nama Bank" value={employee.bank_name || "-"} />
+                <InfoItem icon={CreditCard} label="No. Rekening" value={employee.bank_account_number || "-"} />
               </div>
             </div>
 

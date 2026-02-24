@@ -54,6 +54,10 @@ export interface PayslipData {
   departemen: string;
   ptkp_status: string;
   join_date?: string;
+  contract_type?: string;
+  npwp?: string;
+  bank_name?: string;
+  bank_account_number?: string;
   // Income
   basic_salary: number;
   allowance: number; // total allowance field
@@ -299,11 +303,12 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
 
   // Neutral right: employee info
   const servicePeriod = data.join_date ? calculateServicePeriod(data.join_date) : "-";
+  const contractLabel = data.contract_type === "contract" ? "Contract Employee" : "Permanent Employee";
   const neutralRight: [string, string][] = [
     ["Tax Status", data.ptkp_status || "-"],
-    ["NPWP Number", "-"],
+    ["NPWP Number", data.npwp || "-"],
     ["Service Period", servicePeriod],
-    ["Contract Type", "Permanent Employee"],
+    ["Contract Type", contractLabel],
   ];
 
   doc.setFontSize(8); doc.setFont("helvetica", "normal");
@@ -342,11 +347,11 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
 
   doc.setFontSize(7.5); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
 
-  // Left: Bank info placeholder
+  // Left: Bank info
   doc.text("Bank Name", colLeft + 1, y + 1);
-  doc.text(": -", colLeft + 28, y + 1);
+  doc.text(`: ${data.bank_name || "-"}`, colLeft + 28, y + 1);
   doc.text("Account Number", colLeft + 1, y + 5);
-  doc.text(": -", colLeft + 28, y + 5);
+  doc.text(`: ${data.bank_account_number || "-"}`, colLeft + 28, y + 5);
   doc.text("Account Name", colLeft + 1, y + 9);
   doc.text(`: ${data.employee_name || "-"}`, colLeft + 28, y + 9);
 

@@ -89,6 +89,7 @@ interface DeductionOverride {
 
 // Income additions per employee before generating
 interface IncomeAddition {
+  tunjangan_kehadiran: number;
   tunjangan_kesehatan: number;
   bonus_tahunan: number;
   thr: number;
@@ -301,7 +302,7 @@ const Payroll = () => {
     const additions = new Map<string, IncomeAddition>();
     for (const emp of emps || []) {
       additions.set(emp.id, incomeAdditions.get(emp.id) || {
-        tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0,
+        tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0,
       });
     }
     setIncomeAdditions(additions);
@@ -311,7 +312,7 @@ const Payroll = () => {
   const updateIncome = (userId: string, field: keyof IncomeAddition, value: string) => {
     setIncomeAdditions(prev => {
       const next = new Map(prev);
-      const current = next.get(userId) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
       next.set(userId, { ...current, [field]: Number(value) || 0 });
       return next;
     });
@@ -443,10 +444,13 @@ const Payroll = () => {
         const overtimeHours = overtimeMap.get(emp.id) || 0;
         const overtimeTotal = calculateOvertimePay(basicSalary, overtimeHours);
         const ptkpStatus = emp.ptkp_status || "TK/0";
-        const attendanceAllowance = allowanceMap.get(emp.id) || 0;
+        const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);
         const inc = incomeAdditions.get(emp.id);
         const loanDed = loanDeductionMap.get(emp.id);
+
+        // Use manual override for attendance allowance if provided, otherwise auto-calculated
+        const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;
 
         // Fixed allowances from profile
         const tunjanganKomunikasi = Number(emp.tunjangan_komunikasi) || 0;
@@ -454,7 +458,7 @@ const Payroll = () => {
         const tunjanganOperasional = Number(emp.tunjangan_operasional) || 0;
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
 
-        // Incidental income from dialog
+        // Incidental income from dialog (exclude tunjangan_kehadiran as it's handled separately)
         const tunjanganKesehatan = inc?.tunjangan_kesehatan || 0;
         const bonusTahunan = inc?.bonus_tahunan || 0;
         const thr = inc?.thr || 0;
@@ -1107,7 +1111,7 @@ const Payroll = () => {
               {employees
                 .filter(emp => emp.full_name.toLowerCase().includes(incomeSearch.toLowerCase()))
                 .map((emp) => {
-                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
                   const totalInc = Object.values(inc).reduce((s, v) => s + (Number(v) || 0), 0);
                   const hasValue = totalInc > 0;
                   const isExpanded = selectedIncomeEmp === emp.id;
@@ -1132,6 +1136,12 @@ const Payroll = () => {
                       {isExpanded && (
                         <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-xs">Tunj. Kehadiran</Label>
+                              <Input type="number" value={inc.tunjangan_kehadiran || ""} placeholder="0 (otomatis)"
+                                onChange={(e) => updateIncome(emp.id, "tunjangan_kehadiran", e.target.value)} />
+                              <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis</span>
+                            </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>
                               <Input type="number" value={inc.tunjangan_kesehatan || ""} placeholder="0"

@@ -792,7 +792,7 @@ const Payroll = () => {
       "Netto": item.netto_income,
       "Nilai PTKP": item.ptkp_value,
       "PKP": item.pkp,
-      "PPh 21 Mode": item.pph21_mode,
+      "PPh 21 Mode": item.pph21_mode === 'TER' && item.pph21_ter_rate != null ? `TER (${(item.pph21_ter_rate * 100).toFixed(2)}%)` : item.pph21_mode,
       "PPh 21": item.pph21_monthly,
       "Take Home Pay": item.take_home_pay,
       "BPJS Kes Perusahaan (4%)": item.bpjs_kes_employer,

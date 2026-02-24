@@ -15,6 +15,7 @@ import {
   calculatePayroll,
   calculateOvertimePay,
   formatRupiah,
+  TERRate,
 } from "@/lib/payrollCalculation";
 import {
   Dialog,
@@ -51,6 +52,8 @@ interface PayrollData {
   loan_deduction: number;
   other_deduction: number;
   deduction_notes: string | null;
+  pph21_mode: string;
+  pph21_ter_rate: number;
   employee_name?: string;
   departemen?: string;
   jabatan?: string;
@@ -359,6 +362,44 @@ const Payroll = () => {
 
       const allowanceMap = await calculateAttendanceAllowances();
 
+      // Fetch TER rates from database
+      const { data: allTERRates } = await supabase
+        .from("pph21_ter_rates")
+        .select("kategori_ptkp, bruto_min, bruto_max, tarif_efektif")
+        .order("bruto_min");
+
+      // Group TER rates by PTKP category
+      const terRatesByCategory = new Map<string, TERRate[]>();
+      for (const r of (allTERRates as any[]) || []) {
+        const cat = r.kategori_ptkp;
+        if (!terRatesByCategory.has(cat)) terRatesByCategory.set(cat, []);
+        terRatesByCategory.get(cat)!.push({
+          bruto_min: Number(r.bruto_min),
+          bruto_max: Number(r.bruto_max),
+          tarif_efektif: Number(r.tarif_efektif),
+        });
+      }
+
+      // For December reconciliation: fetch total PPh21 paid Jan-Nov for each employee
+      let pphJanNovMap = new Map<string, number>();
+      if (selectedMonth === 12) {
+        // Get all period IDs for Jan-Nov of this year
+        const { data: prevPeriods } = await supabase
+          .from("payroll_periods").select("id")
+          .eq("year", selectedYear).lt("month", 12);
+        
+        if (prevPeriods && prevPeriods.length > 0) {
+          const prevPeriodIds = prevPeriods.map(p => p.id);
+          const { data: prevPayrolls } = await supabase
+            .from("payroll").select("user_id, pph21_monthly")
+            .in("period_id", prevPeriodIds);
+          
+          for (const pp of prevPayrolls || []) {
+            pphJanNovMap.set(pp.user_id, (pphJanNovMap.get(pp.user_id) || 0) + pp.pph21_monthly);
+          }
+        }
+      }
+
       // Fetch active loans for auto-deduction
       const { data: activeLoans } = await supabase
         .from("employee_loans")
@@ -410,11 +451,18 @@ const Payroll = () => {
         const manualLoanDeduction = ded?.loan_deduction || 0;
         const finalLoanDeduction = manualLoanDeduction > 0 ? manualLoanDeduction : autoLoanDeduction;
 
+        // Map PTKP status to TER category (e.g. K/I/0 -> K/0 for TER lookup)
+        const terCategory = ptkpStatus.replace("/I", "");
+        const terRatesForEmp = terRatesByCategory.get(terCategory) || terRatesByCategory.get(ptkpStatus) || [];
+
         const result = calculatePayroll({
           basicSalary, allowance: totalAllowance, overtimeTotal, ptkpStatus, overtimeHours,
           loanDeduction: finalLoanDeduction,
           otherDeduction: ded?.other_deduction || 0,
           deductionNotes: ded?.deduction_notes || (autoLoanDeduction > 0 ? "Cicilan pinjaman otomatis" : ""),
+          month: selectedMonth,
+          terRates: terRatesForEmp,
+          totalPphJanNov: pphJanNovMap.get(emp.id) || 0,
         });
 
         return {
@@ -566,7 +614,7 @@ const Payroll = () => {
       ["", "", ""],
       [`PTKP (${item.ptkp_status})`, "", formatRupiah(item.ptkp_value)],
       ["PKP (Tahunan)", "", formatRupiah(item.pkp)],
-      ["PPh 21 / bulan", "", `- ${formatRupiah(item.pph21_monthly)}`],
+      [`PPh 21 / bulan ${item.pph21_mode === "TER" ? `(TER ${item.pph21_ter_rate}%)` : item.pph21_mode === "REKONSILIASI" ? "(Rekonsiliasi)" : ""}`, "", `- ${formatRupiah(item.pph21_monthly)}`],
       ["", "", ""],
       ["TAKE HOME PAY", "", formatRupiah(item.take_home_pay)],
     ];
@@ -840,7 +888,11 @@ const Payroll = () => {
                   <span className="text-right">{formatRupiah(detailItem.ptkp_value)}</span>
                   <span className="text-muted-foreground">PKP (Tahunan)</span>
                   <span className="text-right">{formatRupiah(detailItem.pkp)}</span>
-                  <span className="text-muted-foreground">PPh 21 / bulan</span>
+                  <span className="text-muted-foreground">
+                    PPh 21 / bulan
+                    {detailItem.pph21_mode === "TER" && <Badge variant="outline" className="ml-1 text-[9px]">TER {detailItem.pph21_ter_rate}%</Badge>}
+                    {detailItem.pph21_mode === "REKONSILIASI" && <Badge variant="secondary" className="ml-1 text-[9px]">Rekonsiliasi</Badge>}
+                  </span>
                   <span className="text-right text-destructive font-medium">-{formatRupiah(detailItem.pph21_monthly)}</span>
                 </div>
 

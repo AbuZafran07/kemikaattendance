@@ -185,11 +185,11 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const bpjsJkmEmployer = Math.round(basicSalary * BPJS_JKM_EMPLOYER_RATE);
 
   // Bruto = Gaji Pokok + Semua Tunjangan/Tambahan + BPJS Perusahaan
-  const totalBpjsEmployer = bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer;
-  const brutoIncome = basicSalary + allowance + overtimeTotal + totalBpjsEmployer;
+  const totalBpjsEmployer = Math.round(bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer);
+  const brutoIncome = Math.round(basicSalary + allowance + overtimeTotal + totalBpjsEmployer);
 
-  const totalBpjsEmployee = bpjsKesehatan + bpjsKetenagakerjaan;
-  const nettoIncome = brutoIncome - totalBpjsEmployee - totalBpjsEmployer;
+  const totalBpjsEmployee = Math.round(bpjsKesehatan + bpjsKetenagakerjaan);
+  const nettoIncome = Math.round(brutoIncome - totalBpjsEmployee - totalBpjsEmployer);
 
   const ptkpValue = PTKP_VALUES[ptkpStatus] || PTKP_VALUES["TK/0"];
 
@@ -227,7 +227,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   }
 
   // THP = Netto - PPh21 - Pinjaman - Potongan Lain
-  const takeHomePay = nettoIncome - pph21Monthly - loanDeduction - otherDeduction;
+  const takeHomePay = Math.round(nettoIncome - pph21Monthly - loanDeduction - otherDeduction);
 
   return {
     basic_salary: basicSalary,

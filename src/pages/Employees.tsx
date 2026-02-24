@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
 import {
@@ -96,6 +97,7 @@ const Employees = () => {
     tunjangan_komunikasi: "",
     tunjangan_jabatan: "",
     tunjangan_operasional: "",
+    bpjs_kesehatan_enabled: true,
   });
 
   useEffect(() => {
@@ -336,6 +338,7 @@ const Employees = () => {
           tunjangan_komunikasi: Number(editFormData.tunjangan_komunikasi) || 0,
           tunjangan_jabatan: Number(editFormData.tunjangan_jabatan) || 0,
           tunjangan_operasional: Number(editFormData.tunjangan_operasional) || 0,
+          bpjs_kesehatan_enabled: editFormData.bpjs_kesehatan_enabled,
         })
         .eq('id', editingEmployee.id);
 
@@ -377,6 +380,7 @@ const Employees = () => {
       tunjangan_komunikasi: String(employee.tunjangan_komunikasi || ""),
       tunjangan_jabatan: String(employee.tunjangan_jabatan || ""),
       tunjangan_operasional: String(employee.tunjangan_operasional || ""),
+      bpjs_kesehatan_enabled: employee.bpjs_kesehatan_enabled !== false,
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
@@ -416,6 +420,7 @@ const Employees = () => {
       tunjangan_komunikasi: "",
       tunjangan_jabatan: "",
       tunjangan_operasional: "",
+      bpjs_kesehatan_enabled: true,
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -961,9 +966,22 @@ const Employees = () => {
                   </p>
                 </div>
 
-                {/* Tunjangan Tetap Section */}
+                {/* BPJS & Tunjangan Tetap Section */}
                 <div className="col-span-2 border-t border-border pt-3 mt-2">
-                  <p className="text-sm font-semibold text-muted-foreground mb-3">📋 Tunjangan Tetap (per bulan)</p>
+                  <p className="text-sm font-semibold text-muted-foreground mb-3">🏥 BPJS & Tunjangan Tetap</p>
+                </div>
+                <div className="col-span-2 flex items-center space-x-2 mb-2">
+                  <Checkbox
+                    id="edit_bpjs_kes"
+                    checked={editFormData.bpjs_kesehatan_enabled}
+                    onCheckedChange={(checked) => setEditFormData({ ...editFormData, bpjs_kesehatan_enabled: !!checked })}
+                  />
+                  <Label htmlFor="edit_bpjs_kes" className="text-sm font-normal cursor-pointer">
+                    Ikut BPJS Kesehatan
+                  </Label>
+                  {!editFormData.bpjs_kesehatan_enabled && (
+                    <Badge variant="destructive" className="text-xs">Tidak Ikut</Badge>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_tunjangan_komunikasi">Tunjangan Komunikasi (Rp)</Label>

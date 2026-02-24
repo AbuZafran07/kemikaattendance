@@ -46,7 +46,7 @@ const TAX_BRACKETS = [
 const BPJS_KES_MAX_SALARY = 12000000;
 
 // BPJS JP max salary cap (2025)
-const BPJS_JP_MAX_SALARY = 10042300;
+const BPJS_JP_MAX_SALARY = 10547400;
 
 export function calculatePPh21Annual(pkp: number): number {
   if (pkp <= 0) return 0;
@@ -130,6 +130,8 @@ export interface PayrollInput {
   month?: number; // 1-12
   terRates?: TERRate[]; // TER rates for this PTKP category
   totalPphJanNov?: number; // Sum of PPh21 paid Jan-Nov (for Dec reconciliation)
+  // BPJS Kesehatan opt-out
+  bpjsKesehatanEnabled?: boolean; // default true
 }
 
 export interface PayrollResult {
@@ -164,6 +166,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     basicSalary, allowance, overtimeTotal, ptkpStatus, overtimeHours,
     loanDeduction = 0, otherDeduction = 0, deductionNotes = "",
     month, terRates, totalPphJanNov = 0,
+    bpjsKesehatanEnabled = true,
   } = input;
 
   const brutoIncome = basicSalary + allowance + overtimeTotal;
@@ -171,13 +174,13 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   // Employee BPJS
   const bpjsKesSalary = Math.min(brutoIncome, BPJS_KES_MAX_SALARY);
   const bpjsJpSalary = Math.min(brutoIncome, BPJS_JP_MAX_SALARY);
-  const bpjsKesehatan = Math.round(bpjsKesSalary * BPJS_KESEHATAN_RATE);
+  const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KESEHATAN_RATE) : 0;
   const bpjsJhtEmployee = Math.round(brutoIncome * BPJS_KETENAGAKERJAAN_RATE);
   const bpjsJpEmployee = Math.round(bpjsJpSalary * BPJS_JP_RATE);
   const bpjsKetenagakerjaan = bpjsJhtEmployee + bpjsJpEmployee;
 
   // Employer BPJS
-  const bpjsKesEmployer = Math.round(bpjsKesSalary * BPJS_KES_EMPLOYER_RATE);
+  const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KES_EMPLOYER_RATE) : 0;
   const bpjsJhtEmployer = Math.round(brutoIncome * BPJS_JHT_EMPLOYER_RATE);
   const bpjsJpEmployer = Math.round(bpjsJpSalary * BPJS_JP_EMPLOYER_RATE);
   const bpjsJkkEmployer = Math.round(brutoIncome * BPJS_JKK_EMPLOYER_RATE);

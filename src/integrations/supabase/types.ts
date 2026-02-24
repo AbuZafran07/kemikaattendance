@@ -672,6 +672,7 @@ export type Database = {
           address: string | null
           annual_leave_quota: number | null
           basic_salary: number | null
+          bpjs_kesehatan_enabled: boolean
           created_at: string
           departemen: string
           email: string
@@ -696,6 +697,7 @@ export type Database = {
           address?: string | null
           annual_leave_quota?: number | null
           basic_salary?: number | null
+          bpjs_kesehatan_enabled?: boolean
           created_at?: string
           departemen: string
           email: string
@@ -720,6 +722,7 @@ export type Database = {
           address?: string | null
           annual_leave_quota?: number | null
           basic_salary?: number | null
+          bpjs_kesehatan_enabled?: boolean
           created_at?: string
           departemen?: string
           email?: string

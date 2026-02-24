@@ -954,7 +954,15 @@ const Payroll = () => {
                         <TableCell className="text-right text-sm text-muted-foreground">
                           {(item.loan_deduction + item.other_deduction) > 0 ? formatRupiah(item.loan_deduction + item.other_deduction) : <span>-</span>}
                         </TableCell>
-                        <TableCell className="text-right text-sm text-destructive">{formatRupiah(item.pph21_monthly)}</TableCell>
+                        <TableCell className="text-right text-sm text-destructive">
+                          <div>{formatRupiah(item.pph21_monthly)}</div>
+                          {item.pph21_mode === "TER" && item.pph21_ter_rate != null && (
+                            <div className="text-[10px] text-muted-foreground font-normal">TER {(item.pph21_ter_rate * 100).toFixed(2)}%</div>
+                          )}
+                          {item.pph21_mode === "REKONSILIASI" && (
+                            <div className="text-[10px] text-muted-foreground font-normal">Rekonsiliasi</div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right text-sm font-bold text-primary">{formatRupiah(item.take_home_pay)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">

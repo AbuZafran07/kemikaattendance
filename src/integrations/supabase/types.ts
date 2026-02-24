@@ -553,6 +553,66 @@ export type Database = {
           },
         ]
       }
+      payroll_overrides: {
+        Row: {
+          bonus_lainnya: number
+          bonus_tahunan: number
+          created_at: string
+          deduction_notes: string | null
+          id: string
+          insentif_kinerja: number
+          insentif_penjualan: number
+          loan_deduction: number
+          other_deduction: number
+          pengembalian_employee: number
+          period_month: number
+          period_year: number
+          thr: number
+          tunjangan_kehadiran: number
+          tunjangan_kesehatan: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bonus_lainnya?: number
+          bonus_tahunan?: number
+          created_at?: string
+          deduction_notes?: string | null
+          id?: string
+          insentif_kinerja?: number
+          insentif_penjualan?: number
+          loan_deduction?: number
+          other_deduction?: number
+          pengembalian_employee?: number
+          period_month: number
+          period_year: number
+          thr?: number
+          tunjangan_kehadiran?: number
+          tunjangan_kesehatan?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bonus_lainnya?: number
+          bonus_tahunan?: number
+          created_at?: string
+          deduction_notes?: string | null
+          id?: string
+          insentif_kinerja?: number
+          insentif_penjualan?: number
+          loan_deduction?: number
+          other_deduction?: number
+          pengembalian_employee?: number
+          period_month?: number
+          period_year?: number
+          thr?: number
+          tunjangan_kehadiran?: number
+          tunjangan_kesehatan?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payroll_periods: {
         Row: {
           created_at: string

@@ -671,8 +671,11 @@ export type Database = {
         Row: {
           address: string | null
           annual_leave_quota: number | null
+          bank_account_number: string | null
+          bank_name: string | null
           basic_salary: number | null
           bpjs_kesehatan_enabled: boolean
+          contract_type: string
           created_at: string
           departemen: string
           email: string
@@ -682,6 +685,7 @@ export type Database = {
           jabatan: string
           join_date: string
           nik: string
+          npwp: string | null
           phone: string | null
           photo_url: string | null
           ptkp_status: string | null
@@ -696,8 +700,11 @@ export type Database = {
         Insert: {
           address?: string | null
           annual_leave_quota?: number | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           basic_salary?: number | null
           bpjs_kesehatan_enabled?: boolean
+          contract_type?: string
           created_at?: string
           departemen: string
           email: string
@@ -707,6 +714,7 @@ export type Database = {
           jabatan: string
           join_date?: string
           nik: string
+          npwp?: string | null
           phone?: string | null
           photo_url?: string | null
           ptkp_status?: string | null
@@ -721,8 +729,11 @@ export type Database = {
         Update: {
           address?: string | null
           annual_leave_quota?: number | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           basic_salary?: number | null
           bpjs_kesehatan_enabled?: boolean
+          contract_type?: string
           created_at?: string
           departemen?: string
           email?: string
@@ -732,6 +743,7 @@ export type Database = {
           jabatan?: string
           join_date?: string
           nik?: string
+          npwp?: string | null
           phone?: string | null
           photo_url?: string | null
           ptkp_status?: string | null

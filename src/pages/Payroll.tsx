@@ -646,15 +646,25 @@ const Payroll = () => {
   };
 
   const generateSlipPDF = async (item: PayrollData) => {
-    // Fetch join_date for service period calculation
+    // Fetch profile data for service period & bank info
     let joinDate = "";
+    let contractType = "permanent";
+    let npwp = "";
+    let bankName = "";
+    let bankAccountNumber = "";
     try {
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("join_date")
+        .select("join_date, contract_type, npwp, bank_name, bank_account_number")
         .eq("id", item.user_id)
         .single();
-      if (profileData) joinDate = profileData.join_date;
+      if (profileData) {
+        joinDate = profileData.join_date;
+        contractType = (profileData as any).contract_type || "permanent";
+        npwp = (profileData as any).npwp || "";
+        bankName = (profileData as any).bank_name || "";
+        bankAccountNumber = (profileData as any).bank_account_number || "";
+      }
     } catch {}
 
     const { generatePayslipPDF } = await import("@/lib/payslipPdfGenerator");
@@ -665,6 +675,10 @@ const Payroll = () => {
       departemen: item.departemen || "-",
       ptkp_status: item.ptkp_status,
       join_date: joinDate,
+      contract_type: contractType,
+      npwp: npwp,
+      bank_name: bankName,
+      bank_account_number: bankAccountNumber,
       basic_salary: item.basic_salary,
       allowance: item.allowance,
       tunjangan_komunikasi: item.tunjangan_komunikasi || 0,

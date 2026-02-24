@@ -98,6 +98,10 @@ const Employees = () => {
     tunjangan_jabatan: "",
     tunjangan_operasional: "",
     bpjs_kesehatan_enabled: true,
+    contract_type: "permanent",
+    npwp: "",
+    bank_name: "",
+    bank_account_number: "",
   });
 
   useEffect(() => {
@@ -339,6 +343,10 @@ const Employees = () => {
           tunjangan_jabatan: Number(editFormData.tunjangan_jabatan) || 0,
           tunjangan_operasional: Number(editFormData.tunjangan_operasional) || 0,
           bpjs_kesehatan_enabled: editFormData.bpjs_kesehatan_enabled,
+          contract_type: editFormData.contract_type,
+          npwp: editFormData.npwp || null,
+          bank_name: editFormData.bank_name || null,
+          bank_account_number: editFormData.bank_account_number || null,
         })
         .eq('id', editingEmployee.id);
 
@@ -381,6 +389,10 @@ const Employees = () => {
       tunjangan_jabatan: String(employee.tunjangan_jabatan || ""),
       tunjangan_operasional: String(employee.tunjangan_operasional || ""),
       bpjs_kesehatan_enabled: employee.bpjs_kesehatan_enabled !== false,
+      contract_type: employee.contract_type || "permanent",
+      npwp: employee.npwp || "",
+      bank_name: employee.bank_name || "",
+      bank_account_number: employee.bank_account_number || "",
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
@@ -421,6 +433,10 @@ const Employees = () => {
       tunjangan_jabatan: "",
       tunjangan_operasional: "",
       bpjs_kesehatan_enabled: true,
+      contract_type: "permanent",
+      npwp: "",
+      bank_name: "",
+      bank_account_number: "",
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -1023,6 +1039,53 @@ const Employees = () => {
                     id="edit_address"
                     value={editFormData.address}
                     onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                  />
+                </div>
+
+                {/* Contract & Bank Info Section */}
+                <div className="col-span-2 border-t border-border pt-3 mt-2">
+                  <p className="text-sm font-semibold text-muted-foreground mb-3">📄 Kontrak & Info Bank</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contract_type">Tipe Kontrak</Label>
+                  <Select
+                    value={editFormData.contract_type}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, contract_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Tipe Kontrak" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="permanent">Permanent Employee</SelectItem>
+                      <SelectItem value="contract">Contract Employee</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_npwp">NPWP</Label>
+                  <Input
+                    id="edit_npwp"
+                    placeholder="00.000.000.0-000.000"
+                    value={editFormData.npwp}
+                    onChange={(e) => setEditFormData({ ...editFormData, npwp: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_bank_name">Nama Bank</Label>
+                  <Input
+                    id="edit_bank_name"
+                    placeholder="BCA, Mandiri, BNI, dll"
+                    value={editFormData.bank_name}
+                    onChange={(e) => setEditFormData({ ...editFormData, bank_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_bank_account_number">Nomor Rekening</Label>
+                  <Input
+                    id="edit_bank_account_number"
+                    placeholder="1234567890"
+                    value={editFormData.bank_account_number}
+                    onChange={(e) => setEditFormData({ ...editFormData, bank_account_number: e.target.value })}
                   />
                 </div>
               </div>

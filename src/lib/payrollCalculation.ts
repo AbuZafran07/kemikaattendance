@@ -169,8 +169,6 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     bpjsKesehatanEnabled = true,
   } = input;
 
-  const brutoIncome = basicSalary + allowance + overtimeTotal;
-
   // Employee BPJS - based on basic salary only (not including allowances)
   const bpjsKesSalary = Math.min(basicSalary, BPJS_KES_MAX_SALARY);
   const bpjsJpSalary = Math.min(basicSalary, BPJS_JP_MAX_SALARY);
@@ -186,8 +184,12 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const bpjsJkkEmployer = Math.round(basicSalary * BPJS_JKK_EMPLOYER_RATE);
   const bpjsJkmEmployer = Math.round(basicSalary * BPJS_JKM_EMPLOYER_RATE);
 
-  const totalBpjs = bpjsKesehatan + bpjsKetenagakerjaan;
-  const nettoIncome = brutoIncome - totalBpjs;
+  // Bruto = Gaji Pokok + Semua Tunjangan/Tambahan + BPJS Perusahaan
+  const totalBpjsEmployer = bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer;
+  const brutoIncome = basicSalary + allowance + overtimeTotal + totalBpjsEmployer;
+
+  const totalBpjsEmployee = bpjsKesehatan + bpjsKetenagakerjaan;
+  const nettoIncome = brutoIncome - totalBpjsEmployee - totalBpjsEmployer;
 
   const ptkpValue = PTKP_VALUES[ptkpStatus] || PTKP_VALUES["TK/0"];
 

@@ -432,6 +432,8 @@ export type Database = {
           bonus_lainnya: number
           bonus_tahunan: number
           bpjs_jht_employer: number
+          bpjs_jkk_employer: number
+          bpjs_jkm_employer: number
           bpjs_jp_employer: number
           bpjs_kes_employer: number
           bpjs_kesehatan: number
@@ -469,6 +471,8 @@ export type Database = {
           bonus_lainnya?: number
           bonus_tahunan?: number
           bpjs_jht_employer?: number
+          bpjs_jkk_employer?: number
+          bpjs_jkm_employer?: number
           bpjs_jp_employer?: number
           bpjs_kes_employer?: number
           bpjs_kesehatan?: number
@@ -506,6 +510,8 @@ export type Database = {
           bonus_lainnya?: number
           bonus_tahunan?: number
           bpjs_jht_employer?: number
+          bpjs_jkk_employer?: number
+          bpjs_jkm_employer?: number
           bpjs_jp_employer?: number
           bpjs_kes_employer?: number
           bpjs_kesehatan?: number

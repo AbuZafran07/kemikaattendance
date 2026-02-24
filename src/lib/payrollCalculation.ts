@@ -30,6 +30,8 @@ export const BPJS_JP_RATE = 0.01;              // JP 1% employee
 export const BPJS_KES_EMPLOYER_RATE = 0.04;    // 4% employer
 export const BPJS_JHT_EMPLOYER_RATE = 0.037;   // 3.7% employer
 export const BPJS_JP_EMPLOYER_RATE = 0.02;     // 2% employer
+export const BPJS_JKK_EMPLOYER_RATE = 0.0024;  // JKK 0.24% employer (risiko sangat rendah)
+export const BPJS_JKM_EMPLOYER_RATE = 0.003;   // JKM 0.3% employer
 
 // PPh 21 progressive tax brackets (UU HPP)
 const TAX_BRACKETS = [
@@ -42,6 +44,9 @@ const TAX_BRACKETS = [
 
 // BPJS Kesehatan max salary cap (2024)
 const BPJS_KES_MAX_SALARY = 12000000;
+
+// BPJS JP max salary cap (2025)
+const BPJS_JP_MAX_SALARY = 10042300;
 
 export function calculatePPh21Annual(pkp: number): number {
   if (pkp <= 0) return 0;
@@ -138,6 +143,8 @@ export interface PayrollResult {
   bpjs_kes_employer: number;
   bpjs_jht_employer: number;
   bpjs_jp_employer: number;
+  bpjs_jkk_employer: number;
+  bpjs_jkm_employer: number;
   netto_income: number;
   ptkp_status: string;
   ptkp_value: number;
@@ -163,13 +170,18 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
 
   // Employee BPJS
   const bpjsKesSalary = Math.min(brutoIncome, BPJS_KES_MAX_SALARY);
+  const bpjsJpSalary = Math.min(brutoIncome, BPJS_JP_MAX_SALARY);
   const bpjsKesehatan = Math.round(bpjsKesSalary * BPJS_KESEHATAN_RATE);
-  const bpjsKetenagakerjaan = Math.round(brutoIncome * (BPJS_KETENAGAKERJAAN_RATE + BPJS_JP_RATE));
+  const bpjsJhtEmployee = Math.round(brutoIncome * BPJS_KETENAGAKERJAAN_RATE);
+  const bpjsJpEmployee = Math.round(bpjsJpSalary * BPJS_JP_RATE);
+  const bpjsKetenagakerjaan = bpjsJhtEmployee + bpjsJpEmployee;
 
   // Employer BPJS
   const bpjsKesEmployer = Math.round(bpjsKesSalary * BPJS_KES_EMPLOYER_RATE);
   const bpjsJhtEmployer = Math.round(brutoIncome * BPJS_JHT_EMPLOYER_RATE);
-  const bpjsJpEmployer = Math.round(brutoIncome * BPJS_JP_EMPLOYER_RATE);
+  const bpjsJpEmployer = Math.round(bpjsJpSalary * BPJS_JP_EMPLOYER_RATE);
+  const bpjsJkkEmployer = Math.round(brutoIncome * BPJS_JKK_EMPLOYER_RATE);
+  const bpjsJkmEmployer = Math.round(brutoIncome * BPJS_JKM_EMPLOYER_RATE);
 
   const totalBpjs = bpjsKesehatan + bpjsKetenagakerjaan;
   const nettoIncome = brutoIncome - totalBpjs;
@@ -223,6 +235,8 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     bpjs_kes_employer: bpjsKesEmployer,
     bpjs_jht_employer: bpjsJhtEmployer,
     bpjs_jp_employer: bpjsJpEmployer,
+    bpjs_jkk_employer: bpjsJkkEmployer,
+    bpjs_jkm_employer: bpjsJkmEmployer,
     netto_income: nettoIncome,
     ptkp_status: ptkpStatus,
     ptkp_value: ptkpValue,

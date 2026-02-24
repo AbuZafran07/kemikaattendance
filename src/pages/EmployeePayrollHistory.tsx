@@ -47,6 +47,8 @@ interface PayrollItem {
   bpjs_kes_employer: number;
   bpjs_jht_employer: number;
   bpjs_jp_employer: number;
+  bpjs_jkk_employer: number;
+  bpjs_jkm_employer: number;
   netto_income: number;
   ptkp_status: string;
   ptkp_value: number;
@@ -206,7 +208,7 @@ const EmployeePayrollHistory = () => {
     // Employer BPJS info
     doc.setFontSize(8); doc.setTextColor(100);
     doc.text("Kontribusi Perusahaan (tidak dipotong dari gaji):", marginX, finalY + 8);
-    doc.text(`BPJS Kes 4%: ${formatRupiah(item.bpjs_kes_employer)} | JHT 3.7%: ${formatRupiah(item.bpjs_jht_employer)} | JP 2%: ${formatRupiah(item.bpjs_jp_employer)}`, marginX, finalY + 13);
+    doc.text(`BPJS Kes 4%: ${formatRupiah(item.bpjs_kes_employer)} | JHT 3.7%: ${formatRupiah(item.bpjs_jht_employer)} | JP 2%: ${formatRupiah(item.bpjs_jp_employer)} | JKK 0.24%: ${formatRupiah(item.bpjs_jkk_employer)} | JKM 0.3%: ${formatRupiah(item.bpjs_jkm_employer)}`, marginX, finalY + 13);
 
     doc.setTextColor(128);
     doc.text("Dokumen ini digenerate secara otomatis oleh sistem.", marginX, finalY + 20);
@@ -358,6 +360,10 @@ const EmployeePayrollHistory = () => {
                 <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jht_employer)}</span>
                 <span className="text-muted-foreground text-xs">JP (2%)</span>
                 <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jp_employer)}</span>
+                <span className="text-muted-foreground text-xs">JKK (0.24%)</span>
+                <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jkk_employer)}</span>
+                <span className="text-muted-foreground text-xs">JKM (0.3%)</span>
+                <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jkm_employer)}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-1">

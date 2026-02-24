@@ -10,8 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah } from "@/lib/payrollCalculation";
 import { ArrowLeft, DollarSign, Download, Loader2, LogOut } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import logo from "@/assets/logo.png";
 
 const MONTHS = [
@@ -21,19 +19,6 @@ const MONTHS = [
   { value: 10, label: "Oktober" }, { value: 11, label: "November" }, { value: 12, label: "Desember" },
 ];
 
-const loadImageAsBase64 = (src: string): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width; canvas.height = img.height;
-      canvas.getContext("2d")!.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = reject;
-    img.src = src;
-  });
 
 interface PayrollItem {
   id: string;
@@ -119,102 +104,48 @@ const EmployeePayrollHistory = () => {
   };
 
   const generateSlipPDF = async (item: PayrollItem & { month: number; year: number }) => {
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const marginX = 15;
-
-    try {
-      const logoBase64 = await loadImageAsBase64(logo);
-      doc.addImage(logoBase64, "PNG", marginX, 10, 20, 20);
-    } catch {}
-
-    doc.setFontSize(14); doc.setFont("helvetica", "bold");
-    doc.text("PT. KEMIKA KARYA PRATAMA", marginX + 24, 18);
-    doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text("Attendance & HR Management System", marginX + 24, 24);
-
-    doc.setDrawColor(0, 135, 81); doc.setLineWidth(1);
-    doc.line(marginX, 34, pageWidth - marginX, 34);
-
-    doc.setFontSize(12); doc.setFont("helvetica", "bold");
-    doc.text("SLIP GAJI", pageWidth / 2, 42, { align: "center" });
-    doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    doc.text(`Periode: ${MONTHS[item.month - 1].label} ${item.year}`, pageWidth / 2, 48, { align: "center" });
-
-    let y = 56;
-    doc.setFontSize(9);
-    const infoLines = [
-      ["Nama", profile?.full_name || "-"],
-      ["NIK", profile?.nik || "-"],
-      ["Jabatan", profile?.jabatan || "-"],
-      ["Departemen", profile?.departemen || "-"],
-      ["Status PTKP", item.ptkp_status],
-    ];
-    for (const [label, val] of infoLines) {
-      doc.text(`${label}`, marginX, y);
-      doc.text(`: ${val}`, marginX + 35, y);
-      y += 5;
-    }
-    y += 3;
-
-    // Calculate attendance-only allowance (total allowance minus fixed allowances from profile)
     const tunjanganKomunikasi = Number((profile as any)?.tunjangan_komunikasi) || 0;
     const tunjanganJabatan = Number((profile as any)?.tunjangan_jabatan) || 0;
     const tunjanganOperasional = Number((profile as any)?.tunjangan_operasional) || 0;
-    const fixedTotal = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
-    const attendanceAllowance = Math.max(0, item.allowance - fixedTotal);
 
-    const rows: string[][] = [
-      ["Gaji Pokok", formatRupiah(item.basic_salary), ""],
-      ["Tunjangan Kehadiran", formatRupiah(attendanceAllowance), ""],
-      ...(tunjanganKomunikasi > 0 ? [["Tunjangan Komunikasi", formatRupiah(tunjanganKomunikasi), ""]] : []),
-      ...(tunjanganJabatan > 0 ? [["Tunjangan Jabatan", formatRupiah(tunjanganJabatan), ""]] : []),
-      ...(tunjanganOperasional > 0 ? [["Tunjangan Operasional", formatRupiah(tunjanganOperasional), ""]] : []),
-      [`Lembur (${item.overtime_hours} jam)`, formatRupiah(item.overtime_total), ""],
-      ["", "", ""],
-      ["BRUTO", "", formatRupiah(item.bruto_income)],
-      ["", "", ""],
-      ["Pot. BPJS Kesehatan (1%)", "", `- ${formatRupiah(item.bpjs_kesehatan)}`],
-      ["Pot. BPJS TK + JP (3%)", "", `- ${formatRupiah(item.bpjs_ketenagakerjaan)}`],
-      ...(item.loan_deduction > 0 ? [["Pot. Pinjaman/Kasbon", "", `- ${formatRupiah(item.loan_deduction)}`]] : []),
-      ...(item.other_deduction > 0 ? [["Pot. Lainnya", "", `- ${formatRupiah(item.other_deduction)}`]] : []),
-      ["", "", ""],
-      ["NETTO", "", formatRupiah(item.netto_income)],
-      ["", "", ""],
-      [`PTKP (${item.ptkp_status})`, "", formatRupiah(item.ptkp_value)],
-      ["PKP (Tahunan)", "", formatRupiah(item.pkp)],
-      ["PPh 21 / bulan", "", `- ${formatRupiah(item.pph21_monthly)}`],
-      ["", "", ""],
-      ["TAKE HOME PAY", "", formatRupiah(item.take_home_pay)],
-    ];
-
-    autoTable(doc, {
-      startY: y,
-      head: [["Komponen", "Pendapatan", "Jumlah"]],
-      body: rows,
-      margin: { left: marginX, right: marginX },
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [0, 135, 81], textColor: 255, fontStyle: "bold" },
-      columnStyles: { 0: { cellWidth: 80 }, 1: { halign: "right", cellWidth: 45 }, 2: { halign: "right", cellWidth: 45 } },
-      didParseCell: (data) => {
-        const text = String(data.cell.raw);
-        if (["BRUTO", "NETTO", "TAKE HOME PAY"].includes(text)) data.cell.styles.fontStyle = "bold";
-        if (text === "TAKE HOME PAY") data.cell.styles.fillColor = [240, 255, 245];
-      },
-    });
-
-    const finalY = (doc as any).lastAutoTable?.finalY || y + 80;
-
-    // Employer BPJS info
-    doc.setFontSize(8); doc.setTextColor(100);
-    doc.text("Kontribusi Perusahaan (tidak dipotong dari gaji):", marginX, finalY + 8);
-    doc.text(`BPJS Kes 4%: ${formatRupiah(item.bpjs_kes_employer)} | JHT 3.7%: ${formatRupiah(item.bpjs_jht_employer)} | JP 2%: ${formatRupiah(item.bpjs_jp_employer)} | JKK 0.24%: ${formatRupiah(item.bpjs_jkk_employer)} | JKM 0.3%: ${formatRupiah(item.bpjs_jkm_employer)}`, marginX, finalY + 13);
-
-    doc.setTextColor(128);
-    doc.text("Dokumen ini digenerate secara otomatis oleh sistem.", marginX, finalY + 20);
-    doc.text(`Dicetak pada: ${new Date().toLocaleString("id-ID")}`, marginX, finalY + 25);
-
-    doc.save(`Slip_Gaji_${profile?.full_name?.replace(/\s+/g, "_")}_${MONTHS[item.month - 1].label}_${item.year}.pdf`);
+    const { generatePayslipPDF } = await import("@/lib/payslipPdfGenerator");
+    await generatePayslipPDF({
+      employee_name: profile?.full_name || "-",
+      nik: profile?.nik || "-",
+      jabatan: profile?.jabatan || "-",
+      departemen: profile?.departemen || "-",
+      ptkp_status: item.ptkp_status,
+      join_date: profile?.join_date || "",
+      basic_salary: item.basic_salary,
+      allowance: item.allowance,
+      tunjangan_komunikasi: tunjanganKomunikasi,
+      tunjangan_jabatan: tunjanganJabatan,
+      tunjangan_operasional: tunjanganOperasional,
+      tunjangan_kesehatan: (item as any).tunjangan_kesehatan || 0,
+      overtime_total: item.overtime_total,
+      overtime_hours: item.overtime_hours,
+      thr: (item as any).thr || 0,
+      insentif_kinerja: (item as any).insentif_kinerja || 0,
+      insentif_penjualan: (item as any).insentif_penjualan || 0,
+      bonus_tahunan: (item as any).bonus_tahunan || 0,
+      bonus_lainnya: (item as any).bonus_lainnya || 0,
+      pengembalian_employee: (item as any).pengembalian_employee || 0,
+      bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
+      bpjs_kesehatan: item.bpjs_kesehatan,
+      loan_deduction: item.loan_deduction,
+      other_deduction: item.other_deduction,
+      pph21_monthly: item.pph21_monthly,
+      bruto_income: item.bruto_income,
+      netto_income: item.netto_income,
+      take_home_pay: item.take_home_pay,
+      bpjs_jht_employer: item.bpjs_jht_employer,
+      bpjs_jp_employer: item.bpjs_jp_employer,
+      bpjs_jkk_employer: item.bpjs_jkk_employer,
+      bpjs_jkm_employer: item.bpjs_jkm_employer,
+      bpjs_kes_employer: item.bpjs_kes_employer,
+      month: item.month,
+      year: item.year,
+    }, logo);
   };
 
   return (

@@ -27,53 +27,72 @@ const PTKP_CATEGORIES = [
   "K/0", "K/1", "K/2", "K/3",
 ];
 
-// Default TER rates based on PP 58/2023 (simplified representative sample)
+// Helper to generate TER rates for a category with adjusted thresholds
+const generateCategoryRates = (kategori: string, offset: number): Omit<TERRate, "id" | "created_at">[] => {
+  const base = [
+    { min: 0, max: 5400000, rate: 0 },
+    { min: 5400001, max: 5650000, rate: 0.25 },
+    { min: 5650001, max: 5950000, rate: 0.5 },
+    { min: 5950001, max: 6300000, rate: 0.75 },
+    { min: 6300001, max: 6750000, rate: 1 },
+    { min: 6750001, max: 7500000, rate: 1.25 },
+    { min: 7500001, max: 8550000, rate: 1.5 },
+    { min: 8550001, max: 9650000, rate: 1.75 },
+    { min: 9650001, max: 10050000, rate: 2 },
+    { min: 10050001, max: 10350000, rate: 2.25 },
+    { min: 10350001, max: 10700000, rate: 2.5 },
+    { min: 10700001, max: 11050000, rate: 3 },
+    { min: 11050001, max: 11600000, rate: 3.5 },
+    { min: 11600001, max: 12500000, rate: 4 },
+    { min: 12500001, max: 13750000, rate: 5 },
+    { min: 13750001, max: 15100000, rate: 6 },
+    { min: 15100001, max: 16950000, rate: 7 },
+    { min: 16950001, max: 19750000, rate: 8 },
+    { min: 19750001, max: 24150000, rate: 9 },
+    { min: 24150001, max: 26450000, rate: 10 },
+    { min: 26450001, max: 28000000, rate: 11 },
+    { min: 28000001, max: 30050000, rate: 12 },
+    { min: 30050001, max: 32400000, rate: 13 },
+    { min: 32400001, max: 35400000, rate: 14 },
+    { min: 35400001, max: 39100000, rate: 15 },
+    { min: 39100001, max: 43850000, rate: 16 },
+    { min: 43850001, max: 47800000, rate: 17 },
+    { min: 47800001, max: 51400000, rate: 18 },
+    { min: 51400001, max: 56300000, rate: 19 },
+    { min: 56300001, max: 62200000, rate: 20 },
+    { min: 62200001, max: 68600000, rate: 21 },
+    { min: 68600001, max: 77500000, rate: 22 },
+    { min: 77500001, max: 89000000, rate: 23 },
+    { min: 89000001, max: 103000000, rate: 24 },
+    { min: 103000001, max: 125000000, rate: 25 },
+    { min: 125000001, max: 157000000, rate: 26 },
+    { min: 157000001, max: 206000000, rate: 27 },
+    { min: 206000001, max: 337000000, rate: 28 },
+    { min: 337000001, max: 454000000, rate: 29 },
+    { min: 454000001, max: 550000000, rate: 30 },
+    { min: 550000001, max: 695000000, rate: 31 },
+    { min: 695000001, max: 910000000, rate: 32 },
+    { min: 910000001, max: 1400000000, rate: 33 },
+    { min: 1400000001, max: 999999999999, rate: 34 },
+  ];
+  return base.map(b => ({
+    kategori_ptkp: kategori,
+    bruto_min: Math.max(0, b.min + offset),
+    bruto_max: b.max === 999999999999 ? 999999999999 : b.max + offset,
+    tarif_efektif: b.rate,
+  }));
+};
+
+// Default TER rates for all PTKP categories based on PP 58/2023
 const DEFAULT_TER_RATES: Omit<TERRate, "id" | "created_at">[] = [
-  // TK/0 - Kategori A
-  { kategori_ptkp: "TK/0", bruto_min: 0, bruto_max: 5400000, tarif_efektif: 0 },
-  { kategori_ptkp: "TK/0", bruto_min: 5400001, bruto_max: 5650000, tarif_efektif: 0.25 },
-  { kategori_ptkp: "TK/0", bruto_min: 5650001, bruto_max: 5950000, tarif_efektif: 0.5 },
-  { kategori_ptkp: "TK/0", bruto_min: 5950001, bruto_max: 6300000, tarif_efektif: 0.75 },
-  { kategori_ptkp: "TK/0", bruto_min: 6300001, bruto_max: 6750000, tarif_efektif: 1 },
-  { kategori_ptkp: "TK/0", bruto_min: 6750001, bruto_max: 7500000, tarif_efektif: 1.25 },
-  { kategori_ptkp: "TK/0", bruto_min: 7500001, bruto_max: 8550000, tarif_efektif: 1.5 },
-  { kategori_ptkp: "TK/0", bruto_min: 8550001, bruto_max: 9650000, tarif_efektif: 1.75 },
-  { kategori_ptkp: "TK/0", bruto_min: 9650001, bruto_max: 10050000, tarif_efektif: 2 },
-  { kategori_ptkp: "TK/0", bruto_min: 10050001, bruto_max: 10350000, tarif_efektif: 2.25 },
-  { kategori_ptkp: "TK/0", bruto_min: 10350001, bruto_max: 10700000, tarif_efektif: 2.5 },
-  { kategori_ptkp: "TK/0", bruto_min: 10700001, bruto_max: 11050000, tarif_efektif: 3 },
-  { kategori_ptkp: "TK/0", bruto_min: 11050001, bruto_max: 11600000, tarif_efektif: 3.5 },
-  { kategori_ptkp: "TK/0", bruto_min: 11600001, bruto_max: 12500000, tarif_efektif: 4 },
-  { kategori_ptkp: "TK/0", bruto_min: 12500001, bruto_max: 13750000, tarif_efektif: 5 },
-  { kategori_ptkp: "TK/0", bruto_min: 13750001, bruto_max: 15100000, tarif_efektif: 6 },
-  { kategori_ptkp: "TK/0", bruto_min: 15100001, bruto_max: 16950000, tarif_efektif: 7 },
-  { kategori_ptkp: "TK/0", bruto_min: 16950001, bruto_max: 19750000, tarif_efektif: 8 },
-  { kategori_ptkp: "TK/0", bruto_min: 19750001, bruto_max: 24150000, tarif_efektif: 9 },
-  { kategori_ptkp: "TK/0", bruto_min: 24150001, bruto_max: 26450000, tarif_efektif: 10 },
-  { kategori_ptkp: "TK/0", bruto_min: 26450001, bruto_max: 28000000, tarif_efektif: 11 },
-  { kategori_ptkp: "TK/0", bruto_min: 28000001, bruto_max: 30050000, tarif_efektif: 12 },
-  { kategori_ptkp: "TK/0", bruto_min: 30050001, bruto_max: 32400000, tarif_efektif: 13 },
-  { kategori_ptkp: "TK/0", bruto_min: 32400001, bruto_max: 35400000, tarif_efektif: 14 },
-  { kategori_ptkp: "TK/0", bruto_min: 35400001, bruto_max: 39100000, tarif_efektif: 15 },
-  { kategori_ptkp: "TK/0", bruto_min: 39100001, bruto_max: 43850000, tarif_efektif: 16 },
-  { kategori_ptkp: "TK/0", bruto_min: 43850001, bruto_max: 47800000, tarif_efektif: 17 },
-  { kategori_ptkp: "TK/0", bruto_min: 47800001, bruto_max: 51400000, tarif_efektif: 18 },
-  { kategori_ptkp: "TK/0", bruto_min: 51400001, bruto_max: 56300000, tarif_efektif: 19 },
-  { kategori_ptkp: "TK/0", bruto_min: 56300001, bruto_max: 62200000, tarif_efektif: 20 },
-  { kategori_ptkp: "TK/0", bruto_min: 62200001, bruto_max: 68600000, tarif_efektif: 21 },
-  { kategori_ptkp: "TK/0", bruto_min: 68600001, bruto_max: 77500000, tarif_efektif: 22 },
-  { kategori_ptkp: "TK/0", bruto_min: 77500001, bruto_max: 89000000, tarif_efektif: 23 },
-  { kategori_ptkp: "TK/0", bruto_min: 89000001, bruto_max: 103000000, tarif_efektif: 24 },
-  { kategori_ptkp: "TK/0", bruto_min: 103000001, bruto_max: 125000000, tarif_efektif: 25 },
-  { kategori_ptkp: "TK/0", bruto_min: 125000001, bruto_max: 157000000, tarif_efektif: 26 },
-  { kategori_ptkp: "TK/0", bruto_min: 157000001, bruto_max: 206000000, tarif_efektif: 27 },
-  { kategori_ptkp: "TK/0", bruto_min: 206000001, bruto_max: 337000000, tarif_efektif: 28 },
-  { kategori_ptkp: "TK/0", bruto_min: 337000001, bruto_max: 454000000, tarif_efektif: 29 },
-  { kategori_ptkp: "TK/0", bruto_min: 454000001, bruto_max: 550000000, tarif_efektif: 30 },
-  { kategori_ptkp: "TK/0", bruto_min: 550000001, bruto_max: 695000000, tarif_efektif: 31 },
-  { kategori_ptkp: "TK/0", bruto_min: 695000001, bruto_max: 910000000, tarif_efektif: 32 },
-  { kategori_ptkp: "TK/0", bruto_min: 910000001, bruto_max: 1400000000, tarif_efektif: 33 },
-  { kategori_ptkp: "TK/0", bruto_min: 1400000001, bruto_max: 999999999999, tarif_efektif: 34 },
+  ...generateCategoryRates("TK/0", 0),
+  ...generateCategoryRates("TK/1", 350000),
+  ...generateCategoryRates("TK/2", 700000),
+  ...generateCategoryRates("TK/3", 1050000),
+  ...generateCategoryRates("K/0", 350000),
+  ...generateCategoryRates("K/1", 700000),
+  ...generateCategoryRates("K/2", 1050000),
+  ...generateCategoryRates("K/3", 1400000),
 ];
 
 const TERManagement = () => {
@@ -106,9 +125,13 @@ const TERManagement = () => {
   const handleSeedDefaults = async () => {
     setSeeding(true);
     try {
-      const { error } = await supabase.from("pph21_ter_rates").insert(DEFAULT_TER_RATES as any);
-      if (error) throw error;
-      toast({ title: "Berhasil", description: `${DEFAULT_TER_RATES.length} tarif TER default (TK/0) berhasil ditambahkan.` });
+      // Insert in batches of 100 to avoid payload limits
+      for (let i = 0; i < DEFAULT_TER_RATES.length; i += 100) {
+        const batch = DEFAULT_TER_RATES.slice(i, i + 100);
+        const { error } = await supabase.from("pph21_ter_rates").insert(batch as any);
+        if (error) throw error;
+      }
+      toast({ title: "Berhasil", description: `${DEFAULT_TER_RATES.length} tarif TER default (semua kategori PTKP) berhasil ditambahkan.` });
       fetchRates();
     } catch (e: any) {
       toast({ title: "Gagal", description: e.message, variant: "destructive" });
@@ -189,12 +212,10 @@ const TERManagement = () => {
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {rates.length === 0 && (
-              <Button variant="outline" onClick={handleSeedDefaults} disabled={seeding} className="gap-2">
-                {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                Muat Tarif Default (TK/0)
-              </Button>
-            )}
+            <Button variant="outline" onClick={handleSeedDefaults} disabled={seeding} className="gap-2">
+              {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Muat Tarif Default (Semua Kategori)
+            </Button>
             <Button onClick={handleOpenAdd} className="gap-2">
               <Plus className="h-4 w-4" /> Tambah Tarif
             </Button>

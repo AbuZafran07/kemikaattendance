@@ -171,20 +171,20 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
 
   const brutoIncome = basicSalary + allowance + overtimeTotal;
 
-  // Employee BPJS
-  const bpjsKesSalary = Math.min(brutoIncome, BPJS_KES_MAX_SALARY);
-  const bpjsJpSalary = Math.min(brutoIncome, BPJS_JP_MAX_SALARY);
+  // Employee BPJS - based on basic salary only (not including allowances)
+  const bpjsKesSalary = Math.min(basicSalary, BPJS_KES_MAX_SALARY);
+  const bpjsJpSalary = Math.min(basicSalary, BPJS_JP_MAX_SALARY);
   const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KESEHATAN_RATE) : 0;
-  const bpjsJhtEmployee = Math.round(brutoIncome * BPJS_KETENAGAKERJAAN_RATE);
+  const bpjsJhtEmployee = Math.round(basicSalary * BPJS_KETENAGAKERJAAN_RATE);
   const bpjsJpEmployee = Math.round(bpjsJpSalary * BPJS_JP_RATE);
   const bpjsKetenagakerjaan = bpjsJhtEmployee + bpjsJpEmployee;
 
-  // Employer BPJS
+  // Employer BPJS - based on basic salary only
   const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KES_EMPLOYER_RATE) : 0;
-  const bpjsJhtEmployer = Math.round(brutoIncome * BPJS_JHT_EMPLOYER_RATE);
+  const bpjsJhtEmployer = Math.round(basicSalary * BPJS_JHT_EMPLOYER_RATE);
   const bpjsJpEmployer = Math.round(bpjsJpSalary * BPJS_JP_EMPLOYER_RATE);
-  const bpjsJkkEmployer = Math.round(brutoIncome * BPJS_JKK_EMPLOYER_RATE);
-  const bpjsJkmEmployer = Math.round(brutoIncome * BPJS_JKM_EMPLOYER_RATE);
+  const bpjsJkkEmployer = Math.round(basicSalary * BPJS_JKK_EMPLOYER_RATE);
+  const bpjsJkmEmployer = Math.round(basicSalary * BPJS_JKM_EMPLOYER_RATE);
 
   const totalBpjs = bpjsKesehatan + bpjsKetenagakerjaan;
   const nettoIncome = brutoIncome - totalBpjs;

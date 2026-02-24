@@ -445,7 +445,9 @@ export type Database = {
           overtime_total: number
           period_id: string
           pkp: number
+          pph21_mode: string
           pph21_monthly: number
+          pph21_ter_rate: number | null
           ptkp_status: string
           ptkp_value: number
           take_home_pay: number
@@ -470,7 +472,9 @@ export type Database = {
           overtime_total?: number
           period_id: string
           pkp?: number
+          pph21_mode?: string
           pph21_monthly?: number
+          pph21_ter_rate?: number | null
           ptkp_status?: string
           ptkp_value?: number
           take_home_pay?: number
@@ -495,7 +499,9 @@ export type Database = {
           overtime_total?: number
           period_id?: string
           pkp?: number
+          pph21_mode?: string
           pph21_monthly?: number
+          pph21_ter_rate?: number | null
           ptkp_status?: string
           ptkp_value?: number
           take_home_pay?: number
@@ -532,6 +538,36 @@ export type Database = {
           month?: number
           status?: string
           year?: number
+        }
+        Relationships: []
+      }
+      pph21_ter_rates: {
+        Row: {
+          bruto_max: number
+          bruto_min: number
+          created_at: string
+          id: string
+          kategori_ptkp: string
+          tarif_efektif: number
+          updated_at: string
+        }
+        Insert: {
+          bruto_max?: number
+          bruto_min?: number
+          created_at?: string
+          id?: string
+          kategori_ptkp: string
+          tarif_efektif?: number
+          updated_at?: string
+        }
+        Update: {
+          bruto_max?: number
+          bruto_min?: number
+          created_at?: string
+          id?: string
+          kategori_ptkp?: string
+          tarif_efektif?: number
+          updated_at?: string
         }
         Relationships: []
       }

@@ -1,6 +1,6 @@
 /**
  * Indonesian Payroll Calculation Engine
- * Based on PPh 21 regulations (UU HPP 2022)
+ * Based on PPh 21 regulations (UU HPP 2022 + PP 58/2023 TER)
  */
 
 // PTKP values (Penghasilan Tidak Kena Pajak) - 2024
@@ -62,6 +62,56 @@ export function calculatePPh21Monthly(pkp: number): number {
   return Math.round(calculatePPh21Annual(pkp) / 12);
 }
 
+// ===== TER-based PPh21 Calculation =====
+
+export interface TERRate {
+  bruto_min: number;
+  bruto_max: number;
+  tarif_efektif: number; // in percent
+}
+
+/**
+ * Find applicable TER rate for a given bruto amount
+ */
+export function findTERRate(brutoMonthly: number, terRates: TERRate[]): TERRate | null {
+  return terRates.find(
+    r => brutoMonthly >= r.bruto_min && brutoMonthly <= r.bruto_max
+  ) || null;
+}
+
+/**
+ * Calculate PPh21 using TER method (Jan-Nov)
+ */
+export function calculatePPh21TER(brutoMonthly: number, terRates: TERRate[]): { tax: number; rate: number; mode: "TER" } {
+  const rateRow = findTERRate(brutoMonthly, terRates);
+  if (!rateRow) return { tax: 0, rate: 0, mode: "TER" };
+  const tax = Math.round(brutoMonthly * (rateRow.tarif_efektif / 100));
+  return { tax, rate: rateRow.tarif_efektif, mode: "TER" };
+}
+
+/**
+ * Calculate PPh21 using December reconciliation (progressive rates)
+ */
+export function calculatePPh21Reconciliation(
+  nettoMonthly: number,
+  ptkpValue: number,
+  totalPphJanNov: number
+): { tax: number; yearlyTax: number; adjustment: number; mode: "REKONSILIASI" } {
+  const yearlyNetto = nettoMonthly * 12;
+  const pkp = Math.max(0, yearlyNetto - ptkpValue);
+  const pkpRounded = Math.floor(pkp / 1000) * 1000;
+  const yearlyTax = calculatePPh21Annual(pkpRounded);
+  const adjustment = yearlyTax - totalPphJanNov;
+  return {
+    tax: Math.max(0, adjustment), // December tax (could be refund if negative, but we floor at 0 for simplicity)
+    yearlyTax,
+    adjustment,
+    mode: "REKONSILIASI",
+  };
+}
+
+// ===== Existing Payroll Calculation =====
+
 export interface PayrollInput {
   basicSalary: number;
   allowance: number;
@@ -71,6 +121,10 @@ export interface PayrollInput {
   loanDeduction?: number;
   otherDeduction?: number;
   deductionNotes?: string;
+  // TER support
+  month?: number; // 1-12
+  terRates?: TERRate[]; // TER rates for this PTKP category
+  totalPphJanNov?: number; // Sum of PPh21 paid Jan-Nov (for Dec reconciliation)
 }
 
 export interface PayrollResult {
@@ -93,12 +147,16 @@ export interface PayrollResult {
   loan_deduction: number;
   other_deduction: number;
   deduction_notes: string;
+  // TER fields
+  pph21_mode: string;
+  pph21_ter_rate: number;
 }
 
 export function calculatePayroll(input: PayrollInput): PayrollResult {
   const {
     basicSalary, allowance, overtimeTotal, ptkpStatus, overtimeHours,
     loanDeduction = 0, otherDeduction = 0, deductionNotes = "",
+    month, terRates, totalPphJanNov = 0,
   } = input;
 
   const brutoIncome = basicSalary + allowance + overtimeTotal;
@@ -117,9 +175,39 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const nettoIncome = brutoIncome - totalBpjs;
 
   const ptkpValue = PTKP_VALUES[ptkpStatus] || PTKP_VALUES["TK/0"];
-  const annualNetto = nettoIncome * 12;
-  const pkp = Math.max(0, annualNetto - ptkpValue);
-  const pph21Monthly = calculatePPh21Monthly(pkp);
+
+  let pph21Monthly: number;
+  let pph21Mode = "progressive";
+  let pph21TerRate = 0;
+  let pkp: number;
+
+  // Determine calculation mode
+  const hasTER = terRates && terRates.length > 0 && month;
+
+  if (hasTER && month < 12) {
+    // Jan-Nov: Use TER
+    const terResult = calculatePPh21TER(brutoIncome, terRates);
+    pph21Monthly = terResult.tax;
+    pph21Mode = "TER";
+    pph21TerRate = terResult.rate;
+    // PKP not used in TER but we still calculate for display
+    const annualNetto = nettoIncome * 12;
+    pkp = Math.max(0, annualNetto - ptkpValue);
+  } else if (hasTER && month === 12) {
+    // December: Reconciliation
+    const reconResult = calculatePPh21Reconciliation(nettoIncome, ptkpValue, totalPphJanNov);
+    pph21Monthly = reconResult.tax;
+    pph21Mode = "REKONSILIASI";
+    pph21TerRate = 0;
+    const annualNetto = nettoIncome * 12;
+    pkp = Math.max(0, annualNetto - ptkpValue);
+  } else {
+    // Fallback: Progressive (no TER data available)
+    const annualNetto = nettoIncome * 12;
+    pkp = Math.max(0, annualNetto - ptkpValue);
+    pph21Monthly = calculatePPh21Monthly(pkp);
+    pph21Mode = "progressive";
+  }
 
   // THP = Netto - PPh21 - Pinjaman - Potongan Lain
   const takeHomePay = nettoIncome - pph21Monthly - loanDeduction - otherDeduction;
@@ -144,6 +232,8 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     loan_deduction: loanDeduction,
     other_deduction: otherDeduction,
     deduction_notes: deductionNotes,
+    pph21_mode: pph21Mode,
+    pph21_ter_rate: pph21TerRate,
   };
 }
 

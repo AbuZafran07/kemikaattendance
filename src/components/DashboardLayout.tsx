@@ -59,6 +59,7 @@ const navigationGroups = [
     items: [
       { name: "Payroll", href: "/dashboard/payroll", icon: DollarSign },
       { name: "Pinjaman", href: "/dashboard/loans", icon: CreditCard },
+      { name: "Tarif TER PPh21", href: "/dashboard/ter-management", icon: FileText },
     ],
   },
   {

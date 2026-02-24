@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import PayrollOverrideHistory from "@/components/PayrollOverrideHistory";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -833,7 +835,7 @@ const Payroll = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <Tabs defaultValue="payroll" className="space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -842,6 +844,10 @@ const Payroll = () => {
             <p className="text-muted-foreground text-sm mt-1">
               Kelola penggajian karyawan dengan perhitungan PPh 21 & tunjangan kehadiran otomatis
             </p>
+            <TabsList className="mt-3">
+              <TabsTrigger value="payroll">Payroll</TabsTrigger>
+              <TabsTrigger value="overrides">Riwayat Override</TabsTrigger>
+            </TabsList>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
@@ -881,6 +887,7 @@ const Payroll = () => {
           </div>
         </div>
 
+        <TabsContent value="payroll" className="space-y-6 mt-0">
         {period && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Status Periode:</span>
@@ -1274,7 +1281,12 @@ const Payroll = () => {
             <Button onClick={async () => { await saveOverridesToDB('income'); setShowIncomeDialog(false); }} className="w-full mt-2">Simpan & Tutup</Button>
           </DialogContent>
         </Dialog>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="overrides" className="mt-0">
+          <PayrollOverrideHistory />
+        </TabsContent>
+      </Tabs>
     </DashboardLayout>
   );
 };

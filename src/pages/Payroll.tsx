@@ -157,14 +157,24 @@ const Payroll = () => {
       if (!payrolls || payrolls.length === 0) { setPayrollData([]); setLoading(false); return; }
 
       const userIds = [...new Set(payrolls.map((p) => p.user_id))];
+
+      // Exclude admin users from payroll display
+      const { data: adminRolesDisplay } = await supabase
+        .from("user_roles").select("user_id").eq("role", "admin");
+      const adminIdsDisplay = new Set((adminRolesDisplay || []).map(r => r.user_id));
+      const filteredPayrolls = payrolls.filter(p => !adminIdsDisplay.has(p.user_id));
+      const filteredUserIds = [...new Set(filteredPayrolls.map((p) => p.user_id))];
+
+      if (filteredUserIds.length === 0) { setPayrollData([]); setLoading(false); return; }
+
       const { data: profiles } = await supabase
-        .from("profiles").select("id, full_name, departemen, jabatan, nik, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").in("id", userIds);
+        .from("profiles").select("id, full_name, departemen, jabatan, nik, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").in("id", filteredUserIds);
 
       const profileMap = new Map(
         (profiles || []).map((p: any) => [p.id, { name: p.full_name, dept: p.departemen, jabatan: p.jabatan, nik: p.nik, tunjangan_komunikasi: Number(p.tunjangan_komunikasi) || 0, tunjangan_jabatan: Number(p.tunjangan_jabatan) || 0, tunjangan_operasional: Number(p.tunjangan_operasional) || 0 }])
       );
 
-      const enriched: PayrollData[] = payrolls.map((p) => ({
+      const enriched: PayrollData[] = filteredPayrolls.map((p) => ({
         ...p,
         employee_name: profileMap.get(p.user_id)?.name || "Unknown",
         departemen: profileMap.get(p.user_id)?.dept || "-",
@@ -339,8 +349,14 @@ const Payroll = () => {
         periodId = newPeriod.id;
       }
 
-      const { data: emps } = await supabase
+      const { data: empsRaw } = await supabase
         .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").eq("status", "Active");
+
+      // Exclude admin users from payroll
+      const { data: adminRoles } = await supabase
+        .from("user_roles").select("user_id").eq("role", "admin");
+      const adminIds = new Set((adminRoles || []).map(r => r.user_id));
+      const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
 
       if (!emps || emps.length === 0) {
         toast({ title: "Tidak ada karyawan", description: "Tidak ditemukan karyawan aktif.", variant: "destructive" });

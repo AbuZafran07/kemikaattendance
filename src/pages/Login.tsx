@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import logo from "@/assets/logo.png";
+import { APP_VERSION } from "@/config/appVersion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema } from "@/lib/validationSchemas";
@@ -180,8 +181,8 @@ const Login = () => {
             </TabsContent>
           </Tabs>
         </CardContent>
+        <p className="text-xs text-muted-foreground mt-4 opacity-70 text-center">App Version {APP_VERSION}</p>
       </Card>
-      <p className="text-xs text-muted-foreground mt-4 opacity-70">App Version 1.0.3</p>
     </div>
   );
 };

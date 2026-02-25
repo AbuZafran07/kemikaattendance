@@ -97,9 +97,9 @@ const Login = () => {
             <img src={logo} alt="Kemika Logo" className="h-16 object-contain" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">Kemika HR Attendance</CardTitle>
+            <CardTitle className="text-2xl font-bold">PT KEMIKA KARYA PRATAMA</CardTitle>
             <CardDescription className="mt-2">
-              Sistem Absensi Digital PT. Kemika Karya Pratama
+              Attendance & HR Management System
             </CardDescription>
           </div>
         </CardHeader>

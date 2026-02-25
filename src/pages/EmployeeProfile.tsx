@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building, Calendar, CreditCard, LogOut, User, Pencil, Key } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Building, Calendar, CreditCard, LogOut, User, Pencil, Key, Landmark, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import logo from "@/assets/logo.png";
@@ -129,6 +129,39 @@ const EmployeeProfile = () => {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Bank & Tax Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Landmark className="h-5 w-5" />
+              Informasi Bank & Pajak
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">NPWP</p>
+                <p className="font-medium">{profile.npwp || "-"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Landmark className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Nama Bank</p>
+                <p className="font-medium">{profile.bank_name || "-"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Wallet className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Nomor Rekening</p>
+                <p className="font-medium">{profile.bank_account_number || "-"}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

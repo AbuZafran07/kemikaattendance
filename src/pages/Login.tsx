@@ -181,8 +181,8 @@ const Login = () => {
             </TabsContent>
           </Tabs>
         </CardContent>
-        <p className="text-xs text-muted-foreground mt-4 opacity-70 text-center">App Version {APP_VERSION}</p>
       </Card>
+      <p className="text-xs text-muted-foreground/80 mt-4 opacity-60 text-center">App Version {APP_VERSION}</p>
     </div>
   );
 };

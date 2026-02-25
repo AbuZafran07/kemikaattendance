@@ -90,7 +90,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 p-4 bg-[#3c3c28] flex items-center justify-center border-0 border-solid rounded-none">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 p-4 bg-[#3c3c28] flex flex-col items-center justify-center border-0 border-solid rounded-none">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
@@ -182,7 +182,7 @@ const Login = () => {
           </Tabs>
         </CardContent>
       </Card>
-      <p className="text-xs text-muted-foreground/80 mt-4 opacity-60 text-center">App Version {APP_VERSION}</p>
+      <p className="text-xs text-muted-foreground/80 mt-3 opacity-60 text-center">App Version {APP_VERSION}</p>
     </div>
   );
 };

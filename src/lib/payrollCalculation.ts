@@ -223,7 +223,8 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     // Fallback: Progressive (no TER data available)
     const annualNetto = nettoIncome * 12;
     pkp = Math.max(0, annualNetto - ptkpValue);
-    pph21Monthly = calculatePPh21Monthly(pkp);
+    const pkpRounded = Math.floor(pkp / 1000) * 1000; // Round down to nearest 1000 like Excel ROUNDDOWN
+    pph21Monthly = calculatePPh21Monthly(pkpRounded);
     pph21Mode = "progressive";
   }
 

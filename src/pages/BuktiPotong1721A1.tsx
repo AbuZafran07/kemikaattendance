@@ -22,8 +22,9 @@ interface EmployeeTaxSummary {
   ptkp_status: string;
   ptkp_value: number;
   total_bruto: number;
-  total_bpjs: number;
-  total_netto: number;
+  total_bpjs_kt: number; // JHT + JP employee only (for Biaya Jabatan calculation)
+  biaya_jabatan: number;
+  total_netto: number; // Tax netto (Bruto - Biaya Jabatan - JHT - JP)
   total_pph21: number;
   pkp: number;
 }
@@ -71,14 +72,12 @@ const BuktiPotong1721A1 = () => {
       if (!payrolls || payrolls.length === 0) { setData([]); setLoading(false); return; }
 
       // Aggregate by user
-      const userMap = new Map<string, { bruto: number; bpjs: number; netto: number; pph21: number; ptkpStatus: string; ptkpValue: number; pkp: number }>();
+      const userMap = new Map<string, { bruto: number; bpjsKt: number; pph21: number; ptkpStatus: string; ptkpValue: number }>();
       for (const p of payrolls) {
-        const existing = userMap.get(p.user_id) || { bruto: 0, bpjs: 0, netto: 0, pph21: 0, ptkpStatus: p.ptkp_status, ptkpValue: p.ptkp_value, pkp: 0 };
+        const existing = userMap.get(p.user_id) || { bruto: 0, bpjsKt: 0, pph21: 0, ptkpStatus: p.ptkp_status, ptkpValue: p.ptkp_value };
         existing.bruto += p.bruto_income;
-        existing.bpjs += p.bpjs_kesehatan + p.bpjs_ketenagakerjaan;
-        existing.netto += p.netto_income;
+        existing.bpjsKt += p.bpjs_ketenagakerjaan; // JHT + JP employee only
         existing.pph21 += p.pph21_monthly;
-        existing.pkp = Math.max(0, existing.netto - existing.ptkpValue);
         userMap.set(p.user_id, existing);
       }
 
@@ -92,6 +91,11 @@ const BuktiPotong1721A1 = () => {
       const summaries: EmployeeTaxSummary[] = userIds.map(uid => {
         const agg = userMap.get(uid)!;
         const prof = profileMap.get(uid);
+        // Tax netto uses Biaya Jabatan (5%, max 6jt) + JHT + JP employee
+        const biayaJabatan = Math.min(agg.bruto * 0.05, 6000000);
+        const totalPengurang = biayaJabatan + agg.bpjsKt;
+        const taxNetto = agg.bruto - totalPengurang;
+        const pkp = Math.max(0, taxNetto - agg.ptkpValue);
         return {
           user_id: uid,
           full_name: prof?.full_name || "Unknown",
@@ -101,10 +105,11 @@ const BuktiPotong1721A1 = () => {
           ptkp_status: agg.ptkpStatus,
           ptkp_value: agg.ptkpValue,
           total_bruto: agg.bruto,
-          total_bpjs: agg.bpjs,
-          total_netto: agg.netto,
+          total_bpjs_kt: agg.bpjsKt,
+          biaya_jabatan: biayaJabatan,
+          total_netto: taxNetto,
           total_pph21: agg.pph21,
-          pkp: agg.pkp,
+          pkp,
         };
       }).sort((a, b) => a.full_name.localeCompare(b.full_name));
 
@@ -169,13 +174,14 @@ const BuktiPotong1721A1 = () => {
       head: [["No", "Uraian", "Jumlah (Rp)"]],
       body: [
         ["1", "Penghasilan Bruto Setahun", formatRupiah(emp.total_bruto)],
-        ["2", "Pengurangan (BPJS Karyawan)", `(${formatRupiah(emp.total_bpjs)})`],
-        ["3", "Penghasilan Netto Setahun", formatRupiah(emp.total_netto)],
-        ["4", `PTKP (${emp.ptkp_status})`, `(${formatRupiah(emp.ptkp_value)})`],
-        ["5", "Penghasilan Kena Pajak (PKP)", formatRupiah(emp.pkp)],
-        ["6", "PPh 21 Terutang Setahun", formatRupiah(calculatePPh21Annual(emp.pkp))],
-        ["7", "PPh 21 Telah Dipotong", formatRupiah(emp.total_pph21)],
-        ["8", "Selisih (Kurang/Lebih Bayar)", formatRupiah(calculatePPh21Annual(emp.pkp) - emp.total_pph21)],
+        ["2", "Biaya Jabatan (5%, maks Rp 6.000.000)", `(${formatRupiah(emp.biaya_jabatan)})`],
+        ["3", "Iuran JHT + JP Karyawan", `(${formatRupiah(emp.total_bpjs_kt)})`],
+        ["4", "Penghasilan Netto Setahun", formatRupiah(emp.total_netto)],
+        ["5", `PTKP (${emp.ptkp_status})`, `(${formatRupiah(emp.ptkp_value)})`],
+        ["6", "Penghasilan Kena Pajak (PKP)", formatRupiah(emp.pkp)],
+        ["7", "PPh 21 Terutang Setahun", formatRupiah(calculatePPh21Annual(emp.pkp))],
+        ["8", "PPh 21 Telah Dipotong", formatRupiah(emp.total_pph21)],
+        ["9", "Selisih (Kurang/Lebih Bayar)", formatRupiah(calculatePPh21Annual(emp.pkp) - emp.total_pph21)],
       ],
       margin: { left: mx, right: mx },
       styles: { fontSize: 9, cellPadding: 3 },

@@ -48,6 +48,10 @@ const BPJS_KES_MAX_SALARY = 12000000;
 // BPJS JP max salary cap (2025)
 const BPJS_JP_MAX_SALARY = 10547400;
 
+// Biaya Jabatan (5% of bruto, max 6,000,000/year or 500,000/month)
+const BIAYA_JABATAN_RATE = 0.05;
+const BIAYA_JABATAN_MAX_YEARLY = 6000000;
+
 export function calculatePPh21Annual(pkp: number): number {
   if (pkp <= 0) return 0;
   let remainingPkp = pkp;
@@ -86,32 +90,56 @@ export function findTERRate(brutoMonthly: number, terRates: TERRate[]): TERRate 
 
 /**
  * Calculate PPh21 using TER method (Jan-Nov)
+ * No rounding — keeps decimal precision to match Excel
  */
 export function calculatePPh21TER(brutoMonthly: number, terRates: TERRate[]): { tax: number; rate: number; mode: "TER" } {
   const rateRow = findTERRate(brutoMonthly, terRates);
   if (!rateRow) return { tax: 0, rate: 0, mode: "TER" };
-  const tax = Math.round(brutoMonthly * (rateRow.tarif_efektif / 100));
+  const tax = brutoMonthly * (rateRow.tarif_efektif / 100);
   return { tax, rate: rateRow.tarif_efektif, mode: "TER" };
 }
 
 /**
- * Calculate PPh21 using December reconciliation (progressive rates)
+ * Calculate PPh21 December reconciliation using Indonesian tax regulation:
+ * 1. Penghasilan Bruto Setahun = sum of 12 months bruto
+ * 2. Pengurang = Biaya Jabatan (5%, max 6jt) + Iuran JHT Employee + Iuran JP Employee
+ * 3. Penghasilan Netto = Bruto - Pengurang
+ * 4. PKP = Netto - PTKP (no rounding)
+ * 5. PPh21 Terutang = progressive tax on PKP (rounded)
+ * 6. PPh21 Desember = Terutang - PPh21 Jan-Nov
  */
 export function calculatePPh21Reconciliation(
-  nettoMonthly: number,
+  yearlyBruto: number,
+  yearlyBpjsKtEmployee: number, // Sum of 12 months JHT + JP employee
   ptkpValue: number,
   totalPphJanNov: number
-): { tax: number; yearlyTax: number; adjustment: number; mode: "REKONSILIASI" } {
-  const yearlyNetto = nettoMonthly * 12;
+): { tax: number; yearlyTax: number; adjustment: number; mode: "REKONSILIASI"; biayaJabatan: number; yearlyNetto: number; pkp: number } {
+  // Biaya Jabatan: 5% of bruto, max 6,000,000/year
+  const biayaJabatan = Math.min(yearlyBruto * BIAYA_JABATAN_RATE, BIAYA_JABATAN_MAX_YEARLY);
+
+  // Pengurang = Biaya Jabatan + JHT Employee (2%) + JP Employee (1%)
+  const totalPengurang = biayaJabatan + yearlyBpjsKtEmployee;
+
+  // Netto Setahun
+  const yearlyNetto = yearlyBruto - totalPengurang;
+
+  // PKP — no rounding, exact value like Excel
   const pkp = Math.max(0, yearlyNetto - ptkpValue);
-  const pkpRounded = Math.floor(pkp / 1000) * 1000;
-  const yearlyTax = calculatePPh21Annual(pkpRounded);
+
+  // Progressive tax on exact PKP, Math.round on final result
+  const yearlyTax = calculatePPh21Annual(pkp);
+
+  // December adjustment (can be negative = refund)
   const adjustment = yearlyTax - totalPphJanNov;
+
   return {
-    tax: Math.max(0, adjustment), // December tax (could be refund if negative, but we floor at 0 for simplicity)
+    tax: adjustment,
     yearlyTax,
     adjustment,
     mode: "REKONSILIASI",
+    biayaJabatan,
+    yearlyNetto,
+    pkp,
   };
 }
 
@@ -132,6 +160,9 @@ export interface PayrollInput {
   totalPphJanNov?: number; // Sum of PPh21 paid Jan-Nov (for Dec reconciliation)
   // BPJS Kesehatan opt-out
   bpjsKesehatanEnabled?: boolean; // default true
+  // December reconciliation — actual yearly data from previous months
+  prevMonthsBruto?: number;   // Sum of Jan-Nov bruto_income
+  prevMonthsBpjsKt?: number;  // Sum of Jan-Nov bpjs_ketenagakerjaan (JHT+JP employee)
 }
 
 export interface PayrollResult {
@@ -167,10 +198,10 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     loanDeduction = 0, otherDeduction = 0, deductionNotes = "",
     month, terRates, totalPphJanNov = 0,
     bpjsKesehatanEnabled = true,
+    prevMonthsBruto = 0, prevMonthsBpjsKt = 0,
   } = input;
 
-  // Employee BPJS - based on basic salary only (not including allowances)
-  // Use Math.floor() on individual components to match Excel INT() behavior
+  // Employee BPJS - based on basic salary only
   const bpjsKesSalary = Math.min(basicSalary, BPJS_KES_MAX_SALARY);
   const bpjsJpSalary = Math.min(basicSalary, BPJS_JP_MAX_SALARY);
   const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KESEHATAN_RATE) : 0;
@@ -203,7 +234,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const hasTER = terRates && terRates.length > 0 && month;
 
   if (hasTER && month < 12) {
-    // Jan-Nov: Use TER
+    // Jan-Nov: Use TER — no rounding, keep decimal precision like Excel
     const terResult = calculatePPh21TER(brutoIncome, terRates);
     pph21Monthly = terResult.tax;
     pph21Mode = "TER";
@@ -212,24 +243,31 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     const annualNetto = nettoIncome * 12;
     pkp = Math.max(0, annualNetto - ptkpValue);
   } else if (hasTER && month === 12) {
-    // December: Reconciliation
-    const reconResult = calculatePPh21Reconciliation(nettoIncome, ptkpValue, totalPphJanNov);
-    pph21Monthly = reconResult.tax;
+    // December: Reconciliation using actual yearly data
+    // Yearly bruto = Jan-Nov actual + December current
+    const yearlyBruto = prevMonthsBruto + brutoIncome;
+    // Yearly JHT+JP employee = Jan-Nov actual + December current
+    const yearlyBpjsKt = prevMonthsBpjsKt + bpjsKetenagakerjaan;
+
+    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov);
+    pph21Monthly = reconResult.tax; // Can be negative (refund)
     pph21Mode = "REKONSILIASI";
     pph21TerRate = 0;
-    const annualNetto = nettoIncome * 12;
-    pkp = Math.max(0, annualNetto - ptkpValue);
+    pkp = reconResult.pkp;
   } else {
     // Fallback: Progressive (no TER data available)
-    const annualNetto = nettoIncome * 12;
+    // Use Biaya Jabatan formula for consistency
+    const annualBruto = brutoIncome * 12;
+    const annualBpjsKt = bpjsKetenagakerjaan * 12;
+    const biayaJabatan = Math.min(annualBruto * BIAYA_JABATAN_RATE, BIAYA_JABATAN_MAX_YEARLY);
+    const annualNetto = annualBruto - biayaJabatan - annualBpjsKt;
     pkp = Math.max(0, annualNetto - ptkpValue);
-    const pkpRounded = Math.floor(pkp / 1000) * 1000; // Round down to nearest 1000 like Excel ROUNDDOWN
-    pph21Monthly = calculatePPh21Monthly(pkpRounded);
+    pph21Monthly = calculatePPh21Monthly(pkp);
     pph21Mode = "progressive";
   }
 
-  // THP = Netto - PPh21 - Pinjaman - Potongan Lain
-  const takeHomePay = Math.round(nettoIncome - pph21Monthly - loanDeduction - otherDeduction);
+  // THP = Netto - PPh21 - Pinjaman - Potongan Lain (no rounding, keep decimal like Excel)
+  const takeHomePay = nettoIncome - pph21Monthly - loanDeduction - otherDeduction;
 
   return {
     basic_salary: basicSalary,

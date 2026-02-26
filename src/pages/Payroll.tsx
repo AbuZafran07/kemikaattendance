@@ -469,8 +469,10 @@ const Payroll = () => {
         });
       }
 
-      // For December reconciliation: fetch total PPh21 paid Jan-Nov for each employee
+      // For December reconciliation: fetch actual yearly data from Jan-Nov
       let pphJanNovMap = new Map<string, number>();
+      let brutoJanNovMap = new Map<string, number>();
+      let bpjsKtJanNovMap = new Map<string, number>();
       if (selectedMonth === 12) {
         // Get all period IDs for Jan-Nov of this year
         const { data: prevPeriods } = await supabase
@@ -480,11 +482,13 @@ const Payroll = () => {
         if (prevPeriods && prevPeriods.length > 0) {
           const prevPeriodIds = prevPeriods.map(p => p.id);
           const { data: prevPayrolls } = await supabase
-            .from("payroll").select("user_id, pph21_monthly")
+            .from("payroll").select("user_id, pph21_monthly, bruto_income, bpjs_ketenagakerjaan")
             .in("period_id", prevPeriodIds);
           
           for (const pp of prevPayrolls || []) {
             pphJanNovMap.set(pp.user_id, (pphJanNovMap.get(pp.user_id) || 0) + pp.pph21_monthly);
+            brutoJanNovMap.set(pp.user_id, (brutoJanNovMap.get(pp.user_id) || 0) + pp.bruto_income);
+            bpjsKtJanNovMap.set(pp.user_id, (bpjsKtJanNovMap.get(pp.user_id) || 0) + pp.bpjs_ketenagakerjaan);
           }
         }
       }
@@ -556,6 +560,8 @@ const Payroll = () => {
           terRates: terRatesForEmp,
           totalPphJanNov: pphJanNovMap.get(emp.id) || 0,
           bpjsKesehatanEnabled: emp.bpjs_kesehatan_enabled !== false,
+          prevMonthsBruto: brutoJanNovMap.get(emp.id) || 0,
+          prevMonthsBpjsKt: bpjsKtJanNovMap.get(emp.id) || 0,
         });
 
         return {

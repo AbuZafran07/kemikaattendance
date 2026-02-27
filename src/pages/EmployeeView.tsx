@@ -492,6 +492,7 @@ const EmployeeView = () => {
       let nearestOffice: {
         name: string;
         distance: number;
+        radius: number;
       } | null = null;
       for (const office of officeLocations) {
         const distance = calculateDistance(
@@ -504,7 +505,41 @@ const EmployeeView = () => {
           nearestOffice = {
             name: office.name,
             distance,
+            radius: office.radius,
           };
+        }
+      }
+
+      // Only validate location for non-hybrid workers
+      if (!isHybridWorker) {
+        let isWithinRadius = false;
+        for (const office of officeLocations) {
+          const distance = calculateDistance(
+            location.latitude,
+            location.longitude,
+            office.latitude,
+            office.longitude,
+          );
+          if (distance <= office.radius) {
+            isWithinRadius = true;
+            break;
+          }
+        }
+
+        if (!isWithinRadius) {
+          const distances = officeLocations
+            .map((office) => {
+              const d = calculateDistance(location.latitude, location.longitude, office.latitude, office.longitude);
+              return `${office.name}: ${Math.round(d)}m`;
+            })
+            .join(", ");
+          toast({
+            title: "Lokasi Tidak Valid",
+            description: `Anda tidak berada di area kantor manapun. Jarak: ${distances}`,
+            variant: "destructive",
+          });
+          setIsProcessing(false);
+          return;
         }
       }
 

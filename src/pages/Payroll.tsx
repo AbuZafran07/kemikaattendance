@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -783,7 +783,6 @@ const Payroll = () => {
     try {
       for (const item of payrollData) {
         await generateSlipPDF(item);
-        // Small delay to prevent browser blocking multiple downloads
         await new Promise(r => setTimeout(r, 300));
       }
       toast({ title: "Download Selesai", description: `${payrollData.length} slip gaji berhasil di-download.` });
@@ -791,6 +790,61 @@ const Payroll = () => {
       toast({ title: "Gagal Download", description: error.message, variant: "destructive" });
     } finally {
       setDownloadingAllPDF(false);
+    }
+  };
+
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const handleExportPayrollReport = async () => {
+    if (payrollData.length === 0) return;
+    setGeneratingReport(true);
+    try {
+      const { generatePayrollReportPDF } = await import("@/lib/payrollReportPdfGenerator");
+      await generatePayrollReportPDF(
+        payrollData.map((item) => ({
+          employee_name: item.employee_name || "-",
+          nik: item.nik || "-",
+          jabatan: item.jabatan || "-",
+          departemen: item.departemen || "-",
+          ptkp_status: item.ptkp_status,
+          basic_salary: item.basic_salary,
+          allowance: item.allowance,
+          tunjangan_komunikasi: item.tunjangan_komunikasi || 0,
+          tunjangan_jabatan: item.tunjangan_jabatan || 0,
+          tunjangan_operasional: item.tunjangan_operasional || 0,
+          tunjangan_kesehatan: item.tunjangan_kesehatan || 0,
+          overtime_total: item.overtime_total,
+          overtime_hours: item.overtime_hours,
+          thr: item.thr || 0,
+          insentif_kinerja: item.insentif_kinerja || 0,
+          insentif_penjualan: item.insentif_penjualan || 0,
+          bonus_tahunan: item.bonus_tahunan || 0,
+          bonus_lainnya: item.bonus_lainnya || 0,
+          pengembalian_employee: item.pengembalian_employee || 0,
+          bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
+          bpjs_kesehatan: item.bpjs_kesehatan,
+          loan_deduction: item.loan_deduction,
+          other_deduction: item.other_deduction,
+          pph21_monthly: item.pph21_monthly,
+          pph21_mode: item.pph21_mode,
+          pph21_ter_rate: item.pph21_ter_rate,
+          bruto_income: item.bruto_income,
+          netto_income: item.netto_income,
+          take_home_pay: item.take_home_pay,
+          bpjs_jht_employer: item.bpjs_jht_employer,
+          bpjs_jp_employer: item.bpjs_jp_employer,
+          bpjs_jkk_employer: item.bpjs_jkk_employer,
+          bpjs_jkm_employer: item.bpjs_jkm_employer,
+          bpjs_kes_employer: item.bpjs_kes_employer,
+        })),
+        selectedMonth,
+        selectedYear,
+        logo
+      );
+      toast({ title: "Export Berhasil", description: "Laporan payroll detail berhasil di-download." });
+    } catch (error: any) {
+      toast({ title: "Gagal Export", description: error.message, variant: "destructive" });
+    } finally {
+      setGeneratingReport(false);
     }
   };
 
@@ -838,6 +892,10 @@ const Payroll = () => {
               <>
                 <Button variant="outline" onClick={handleExportExcel} className="gap-2">
                   <FileSpreadsheet className="h-4 w-4" /> Export Excel
+                </Button>
+                <Button variant="outline" onClick={handleExportPayrollReport} disabled={generatingReport} className="gap-2">
+                  {generatingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                  Laporan PDF
                 </Button>
                 <Button variant="outline" onClick={handleDownloadAllPDF} disabled={downloadingAllPDF} className="gap-2">
                   {downloadingAllPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}

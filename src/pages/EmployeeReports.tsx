@@ -95,14 +95,20 @@ async function fetchEmployeeData(
   leave.forEach((l: any) => {
     const s = new Date(l.start_date) < rangeStart ? rangeStart : new Date(l.start_date);
     const e = new Date(l.end_date) > rangeEnd ? rangeEnd : new Date(l.end_date);
-    totalLeaveDays += Math.max(0, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      if (day !== 0 && day !== 6) totalLeaveDays++;
+    }
   });
 
   let totalTravelDays = 0;
   travel.forEach((t: any) => {
     const s = new Date(t.start_date) < rangeStart ? rangeStart : new Date(t.start_date);
     const e = new Date(t.end_date) > rangeEnd ? rangeEnd : new Date(t.end_date);
-    totalTravelDays += Math.max(0, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      if (day !== 0 && day !== 6) totalTravelDays++;
+    }
   });
 
   return {
@@ -139,6 +145,8 @@ function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate:
     const start = new Date(leave.start_date) < rangeStart ? rangeStart : new Date(leave.start_date);
     const end = new Date(leave.end_date) > rangeEnd ? rangeEnd : new Date(leave.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      if (day === 0 || day === 6) continue; // skip weekends
       formattedLeave.push({
         tanggal: format(new Date(d), "yyyy-MM-dd"),
         checkIn: "-", checkOut: "-", durasi: "-",
@@ -153,6 +161,8 @@ function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate:
     const start = new Date(travel.start_date) < rangeStart ? rangeStart : new Date(travel.start_date);
     const end = new Date(travel.end_date) > rangeEnd ? rangeEnd : new Date(travel.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      if (day === 0 || day === 6) continue; // skip weekends
       formattedTravel.push({
         tanggal: format(new Date(d), "yyyy-MM-dd"),
         checkIn: "-", checkOut: "-", durasi: "-",

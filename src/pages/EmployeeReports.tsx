@@ -73,15 +73,15 @@ async function fetchEmployeeData(
       .select("*")
       .eq("user_id", employeeId)
       .eq("status", "approved")
-      .gte("start_date", startDate)
-      .lte("end_date", endDate),
+      .lte("start_date", endDate)
+      .gte("end_date", startDate),
     supabase
       .from("business_travel_requests")
       .select("*")
       .eq("user_id", employeeId)
       .eq("status", "approved")
-      .gte("start_date", startDate)
-      .lte("end_date", endDate),
+      .lte("start_date", endDate)
+      .gte("end_date", startDate),
   ]);
 
   const attendance = attRes.data || [];

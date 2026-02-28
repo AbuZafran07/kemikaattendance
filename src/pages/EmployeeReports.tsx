@@ -54,11 +54,36 @@ interface EmployeeAttendanceData {
   isGood?: boolean;
 }
 
+async function fetchHolidayDates(): Promise<Set<string>> {
+  try {
+    const { data } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "overtime_policy")
+      .maybeSingle();
+    if (data?.value && typeof data.value === "object" && "holidays" in (data.value as any)) {
+      const holidays = (data.value as any).holidays || [];
+      return new Set(holidays.map((h: any) => h.date));
+    }
+  } catch (e) {
+    console.error("Error fetching holidays:", e);
+  }
+  return new Set();
+}
+
+function isNonWorkingDay(d: Date, holidayDates: Set<string>): boolean {
+  const day = d.getDay();
+  if (day === 0 || day === 6) return true;
+  const dateStr = format(d, "yyyy-MM-dd");
+  return holidayDates.has(dateStr);
+}
+
 async function fetchEmployeeData(
   employeeId: string,
   startDate: string,
   endDate: string,
-  employee: any
+  employee: any,
+  holidayDates: Set<string>
 ): Promise<EmployeeAttendanceData> {
   const [attRes, leaveRes, travelRes] = await Promise.all([
     supabase
@@ -96,8 +121,7 @@ async function fetchEmployeeData(
     const s = new Date(l.start_date) < rangeStart ? rangeStart : new Date(l.start_date);
     const e = new Date(l.end_date) > rangeEnd ? rangeEnd : new Date(l.end_date);
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay();
-      if (day !== 0 && day !== 6) totalLeaveDays++;
+      if (!isNonWorkingDay(new Date(d), holidayDates)) totalLeaveDays++;
     }
   });
 
@@ -106,8 +130,7 @@ async function fetchEmployeeData(
     const s = new Date(t.start_date) < rangeStart ? rangeStart : new Date(t.start_date);
     const e = new Date(t.end_date) > rangeEnd ? rangeEnd : new Date(t.end_date);
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay();
-      if (day !== 0 && day !== 6) totalTravelDays++;
+      if (!isNonWorkingDay(new Date(d), holidayDates)) totalTravelDays++;
     }
   });
 
@@ -127,7 +150,7 @@ async function fetchEmployeeData(
   };
 }
 
-function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate: string) {
+function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate: string, holidayDates: Set<string>) {
   const rangeStart = new Date(startDate);
   const rangeEnd = new Date(endDate);
 
@@ -145,8 +168,7 @@ function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate:
     const start = new Date(leave.start_date) < rangeStart ? rangeStart : new Date(leave.start_date);
     const end = new Date(leave.end_date) > rangeEnd ? rangeEnd : new Date(leave.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay();
-      if (day === 0 || day === 6) continue; // skip weekends
+      if (isNonWorkingDay(new Date(d), holidayDates)) continue;
       formattedLeave.push({
         tanggal: format(new Date(d), "yyyy-MM-dd"),
         checkIn: "-", checkOut: "-", durasi: "-",
@@ -161,8 +183,7 @@ function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate:
     const start = new Date(travel.start_date) < rangeStart ? rangeStart : new Date(travel.start_date);
     const end = new Date(travel.end_date) > rangeEnd ? rangeEnd : new Date(travel.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay();
-      if (day === 0 || day === 6) continue; // skip weekends
+      if (isNonWorkingDay(new Date(d), holidayDates)) continue;
       formattedTravel.push({
         tanggal: format(new Date(d), "yyyy-MM-dd"),
         checkIn: "-", checkOut: "-", durasi: "-",
@@ -249,6 +270,7 @@ export default function EmployeeReports() {
     setLoading(true);
     setProgress(0);
     try {
+      const holidayDates = await fetchHolidayDates();
       const targetEmployees = getTargetEmployees();
       const total = targetEmployees.length;
 
@@ -261,8 +283,8 @@ export default function EmployeeReports() {
           setProgressText(`Mengambil data ${emp.full_name} (${i + 1}/${total})`);
           setProgress(((i + 1) / (total + (enableAI ? total : 0))) * 100);
 
-          const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
-          const records = formatRecords(empData, startDate, endDate);
+          const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp, holidayDates);
+          const records = formatRecords(empData, startDate, endDate, holidayDates);
 
           records.forEach((r) => {
             allRows.push({
@@ -287,7 +309,7 @@ export default function EmployeeReports() {
             setProgressText(`Generating AI insight: ${emp.full_name} (${i + 1}/${total})`);
             setProgress(((total + i + 1) / (total * 2)) * 100);
 
-            const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
+            const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp, holidayDates);
             const { insight, isGood } = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
 
             insightRows.push({
@@ -372,8 +394,8 @@ export default function EmployeeReports() {
         // Single employee
         const emp = targetEmployees[0];
         setProgressText(`Mengambil data ${emp.full_name}`);
-        const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
-        const records = formatRecords(empData, startDate, endDate);
+        const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp, holidayDates);
+        const records = formatRecords(empData, startDate, endDate, holidayDates);
 
         if (records.length === 0) {
           toast({ title: "Tidak Ada Data", description: "Tidak ada data kehadiran untuk periode ini", variant: "destructive" });
@@ -427,6 +449,7 @@ export default function EmployeeReports() {
     setLoading(true);
     setProgress(0);
     try {
+      const holidayDates = await fetchHolidayDates();
       const targetEmployees = getTargetEmployees();
       const total = targetEmployees.length;
       const doc = new jsPDF();
@@ -445,8 +468,8 @@ export default function EmployeeReports() {
 
         if (i > 0) doc.addPage();
 
-        const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
-        const records = formatRecords(empData, startDate, endDate);
+        const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp, holidayDates);
+        const records = formatRecords(empData, startDate, endDate, holidayDates);
         const s = empData.summary;
 
         // Header

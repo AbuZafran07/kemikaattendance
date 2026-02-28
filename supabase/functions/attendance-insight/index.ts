@@ -13,7 +13,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const prompt = `Kamu adalah HR analyst profesional. Berdasarkan data kehadiran karyawan berikut, berikan insight singkat dan saran konstruktif dalam Bahasa Indonesia (maksimal 3-4 kalimat). Fokus pada pola kehadiran, keterlambatan, dan area perbaikan. Jangan gunakan bullet point, cukup paragraf singkat.
+    const prompt = `Kamu adalah HR analyst profesional. Berdasarkan data kehadiran karyawan berikut, berikan insight singkat dan saran konstruktif dalam Bahasa Indonesia (maksimal 3 kalimat pendek saja, total tidak lebih dari 150 kata). Pastikan setiap kalimat SELESAI dengan sempurna dan berakhir dengan tanda titik. Fokus pada pola kehadiran, keterlambatan, dan area perbaikan. Jangan gunakan bullet point, cukup paragraf singkat.
 
 Nama Karyawan: ${employeeName}
 Data Ringkasan:

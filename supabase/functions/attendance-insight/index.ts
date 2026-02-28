@@ -13,7 +13,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const prompt = `Kamu adalah HR analyst profesional. Berdasarkan data kehadiran karyawan berikut, berikan saran konstruktif yang ditujukan LANGSUNG KEPADA karyawan tersebut dalam Bahasa Indonesia (maksimal 3 kalimat pendek saja, total tidak lebih dari 150 kata). Gunakan kata "Anda" untuk menyapa karyawan. Pastikan setiap kalimat SELESAI dengan sempurna dan berakhir dengan tanda titik. Fokus pada pola kehadiran, keterlambatan, dan area perbaikan. Jangan gunakan bullet point, cukup paragraf singkat.
+    const prompt = `Kamu adalah HR analyst profesional. Berdasarkan data kehadiran karyawan berikut, lakukan 2 hal:
+
+1. Berikan saran konstruktif yang ditujukan LANGSUNG KEPADA karyawan tersebut dalam Bahasa Indonesia (maksimal 3 kalimat pendek saja, total tidak lebih dari 150 kata). Gunakan kata "Anda" untuk menyapa karyawan. Pastikan setiap kalimat SELESAI dengan sempurna dan berakhir dengan tanda titik. Fokus pada pola kehadiran, keterlambatan, dan area perbaikan. Jangan gunakan bullet point, cukup paragraf singkat.
+
+2. Tentukan apakah kehadiran karyawan ini BAGUS atau tidak. Kehadiran dianggap BAGUS jika: tidak ada atau sangat sedikit keterlambatan, tidak ada atau sangat sedikit pulang cepat, dan jam kerja cukup. 
+
+PENTING: Respond dalam format JSON SAJA, tanpa markdown code block, tanpa backtick. Format:
+{"insight":"isi saran disini","isGood":true}
+
+Jika kehadiran bagus, isGood = true. Jika tidak, isGood = false.
 
 Nama Karyawan: ${employeeName}
 Data Ringkasan:
@@ -34,7 +43,7 @@ Data Ringkasan:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
         messages: [
-          { role: "system", content: "Kamu adalah HR analyst profesional Indonesia yang memberikan saran kehadiran langsung kepada karyawan secara ringkas dan konstruktif. Gunakan kata 'Anda' untuk menyapa karyawan." },
+          { role: "system", content: "Kamu adalah HR analyst profesional Indonesia yang memberikan saran kehadiran langsung kepada karyawan secara ringkas dan konstruktif. Gunakan kata 'Anda' untuk menyapa karyawan. SELALU respond dalam format JSON murni tanpa markdown." },
           { role: "user", content: prompt },
         ],
       }),
@@ -55,9 +64,25 @@ Data Ringkasan:
     }
 
     const data = await response.json();
-    const insight = data.choices?.[0]?.message?.content || "Tidak dapat menghasilkan insight.";
+    const rawContent = data.choices?.[0]?.message?.content || "";
+    
+    // Try to parse JSON response
+    let insight = "Tidak dapat menghasilkan insight.";
+    let isGood = false;
+    
+    try {
+      // Clean potential markdown code blocks
+      const cleaned = rawContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      insight = parsed.insight || insight;
+      isGood = parsed.isGood === true;
+    } catch {
+      // Fallback: use raw text as insight
+      insight = rawContent || insight;
+      isGood = false;
+    }
 
-    return new Response(JSON.stringify({ insight }), {
+    return new Response(JSON.stringify({ insight, isGood }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

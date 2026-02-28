@@ -14,6 +14,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import logoImage from "@/assets/logo.png";
+import goldStarImage from "@/assets/gold-star.png";
 import { formatAttendanceStatus } from "@/lib/statusUtils";
 import logger from "@/lib/logger";
 import { Switch } from "@/components/ui/switch";
@@ -455,20 +456,14 @@ export default function EmployeeReports() {
           setProgress(((total + i + 1) / (total * 2)) * 100);
           const { insight, isGood } = await getAIInsight(emp.full_name, s, `${startDate} s/d ${endDate}`);
 
-          // Star icon for good attendance
+          // Star image at top-right corner for good attendance
           if (isGood) {
-            doc.setFontSize(12);
-            doc.setTextColor(218, 165, 32);
-            doc.text("★", 14, tableStartY + 4);
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 135, 81);
-            doc.text("Saran:", 20, tableStartY + 4);
-          } else {
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 135, 81);
-            doc.text("Saran:", 16, tableStartY + 4);
+            try {
+              const starBase64 = await loadImageAsBase64(goldStarImage);
+              doc.addImage(starBase64, "PNG", 180, 10, 18, 18);
+            } catch (e) {
+              logger.error("Failed to load star image", e);
+            }
           }
 
           const insightLines = doc.splitTextToSize(insight, 175);
@@ -476,21 +471,10 @@ export default function EmployeeReports() {
           doc.setFillColor(240, 249, 244);
           doc.roundedRect(14, tableStartY - 2, 182, boxHeight, 2, 2, "F");
 
-          // Re-draw text on top of box
-          if (isGood) {
-            doc.setFontSize(12);
-            doc.setTextColor(218, 165, 32);
-            doc.text("★", 14, tableStartY + 4);
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 135, 81);
-            doc.text("Saran:", 20, tableStartY + 4);
-          } else {
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 135, 81);
-            doc.text("Saran:", 16, tableStartY + 4);
-          }
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 135, 81);
+          doc.text("Saran:", 16, tableStartY + 4);
           doc.setFont("helvetica", "normal");
           doc.setTextColor(50, 50, 50);
           doc.text(insightLines, 16, tableStartY + 10);

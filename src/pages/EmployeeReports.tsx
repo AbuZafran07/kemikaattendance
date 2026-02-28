@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, FileSpreadsheet, FileText, Loader2, ArrowLeft } from "lucide-react";
+import { FileSpreadsheet, FileText, Loader2, ArrowLeft, Sparkles, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { exportToExcelFile } from "@/lib/excelExport";
 import jsPDF from "jspdf";
@@ -16,6 +16,8 @@ import { format } from "date-fns";
 import logoImage from "@/assets/logo.png";
 import { formatAttendanceStatus } from "@/lib/statusUtils";
 import logger from "@/lib/logger";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -34,6 +36,152 @@ const loadImageAsBase64 = (src: string): Promise<string> => {
   });
 };
 
+interface EmployeeAttendanceData {
+  employee: { id: string; full_name: string; nik: string; departemen: string };
+  attendance: any[];
+  leave: any[];
+  travel: any[];
+  summary: {
+    hadir: number;
+    terlambat: number;
+    pulangCepat: number;
+    cuti: number;
+    dinas: number;
+    totalDuration: number;
+  };
+  insight?: string;
+}
+
+async function fetchEmployeeData(
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+  employee: any
+): Promise<EmployeeAttendanceData> {
+  const [attRes, leaveRes, travelRes] = await Promise.all([
+    supabase
+      .from("attendance")
+      .select("*")
+      .eq("user_id", employeeId)
+      .gte("check_in_time", `${startDate}T00:00:00`)
+      .lte("check_in_time", `${endDate}T23:59:59`)
+      .order("check_in_time", { ascending: false }),
+    supabase
+      .from("leave_requests")
+      .select("*")
+      .eq("user_id", employeeId)
+      .eq("status", "approved")
+      .gte("start_date", startDate)
+      .lte("end_date", endDate),
+    supabase
+      .from("business_travel_requests")
+      .select("*")
+      .eq("user_id", employeeId)
+      .eq("status", "approved")
+      .gte("start_date", startDate)
+      .lte("end_date", endDate),
+  ]);
+
+  const attendance = attRes.data || [];
+  const leave = leaveRes.data || [];
+  const travel = travelRes.data || [];
+
+  let totalLeaveDays = 0;
+  leave.forEach((l: any) => {
+    const s = new Date(l.start_date);
+    const e = new Date(l.end_date);
+    totalLeaveDays += Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  });
+
+  let totalTravelDays = 0;
+  travel.forEach((t: any) => {
+    const s = new Date(t.start_date);
+    const e = new Date(t.end_date);
+    totalTravelDays += Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  });
+
+  return {
+    employee,
+    attendance,
+    leave,
+    travel,
+    summary: {
+      hadir: attendance.filter((r) => r.status === "hadir").length,
+      terlambat: attendance.filter((r) => r.status === "terlambat").length,
+      pulangCepat: attendance.filter((r) => r.status === "pulang_cepat").length,
+      cuti: totalLeaveDays,
+      dinas: totalTravelDays,
+      totalDuration: attendance.reduce((sum, r) => sum + (r.duration_minutes || 0), 0),
+    },
+  };
+}
+
+function formatRecords(data: EmployeeAttendanceData) {
+  const formattedAttendance = data.attendance.map((record: any) => ({
+    tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
+    checkIn: format(new Date(record.check_in_time), "HH:mm:ss"),
+    checkOut: record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
+    durasi: record.duration_minutes ? `${record.duration_minutes} min` : "-",
+    status: formatAttendanceStatus(record.status),
+    keterangan: record.notes || "-",
+  }));
+
+  const formattedLeave: any[] = [];
+  data.leave.forEach((leave: any) => {
+    const start = new Date(leave.start_date);
+    const end = new Date(leave.end_date);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      formattedLeave.push({
+        tanggal: format(new Date(d), "yyyy-MM-dd"),
+        checkIn: "-", checkOut: "-", durasi: "-",
+        status: formatAttendanceStatus(leave.leave_type),
+        keterangan: leave.reason || "-",
+      });
+    }
+  });
+
+  const formattedTravel: any[] = [];
+  data.travel.forEach((travel: any) => {
+    const start = new Date(travel.start_date);
+    const end = new Date(travel.end_date);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      formattedTravel.push({
+        tanggal: format(new Date(d), "yyyy-MM-dd"),
+        checkIn: "-", checkOut: "-", durasi: "-",
+        status: formatAttendanceStatus("dinas"),
+        keterangan: `${travel.destination} - ${travel.purpose}`,
+      });
+    }
+  });
+
+  return [...formattedAttendance, ...formattedLeave, ...formattedTravel]
+    .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+}
+
+async function getAIInsight(
+  employeeName: string,
+  summary: EmployeeAttendanceData["summary"],
+  periode: string
+): Promise<string> {
+  try {
+    const { data, error } = await supabase.functions.invoke("attendance-insight", {
+      body: {
+        employeeName,
+        summary: {
+          ...summary,
+          totalJamKerja: `${Math.floor(summary.totalDuration / 60)} jam ${summary.totalDuration % 60} menit`,
+          periode,
+        },
+      },
+    });
+    if (error) throw error;
+    return data?.insight || "Tidak dapat menghasilkan insight.";
+  } catch (e) {
+    logger.error("AI insight error:", e);
+    return "Insight tidak tersedia.";
+  }
+}
+
 export default function EmployeeReports() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -42,6 +190,9 @@ export default function EmployeeReports() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [enableAI, setEnableAI] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [progressText, setProgressText] = useState("");
 
   useEffect(() => {
     fetchEmployees();
@@ -52,312 +203,287 @@ export default function EmployeeReports() {
       .from("profiles")
       .select("id, full_name, nik, departemen")
       .order("full_name");
-    
-    if (data) {
-      setEmployees(data);
-    }
+    if (data) setEmployees(data);
+  };
+
+  const isAllEmployees = selectedEmployee === "all";
+
+  const getTargetEmployees = () => {
+    if (isAllEmployees) return employees;
+    const emp = employees.find((e) => e.id === selectedEmployee);
+    return emp ? [emp] : [];
   };
 
   const exportToExcel = async () => {
     if (!selectedEmployee || !startDate || !endDate) {
-      toast({
-        title: "Data Belum Lengkap",
-        description: "Pilih karyawan dan rentang tanggal terlebih dahulu",
-        variant: "destructive",
-      });
+      toast({ title: "Data Belum Lengkap", description: "Pilih karyawan dan rentang tanggal", variant: "destructive" });
       return;
     }
 
     setLoading(true);
+    setProgress(0);
     try {
-      // Get employee info
-      const employee = employees.find(e => e.id === selectedEmployee);
-      
-      // Fetch attendance data
-      const { data: attendanceData, error } = await supabase
-        .from("attendance")
-        .select("*")
-        .eq("user_id", selectedEmployee)
-        .gte("check_in_time", `${startDate}T00:00:00`)
-        .lte("check_in_time", `${endDate}T23:59:59`)
-        .order("check_in_time", { ascending: false });
+      const targetEmployees = getTargetEmployees();
+      const total = targetEmployees.length;
 
-      if (error) throw error;
+      if (isAllEmployees) {
+        // All employees: one Excel file with multiple sheets or combined data
+        const allRows: Record<string, any>[] = [];
 
-      // Fetch approved leave requests for this employee
-      const { data: leaveData } = await supabase
-        .from("leave_requests")
-        .select("*")
-        .eq("user_id", selectedEmployee)
-        .eq("status", "approved")
-        .gte("start_date", startDate)
-        .lte("end_date", endDate);
+        for (let i = 0; i < total; i++) {
+          const emp = targetEmployees[i];
+          setProgressText(`Mengambil data ${emp.full_name} (${i + 1}/${total})`);
+          setProgress(((i + 1) / (total + (enableAI ? total : 0))) * 100);
 
-      // Fetch approved business travel requests for this employee
-      const { data: travelData } = await supabase
-        .from("business_travel_requests")
-        .select("*")
-        .eq("user_id", selectedEmployee)
-        .eq("status", "approved")
-        .gte("start_date", startDate)
-        .lte("end_date", endDate);
+          const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
+          const records = formatRecords(empData);
 
-      // Format attendance data
-      const formattedAttendance = (attendanceData || []).map((record: any) => ({
-        Tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
-        "Check In": format(new Date(record.check_in_time), "HH:mm:ss"),
-        "Check Out": record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
-        "Durasi (menit)": record.duration_minutes || "-",
-        Status: formatAttendanceStatus(record.status),
-        Keterangan: record.notes || "-",
-      }));
-
-      // Format leave data as attendance entries
-      const formattedLeave: any[] = [];
-      (leaveData || []).forEach((leave: any) => {
-        const start = new Date(leave.start_date);
-        const end = new Date(leave.end_date);
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          formattedLeave.push({
-            Tanggal: format(new Date(d), "yyyy-MM-dd"),
-            "Check In": "-",
-            "Check Out": "-",
-            "Durasi (menit)": "-",
-            Status: formatAttendanceStatus(leave.leave_type),
-            Keterangan: leave.reason || "-",
+          records.forEach((r) => {
+            allRows.push({
+              "Nama Karyawan": emp.full_name,
+              NIK: emp.nik,
+              Departemen: emp.departemen,
+              Tanggal: r.tanggal,
+              "Check In": r.checkIn,
+              "Check Out": r.checkOut,
+              Durasi: r.durasi,
+              Status: r.status,
+              Keterangan: r.keterangan,
+            });
           });
         }
-      });
 
-      // Format business travel data as attendance entries
-      const formattedTravel: any[] = [];
-      (travelData || []).forEach((travel: any) => {
-        const start = new Date(travel.start_date);
-        const end = new Date(travel.end_date);
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          formattedTravel.push({
-            Tanggal: format(new Date(d), "yyyy-MM-dd"),
-            "Check In": "-",
-            "Check Out": "-",
-            "Durasi (menit)": "-",
-            Status: formatAttendanceStatus("dinas"),
-            Keterangan: `${travel.destination} - ${travel.purpose}`,
+        // AI insights sheet data
+        let insightRows: Record<string, any>[] = [];
+        if (enableAI) {
+          for (let i = 0; i < total; i++) {
+            const emp = targetEmployees[i];
+            setProgressText(`Generating AI insight: ${emp.full_name} (${i + 1}/${total})`);
+            setProgress(((total + i + 1) / (total * 2)) * 100);
+
+            const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
+            const insight = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+
+            insightRows.push({
+              "Nama Karyawan": emp.full_name,
+              NIK: emp.nik,
+              Departemen: emp.departemen,
+              "Hadir Tepat Waktu": empData.summary.hadir,
+              Terlambat: empData.summary.terlambat,
+              "Pulang Cepat": empData.summary.pulangCepat,
+              Cuti: empData.summary.cuti,
+              Dinas: empData.summary.dinas,
+              "Total Jam Kerja": `${Math.floor(empData.summary.totalDuration / 60)}j ${empData.summary.totalDuration % 60}m`,
+              "AI Insight & Saran": insight,
+            });
+          }
+        }
+
+        // Build Excel with ExcelJS for multiple sheets
+        const ExcelJS = await import("exceljs");
+        const workbook = new ExcelJS.Workbook();
+
+        // Sheet 1: Attendance data
+        const ws1 = workbook.addWorksheet("Rekap Kehadiran");
+        ws1.addRow([`Laporan Kehadiran Seluruh Karyawan`]);
+        ws1.addRow([`Periode: ${startDate} s/d ${endDate}`]);
+        ws1.addRow([]);
+
+        if (allRows.length > 0) {
+          const cols = Object.keys(allRows[0]);
+          const headerRow = ws1.addRow(cols);
+          headerRow.font = { bold: true };
+          headerRow.eachCell((cell) => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF008751" } };
+            cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+          });
+          allRows.forEach((row) => ws1.addRow(cols.map((c) => row[c])));
+          ws1.columns.forEach((col) => {
+            let maxLen = 10;
+            col.eachCell?.({ includeEmpty: false }, (cell) => {
+              const len = String(cell.value ?? "").length;
+              if (len > maxLen) maxLen = len;
+            });
+            col.width = Math.min(maxLen + 2, 40);
           });
         }
-      });
 
-      // Combine and sort all data by date
-      const allData = [...formattedAttendance, ...formattedLeave, ...formattedTravel]
-        .sort((a, b) => b.Tanggal.localeCompare(a.Tanggal));
+        // Sheet 2: AI Insights (if enabled)
+        if (enableAI && insightRows.length > 0) {
+          const ws2 = workbook.addWorksheet("AI Insight & Saran");
+          ws2.addRow(["AI Insight Kehadiran Karyawan"]);
+          ws2.addRow([`Periode: ${startDate} s/d ${endDate}`]);
+          ws2.addRow([]);
 
-      if (allData.length === 0) {
-        toast({
-          title: "Tidak Ada Data",
-          description: "Tidak ada data kehadiran untuk periode yang dipilih",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
+          const cols2 = Object.keys(insightRows[0]);
+          const headerRow2 = ws2.addRow(cols2);
+          headerRow2.font = { bold: true };
+          headerRow2.eachCell((cell) => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF008751" } };
+            cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+          });
+          insightRows.forEach((row) => ws2.addRow(cols2.map((c) => row[c])));
+          ws2.columns.forEach((col) => {
+            let maxLen = 10;
+            col.eachCell?.({ includeEmpty: false }, (cell) => {
+              const len = String(cell.value ?? "").length;
+              if (len > maxLen) maxLen = len;
+            });
+            col.width = Math.min(maxLen + 2, 60);
+          });
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Kehadiran_Seluruh_Karyawan_${startDate}_${endDate}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Single employee
+        const emp = targetEmployees[0];
+        setProgressText(`Mengambil data ${emp.full_name}`);
+        const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
+        const records = formatRecords(empData);
+
+        if (records.length === 0) {
+          toast({ title: "Tidak Ada Data", description: "Tidak ada data kehadiran untuk periode ini", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+
+        const excelData = records.map((r) => ({
+          Tanggal: r.tanggal,
+          "Check In": r.checkIn,
+          "Check Out": r.checkOut,
+          "Durasi (menit)": r.durasi,
+          Status: r.status,
+          Keterangan: r.keterangan,
+        }));
+
+        const headerRows = [
+          [`Laporan Kehadiran: ${emp.full_name}`],
+          [`NIK: ${emp.nik}`],
+          [`Departemen: ${emp.departemen}`],
+          [`Periode: ${startDate} s/d ${endDate}`],
+        ];
+
+        if (enableAI) {
+          setProgressText("Generating AI insight...");
+          const insight = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+          headerRows.push([""]);
+          headerRows.push([`AI Insight: ${insight}`]);
+        }
+
+        await exportToExcelFile(excelData, "Kehadiran", `Kehadiran_${emp.full_name}_${startDate}_${endDate}.xlsx`, headerRows);
       }
 
-      // Create workbook and download
-      await exportToExcelFile(
-        allData,
-        "Kehadiran",
-        `Kehadiran_${employee?.full_name}_${startDate}_${endDate}.xlsx`,
-        [
-          [`Laporan Kehadiran: ${employee?.full_name}`],
-          [`NIK: ${employee?.nik}`],
-          [`Departemen: ${employee?.departemen}`],
-          [`Periode: ${startDate} s/d ${endDate}`],
-        ]
-      );
-
-      toast({
-        title: "Export Berhasil",
-        description: "File Excel berhasil diunduh",
-      });
+      toast({ title: "Export Berhasil", description: "File Excel berhasil diunduh" });
     } catch (error: any) {
       logger.error("Export error:", error);
-      toast({
-        title: "Export Gagal",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Export Gagal", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
+      setProgress(0);
+      setProgressText("");
     }
   };
 
   const exportToPDF = async () => {
     if (!selectedEmployee || !startDate || !endDate) {
-      toast({
-        title: "Data Belum Lengkap",
-        description: "Pilih karyawan dan rentang tanggal terlebih dahulu",
-        variant: "destructive",
-      });
+      toast({ title: "Data Belum Lengkap", description: "Pilih karyawan dan rentang tanggal", variant: "destructive" });
       return;
     }
 
     setLoading(true);
+    setProgress(0);
     try {
-      // Get employee info
-      const employee = employees.find(e => e.id === selectedEmployee);
-      
-      // Fetch attendance data
-      const { data: attendanceData, error } = await supabase
-        .from("attendance")
-        .select("*")
-        .eq("user_id", selectedEmployee)
-        .gte("check_in_time", `${startDate}T00:00:00`)
-        .lte("check_in_time", `${endDate}T23:59:59`)
-        .order("check_in_time", { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch approved leave requests for this employee
-      const { data: leaveData } = await supabase
-        .from("leave_requests")
-        .select("*")
-        .eq("user_id", selectedEmployee)
-        .eq("status", "approved")
-        .gte("start_date", startDate)
-        .lte("end_date", endDate);
-
-      // Fetch approved business travel requests for this employee
-      const { data: travelData } = await supabase
-        .from("business_travel_requests")
-        .select("*")
-        .eq("user_id", selectedEmployee)
-        .eq("status", "approved")
-        .gte("start_date", startDate)
-        .lte("end_date", endDate);
-
-      // Format attendance data for table
-      const formattedAttendance = (attendanceData || []).map((record: any) => ({
-        tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
-        checkIn: format(new Date(record.check_in_time), "HH:mm:ss"),
-        checkOut: record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
-        durasi: record.duration_minutes ? `${record.duration_minutes} min` : "-",
-        status: formatAttendanceStatus(record.status),
-        keterangan: record.notes || "-",
-      }));
-
-      // Format leave data as attendance entries
-      const formattedLeave: any[] = [];
-      (leaveData || []).forEach((leave: any) => {
-        const start = new Date(leave.start_date);
-        const end = new Date(leave.end_date);
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          formattedLeave.push({
-            tanggal: format(new Date(d), "yyyy-MM-dd"),
-            checkIn: "-",
-            checkOut: "-",
-            durasi: "-",
-            status: formatAttendanceStatus(leave.leave_type),
-            keterangan: leave.reason || "-",
-          });
-        }
-      });
-
-      // Format business travel data as attendance entries
-      const formattedTravel: any[] = [];
-      (travelData || []).forEach((travel: any) => {
-        const start = new Date(travel.start_date);
-        const end = new Date(travel.end_date);
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          formattedTravel.push({
-            tanggal: format(new Date(d), "yyyy-MM-dd"),
-            checkIn: "-",
-            checkOut: "-",
-            durasi: "-",
-            status: formatAttendanceStatus("dinas"),
-            keterangan: `${travel.destination} - ${travel.purpose}`,
-          });
-        }
-      });
-
-      // Combine and sort all data by date
-      const allData = [...formattedAttendance, ...formattedLeave, ...formattedTravel]
-        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-
-      if (allData.length === 0) {
-        toast({
-          title: "Tidak Ada Data",
-          description: "Tidak ada data kehadiran untuk periode yang dipilih",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Create PDF
+      const targetEmployees = getTargetEmployees();
+      const total = targetEmployees.length;
       const doc = new jsPDF();
-      
-      // Add logo
+      let logoBase64: string | null = null;
+
       try {
-        const logoBase64 = await loadImageAsBase64(logoImage);
-        doc.addImage(logoBase64, "PNG", 14, 10, 30, 12);
+        logoBase64 = await loadImageAsBase64(logoImage);
       } catch (e) {
         logger.debug("Could not load logo");
       }
-      
-      // Title and employee info
-      doc.setFontSize(16);
-      doc.text("Laporan Kehadiran Karyawan", 50, 18);
-      
-      doc.setFontSize(10);
-      doc.text(`Nama: ${employee?.full_name}`, 14, 30);
-      doc.text(`NIK: ${employee?.nik}`, 14, 35);
-      doc.text(`Departemen: ${employee?.departemen}`, 14, 40);
-      doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 45);
 
-      // Summary statistics
-      const totalHadir = (attendanceData || []).filter(r => r.status === 'hadir').length;
-      const totalTerlambat = (attendanceData || []).filter(r => r.status === 'terlambat').length;
-      const totalPulangCepat = (attendanceData || []).filter(r => r.status === 'pulang_cepat').length;
-      const totalCuti = formattedLeave.length;
-      const totalDinas = formattedTravel.length;
-      const totalDuration = (attendanceData || []).reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
-      
-      doc.text(`Total Kehadiran: ${(attendanceData || []).length} hari | Cuti: ${totalCuti} hari | Dinas: ${totalDinas} hari`, 14, 55);
-      doc.text(`Hadir Tepat Waktu: ${totalHadir} | Terlambat: ${totalTerlambat} | Pulang Cepat: ${totalPulangCepat}`, 14, 60);
-      doc.text(`Total Jam Kerja: ${Math.floor(totalDuration / 60)} jam ${totalDuration % 60} menit`, 14, 65);
+      for (let i = 0; i < total; i++) {
+        const emp = targetEmployees[i];
+        setProgressText(`Memproses ${emp.full_name} (${i + 1}/${total})`);
+        setProgress(((i + 1) / (total + (enableAI ? total : 0))) * 100);
 
-      // Table
-      const tableData = allData.map((record: any) => [
-        record.tanggal,
-        record.checkIn,
-        record.checkOut,
-        record.durasi,
-        record.status,
-        record.keterangan,
-      ]);
+        if (i > 0) doc.addPage();
 
-      autoTable(doc, {
-        head: [["Tanggal", "Check In", "Check Out", "Durasi", "Status", "Keterangan"]],
-        body: tableData,
-        startY: 75,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [0, 135, 81] },
-      });
+        const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
+        const records = formatRecords(empData);
+        const s = empData.summary;
 
-      // Download
-      doc.save(`Kehadiran_${employee?.full_name}_${startDate}_${endDate}.pdf`);
+        // Header
+        if (logoBase64) doc.addImage(logoBase64, "PNG", 14, 10, 30, 12);
+        doc.setFontSize(16);
+        doc.text("Laporan Kehadiran Karyawan", 50, 18);
 
-      toast({
-        title: "Export Berhasil",
-        description: "File PDF berhasil diunduh",
-      });
+        doc.setFontSize(10);
+        doc.text(`Nama: ${emp.full_name}`, 14, 30);
+        doc.text(`NIK: ${emp.nik}`, 14, 35);
+        doc.text(`Departemen: ${emp.departemen}`, 14, 40);
+        doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 45);
+
+        doc.text(`Total Kehadiran: ${empData.attendance.length} hari | Cuti: ${s.cuti} hari | Dinas: ${s.dinas} hari`, 14, 55);
+        doc.text(`Hadir Tepat Waktu: ${s.hadir} | Terlambat: ${s.terlambat} | Pulang Cepat: ${s.pulangCepat}`, 14, 60);
+        doc.text(`Total Jam Kerja: ${Math.floor(s.totalDuration / 60)} jam ${s.totalDuration % 60} menit`, 14, 65);
+
+        let tableStartY = 75;
+
+        // AI Insight
+        if (enableAI) {
+          setProgressText(`AI insight: ${emp.full_name} (${i + 1}/${total})`);
+          setProgress(((total + i + 1) / (total * 2)) * 100);
+          const insight = await getAIInsight(emp.full_name, s, `${startDate} s/d ${endDate}`);
+
+          doc.setFillColor(240, 249, 244);
+          doc.roundedRect(14, tableStartY - 2, 182, 22, 2, 2, "F");
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 135, 81);
+          doc.text("💡 AI Insight & Saran:", 16, tableStartY + 4);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(50, 50, 50);
+          const insightLines = doc.splitTextToSize(insight, 175);
+          doc.text(insightLines.slice(0, 3), 16, tableStartY + 10);
+          doc.setTextColor(0, 0, 0);
+          tableStartY += 28;
+        }
+
+        // Table
+        const tableData = records.map((r) => [r.tanggal, r.checkIn, r.checkOut, r.durasi, r.status, r.keterangan]);
+
+        autoTable(doc, {
+          head: [["Tanggal", "Check In", "Check Out", "Durasi", "Status", "Keterangan"]],
+          body: tableData,
+          startY: tableStartY,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [0, 135, 81] },
+        });
+      }
+
+      const fileName = isAllEmployees
+        ? `Kehadiran_Seluruh_Karyawan_${startDate}_${endDate}.pdf`
+        : `Kehadiran_${targetEmployees[0]?.full_name}_${startDate}_${endDate}.pdf`;
+      doc.save(fileName);
+
+      toast({ title: "Export Berhasil", description: "File PDF berhasil diunduh" });
     } catch (error: any) {
       logger.error("Export error:", error);
-      toast({
-        title: "Export Gagal",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Export Gagal", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
+      setProgress(0);
+      setProgressText("");
     }
   };
 
@@ -365,23 +491,19 @@ export default function EmployeeReports() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/reports')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/reports")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Laporan Kehadiran per Karyawan</h1>
-            <p className="text-muted-foreground mt-1">
-              Export data kehadiran karyawan dalam format Excel atau PDF
-            </p>
+            <p className="text-muted-foreground mt-1">Export data kehadiran karyawan dalam format Excel atau PDF</p>
           </div>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Konfigurasi Laporan</CardTitle>
-            <CardDescription>
-              Pilih karyawan dan rentang tanggal untuk menghasilkan laporan
-            </CardDescription>
+            <CardDescription>Pilih karyawan dan rentang tanggal untuk menghasilkan laporan</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -391,6 +513,12 @@ export default function EmployeeReports() {
                   <SelectValue placeholder="Pilih karyawan..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Seluruh Karyawan
+                    </span>
+                  </SelectItem>
                   {employees.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.full_name} ({emp.nik}) - {emp.departemen}
@@ -403,50 +531,39 @@ export default function EmployeeReports() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="start-date">Tanggal Mulai</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <Input id="start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="end-date">Tanggal Akhir</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+                <Input id="end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
 
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <div>
+                  <Label className="font-medium">AI Insight & Saran</Label>
+                  <p className="text-sm text-muted-foreground">Generate saran otomatis berdasarkan pola kehadiran karyawan</p>
+                </div>
+              </div>
+              <Switch checked={enableAI} onCheckedChange={setEnableAI} />
+            </div>
+
+            {loading && progress > 0 && (
+              <div className="space-y-2">
+                <Progress value={progress} className="h-2" />
+                <p className="text-sm text-muted-foreground text-center">{progressText}</p>
+              </div>
+            )}
+
             <div className="flex gap-2 pt-4">
-              <Button
-                onClick={exportToExcel}
-                disabled={loading || !selectedEmployee || !startDate || !endDate}
-                className="flex-1"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                )}
+              <Button onClick={exportToExcel} disabled={loading || !selectedEmployee || !startDate || !endDate} className="flex-1">
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-2" />}
                 Export ke Excel
               </Button>
-
-              <Button
-                onClick={exportToPDF}
-                disabled={loading || !selectedEmployee || !startDate || !endDate}
-                variant="outline"
-                className="flex-1"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4 mr-2" />
-                )}
+              <Button onClick={exportToPDF} disabled={loading || !selectedEmployee || !startDate || !endDate} variant="outline" className="flex-1">
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
                 Export ke PDF
               </Button>
             </div>

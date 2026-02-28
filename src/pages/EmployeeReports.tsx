@@ -50,6 +50,7 @@ interface EmployeeAttendanceData {
     totalDuration: number;
   };
   insight?: string;
+  isGood?: boolean;
 }
 
 async function fetchEmployeeData(
@@ -162,7 +163,7 @@ async function getAIInsight(
   employeeName: string,
   summary: EmployeeAttendanceData["summary"],
   periode: string
-): Promise<string> {
+): Promise<{ insight: string; isGood: boolean }> {
   try {
     const { data, error } = await supabase.functions.invoke("attendance-insight", {
       body: {
@@ -175,10 +176,13 @@ async function getAIInsight(
       },
     });
     if (error) throw error;
-    return data?.insight || "Tidak dapat menghasilkan insight.";
+    return {
+      insight: data?.insight || "Tidak dapat menghasilkan insight.",
+      isGood: data?.isGood === true,
+    };
   } catch (e) {
     logger.error("AI insight error:", e);
-    return "Insight tidak tersedia.";
+    return { insight: "Insight tidak tersedia.", isGood: false };
   }
 }
 
@@ -267,10 +271,10 @@ export default function EmployeeReports() {
             setProgress(((total + i + 1) / (total * 2)) * 100);
 
             const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
-            const insight = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+            const { insight, isGood } = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
 
             insightRows.push({
-              "Nama Karyawan": emp.full_name,
+              "Nama Karyawan": `${isGood ? "⭐ " : ""}${emp.full_name}`,
               NIK: emp.nik,
               Departemen: emp.departemen,
               "Hadir Tepat Waktu": empData.summary.hadir,
@@ -279,6 +283,7 @@ export default function EmployeeReports() {
               Cuti: empData.summary.cuti,
               Dinas: empData.summary.dinas,
               "Total Jam Kerja": `${Math.floor(empData.summary.totalDuration / 60)}j ${empData.summary.totalDuration % 60}m`,
+              Penilaian: isGood ? "⭐ Baik" : "-",
               "AI Insight & Saran": insight,
             });
           }
@@ -377,7 +382,7 @@ export default function EmployeeReports() {
 
         if (enableAI) {
           setProgressText("Generating AI insight...");
-          const insight = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+          const { insight } = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
           headerRows.push([""]);
           headerRows.push([`AI Insight: ${insight}`]);
         }
@@ -448,16 +453,44 @@ export default function EmployeeReports() {
         if (enableAI) {
           setProgressText(`AI insight: ${emp.full_name} (${i + 1}/${total})`);
           setProgress(((total + i + 1) / (total * 2)) * 100);
-          const insight = await getAIInsight(emp.full_name, s, `${startDate} s/d ${endDate}`);
+          const { insight, isGood } = await getAIInsight(emp.full_name, s, `${startDate} s/d ${endDate}`);
+
+          // Star icon for good attendance
+          if (isGood) {
+            doc.setFontSize(12);
+            doc.setTextColor(218, 165, 32);
+            doc.text("★", 14, tableStartY + 4);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 135, 81);
+            doc.text("Saran:", 20, tableStartY + 4);
+          } else {
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 135, 81);
+            doc.text("Saran:", 16, tableStartY + 4);
+          }
 
           const insightLines = doc.splitTextToSize(insight, 175);
           const boxHeight = Math.max(22, insightLines.length * 4 + 10);
           doc.setFillColor(240, 249, 244);
           doc.roundedRect(14, tableStartY - 2, 182, boxHeight, 2, 2, "F");
-          doc.setFontSize(9);
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(0, 135, 81);
-          doc.text("Saran:", 16, tableStartY + 4);
+
+          // Re-draw text on top of box
+          if (isGood) {
+            doc.setFontSize(12);
+            doc.setTextColor(218, 165, 32);
+            doc.text("★", 14, tableStartY + 4);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 135, 81);
+            doc.text("Saran:", 20, tableStartY + 4);
+          } else {
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 135, 81);
+            doc.text("Saran:", 16, tableStartY + 4);
+          }
           doc.setFont("helvetica", "normal");
           doc.setTextColor(50, 50, 50);
           doc.text(insightLines, 16, tableStartY + 10);

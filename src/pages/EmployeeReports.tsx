@@ -445,18 +445,19 @@ export default function EmployeeReports() {
           setProgress(((total + i + 1) / (total * 2)) * 100);
           const insight = await getAIInsight(emp.full_name, s, `${startDate} s/d ${endDate}`);
 
+          const insightLines = doc.splitTextToSize(insight, 175);
+          const boxHeight = Math.max(22, insightLines.length * 4 + 10);
           doc.setFillColor(240, 249, 244);
-          doc.roundedRect(14, tableStartY - 2, 182, 22, 2, 2, "F");
+          doc.roundedRect(14, tableStartY - 2, 182, boxHeight, 2, 2, "F");
           doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(0, 135, 81);
-          doc.text("💡 AI Insight & Saran:", 16, tableStartY + 4);
+          doc.text("Saran:", 16, tableStartY + 4);
           doc.setFont("helvetica", "normal");
           doc.setTextColor(50, 50, 50);
-          const insightLines = doc.splitTextToSize(insight, 175);
-          doc.text(insightLines.slice(0, 3), 16, tableStartY + 10);
+          doc.text(insightLines, 16, tableStartY + 10);
           doc.setTextColor(0, 0, 0);
-          tableStartY += 28;
+          tableStartY += boxHeight + 6;
         }
 
         // Table

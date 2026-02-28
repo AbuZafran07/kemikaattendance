@@ -88,18 +88,21 @@ async function fetchEmployeeData(
   const leave = leaveRes.data || [];
   const travel = travelRes.data || [];
 
+  const rangeStart = new Date(startDate);
+  const rangeEnd = new Date(endDate);
+
   let totalLeaveDays = 0;
   leave.forEach((l: any) => {
-    const s = new Date(l.start_date);
-    const e = new Date(l.end_date);
-    totalLeaveDays += Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const s = new Date(l.start_date) < rangeStart ? rangeStart : new Date(l.start_date);
+    const e = new Date(l.end_date) > rangeEnd ? rangeEnd : new Date(l.end_date);
+    totalLeaveDays += Math.max(0, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
   });
 
   let totalTravelDays = 0;
   travel.forEach((t: any) => {
-    const s = new Date(t.start_date);
-    const e = new Date(t.end_date);
-    totalTravelDays += Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const s = new Date(t.start_date) < rangeStart ? rangeStart : new Date(t.start_date);
+    const e = new Date(t.end_date) > rangeEnd ? rangeEnd : new Date(t.end_date);
+    totalTravelDays += Math.max(0, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
   });
 
   return {
@@ -118,7 +121,10 @@ async function fetchEmployeeData(
   };
 }
 
-function formatRecords(data: EmployeeAttendanceData) {
+function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate: string) {
+  const rangeStart = new Date(startDate);
+  const rangeEnd = new Date(endDate);
+
   const formattedAttendance = data.attendance.map((record: any) => ({
     tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
     checkIn: format(new Date(record.check_in_time), "HH:mm:ss"),
@@ -130,8 +136,8 @@ function formatRecords(data: EmployeeAttendanceData) {
 
   const formattedLeave: any[] = [];
   data.leave.forEach((leave: any) => {
-    const start = new Date(leave.start_date);
-    const end = new Date(leave.end_date);
+    const start = new Date(leave.start_date) < rangeStart ? rangeStart : new Date(leave.start_date);
+    const end = new Date(leave.end_date) > rangeEnd ? rangeEnd : new Date(leave.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       formattedLeave.push({
         tanggal: format(new Date(d), "yyyy-MM-dd"),
@@ -144,8 +150,8 @@ function formatRecords(data: EmployeeAttendanceData) {
 
   const formattedTravel: any[] = [];
   data.travel.forEach((travel: any) => {
-    const start = new Date(travel.start_date);
-    const end = new Date(travel.end_date);
+    const start = new Date(travel.start_date) < rangeStart ? rangeStart : new Date(travel.start_date);
+    const end = new Date(travel.end_date) > rangeEnd ? rangeEnd : new Date(travel.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       formattedTravel.push({
         tanggal: format(new Date(d), "yyyy-MM-dd"),
@@ -246,7 +252,7 @@ export default function EmployeeReports() {
           setProgress(((i + 1) / (total + (enableAI ? total : 0))) * 100);
 
           const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
-          const records = formatRecords(empData);
+          const records = formatRecords(empData, startDate, endDate);
 
           records.forEach((r) => {
             allRows.push({
@@ -357,7 +363,7 @@ export default function EmployeeReports() {
         const emp = targetEmployees[0];
         setProgressText(`Mengambil data ${emp.full_name}`);
         const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
-        const records = formatRecords(empData);
+        const records = formatRecords(empData, startDate, endDate);
 
         if (records.length === 0) {
           toast({ title: "Tidak Ada Data", description: "Tidak ada data kehadiran untuk periode ini", variant: "destructive" });
@@ -430,7 +436,7 @@ export default function EmployeeReports() {
         if (i > 0) doc.addPage();
 
         const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp);
-        const records = formatRecords(empData);
+        const records = formatRecords(empData, startDate, endDate);
         const s = empData.summary;
 
         // Header

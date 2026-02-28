@@ -17,7 +17,7 @@ serve(async (req) => {
 
 1. Berikan saran konstruktif yang ditujukan LANGSUNG KEPADA karyawan tersebut dalam Bahasa Indonesia (maksimal 3 kalimat pendek saja, total tidak lebih dari 150 kata). Gunakan kata "Anda" untuk menyapa karyawan. Pastikan setiap kalimat SELESAI dengan sempurna dan berakhir dengan tanda titik. Fokus pada pola kehadiran, keterlambatan, dan area perbaikan. Jangan gunakan bullet point, cukup paragraf singkat.
 
-2. Tentukan apakah kehadiran karyawan ini BAGUS atau tidak. Kehadiran dianggap BAGUS jika: tidak ada atau sangat sedikit keterlambatan, tidak ada atau sangat sedikit pulang cepat, dan jam kerja cukup. 
+2. Tentukan apakah kehadiran karyawan ini BAGUS atau tidak. Kehadiran dianggap BAGUS jika: tidak ada atau sangat sedikit keterlambatan, tidak ada atau sangat sedikit pulang cepat, tidak ada atau sangat sedikit absen tanpa keterangan, penggunaan cuti wajar (tidak berlebihan), dan jam kerja cukup. 
 
 PENTING: Respond dalam format JSON SAJA, tanpa markdown code block, tanpa backtick. Format:
 {"insight":"isi saran disini","isGood":true}

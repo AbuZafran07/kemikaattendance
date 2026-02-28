@@ -198,12 +198,17 @@ export default function EmployeeReports() {
     fetchEmployees();
   }, []);
 
+  const EXCLUDED_DEPARTMENTS = ["BOD", "Komisaris"];
+
   const fetchEmployees = async () => {
     const { data } = await supabase
       .from("profiles")
       .select("id, full_name, nik, departemen")
       .order("full_name");
-    if (data) setEmployees(data);
+    if (data) {
+      const filtered = data.filter((e: any) => !EXCLUDED_DEPARTMENTS.includes(e.departemen));
+      setEmployees(filtered);
+    }
   };
 
   const isAllEmployees = selectedEmployee === "all";

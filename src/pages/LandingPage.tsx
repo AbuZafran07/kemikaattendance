@@ -91,11 +91,6 @@ const LandingPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/20" />
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
           <div className="text-center max-w-2xl mx-auto">
-            <img
-              src={kemikaIcon}
-              alt="Kemika Icon"
-              className="h-20 w-20 mx-auto mb-4 object-contain animate-[fadeInDown_0.8s_ease-out_both]"
-            />
             <h1 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl tracking-tight animate-[fadeInUp_0.8s_ease-out_0.2s_both]">
               PT KEMIKA KARYA PRATAMA
             </h1>

@@ -14,6 +14,9 @@ import {
   XCircle,
   Loader2,
   Clock,
+  Megaphone,
+  Info,
+  AlertTriangle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";
@@ -26,6 +29,7 @@ import { useNavigate } from "react-router-dom";
 import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
 import LateReasonDialog from "@/components/LateReasonDialog";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
+import { format } from "date-fns";
 
 // Office coordinates and work hours will be fetched from system settings
 
@@ -41,6 +45,13 @@ interface StatsData {
   leaveBalance: number;
   leaveTotal: number;
   attendanceCount: number;
+}
+interface AnnouncementItem {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  created_at: string;
 }
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -64,6 +75,7 @@ const EmployeeView = () => {
     leaveTotal: 12,
     attendanceCount: 0,
   });
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [currentLocation, setCurrentLocation] = useState<{
@@ -91,7 +103,19 @@ const EmployeeView = () => {
     fetchTodayAttendance();
     fetchRecentAttendance();
     fetchStats();
+    fetchAnnouncements();
   }, [profile?.id, user?.id]);
+
+  const fetchAnnouncements = async () => {
+    const { data } = await supabase
+      .from("company_announcements" as any)
+      .select("id, title, content, type, created_at")
+      .eq("is_active", true)
+      .order("priority", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(3);
+    if (data) setAnnouncements(data as any);
+  };
 
   // Check if user is admin - admins don't need attendance
   const checkAdminStatus = async () => {
@@ -1026,6 +1050,35 @@ const EmployeeView = () => {
         </div>
           </CardContent>
         </Card>
+
+        {/* Pengumuman */}
+        {announcements.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Megaphone className="h-4 w-4 text-primary" />
+                Pengumuman
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {announcements.map((item) => (
+                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/60">
+                  <div className={`mt-0.5 rounded-lg p-1.5 ${item.type === "warning" ? "bg-destructive/10" : "bg-primary/10"}`}>
+                    {item.type === "warning" 
+                      ? <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                      : <Info className="h-3.5 w-3.5 text-primary" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 line-clamp-2">{item.content}</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1">{format(new Date(item.created_at), "dd MMM yyyy")}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Company Calendar */}
         <CompanyCalendar />

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.png";
+import kemikaIcon from "@/assets/kemika-icon.png";
 import {
   LogIn,
   Clock,
@@ -90,12 +91,13 @@ const LandingPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/20" />
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
           <div className="text-center max-w-2xl mx-auto">
-            <Badge variant="secondary" className="mb-4 px-3 py-1 text-xs">
-              Portal Internal Karyawan
-            </Badge>
+            <img src={kemikaIcon} alt="Kemika Icon" className="h-20 w-20 mx-auto mb-4 object-contain" />
             <h1 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl tracking-tight">
-              Sistem Kehadiran & HR
+              PT KEMIKA KARYA PRATAMA
             </h1>
+            <p className="mt-1 text-lg font-medium text-muted-foreground sm:text-xl">
+              Attendance & HR Management System
+            </p>
             <p className="mt-3 text-muted-foreground text-base sm:text-lg max-w-lg mx-auto">
               Kelola absensi, cuti, lembur, dan payroll Anda dalam satu platform terpadu.
             </p>
@@ -111,7 +113,7 @@ const LandingPage = () => {
 
       {/* Main */}
       <main className="flex-1 px-4 pb-12 sm:px-6">
-        <div className="mx-auto max-w-6xl -mt-4">
+        <div className="mx-auto max-w-6xl">
           {/* Quick Access */}
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-5">

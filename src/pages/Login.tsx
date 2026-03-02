@@ -12,8 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { loginSchema } from "@/lib/validationSchemas";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -182,6 +185,12 @@ const Login = () => {
           </Tabs>
         </CardContent>
       </Card>
+      <button
+        onClick={() => navigate("/")}
+        className="flex items-center gap-2 mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Kembali ke Beranda
+      </button>
       <p className="text-xs text-muted-foreground/80 mt-3 opacity-60 text-center">App Version {APP_VERSION}</p>
     </div>
   );

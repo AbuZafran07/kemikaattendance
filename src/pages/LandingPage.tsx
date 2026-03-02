@@ -76,8 +76,8 @@ const LandingPage = () => {
           <div className="flex items-center gap-3">
             <img src={logo} alt="Kemika Logo" className="h-10 object-contain" />
             <div>
-              <p className="text-sm font-bold leading-tight text-foreground">PT KEMIKA</p>
-              <p className="text-xs text-muted-foreground">Karya Pratama</p>
+              <p className="text-sm font-bold leading-tight text-foreground">PT KEMIKA KARYA PRATAMA</p>
+              <p className="text-xs text-muted-foreground">Spreading Solutions</p>
             </div>
           </div>
           <Button onClick={() => navigate("/login")} size="sm" className="gap-2">
@@ -91,10 +91,10 @@ const LandingPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/20" />
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
           <div className="text-center max-w-2xl mx-auto">
-            <img 
-              src={kemikaIcon} 
-              alt="Kemika Icon" 
-              className="h-20 w-20 mx-auto mb-4 object-contain animate-[fadeInDown_0.8s_ease-out_both]" 
+            <img
+              src={kemikaIcon}
+              alt="Kemika Icon"
+              className="h-20 w-20 mx-auto mb-4 object-contain animate-[fadeInDown_0.8s_ease-out_both]"
             />
             <h1 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl tracking-tight animate-[fadeInUp_0.8s_ease-out_0.2s_both]">
               PT KEMIKA KARYA PRATAMA
@@ -161,9 +161,7 @@ const LandingPage = () => {
                   <Card key={item.id} className="border-border/60 hover:border-primary/30 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-lg p-2 ${getIconBg(item.type)}`}>
-                          {getIcon(item.type)}
-                        </div>
+                        <div className={`mt-0.5 rounded-lg p-2 ${getIconBg(item.type)}`}>{getIcon(item.type)}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
                           <p className="text-xs text-muted-foreground leading-relaxed mt-1">{item.content}</p>

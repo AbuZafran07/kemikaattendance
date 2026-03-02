@@ -18,7 +18,8 @@ import {
   DollarSign,
   CreditCard,
   BarChart3,
-  FileCheck
+  FileCheck,
+  Megaphone
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ const navigationGroups = [
   {
     label: "SISTEM",
     items: [
+      { name: "Pengumuman", href: "/dashboard/announcements", icon: Megaphone },
       { name: "Pengaturan", href: "/dashboard/settings", icon: Settings },
     ],
   },

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +15,11 @@ import {
   Megaphone,
   Info,
   ArrowRight,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 const quickLinks = [
   { icon: Fingerprint, label: "Absensi", desc: "Check-in & Check-out harian" },
@@ -25,29 +30,42 @@ const quickLinks = [
   { icon: BarChart3, label: "Laporan", desc: "Kehadiran & kinerja" },
 ];
 
-const announcements = [
-  {
-    type: "info",
-    title: "Pembaruan Sistem HR",
-    message: "Sistem HR telah diperbarui ke versi terbaru dengan fitur absensi wajah dan GPS.",
-    date: "2 Mar 2026",
-  },
-  {
-    type: "warning",
-    title: "Pengingat Pengajuan Cuti",
-    message: "Harap ajukan cuti minimal 3 hari kerja sebelum tanggal cuti yang diinginkan.",
-    date: "28 Feb 2026",
-  },
-  {
-    type: "info",
-    title: "Jadwal Libur Nasional",
-    message: "Hari libur nasional bulan Maret telah diperbarui di sistem. Silakan cek kalender.",
-    date: "25 Feb 2026",
-  },
-];
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  created_at: string;
+}
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase
+        .from("company_announcements" as any)
+        .select("id, title, content, type, created_at")
+        .eq("is_active", true)
+        .order("priority", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (data) setAnnouncements(data as any);
+    };
+    fetch();
+  }, []);
+
+  const getIcon = (type: string) => {
+    if (type === "warning") return <AlertTriangle className="h-4 w-4 text-destructive" />;
+    if (type === "success") return <CheckCircle2 className="h-4 w-4 text-primary" />;
+    return <Info className="h-4 w-4 text-primary" />;
+  };
+
+  const getIconBg = (type: string) => {
+    if (type === "warning") return "bg-destructive/10";
+    return "bg-primary/10";
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -67,7 +85,7 @@ const LandingPage = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/20" />
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
@@ -91,10 +109,10 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="flex-1 px-4 pb-12 sm:px-6">
         <div className="mx-auto max-w-6xl -mt-4">
-          {/* Quick Access Grid */}
+          {/* Quick Access */}
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-5">
               <div className="h-1 w-1 rounded-full bg-primary" />
@@ -119,40 +137,40 @@ const LandingPage = () => {
             </div>
           </section>
 
-          {/* Announcements */}
+          {/* Announcements from DB */}
           <section>
             <div className="flex items-center gap-2 mb-5">
               <Megaphone className="h-4 w-4 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">Pengumuman & Informasi</h2>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {announcements.map((item, idx) => (
-                <Card key={idx} className="border-border/60 hover:border-primary/30 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 rounded-lg p-2 ${
-                        item.type === "warning"
-                          ? "bg-destructive/10"
-                          : "bg-primary/10"
-                      }`}>
-                        <Info className={`h-4 w-4 ${
-                          item.type === "warning"
-                            ? "text-destructive"
-                            : "text-primary"
-                        }`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+            {announcements.length === 0 ? (
+              <Card className="border-border/60">
+                <CardContent className="p-6 text-center text-muted-foreground text-sm">
+                  Tidak ada pengumuman saat ini.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {announcements.map((item) => (
+                  <Card key={item.id} className="border-border/60 hover:border-primary/30 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 rounded-lg p-2 ${getIconBg(item.type)}`}>
+                          {getIcon(item.type)}
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{item.message}</p>
-                        <p className="text-[11px] text-muted-foreground/70 mt-2">{item.date}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">{item.content}</p>
+                          <p className="text-[11px] text-muted-foreground/70 mt-2">
+                            {format(new Date(item.created_at), "dd MMM yyyy")}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </main>
@@ -160,12 +178,8 @@ const LandingPage = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 bg-card/50 py-5">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 text-center space-y-1">
-          <p className="text-xs text-muted-foreground font-medium">
-            PT Kemika Karya Pratama
-          </p>
-          <p className="text-[11px] text-muted-foreground/70">
-            © {new Date().getFullYear()} — Internal Use Only
-          </p>
+          <p className="text-xs text-muted-foreground font-medium">PT Kemika Karya Pratama</p>
+          <p className="text-[11px] text-muted-foreground/70">© {new Date().getFullYear()} — Internal Use Only</p>
         </div>
       </footer>
     </div>

@@ -61,7 +61,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
 
   // Redirect to login if not authenticated
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Redirect non-admins and non-hr away from admin routes

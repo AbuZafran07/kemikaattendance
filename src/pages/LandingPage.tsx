@@ -91,17 +91,21 @@ const LandingPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/20" />
         <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
           <div className="text-center max-w-2xl mx-auto">
-            <img src={kemikaIcon} alt="Kemika Icon" className="h-20 w-20 mx-auto mb-4 object-contain" />
-            <h1 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl tracking-tight">
+            <img 
+              src={kemikaIcon} 
+              alt="Kemika Icon" 
+              className="h-20 w-20 mx-auto mb-4 object-contain animate-[fadeInDown_0.8s_ease-out_both]" 
+            />
+            <h1 className="text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl tracking-tight animate-[fadeInUp_0.8s_ease-out_0.2s_both]">
               PT KEMIKA KARYA PRATAMA
             </h1>
-            <p className="mt-1 text-lg font-medium text-muted-foreground sm:text-xl">
+            <p className="mt-1 text-lg font-medium text-muted-foreground sm:text-xl animate-[fadeInUp_0.8s_ease-out_0.4s_both]">
               Attendance & HR Management System
             </p>
-            <p className="mt-3 text-muted-foreground text-base sm:text-lg max-w-lg mx-auto">
+            <p className="mt-3 text-muted-foreground text-base sm:text-lg max-w-lg mx-auto animate-[fadeInUp_0.8s_ease-out_0.6s_both]">
               Kelola absensi, cuti, lembur, dan payroll Anda dalam satu platform terpadu.
             </p>
-            <div className="mt-6">
+            <div className="mt-6 animate-[fadeInUp_0.8s_ease-out_0.8s_both]">
               <Button size="lg" onClick={() => navigate("/login")} className="gap-2 px-8">
                 <LogIn className="h-4 w-4" /> Masuk ke Sistem
                 <ArrowRight className="h-4 w-4" />

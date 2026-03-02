@@ -224,14 +224,18 @@ const CompanyCalendar = () => {
 
             const content = (
               <div
-                className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs relative cursor-default transition-colors ${bgClass}`}
+                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative cursor-default transition-colors p-0.5 ${bgClass}`}
               >
-                <span className={`font-medium ${weekend ? "text-destructive/70" : ""} ${holidayName ? "text-destructive" : ""} ${today ? "text-primary font-bold" : ""}`}>
+                <span className={`font-medium text-xs ${weekend ? "text-destructive/70" : ""} ${holidayName ? "text-destructive" : ""} ${today ? "text-primary font-bold" : ""}`}>
                   {format(date, "d")}
                 </span>
-                {hasEvent && (
+                {holidayName && (
+                  <span className="text-[7px] leading-tight text-destructive/80 text-center line-clamp-2 mt-0.5 px-0.5">
+                    {holidayName}
+                  </span>
+                )}
+                {!holidayName && hasEvent && (
                   <div className="flex gap-0.5 mt-0.5">
-                    {holidayName && <div className="h-1 w-1 rounded-full bg-destructive" />}
                     {specialPeriod && <div className="h-1 w-1 rounded-full bg-chart-4" />}
                     {leaveDays && <div className="h-1 w-1 rounded-full bg-blue-500" />}
                     {travelDays && <div className="h-1 w-1 rounded-full bg-green-500" />}

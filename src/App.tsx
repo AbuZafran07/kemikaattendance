@@ -49,6 +49,7 @@ import TERManagement from "./pages/TERManagement";
 import BuktiPotong1721A1 from "./pages/BuktiPotong1721A1";
 import PayrollAnalytics from "./pages/PayrollAnalytics";
 import AnnouncementManagement from "./pages/AnnouncementManagement";
+import CompanyBankSettings from "./pages/CompanyBankSettings";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -101,6 +102,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/employee/payroll-history" element={<ProtectedRoute><EmployeePayrollHistory /></ProtectedRoute>} />
             <Route path="/employee/loans" element={<ProtectedRoute><EmployeeLoanHistory /></ProtectedRoute>} />
             <Route path="/dashboard/settings/notifications" element={<ProtectedRoute requireAdmin><NotificationSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/company-bank" element={<ProtectedRoute requireAdmin><CompanyBankSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -793,6 +793,71 @@ const Payroll = () => {
     }
   };
 
+  const [exportingBankPayroll, setExportingBankPayroll] = useState(false);
+  const handleExportBankPayroll = async () => {
+    if (payrollData.length === 0) return;
+    setExportingBankPayroll(true);
+    try {
+      const { generateBankPayrollCSV, downloadBankPayrollFile } = await import("@/lib/bankPayrollExport");
+
+      // Fetch company bank config from system_settings
+      const { data: settingsData } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "company_bank_config")
+        .single();
+
+      const companyConfig = settingsData?.value as any;
+      if (!companyConfig?.account_number) {
+        toast({
+          title: "Konfigurasi Belum Lengkap",
+          description: "Silakan atur nomor rekening perusahaan di menu Settings > Pengaturan Bank Perusahaan terlebih dahulu.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Fetch bank details for all employees
+      const userIds = payrollData.map((p) => p.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, bank_account_number, bank_name, full_name, nik, email")
+        .in("id", userIds);
+
+      const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+      const employees = payrollData.map((item, idx) => {
+        const profile = profileMap.get(item.user_id);
+        return {
+          bankAccountNumber: profile?.bank_account_number || "",
+          fullName: profile?.full_name || item.employee_name || "-",
+          amount: item.take_home_pay,
+          nik: profile?.nik || item.nik || "",
+          email: profile?.email || "",
+          bankName: profile?.bank_name || "",
+          seqNumber: idx + 1,
+        };
+      });
+
+      const csvContent = generateBankPayrollCSV(
+        {
+          companyAccountNumber: companyConfig.account_number,
+          companyBankName: companyConfig.bank_name || "",
+        },
+        employees,
+        selectedMonth,
+        selectedYear
+      );
+
+      downloadBankPayrollFile(csvContent, selectedMonth, selectedYear);
+      toast({ title: "Export Berhasil", description: "File e-Payroll bank berhasil di-download." });
+    } catch (error: any) {
+      toast({ title: "Gagal Export", description: error.message, variant: "destructive" });
+    } finally {
+      setExportingBankPayroll(false);
+    }
+  };
+
   const [generatingReport, setGeneratingReport] = useState(false);
   const handleExportPayrollReport = async () => {
     if (payrollData.length === 0) return;
@@ -900,6 +965,10 @@ const Payroll = () => {
                 <Button variant="outline" onClick={handleDownloadAllPDF} disabled={downloadingAllPDF} className="gap-2">
                   {downloadingAllPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   Semua Slip PDF
+                </Button>
+                <Button variant="outline" onClick={handleExportBankPayroll} disabled={exportingBankPayroll} className="gap-2">
+                  {exportingBankPayroll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
+                  e-Payroll Bank
                 </Button>
               </>
             )}

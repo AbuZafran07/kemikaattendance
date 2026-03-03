@@ -61,6 +61,12 @@ export const employeeSchema = z.object({
 });
 
 export const employeeEditSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email harus diisi')
+    .email('Format email tidak valid')
+    .max(255, 'Email maksimal 255 karakter'),
   nik: z
     .string()
     .trim()

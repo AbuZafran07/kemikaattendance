@@ -24,9 +24,6 @@ interface CreateUserRequest {
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 

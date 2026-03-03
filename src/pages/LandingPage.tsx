@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { APP_VERSION } from "@/config/appVersion";
 
 const quickLinks = [
   { icon: Fingerprint, label: "Absensi", desc: "Check-in & Check-out harian" },
@@ -178,7 +179,7 @@ const LandingPage = () => {
       <footer className="border-t border-border/50 bg-card/50 py-5">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 text-center space-y-1">
           <p className="text-xs text-muted-foreground font-medium">PT Kemika Karya Pratama</p>
-          <p className="text-[11px] text-muted-foreground/70">© {new Date().getFullYear()} — Internal Use Only</p>
+          <p className="text-[11px] text-muted-foreground/70">© {new Date().getFullYear()} — App Version {APP_VERSION}</p>
         </div>
       </footer>
     </div>

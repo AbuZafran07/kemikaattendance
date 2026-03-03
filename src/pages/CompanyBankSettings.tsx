@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Landmark, Loader2, Save } from "lucide-react";
+import { Landmark, Loader2, Save, ArrowLeft } from "lucide-react";
 
 const BANK_OPTIONS = [
   "BCA",
@@ -25,6 +26,7 @@ const BANK_OPTIONS = [
 ];
 
 export default function CompanyBankSettings() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -111,13 +113,16 @@ export default function CompanyBankSettings() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fadeIn">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Landmark className="h-7 w-7 text-primary" /> Pengaturan Bank Perusahaan
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Atur rekening perusahaan yang digunakan sebagai sumber dana pada file e-Payroll bank
-          </p>
+        <div className="flex items-center gap-2 sm:gap-3 px-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => navigate("/dashboard/settings")}>
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Pengaturan Bank Perusahaan</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+              Atur rekening perusahaan yang digunakan sebagai sumber dana pada file e-Payroll bank
+            </p>
+          </div>
         </div>
 
         <Card className="max-w-lg">

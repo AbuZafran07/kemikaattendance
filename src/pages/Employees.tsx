@@ -84,6 +84,7 @@ const Employees = () => {
   });
 
   const [editFormData, setEditFormData] = useState({
+    email: "",
     nik: "",
     full_name: "",
     jabatan: "",
@@ -325,6 +326,18 @@ const Employees = () => {
         photoUrl = await uploadPhoto(editingEmployee.id);
       }
 
+      // Update email via edge function if changed
+      if (result.data.email !== editingEmployee.email) {
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke('admin-update-email', {
+          body: {
+            userId: editingEmployee.id,
+            newEmail: result.data.email,
+          }
+        });
+        if (emailError) throw emailError;
+        if (emailResult?.error) throw new Error(emailResult.error);
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -375,6 +388,7 @@ const Employees = () => {
   const openEditDialog = (employee: any) => {
     setEditingEmployee(employee);
     setEditFormData({
+      email: employee.email || "",
       nik: employee.nik,
       full_name: employee.full_name,
       jabatan: employee.jabatan,
@@ -419,6 +433,7 @@ const Employees = () => {
       work_type: "wfo",
     });
     setEditFormData({
+      email: "",
       nik: "",
       full_name: "",
       jabatan: "",
@@ -842,6 +857,17 @@ const Employees = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_email">Email *</Label>
+                  <Input
+                    id="edit_email"
+                    type="email"
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                    required
+                  />
+                  {editFormErrors.email && <p className="text-sm text-destructive">{editFormErrors.email}</p>}
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_nik">NIK *</Label>
                   <Input

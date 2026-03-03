@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -793,14 +793,18 @@ const Payroll = () => {
     }
   };
 
+  // ── e-Payroll Bank Preview ──
+  const [showBankPreview, setShowBankPreview] = useState(false);
+  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number }[]>([]);
+  const [bankCompanyConfig, setBankCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
   const [exportingBankPayroll, setExportingBankPayroll] = useState(false);
-  const handleExportBankPayroll = async () => {
-    if (payrollData.length === 0) return;
-    setExportingBankPayroll(true);
-    try {
-      const { generateBankPayrollCSV, downloadBankPayrollFile } = await import("@/lib/bankPayrollExport");
+  const [loadingBankPreview, setLoadingBankPreview] = useState(false);
 
-      // Fetch company bank config from system_settings
+  const handleOpenBankPreview = async () => {
+    if (payrollData.length === 0) return;
+    setLoadingBankPreview(true);
+    try {
+      // Fetch company bank config
       const { data: settingsData } = await supabase
         .from("system_settings")
         .select("value")
@@ -816,6 +820,7 @@ const Payroll = () => {
         });
         return;
       }
+      setBankCompanyConfig(companyConfig);
 
       // Fetch bank details for all employees
       const userIds = payrollData.map((p) => p.user_id);
@@ -839,18 +844,31 @@ const Payroll = () => {
         };
       });
 
+      setBankPreviewData(employees);
+      setShowBankPreview(true);
+    } catch (error: any) {
+      toast({ title: "Gagal", description: error.message, variant: "destructive" });
+    } finally {
+      setLoadingBankPreview(false);
+    }
+  };
+
+  const bankIncompleteEmployees = bankPreviewData.filter((e) => !e.bankAccountNumber || !e.bankName);
+
+  const handleConfirmBankExport = async () => {
+    if (!bankCompanyConfig) return;
+    setExportingBankPayroll(true);
+    try {
+      const { generateBankPayrollCSV, downloadBankPayrollFile } = await import("@/lib/bankPayrollExport");
       const csvContent = generateBankPayrollCSV(
-        {
-          companyAccountNumber: companyConfig.account_number,
-          companyBankName: companyConfig.bank_name || "",
-        },
-        employees,
+        { companyAccountNumber: bankCompanyConfig.account_number, companyBankName: bankCompanyConfig.bank_name },
+        bankPreviewData,
         selectedMonth,
         selectedYear
       );
-
       downloadBankPayrollFile(csvContent, selectedMonth, selectedYear);
       toast({ title: "Export Berhasil", description: "File e-Payroll bank berhasil di-download." });
+      setShowBankPreview(false);
     } catch (error: any) {
       toast({ title: "Gagal Export", description: error.message, variant: "destructive" });
     } finally {
@@ -966,8 +984,8 @@ const Payroll = () => {
                   {downloadingAllPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   Semua Slip PDF
                 </Button>
-                <Button variant="outline" onClick={handleExportBankPayroll} disabled={exportingBankPayroll} className="gap-2">
-                  {exportingBankPayroll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
+                <Button variant="outline" onClick={handleOpenBankPreview} disabled={loadingBankPreview} className="gap-2">
+                  {loadingBankPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
                   e-Payroll Bank
                 </Button>
               </>
@@ -1378,6 +1396,98 @@ const Payroll = () => {
                 })}
             </div>
             <Button onClick={async () => { await saveOverridesToDB('income'); setShowIncomeDialog(false); }} className="w-full mt-2">Simpan & Tutup</Button>
+          </DialogContent>
+        </Dialog>
+
+        {/* e-Payroll Bank Preview Dialog */}
+        <Dialog open={showBankPreview} onOpenChange={setShowBankPreview}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Landmark className="h-5 w-5" /> Preview e-Payroll Bank
+              </DialogTitle>
+              <DialogDescription>
+                Review data transfer gaji sebelum download file — {MONTHS[selectedMonth - 1].label} {selectedYear}
+              </DialogDescription>
+            </DialogHeader>
+
+            {bankIncompleteEmployees.length > 0 && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm text-destructive">
+                    {bankIncompleteEmployees.length} karyawan belum memiliki data rekening bank lengkap:
+                  </p>
+                  <ul className="text-xs text-destructive/80 mt-1 list-disc list-inside">
+                    {bankIncompleteEmployees.map((e) => (
+                      <li key={e.nik}>{e.fullName} — {!e.bankAccountNumber ? "No. Rekening kosong" : "Nama Bank kosong"}</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground mt-1">Lengkapi data di halaman Karyawan sebelum export.</p>
+                </div>
+              </div>
+            )}
+
+            {bankCompanyConfig && (
+              <div className="flex items-center gap-4 text-sm bg-muted/50 rounded-lg p-3">
+                <div><span className="text-muted-foreground">Rekening Pengirim:</span> <span className="font-medium">{bankCompanyConfig.account_number}</span></div>
+                <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{bankCompanyConfig.bank_name}</span></div>
+                <div><span className="text-muted-foreground">Total:</span> <span className="font-bold">{formatRupiah(bankPreviewData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-auto min-h-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">No</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>No. Rekening</TableHead>
+                    <TableHead>Bank</TableHead>
+                    <TableHead>NIK</TableHead>
+                    <TableHead className="text-right">THP</TableHead>
+                    <TableHead className="w-16 text-center">Tipe</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bankPreviewData.map((emp, idx) => {
+                    const isIncomplete = !emp.bankAccountNumber || !emp.bankName;
+                    return (
+                      <TableRow key={idx} className={isIncomplete ? "bg-destructive/5" : ""}>
+                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{emp.fullName}</TableCell>
+                        <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
+                          {emp.bankAccountNumber || "⚠ Belum diisi"}
+                        </TableCell>
+                        <TableCell className={!emp.bankName ? "text-destructive font-medium" : ""}>
+                          {emp.bankName || "⚠ Belum diisi"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
+                        <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
+                        <TableCell className="text-center">
+                          {bankCompanyConfig && (
+                            <Badge variant={emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "secondary" : "outline"} className="text-[10px]">
+                              {emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "OBU" : "IBU"}
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t">
+              <p className="text-xs text-muted-foreground">{bankPreviewData.length} karyawan • Format: TXT (semicolon-separated)</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowBankPreview(false)}>Batal</Button>
+                <Button onClick={handleConfirmBankExport} disabled={exportingBankPayroll || bankIncompleteEmployees.length > 0} className="gap-2">
+                  {exportingBankPayroll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Download e-Payroll
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
         </TabsContent>

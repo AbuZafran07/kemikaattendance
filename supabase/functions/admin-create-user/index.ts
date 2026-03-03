@@ -1,23 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// CORS configuration - restrict to allowed origins
-function getCorsHeaders(origin: string | null) {
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:8080',
-  ];
-  
-  // Allow lovable.app subdomains
-  const isLovableApp = origin?.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/);
-  const isAllowed = origin && (allowedOrigins.includes(origin) || isLovableApp);
-  
-  return {
-    "Access-Control-Allow-Origin": isAllowed ? origin : '',
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 interface CreateUserRequest {
   email: string;
@@ -35,8 +22,8 @@ interface CreateUserRequest {
 }
 
 serve(async (req: Request): Promise<Response> => {
-  const origin = req.headers.get("Origin");
-  const corsHeaders = getCorsHeaders(origin);
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
 
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {

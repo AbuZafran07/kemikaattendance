@@ -1045,7 +1045,7 @@ const Payroll = () => {
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
       const refDate = new Date(idulFitriDate);
 
-      const { generateThrDisbursementPDF, ThrEmployee } = await import("@/lib/thrDisbursementPdfGenerator");
+      const { generateThrDisbursementPDF } = await import("@/lib/thrDisbursementPdfGenerator");
 
       const thrEmployees = thrRecipients.map(p => {
         const profile = profileMap.get(p.user_id);

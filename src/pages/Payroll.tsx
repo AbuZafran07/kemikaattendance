@@ -1012,6 +1012,71 @@ const Payroll = () => {
     }
   };
 
+  const [generatingThrPdf, setGeneratingThrPdf] = useState(false);
+  const handleExportThrPDF = async () => {
+    if (payrollData.length === 0) return;
+    // Check if any employee has THR > 0
+    const thrRecipients = payrollData.filter(p => (p.thr || 0) > 0);
+    if (thrRecipients.length === 0) {
+      toast({ title: "Tidak Ada Data THR", description: "Belum ada karyawan yang memiliki THR pada periode ini. Hitung THR terlebih dahulu melalui Tambahan Penghasilan.", variant: "destructive" });
+      return;
+    }
+    setGeneratingThrPdf(true);
+    try {
+      // Fetch Idul Fitri date for the report
+      const { data: settingsData } = await supabase
+        .from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle();
+      const holidays: { name: string; date: string }[] = (settingsData?.value as any)?.holidays || [];
+      const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
+      const idulFitriHoliday = holidays
+        .filter(h => idulFitriKeywords.some(kw => h.name.toLowerCase().includes(kw)))
+        .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+      const idulFitriDate = idulFitriHoliday?.date || `${selectedYear}-01-01`;
+      const idulFitriName = idulFitriHoliday?.name || "Hari Raya";
+
+      // Fetch profiles for join_date, bank info
+      const userIds = thrRecipients.map(p => p.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, join_date, basic_salary, jabatan, departemen, nik, bank_name, bank_account_number")
+        .in("id", userIds);
+
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      const refDate = new Date(idulFitriDate);
+
+      const { generateThrDisbursementPDF, ThrEmployee } = await import("@/lib/thrDisbursementPdfGenerator");
+
+      const thrEmployees = thrRecipients.map(p => {
+        const profile = profileMap.get(p.user_id);
+        const joinDate = profile ? new Date(profile.join_date) : new Date();
+        const totalMonths = (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
+          (refDate.getMonth() - joinDate.getMonth()) +
+          (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+        return {
+          employee_name: p.employee_name || profile?.full_name || "-",
+          nik: p.nik || profile?.nik || "-",
+          jabatan: p.jabatan || profile?.jabatan || "-",
+          departemen: p.departemen || profile?.departemen || "-",
+          join_date: profile?.join_date || "",
+          basic_salary: p.basic_salary,
+          thr_amount: p.thr || 0,
+          tenure_months: Math.max(totalMonths, 0),
+          bank_name: profile?.bank_name || "",
+          bank_account_number: profile?.bank_account_number || "",
+        };
+      });
+
+      await generateThrDisbursementPDF(thrEmployees, selectedMonth, selectedYear, idulFitriDate, idulFitriName, logo);
+      toast({ title: "PDF THR Berhasil", description: "Dokumen pengajuan pembayaran THR berhasil di-download." });
+    } catch (error: any) {
+      console.error("Error generating THR PDF:", error);
+      toast({ title: "Gagal Generate PDF", description: error.message, variant: "destructive" });
+    } finally {
+      setGeneratingThrPdf(false);
+    }
+  };
+
   const [generatingReport, setGeneratingReport] = useState(false);
   const handleExportPayrollReport = async () => {
     if (payrollData.length === 0) return;

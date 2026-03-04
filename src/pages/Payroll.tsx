@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -1312,6 +1312,16 @@ const Payroll = () => {
               <DialogTitle>Tambahan Penghasilan Insidental</DialogTitle>
               <DialogDescription>Klik nama karyawan untuk mengisi tambahan penghasilan. Tunjangan tetap diambil otomatis dari data karyawan.</DialogDescription>
             </DialogHeader>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 mb-1"
+              disabled={calculatingThr}
+              onClick={handleAutoCalculateTHR}
+            >
+              {calculatingThr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+              Hitung THR Otomatis (Permenaker No.6/2016)
+            </Button>
             <Input
               placeholder="🔍 Cari karyawan..."
               value={incomeSearch}

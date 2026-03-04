@@ -130,6 +130,7 @@ const Payroll = () => {
   const [incomeSearch, setIncomeSearch] = useState("");
   const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);
   const [selectedIncomeEmp, setSelectedIncomeEmp] = useState<string | null>(null);
+  const [calculatingThr, setCalculatingThr] = useState(false);
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);

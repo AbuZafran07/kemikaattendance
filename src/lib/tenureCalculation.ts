@@ -19,6 +19,11 @@ export function calculateCutoffTenure(
     return { fullMonths: 0, remainingDays: 0, totalMonthsFraction: 0 };
   }
 
+  // In cutoff system, the period ends on cutoffDay-1 of the next month.
+  // E.g., period Feb 21 – Mar 20 is 1 full month. So Mar 20 should complete that period.
+  // We add 1 day to refDate so the last day of a period is counted as completing the month.
+  const adjustedRef = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() + 1);
+
   // Determine which cutoff period each date falls in
   // If day >= cutoffDay → period started this month at cutoffDay
   // If day < cutoffDay → period started previous month at cutoffDay

@@ -180,13 +180,25 @@ export default function AttendanceAllowanceReport() {
         .maybeSingle();
       const specialPeriods = (specialWhData?.value as any)?.periods || [];
 
+      // Check if Friday-specific work hours are enabled
+      const fridayEnabled = whParsed?.friday_enabled || false;
+      const fridayCheckOutStart = whParsed?.friday_check_out_start || "16:00";
+      const [fridayOutH, fridayOutM] = fridayCheckOutStart.split(":").map(Number);
+      const fridayCheckOutMinutes = fridayOutH * 60 + fridayOutM - earlyLeaveTolerance;
+
       const getCheckOutMinutesForDate = (dateStr: string): number => {
+        // First check special periods (e.g., Ramadan)
         for (const sp of specialPeriods) {
           if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
             const [h, m] = (sp.check_out_start || "17:00").split(":").map(Number);
             const tol = sp.early_leave_tolerance_minutes || 0;
             return h * 60 + m - tol;
           }
+        }
+        // Then check if it's Friday with special Friday hours
+        const dayOfWeek = new Date(dateStr).getDay();
+        if (fridayEnabled && dayOfWeek === 5) {
+          return fridayCheckOutMinutes;
         }
         return checkOutTotalMinutes;
       };

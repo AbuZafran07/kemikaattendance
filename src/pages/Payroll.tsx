@@ -1691,21 +1691,28 @@ const Payroll = () => {
                         const joinDate = new Date(p.join_date);
                         const diffMs = refDate.getTime() - joinDate.getTime();
                         if (diffMs < 0) return null;
-                        const totalMonths =
+                        let fullMonths =
                           (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-                          (refDate.getMonth() - joinDate.getMonth()) +
-                          (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+                          (refDate.getMonth() - joinDate.getMonth());
+                        let remainingDays = refDate.getDate() - joinDate.getDate();
+                        if (remainingDays < 0) {
+                          fullMonths -= 1;
+                          const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
+                          remainingDays += prevMonth.getDate();
+                        }
+                        const totalMonthsFraction = fullMonths + remainingDays / 30;
                         let thrAmount = 0;
                         let label = "";
-                        if (totalMonths >= 12) {
+                        const tenureLabel = `${fullMonths} bln ${remainingDays} hr`;
+                        if (totalMonthsFraction >= 12) {
                           thrAmount = p.basic_salary;
                           label = "1× gaji";
-                        } else if (totalMonths >= 1) {
-                          thrAmount = Math.round((totalMonths / 12) * p.basic_salary);
-                          label = `${totalMonths}/12 bulan`;
+                        } else if (totalMonthsFraction >= 1) {
+                          thrAmount = Math.round((totalMonthsFraction / 12) * p.basic_salary);
+                          label = `${totalMonthsFraction.toFixed(2)}/12`;
                         }
                         if (thrAmount <= 0) return null;
-                        return { name: p.full_name, thrAmount, label, totalMonths };
+                        return { name: p.full_name, thrAmount, label, tenureLabel };
                       })
                       .filter(Boolean)
                       .sort((a, b) => a!.name.localeCompare(b!.name))

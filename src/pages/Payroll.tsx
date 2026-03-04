@@ -158,7 +158,7 @@ const Payroll = () => {
       const holidays: { name: string; date: string }[] = (settingsData?.value as any)?.holidays || [];
       const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
       const found = holidays.some((h) => {
-        const d = new Date(h.date);
+        const d = parseLocalDate(h.date);
         return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear &&
           idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw));
       });
@@ -464,10 +464,10 @@ const Payroll = () => {
       }
 
       // Filter out employees with < 1 month tenure using cutoff-based calculation
-      const refDate = new Date(idulFitriDate);
+      const refDate = parseLocalDate(idulFitriDate);
       const eligibleProfiles = profiles
         .map((p) => {
-          const joinDate = new Date(p.join_date);
+          const joinDate = parseLocalDate(p.join_date);
           if (refDate.getTime() < joinDate.getTime()) return null;
           const { totalMonthsFraction } = calculateCutoffTenure(joinDate, refDate, cutoffDay);
           if (totalMonthsFraction < 1) return null;
@@ -501,14 +501,14 @@ const Payroll = () => {
 
   const confirmCalculateTHR = () => {
     if (!thrConfirmData) return;
-    const refDate = new Date(thrConfirmData.idulFitriDate);
+    const refDate = parseLocalDate(thrConfirmData.idulFitriDate);
     const cutoffDay = thrConfirmData.cutoffDay || 21;
     let updatedCount = 0;
 
     setIncomeAdditions((prev) => {
       const next = new Map(prev);
       for (const profile of thrConfirmData.profiles) {
-        const joinDate = new Date(profile.join_date);
+        const joinDate = parseLocalDate(profile.join_date);
         const basicSalary = profile.basic_salary;
 
         if (refDate.getTime() < joinDate.getTime()) continue;
@@ -1065,7 +1065,7 @@ const Payroll = () => {
         .in("id", userIds);
 
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-      const refDate = new Date(idulFitriDate);
+      const refDate = parseLocalDate(idulFitriDate);
 
       // Fetch cutoff day for tenure calculation
       const { data: cutoffData } = await supabase
@@ -1076,7 +1076,7 @@ const Payroll = () => {
 
       const thrEmployees = thrRecipients.map(p => {
         const profile = profileMap.get(p.user_id);
-        const joinDate = profile ? new Date(profile.join_date) : new Date();
+        const joinDate = profile ? parseLocalDate(profile.join_date) : new Date();
         const { fullMonths, remainingDays } = calculateCutoffTenure(joinDate, refDate, cutoffDay);
         return {
           employee_name: p.employee_name || profile?.full_name || "-",
@@ -1664,7 +1664,7 @@ const Payroll = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Tanggal Acuan</span>
-                    <span className="font-semibold">{format(new Date(thrConfirmData.idulFitriDate), "dd MMMM yyyy")}</span>
+                    <span className="font-semibold">{format(parseLocalDate(thrConfirmData.idulFitriDate), "dd MMMM yyyy")}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Basis Perhitungan</span>
@@ -1681,8 +1681,8 @@ const Payroll = () => {
                   <div className="space-y-1">
                     {thrConfirmData.profiles
                       .map((p) => {
-                        const refDate = new Date(thrConfirmData.idulFitriDate);
-                        const joinDate = new Date(p.join_date);
+                        const refDate = parseLocalDate(thrConfirmData.idulFitriDate);
+                        const joinDate = parseLocalDate(p.join_date);
                         if (refDate.getTime() < joinDate.getTime()) return null;
                         const { fullMonths, remainingDays, totalMonthsFraction } = calculateCutoffTenure(joinDate, refDate, thrConfirmData.cutoffDay || 21);
                         let thrAmount = 0;

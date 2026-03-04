@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -1841,6 +1841,15 @@ const Payroll = () => {
                 <div><span className="text-muted-foreground">Rekening Pengirim:</span> <span className="font-medium">{bankCompanyConfig.account_number}</span></div>
                 <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{bankCompanyConfig.bank_name}</span></div>
                 <div><span className="text-muted-foreground">Total:</span> <span className="font-bold">{formatRupiah(bankPreviewData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
+              </div>
+            )}
+
+            {payrollData.some(p => (p.thr || 0) > 0) && (
+              <div className="flex items-start gap-2 text-sm bg-primary/10 border border-primary/20 rounded-lg p-3">
+                <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-primary">
+                  <span className="font-semibold">Catatan:</span> Nominal THP sudah dikurangi THR karena THR dibayarkan terpisah melalui e-Payroll THR.
+                </p>
               </div>
             )}
 

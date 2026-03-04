@@ -453,18 +453,27 @@ const Payroll = () => {
         return;
       }
 
-      // Filter out employees with < 1 month tenure
+      // Filter out employees with < 1 month tenure (using months + days/30)
       const refDate = new Date(idulFitriDate);
       const eligibleProfiles = profiles
         .map((p) => {
           const joinDate = new Date(p.join_date);
           const diffMs = refDate.getTime() - joinDate.getTime();
           if (diffMs < 0) return null;
-          const totalMonths =
+          // Calculate full months
+          let fullMonths =
             (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-            (refDate.getMonth() - joinDate.getMonth()) +
-            (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
-          if (totalMonths < 1) return null;
+            (refDate.getMonth() - joinDate.getMonth());
+          // Calculate remaining days
+          let remainingDays = refDate.getDate() - joinDate.getDate();
+          if (remainingDays < 0) {
+            fullMonths -= 1;
+            // Get days in the previous month relative to refDate
+            const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
+            remainingDays += prevMonth.getDate();
+          }
+          const totalMonthsFraction = fullMonths + remainingDays / 30;
+          if (totalMonthsFraction < 1) return null;
           return {
             id: p.id,
             full_name: p.full_name,
@@ -506,16 +515,23 @@ const Payroll = () => {
         const diffMs = refDate.getTime() - joinDate.getTime();
         if (diffMs < 0) continue;
 
-        const totalMonths =
+        // Calculate full months and remaining days for proportional THR
+        let fullMonths =
           (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-          (refDate.getMonth() - joinDate.getMonth()) +
-          (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+          (refDate.getMonth() - joinDate.getMonth());
+        let remainingDays = refDate.getDate() - joinDate.getDate();
+        if (remainingDays < 0) {
+          fullMonths -= 1;
+          const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
+          remainingDays += prevMonth.getDate();
+        }
+        const totalMonthsFraction = fullMonths + remainingDays / 30;
 
         let thrAmount = 0;
-        if (totalMonths >= 12) {
+        if (totalMonthsFraction >= 12) {
           thrAmount = basicSalary;
-        } else if (totalMonths >= 1) {
-          thrAmount = Math.round((totalMonths / 12) * basicSalary);
+        } else if (totalMonthsFraction >= 1) {
+          thrAmount = Math.round((totalMonthsFraction / 12) * basicSalary);
         }
 
         if (thrAmount > 0) {

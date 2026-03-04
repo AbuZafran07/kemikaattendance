@@ -103,6 +103,7 @@ const Employees = () => {
     npwp: "",
     bank_name: "",
     bank_account_number: "",
+    join_date: "",
   });
 
   useEffect(() => {
@@ -360,6 +361,7 @@ const Employees = () => {
           npwp: editFormData.npwp || null,
           bank_name: editFormData.bank_name || null,
           bank_account_number: editFormData.bank_account_number || null,
+          join_date: editFormData.join_date || undefined,
         })
         .eq('id', editingEmployee.id);
 
@@ -407,6 +409,7 @@ const Employees = () => {
       npwp: employee.npwp || "",
       bank_name: employee.bank_name || "",
       bank_account_number: employee.bank_account_number || "",
+      join_date: employee.join_date || "",
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
@@ -452,6 +455,7 @@ const Employees = () => {
       npwp: "",
       bank_name: "",
       bank_account_number: "",
+      join_date: "",
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -921,6 +925,15 @@ const Employees = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_join_date">Tanggal Bergabung</Label>
+                  <Input
+                    id="edit_join_date"
+                    type="date"
+                    value={editFormData.join_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, join_date: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_phone">Telepon</Label>

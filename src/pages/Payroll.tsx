@@ -1084,9 +1084,14 @@ const Payroll = () => {
       const thrEmployees = thrRecipients.map(p => {
         const profile = profileMap.get(p.user_id);
         const joinDate = profile ? new Date(profile.join_date) : new Date();
-        const totalMonths = (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-          (refDate.getMonth() - joinDate.getMonth()) +
-          (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+        let fullMonths = (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
+          (refDate.getMonth() - joinDate.getMonth());
+        let remainingDays = refDate.getDate() - joinDate.getDate();
+        if (remainingDays < 0) {
+          fullMonths -= 1;
+          const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
+          remainingDays += prevMonth.getDate();
+        }
         return {
           employee_name: p.employee_name || profile?.full_name || "-",
           nik: p.nik || profile?.nik || "-",
@@ -1095,7 +1100,8 @@ const Payroll = () => {
           join_date: profile?.join_date || "",
           basic_salary: p.basic_salary,
           thr_amount: p.thr || 0,
-          tenure_months: Math.max(totalMonths, 0),
+          tenure_months: Math.max(fullMonths, 0),
+          tenure_days: Math.max(remainingDays, 0),
           bank_name: profile?.bank_name || "",
           bank_account_number: profile?.bank_account_number || "",
         };

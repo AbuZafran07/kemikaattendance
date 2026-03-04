@@ -73,6 +73,7 @@ export interface ThrEmployee {
   basic_salary: number;
   thr_amount: number;
   tenure_months: number;
+  tenure_days: number;
   bank_name?: string;
   bank_account_number?: string;
 }
@@ -195,10 +196,11 @@ export async function generateThrDisbursementPDF(
   const sortedEmployees = [...employees].sort((a, b) => a.departemen.localeCompare(b.departemen) || a.employee_name.localeCompare(b.employee_name));
 
   const tableBody = sortedEmployees.map((emp, idx) => {
-    const tenureLabel = emp.tenure_months >= 12
+    const totalFraction = emp.tenure_months + (emp.tenure_days || 0) / 30;
+    const tenureLabel = totalFraction >= 12
       ? `${Math.floor(emp.tenure_months / 12)} thn ${emp.tenure_months % 12} bln`
-      : `${emp.tenure_months} bln`;
-    const proportion = emp.tenure_months >= 12 ? "1/1" : `${emp.tenure_months}/12`;
+      : `${emp.tenure_months} bln ${emp.tenure_days || 0} hr`;
+    const proportion = totalFraction >= 12 ? "1/1" : `${totalFraction.toFixed(2)}/12`;
     return [
       String(idx + 1),
       emp.employee_name,
@@ -303,8 +305,8 @@ export async function generateThrDisbursementPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...GRAY_TEXT);
-  const fullTimers = employees.filter(e => e.tenure_months >= 12).length;
-  const prorated = employees.filter(e => e.tenure_months < 12).length;
+  const fullTimers = employees.filter(e => (e.tenure_months + (e.tenure_days || 0) / 30) >= 12).length;
+  const prorated = employees.filter(e => (e.tenure_months + (e.tenure_days || 0) / 30) < 12).length;
   doc.text(`Jumlah Penerima: ${employees.length} karyawan (${fullTimers} penuh, ${prorated} proporsional)`, mx, finalY);
 
   // ── SIGNATURE SECTION ──

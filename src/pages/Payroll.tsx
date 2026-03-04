@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -130,6 +130,7 @@ const Payroll = () => {
   const [incomeSearch, setIncomeSearch] = useState("");
   const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);
   const [selectedIncomeEmp, setSelectedIncomeEmp] = useState<string | null>(null);
+  const [calculatingThr, setCalculatingThr] = useState(false);
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -383,6 +384,108 @@ const Payroll = () => {
       next.set(userId, { ...current, [field]: Number(value) || 0 });
       return next;
     });
+  };
+
+  const handleAutoCalculateTHR = async () => {
+    setCalculatingThr(true);
+    try {
+      // 1. Find Idul Fitri date from holidays in overtime_policy
+      const { data: settingsData } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "overtime_policy")
+        .maybeSingle();
+
+      const holidays: { id: string; name: string; date: string }[] =
+        (settingsData?.value as any)?.holidays || [];
+
+      // Find Idul Fitri/Hari Raya holidays
+      const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
+      const idulFitriHolidays = holidays.filter((h) =>
+        idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw))
+      );
+
+      if (idulFitriHolidays.length === 0) {
+        toast({
+          title: "Tanggal Idul Fitri Tidak Ditemukan",
+          description: "Tambahkan hari libur Idul Fitri di Pengaturan Lembur > Hari Libur Nasional terlebih dahulu.",
+          variant: "destructive",
+        });
+        setCalculatingThr(false);
+        return;
+      }
+
+      // Use the earliest Idul Fitri date as reference
+      const idulFitriDate = idulFitriHolidays
+        .map((h) => h.date)
+        .sort()[0];
+
+      // 2. Fetch employee profiles (join_date, basic_salary)
+      const empIds = employees.map((e) => e.id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, join_date, basic_salary")
+        .in("id", empIds);
+
+      if (!profiles || profiles.length === 0) {
+        toast({ title: "Gagal", description: "Data karyawan tidak ditemukan.", variant: "destructive" });
+        setCalculatingThr(false);
+        return;
+      }
+
+      // 3. Calculate THR for each employee
+      const refDate = new Date(idulFitriDate);
+      let updatedCount = 0;
+
+      setIncomeAdditions((prev) => {
+        const next = new Map(prev);
+        for (const profile of profiles) {
+          const joinDate = new Date(profile.join_date);
+          const basicSalary = Number(profile.basic_salary) || 0;
+
+          // Calculate tenure in months
+          const diffMs = refDate.getTime() - joinDate.getTime();
+          if (diffMs < 0) continue; // Joined after Idul Fitri
+
+          const totalMonths =
+            (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
+            (refDate.getMonth() - joinDate.getMonth()) +
+            (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+
+          let thrAmount = 0;
+          if (totalMonths >= 12) {
+            // Full 1x basic salary
+            thrAmount = basicSalary;
+          } else if (totalMonths >= 1) {
+            // Prorata: (months / 12) * basic salary
+            thrAmount = Math.round((totalMonths / 12) * basicSalary);
+          }
+          // < 1 month: no THR
+
+          if (thrAmount > 0) {
+            const current = next.get(profile.id) || {
+              tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+              thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+              pengembalian_employee: 0, insentif_penjualan: 0,
+            };
+            next.set(profile.id, { ...current, thr: thrAmount });
+            updatedCount++;
+          }
+        }
+        return next;
+      });
+
+      const formattedDate = format(refDate, "dd MMM yyyy");
+      toast({
+        title: "THR Berhasil Dihitung",
+        description: `${updatedCount} karyawan dihitung berdasarkan Idul Fitri ${formattedDate}. Basis: Gaji Pokok.`,
+      });
+    } catch (error: any) {
+      console.error("Error calculating THR:", error);
+      toast({ title: "Gagal Hitung THR", description: error.message, variant: "destructive" });
+    } finally {
+      setCalculatingThr(false);
+    }
   };
 
   const updateDeduction = (userId: string, field: keyof DeductionOverride, value: string) => {
@@ -1312,6 +1415,16 @@ const Payroll = () => {
               <DialogTitle>Tambahan Penghasilan Insidental</DialogTitle>
               <DialogDescription>Klik nama karyawan untuk mengisi tambahan penghasilan. Tunjangan tetap diambil otomatis dari data karyawan.</DialogDescription>
             </DialogHeader>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 mb-1"
+              disabled={calculatingThr}
+              onClick={handleAutoCalculateTHR}
+            >
+              {calculatingThr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+              Hitung THR Otomatis (Permenaker No.6/2016)
+            </Button>
             <Input
               placeholder="🔍 Cari karyawan..."
               value={incomeSearch}

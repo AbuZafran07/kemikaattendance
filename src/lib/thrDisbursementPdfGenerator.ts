@@ -206,24 +206,27 @@ export async function generateThrDisbursementPDF(
       emp.employee_name,
       emp.nik,
       emp.departemen,
-      emp.jabatan,
       tenureLabel,
       fmtRp(emp.basic_salary),
       proportion,
       fmtRp(emp.thr_amount),
+      emp.bank_name || "-",
+      emp.bank_account_number || "-",
     ];
   });
 
   autoTable(doc, {
     startY: y,
     head: [[
-      "No", "Nama Karyawan", "NIK", "Departemen", "Jabatan",
+      "No", "Nama Karyawan", "NIK", "Departemen",
       "Masa Kerja", "Gaji Pokok", "Proporsi", "Nominal THR (Rp)",
+      "Bank", "No. Rekening",
     ]],
     body: tableBody,
     foot: [[
-      { content: "", colSpan: 8, styles: { halign: "right" as const, fontStyle: "bold" as const } },
+      { content: "", colSpan: 7, styles: { halign: "right" as const, fontStyle: "bold" as const } },
       { content: `TOTAL: Rp ${fmtRp(totalThr)}`, styles: { halign: "right" as const, fontStyle: "bold" as const, fillColor: LIGHT_GREEN } },
+      { content: "", colSpan: 2 },
     ]],
     theme: "grid",
     headStyles: {
@@ -245,15 +248,16 @@ export async function generateThrDisbursementPDF(
       fontSize: 8,
     },
     columnStyles: {
-      0: { halign: "center", cellWidth: 8 },
-      1: { cellWidth: 32 },
-      2: { cellWidth: 18, halign: "center" },
-      3: { cellWidth: 22 },
-      4: { cellWidth: 22 },
-      5: { halign: "center", cellWidth: 18 },
-      6: { halign: "right", cellWidth: 22 },
-      7: { halign: "center", cellWidth: 14 },
-      8: { halign: "right", cellWidth: 24 },
+      0: { halign: "center", cellWidth: 7 },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 16, halign: "center" },
+      3: { cellWidth: 20 },
+      4: { halign: "center", cellWidth: 16 },
+      5: { halign: "right", cellWidth: 20 },
+      6: { halign: "center", cellWidth: 13 },
+      7: { halign: "right", cellWidth: 22 },
+      8: { cellWidth: 18 },
+      9: { cellWidth: 20 },
     },
     margin: { left: mx, right: mx },
     didDrawPage: (data) => {

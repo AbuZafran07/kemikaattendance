@@ -78,7 +78,8 @@ export function generateBankPayrollCSV(
   config: BankPayrollConfig,
   employees: BankPayrollEmployee[],
   month: number,
-  year: number
+  year: number,
+  descriptionPrefix: string = 'Gaji'
 ): string {
   const today = new Date();
   const dateStr = `${year}${String(month).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
@@ -95,7 +96,7 @@ export function generateBankPayrollCSV(
     const transferType = determineTransferType(emp.bankName, config.companyBankName);
     const amount = Math.round(emp.amount);
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    const description = `Gaji ${monthNames[month - 1]}`;
+    const description = `${descriptionPrefix} ${monthNames[month - 1]}`;
     const seqStr = String(emp.seqNumber).padStart(2, '0');
     const reference = `${seqStr}-${emp.nik}`;
 

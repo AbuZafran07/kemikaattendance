@@ -179,6 +179,7 @@ export async function generateThrDisbursementPDF(
   const refDateFormatted = (() => {
     const [y, m, d2] = idulFitriDate.split("-").map(Number);
     const d = new Date(y, m - 1, d2);
+    return `${d.getDate()} ${MONTHS_ID[d.getMonth()]} ${d.getFullYear()}`;
   })();
   doc.text(`: ${idulFitriName} (${refDateFormatted})`, infoX2, iy);
 

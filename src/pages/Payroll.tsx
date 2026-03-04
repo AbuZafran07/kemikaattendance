@@ -10,9 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -1255,73 +1256,84 @@ const Payroll = () => {
   return (
     <DashboardLayout>
       <Tabs defaultValue="payroll" className="space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <DollarSign className="h-7 w-7 text-primary" /> Payroll
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Kelola penggajian karyawan dengan perhitungan PPh 21 & tunjangan kehadiran otomatis
-            </p>
-            <TabsList className="mt-3">
-              <TabsTrigger value="payroll">Payroll</TabsTrigger>
-              <TabsTrigger value="overrides">Riwayat Override</TabsTrigger>
-            </TabsList>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <DollarSign className="h-7 w-7 text-primary" /> Payroll
+              </h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Kelola penggajian karyawan dengan perhitungan PPh 21 & tunjangan kehadiran otomatis
+              </p>
+              <TabsList className="mt-3">
+                <TabsTrigger value="payroll">Payroll</TabsTrigger>
+                <TabsTrigger value="overrides">Riwayat Override</TabsTrigger>
+              </TabsList>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                <SelectTrigger className="w-[90px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button onClick={handleGenerate} disabled={generating || period?.status === "finalized"} className="gap-2">
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+                Generate
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-              <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-            </Select>
-            <Button variant="outline" onClick={openDeductionDialog} disabled={period?.status === "finalized"} className="gap-2">
-              <FileText className="h-4 w-4" /> Potongan
+
+          {/* Action bar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={openDeductionDialog} disabled={period?.status === "finalized"} className="gap-1.5">
+              <FileText className="h-3.5 w-3.5" /> Potongan
             </Button>
-            <Button variant="outline" onClick={openIncomeDialog} disabled={period?.status === "finalized"} className="gap-2">
-              <TrendingUp className="h-4 w-4" /> Tambahan Penghasilan
-            </Button>
-            <Button onClick={handleGenerate} disabled={generating || period?.status === "finalized"} className="gap-2">
-              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-              Generate Payroll
+            <Button variant="outline" size="sm" onClick={openIncomeDialog} disabled={period?.status === "finalized"} className="gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5" /> Tambahan Penghasilan
             </Button>
             {period?.status === "draft" && payrollData.length > 0 && (
-              <Button variant="outline" onClick={handleFinalize} className="gap-2">
-                <Lock className="h-4 w-4" /> Finalisasi
+              <Button variant="outline" size="sm" onClick={handleFinalize} className="gap-1.5">
+                <Lock className="h-3.5 w-3.5" /> Finalisasi
               </Button>
             )}
             {payrollData.length > 0 && (
-              <>
-                <Button variant="outline" onClick={handleExportExcel} className="gap-2">
-                  <FileSpreadsheet className="h-4 w-4" /> Export Excel
-                </Button>
-                <Button variant="outline" onClick={handleExportPayrollReport} disabled={generatingReport} className="gap-2">
-                  {generatingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-                  Laporan PDF
-                </Button>
-                <Button variant="outline" onClick={handleDownloadAllPDF} disabled={downloadingAllPDF} className="gap-2">
-                  {downloadingAllPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  Semua Slip PDF
-                </Button>
-                <Button variant="outline" onClick={handleOpenBankPreview} disabled={loadingBankPreview} className="gap-2">
-                  {loadingBankPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
-                  e-Payroll Bank
-                </Button>
-                {hasIdulFitriInPeriod && (
-                  <>
-                    <Button variant="outline" onClick={handleExportThrPDF} disabled={generatingThrPdf} className="gap-2">
-                      {generatingThrPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-                      PDF THR
-                    </Button>
-                    <Button variant="outline" onClick={handleOpenThrBankPreview} disabled={loadingThrBankPreview} className="gap-2">
-                      {loadingThrBankPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
-                      e-Payroll THR
-                    </Button>
-                  </>
-                )}
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Download className="h-3.5 w-3.5" /> Export
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2">
+                    <FileSpreadsheet className="h-4 w-4" /> Export Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPayrollReport} disabled={generatingReport} className="gap-2">
+                    <Printer className="h-4 w-4" /> Laporan PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDownloadAllPDF} disabled={downloadingAllPDF} className="gap-2">
+                    <Download className="h-4 w-4" /> Semua Slip PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleOpenBankPreview} disabled={loadingBankPreview} className="gap-2">
+                    <Landmark className="h-4 w-4" /> e-Payroll Bank
+                  </DropdownMenuItem>
+                  {hasIdulFitriInPeriod && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleExportThrPDF} disabled={generatingThrPdf} className="gap-2">
+                        <Gift className="h-4 w-4" /> PDF THR
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleOpenThrBankPreview} disabled={loadingThrBankPreview} className="gap-2">
+                        <Landmark className="h-4 w-4" /> e-Payroll THR
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>

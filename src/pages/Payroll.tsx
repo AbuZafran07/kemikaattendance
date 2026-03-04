@@ -1844,6 +1844,15 @@ const Payroll = () => {
               </div>
             )}
 
+            {payrollData.some(p => (p.thr || 0) > 0) && (
+              <div className="flex items-start gap-2 text-sm bg-primary/10 border border-primary/20 rounded-lg p-3">
+                <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-primary">
+                  <span className="font-semibold">Catatan:</span> Nominal THP sudah dikurangi THR karena THR dibayarkan terpisah melalui e-Payroll THR.
+                </p>
+              </div>
+            )}
+
             <div className="flex-1 overflow-auto min-h-0">
               <Table>
                 <TableHeader>

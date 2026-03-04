@@ -46,9 +46,9 @@ export function calculateCutoffTenure(
     jDayInPeriod = jDay + (daysInPrevMonth - cutoffDay);
   }
 
-  const rDay = refDate.getDate();
-  let rPeriodMonth = refDate.getMonth();
-  let rPeriodYear = refDate.getFullYear();
+  const rDay = adjustedRef.getDate();
+  let rPeriodMonth = adjustedRef.getMonth();
+  let rPeriodYear = adjustedRef.getFullYear();
   let rDayInPeriod: number;
 
   if (rDay >= cutoffDay) {
@@ -59,7 +59,7 @@ export function calculateCutoffTenure(
       rPeriodMonth = 11;
       rPeriodYear -= 1;
     }
-    const daysInPrevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0).getDate();
+    const daysInPrevMonth = new Date(adjustedRef.getFullYear(), adjustedRef.getMonth(), 0).getDate();
     rDayInPeriod = rDay + (daysInPrevMonth - cutoffDay);
   }
 

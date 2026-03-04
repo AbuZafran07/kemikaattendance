@@ -305,8 +305,8 @@ export async function generateThrDisbursementPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...GRAY_TEXT);
-  const fullTimers = employees.filter(e => e.tenure_months >= 12).length;
-  const prorated = employees.filter(e => e.tenure_months < 12).length;
+  const fullTimers = employees.filter(e => (e.tenure_months + (e.tenure_days || 0) / 30) >= 12).length;
+  const prorated = employees.filter(e => (e.tenure_months + (e.tenure_days || 0) / 30) < 12).length;
   doc.text(`Jumlah Penerima: ${employees.length} karyawan (${fullTimers} penuh, ${prorated} proporsional)`, mx, finalY);
 
   // ── SIGNATURE SECTION ──

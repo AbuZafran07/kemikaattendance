@@ -1256,38 +1256,34 @@ const Payroll = () => {
   return (
     <DashboardLayout>
       <Tabs defaultValue="payroll" className="space-y-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <DollarSign className="h-7 w-7 text-primary" /> Payroll
-              </h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                Kelola penggajian karyawan dengan perhitungan PPh 21 & tunjangan kehadiran otomatis
-              </p>
-              <TabsList className="mt-3">
-                <TabsTrigger value="payroll">Payroll</TabsTrigger>
-                <TabsTrigger value="overrides">Riwayat Override</TabsTrigger>
-              </TabsList>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
-                <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
-                <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                <SelectTrigger className="w-[90px]"><SelectValue /></SelectTrigger>
-                <SelectContent>{years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-              </Select>
-              <Button onClick={handleGenerate} disabled={generating || period?.status === "finalized"} className="gap-2">
-                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-                Generate
-              </Button>
-            </div>
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <DollarSign className="h-7 w-7 text-primary" /> Payroll
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Kelola penggajian karyawan dengan perhitungan PPh 21 & tunjangan kehadiran otomatis
+            </p>
+            <TabsList className="mt-3">
+              <TabsTrigger value="payroll">Payroll</TabsTrigger>
+              <TabsTrigger value="overrides">Riwayat Override</TabsTrigger>
+            </TabsList>
           </div>
 
-          {/* Action bar */}
+          {/* All actions in one row */}
           <div className="flex items-center gap-2 flex-wrap">
+            <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+              <SelectTrigger className="w-[130px] h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+              <SelectTrigger className="w-[90px] h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>{years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button size="sm" onClick={handleGenerate} disabled={generating || period?.status === "finalized"} className="gap-1.5">
+              {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calculator className="h-3.5 w-3.5" />}
+              Generate
+            </Button>
             <Button variant="outline" size="sm" onClick={openDeductionDialog} disabled={period?.status === "finalized"} className="gap-1.5">
               <FileText className="h-3.5 w-3.5" /> Potongan
             </Button>

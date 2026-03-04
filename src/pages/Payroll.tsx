@@ -145,6 +145,9 @@ const Payroll = () => {
     profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
   } | null>(null);
   const [hasIdulFitriInPeriod, setHasIdulFitriInPeriod] = useState(false);
+  const [payrollSearch, setPayrollSearch] = useState("");
+  const [payrollPage, setPayrollPage] = useState(1);
+  const payrollPerPage = 10;
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);

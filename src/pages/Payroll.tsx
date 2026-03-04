@@ -131,6 +131,11 @@ const Payroll = () => {
   const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);
   const [selectedIncomeEmp, setSelectedIncomeEmp] = useState<string | null>(null);
   const [calculatingThr, setCalculatingThr] = useState(false);
+  const [thrConfirmData, setThrConfirmData] = useState<{
+    idulFitriDate: string;
+    idulFitriName: string;
+    profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
+  } | null>(null);
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);

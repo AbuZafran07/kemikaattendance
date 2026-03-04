@@ -1097,7 +1097,8 @@ const Payroll = () => {
         { companyAccountNumber: thrBankCompanyConfig.account_number, companyBankName: thrBankCompanyConfig.bank_name },
         thrBankPreviewData,
         selectedMonth,
-        selectedYear
+        selectedYear,
+        'THR'
       );
       downloadBankPayrollFile(csvContent, selectedMonth, selectedYear, 'e-payroll-THR');
       toast({ title: "Export Berhasil", description: "File e-Payroll THR berhasil di-download." });

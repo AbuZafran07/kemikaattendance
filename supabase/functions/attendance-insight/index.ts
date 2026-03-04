@@ -1,15 +1,77 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { employeeName, summary } = await req.json();
+
+    // Input validation
+    if (typeof employeeName !== "string" || employeeName.trim().length === 0 || employeeName.length > 200) {
+      return new Response(JSON.stringify({ error: "Invalid employeeName" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!summary || typeof summary !== "object") {
+      return new Response(JSON.stringify({ error: "Invalid summary" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const numericFields = ["hadir", "terlambat", "pulangCepat", "cuti", "dinas"];
+    for (const field of numericFields) {
+      const val = summary[field];
+      if (val !== undefined && (typeof val !== "number" || val < 0 || val > 366)) {
+        return new Response(JSON.stringify({ error: `Invalid summary.${field}` }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (typeof summary.totalJamKerja !== "string" && typeof summary.totalJamKerja !== "number") {
+      return new Response(JSON.stringify({ error: "Invalid summary.totalJamKerja" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (typeof summary.periode !== "string" || summary.periode.length > 100) {
+      return new Response(JSON.stringify({ error: "Invalid summary.periode" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Sanitize inputs
+    const safeName = employeeName.replace(/<[^>]*>/g, "").trim();
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -24,7 +86,7 @@ PENTING: Respond dalam format JSON SAJA, tanpa markdown code block, tanpa backti
 
 Jika kehadiran bagus, isGood = true. Jika tidak, isGood = false.
 
-Nama Karyawan: ${employeeName}
+Nama Karyawan: ${safeName}
 Data Ringkasan:
 - Total Hari Hadir Tepat Waktu: ${summary.hadir}
 - Total Hari Terlambat: ${summary.terlambat}
@@ -66,18 +128,15 @@ Data Ringkasan:
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || "";
     
-    // Try to parse JSON response
     let insight = "Tidak dapat menghasilkan insight.";
     let isGood = false;
     
     try {
-      // Clean potential markdown code blocks
       const cleaned = rawContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       const parsed = JSON.parse(cleaned);
       insight = parsed.insight || insight;
       isGood = parsed.isGood === true;
     } catch {
-      // Fallback: use raw text as insight
       insight = rawContent || insight;
       isGood = false;
     }
@@ -87,7 +146,7 @@ Data Ringkasan:
     });
   } catch (e) {
     console.error("Attendance insight error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

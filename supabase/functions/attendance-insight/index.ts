@@ -32,7 +32,26 @@ serve(async (req) => {
       });
     }
 
-    const { employeeName, summary } = await req.json();
+    const userId = claimsData.claims.sub as string;
+
+    // Check if user is admin
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    const isAdmin = !!roleData;
+
+    const { employeeName, summary, targetUserId } = await req.json();
+
+    // Authorization: only admins can view other employees' insights
+    if (targetUserId && targetUserId !== userId && !isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden - can only view own insights" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Input validation
     if (typeof employeeName !== "string" || employeeName.trim().length === 0 || employeeName.length > 200) {

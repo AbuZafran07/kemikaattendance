@@ -1034,6 +1034,81 @@ const Payroll = () => {
     }
   };
 
+  // ── e-Payroll THR Bank Preview ──
+  const [showThrBankPreview, setShowThrBankPreview] = useState(false);
+  const [thrBankPreviewData, setThrBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number }[]>([]);
+  const [thrBankCompanyConfig, setThrBankCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
+  const [exportingThrBank, setExportingThrBank] = useState(false);
+  const [loadingThrBankPreview, setLoadingThrBankPreview] = useState(false);
+
+  const handleOpenThrBankPreview = async () => {
+    if (payrollData.length === 0) return;
+    const thrRecipients = payrollData.filter(p => (p.thr || 0) > 0);
+    if (thrRecipients.length === 0) {
+      toast({ title: "Tidak Ada Data THR", description: "Belum ada karyawan yang memiliki THR pada periode ini.", variant: "destructive" });
+      return;
+    }
+    setLoadingThrBankPreview(true);
+    try {
+      const { data: settingsData } = await supabase
+        .from("system_settings").select("value").eq("key", "company_bank_config").single();
+      const companyConfig = settingsData?.value as any;
+      if (!companyConfig?.account_number) {
+        toast({ title: "Konfigurasi Belum Lengkap", description: "Silakan atur nomor rekening perusahaan di menu Settings > Pengaturan Bank Perusahaan terlebih dahulu.", variant: "destructive" });
+        return;
+      }
+      setThrBankCompanyConfig(companyConfig);
+
+      const userIds = thrRecipients.map(p => p.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles").select("id, bank_account_number, bank_name, full_name, nik, email").in("id", userIds);
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const employees = thrRecipients.map((item, idx) => {
+        const profile = profileMap.get(item.user_id);
+        return {
+          bankAccountNumber: profile?.bank_account_number || "",
+          fullName: profile?.full_name || item.employee_name || "-",
+          amount: item.thr || 0,
+          nik: profile?.nik || item.nik || "",
+          email: profile?.email || "",
+          bankName: profile?.bank_name || "",
+          seqNumber: idx + 1,
+        };
+      });
+
+      setThrBankPreviewData(employees);
+      setShowThrBankPreview(true);
+    } catch (error: any) {
+      toast({ title: "Gagal", description: error.message, variant: "destructive" });
+    } finally {
+      setLoadingThrBankPreview(false);
+    }
+  };
+
+  const thrBankIncompleteEmployees = thrBankPreviewData.filter(e => !e.bankAccountNumber || !e.bankName);
+
+  const handleConfirmThrBankExport = async () => {
+    if (!thrBankCompanyConfig) return;
+    setExportingThrBank(true);
+    try {
+      const { generateBankPayrollCSV, downloadBankPayrollFile } = await import("@/lib/bankPayrollExport");
+      const csvContent = generateBankPayrollCSV(
+        { companyAccountNumber: thrBankCompanyConfig.account_number, companyBankName: thrBankCompanyConfig.bank_name },
+        thrBankPreviewData,
+        selectedMonth,
+        selectedYear
+      );
+      downloadBankPayrollFile(csvContent, selectedMonth, selectedYear, 'e-payroll-THR');
+      toast({ title: "Export Berhasil", description: "File e-Payroll THR berhasil di-download." });
+      setShowThrBankPreview(false);
+    } catch (error: any) {
+      toast({ title: "Gagal Export", description: error.message, variant: "destructive" });
+    } finally {
+      setExportingThrBank(false);
+    }
+  };
+
   const [generatingThrPdf, setGeneratingThrPdf] = useState(false);
   const handleExportThrPDF = async () => {
     if (payrollData.length === 0) return;

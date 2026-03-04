@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
@@ -145,6 +145,9 @@ const Payroll = () => {
     profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
   } | null>(null);
   const [hasIdulFitriInPeriod, setHasIdulFitriInPeriod] = useState(false);
+  const [payrollSearch, setPayrollSearch] = useState("");
+  const [payrollPage, setPayrollPage] = useState(1);
+  const payrollPerPage = 10;
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -875,6 +878,21 @@ const Payroll = () => {
     }, logo);
   };
 
+  // Search & pagination logic
+  const filteredPayroll = payrollData.filter((item) => {
+    if (!payrollSearch.trim()) return true;
+    const q = payrollSearch.toLowerCase();
+    return (
+      (item.employee_name || "").toLowerCase().includes(q) ||
+      (item.nik || "").toLowerCase().includes(q) ||
+      (item.departemen || "").toLowerCase().includes(q) ||
+      (item.jabatan || "").toLowerCase().includes(q)
+    );
+  });
+  const payrollTotalPages = Math.max(1, Math.ceil(filteredPayroll.length / payrollPerPage));
+  const safePage = Math.min(payrollPage, payrollTotalPages);
+  const paginatedPayroll = filteredPayroll.slice((safePage - 1) * payrollPerPage, safePage * payrollPerPage);
+
   const totalBruto = payrollData.reduce((s, p) => s + p.bruto_income, 0);
   const totalTHP = payrollData.reduce((s, p) => s + p.take_home_pay, 0);
   const totalPPh = payrollData.reduce((s, p) => s + p.pph21_monthly, 0);
@@ -1330,8 +1348,23 @@ const Payroll = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Data Payroll — {MONTHS[selectedMonth - 1].label} {selectedYear}</CardTitle>
-            <CardDescription>Daftar penggajian karyawan beserta tunjangan, potongan, dan pajak</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg">Data Payroll — {MONTHS[selectedMonth - 1].label} {selectedYear}</CardTitle>
+                <CardDescription>Daftar penggajian karyawan beserta tunjangan, potongan, dan pajak</CardDescription>
+              </div>
+              {payrollData.length > 0 && (
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari nama, NIK, dept..."
+                    value={payrollSearch}
+                    onChange={(e) => { setPayrollSearch(e.target.value); setPayrollPage(1); }}
+                    className="pl-9"
+                  />
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -1342,77 +1375,117 @@ const Payroll = () => {
                 <p className="font-medium">Belum ada data payroll</p>
                 <p className="text-sm mt-1">Klik "Generate Payroll" untuk menghitung gaji periode ini</p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40px]">No</TableHead>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Dept</TableHead>
-                      <TableHead className="text-right">Gaji Pokok</TableHead>
-                      <TableHead className="text-right">Tunjangan</TableHead>
-                      <TableHead className="text-right">Lembur</TableHead>
-                      <TableHead className="text-right">Bruto</TableHead>
-                      <TableHead className="text-right">BPJS</TableHead>
-                      <TableHead className="text-right">Potongan</TableHead>
-                      <TableHead className="text-center">PPh 21 Mode</TableHead>
-                      <TableHead className="text-right">PPh 21</TableHead>
-                      <TableHead className="text-right">THP</TableHead>
-                      <TableHead className="w-[100px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payrollData.map((item, idx) => (
-                      <TableRow key={item.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setDetailItem(item)}>
-                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{item.employee_name}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[10px]">{item.departemen}</Badge></TableCell>
-                        <TableCell className="text-right text-sm">{formatRupiah(item.basic_salary)}</TableCell>
-                        <TableCell className="text-right text-sm">{item.allowance > 0 ? formatRupiah(item.allowance) : <span className="text-muted-foreground">-</span>}</TableCell>
-                        <TableCell className="text-right text-sm">{item.overtime_hours > 0 ? <span title={`${item.overtime_hours} jam`}>{formatRupiah(item.overtime_total)}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
-                        <TableCell className="text-right text-sm font-medium">{formatRupiah(item.bruto_income)}</TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">{formatRupiah(item.bpjs_kesehatan + item.bpjs_ketenagakerjaan)}</TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">
-                          {(item.loan_deduction + item.other_deduction) > 0 ? formatRupiah(item.loan_deduction + item.other_deduction) : <span>-</span>}
-                        </TableCell>
-                        <TableCell className="text-center text-sm">
-                          {item.pph21_mode === "TER" && item.pph21_ter_rate != null ? (
-                            <Badge variant="outline" className="text-[10px]">TER {item.pph21_ter_rate.toFixed(2)}%</Badge>
-                          ) : item.pph21_mode === "REKONSILIASI" ? (
-                            <Badge variant="secondary" className="text-[10px]">Rekonsiliasi</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">{item.pph21_mode}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-sm text-destructive">{formatRupiah(item.pph21_monthly)}</TableCell>
-                        <TableCell className="text-right text-sm font-bold text-primary">{formatRupiah(item.take_home_pay)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}>Detail</Button>
-                            <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); generateSlipPDF(item); }} title="Download Slip PDF">
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="bg-muted/50 font-semibold">
-                      <TableCell colSpan={3}>Total</TableCell>
-                      <TableCell className="text-right">{formatRupiah(payrollData.reduce((s, p) => s + p.basic_salary, 0))}</TableCell>
-                      <TableCell className="text-right">{formatRupiah(payrollData.reduce((s, p) => s + p.allowance, 0))}</TableCell>
-                      <TableCell className="text-right">{formatRupiah(payrollData.reduce((s, p) => s + p.overtime_total, 0))}</TableCell>
-                      <TableCell className="text-right">{formatRupiah(totalBruto)}</TableCell>
-                      <TableCell className="text-right">{formatRupiah(payrollData.reduce((s, p) => s + p.bpjs_kesehatan + p.bpjs_ketenagakerjaan, 0))}</TableCell>
-                      <TableCell className="text-right">{formatRupiah(payrollData.reduce((s, p) => s + p.loan_deduction + p.other_deduction, 0))}</TableCell>
-                      <TableCell />
-                      <TableCell className="text-right text-destructive">{formatRupiah(totalPPh)}</TableCell>
-                      <TableCell className="text-right text-primary">{formatRupiah(totalTHP)}</TableCell>
-                      <TableCell />
-                    </TableRow>
-                  </TableBody>
-                </Table>
+            ) : filteredPayroll.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Search className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">Tidak ada hasil</p>
+                <p className="text-sm mt-1">Coba kata kunci lain</p>
               </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px]">No</TableHead>
+                        <TableHead>Nama</TableHead>
+                        <TableHead>Dept</TableHead>
+                        <TableHead className="text-right">Gaji Pokok</TableHead>
+                        <TableHead className="text-right">Tunjangan</TableHead>
+                        <TableHead className="text-right">Lembur</TableHead>
+                        <TableHead className="text-right">Bruto</TableHead>
+                        <TableHead className="text-right">BPJS</TableHead>
+                        <TableHead className="text-right">Potongan</TableHead>
+                        <TableHead className="text-center">PPh 21 Mode</TableHead>
+                        <TableHead className="text-right">PPh 21</TableHead>
+                        <TableHead className="text-right">THP</TableHead>
+                        <TableHead className="w-[100px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedPayroll.map((item, idx) => (
+                        <TableRow key={item.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setDetailItem(item)}>
+                          <TableCell className="text-muted-foreground">{(safePage - 1) * payrollPerPage + idx + 1}</TableCell>
+                          <TableCell className="font-medium">{item.employee_name}</TableCell>
+                          <TableCell><Badge variant="outline" className="text-[10px]">{item.departemen}</Badge></TableCell>
+                          <TableCell className="text-right text-sm">{formatRupiah(item.basic_salary)}</TableCell>
+                          <TableCell className="text-right text-sm">{item.allowance > 0 ? formatRupiah(item.allowance) : <span className="text-muted-foreground">-</span>}</TableCell>
+                          <TableCell className="text-right text-sm">{item.overtime_hours > 0 ? <span title={`${item.overtime_hours} jam`}>{formatRupiah(item.overtime_total)}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
+                          <TableCell className="text-right text-sm font-medium">{formatRupiah(item.bruto_income)}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">{formatRupiah(item.bpjs_kesehatan + item.bpjs_ketenagakerjaan)}</TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {(item.loan_deduction + item.other_deduction) > 0 ? formatRupiah(item.loan_deduction + item.other_deduction) : <span>-</span>}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {item.pph21_mode === "TER" && item.pph21_ter_rate != null ? (
+                              <Badge variant="outline" className="text-[10px]">TER {item.pph21_ter_rate.toFixed(2)}%</Badge>
+                            ) : item.pph21_mode === "REKONSILIASI" ? (
+                              <Badge variant="secondary" className="text-[10px]">Rekonsiliasi</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">{item.pph21_mode}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-sm text-destructive">{formatRupiah(item.pph21_monthly)}</TableCell>
+                          <TableCell className="text-right text-sm font-bold text-primary">{formatRupiah(item.take_home_pay)}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}>Detail</Button>
+                              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); generateSlipPDF(item); }} title="Download Slip PDF">
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="bg-muted/50 font-semibold">
+                        <TableCell colSpan={3}>Total ({filteredPayroll.length} karyawan)</TableCell>
+                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.basic_salary, 0))}</TableCell>
+                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.allowance, 0))}</TableCell>
+                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.overtime_total, 0))}</TableCell>
+                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.bruto_income, 0))}</TableCell>
+                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.bpjs_kesehatan + p.bpjs_ketenagakerjaan, 0))}</TableCell>
+                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.loan_deduction + p.other_deduction, 0))}</TableCell>
+                        <TableCell />
+                        <TableCell className="text-right text-destructive">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.pph21_monthly, 0))}</TableCell>
+                        <TableCell className="text-right text-primary">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.take_home_pay, 0))}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Pagination */}
+                {payrollTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Menampilkan {(safePage - 1) * payrollPerPage + 1}–{Math.min(safePage * payrollPerPage, filteredPayroll.length)} dari {filteredPayroll.length}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPayrollPage(safePage - 1)}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      {Array.from({ length: payrollTotalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === payrollTotalPages || Math.abs(p - safePage) <= 1)
+                        .reduce<(number | string)[]>((acc, p, i, arr) => {
+                          if (i > 0 && (arr[i - 1] as number) < p - 1) acc.push("...");
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((p, i) =>
+                          typeof p === "string" ? (
+                            <span key={`e${i}`} className="px-2 text-muted-foreground text-sm">…</span>
+                          ) : (
+                            <Button key={p} variant={p === safePage ? "default" : "outline"} size="sm" className="h-8 w-8 p-0" onClick={() => setPayrollPage(p)}>
+                              {p}
+                            </Button>
+                          )
+                        )}
+                      <Button variant="outline" size="sm" disabled={safePage >= payrollTotalPages} onClick={() => setPayrollPage(safePage + 1)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

@@ -136,11 +136,29 @@ const Payroll = () => {
     idulFitriName: string;
     profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
   } | null>(null);
+  const [hasIdulFitriInPeriod, setHasIdulFitriInPeriod] = useState(false);
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
-  useEffect(() => { fetchPayrollData(); loadOverridesFromDB(); }, [selectedMonth, selectedYear]);
+  useEffect(() => { fetchPayrollData(); loadOverridesFromDB(); checkIdulFitriInPeriod(); }, [selectedMonth, selectedYear]);
+
+  const checkIdulFitriInPeriod = async () => {
+    try {
+      const { data: settingsData } = await supabase
+        .from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle();
+      const holidays: { name: string; date: string }[] = (settingsData?.value as any)?.holidays || [];
+      const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
+      const found = holidays.some((h) => {
+        const d = new Date(h.date);
+        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear &&
+          idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw));
+      });
+      setHasIdulFitriInPeriod(found);
+    } catch {
+      setHasIdulFitriInPeriod(false);
+    }
+  };
 
   const loadOverridesFromDB = async () => {
     try {
@@ -1517,16 +1535,18 @@ const Payroll = () => {
               <DialogTitle>Tambahan Penghasilan Insidental</DialogTitle>
               <DialogDescription>Klik nama karyawan untuk mengisi tambahan penghasilan. Tunjangan tetap diambil otomatis dari data karyawan.</DialogDescription>
             </DialogHeader>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 mb-1"
-              disabled={calculatingThr}
-              onClick={handleAutoCalculateTHR}
-            >
-              {calculatingThr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-              Hitung THR Otomatis (Permenaker No.6/2016)
-            </Button>
+            {hasIdulFitriInPeriod && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 mb-1"
+                disabled={calculatingThr}
+                onClick={handleAutoCalculateTHR}
+              >
+                {calculatingThr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+                Hitung THR Otomatis (Permenaker No.6/2016)
+              </Button>
+            )}
             <Input
               placeholder="🔍 Cari karyawan..."
               value={incomeSearch}

@@ -98,6 +98,54 @@ export const employeeEditSchema = z.object({
   status: z
     .string()
     .optional(),
+  basic_salary: z
+    .union([z.string(), z.number()])
+    .transform(val => Number(val))
+    .refine(val => !isNaN(val) && val >= 0 && val <= 1000000000, {
+      message: 'Gaji pokok harus antara 0 dan 1.000.000.000',
+    })
+    .optional(),
+  npwp: z
+    .string()
+    .trim()
+    .max(20, 'NPWP maksimal 20 karakter')
+    .regex(/^$|^\d{0,20}$/, 'NPWP hanya boleh berisi angka')
+    .optional()
+    .or(z.literal('')),
+  bank_account_number: z
+    .string()
+    .trim()
+    .max(25, 'Nomor rekening maksimal 25 karakter')
+    .regex(/^$|^[\d\-]+$/, 'Nomor rekening hanya boleh berisi angka dan strip')
+    .optional()
+    .or(z.literal('')),
+  bank_name: z
+    .string()
+    .trim()
+    .max(100, 'Nama bank maksimal 100 karakter')
+    .optional()
+    .or(z.literal('')),
+  tunjangan_komunikasi: z
+    .union([z.string(), z.number()])
+    .transform(val => Number(val))
+    .refine(val => !isNaN(val) && val >= 0 && val <= 100000000, {
+      message: 'Tunjangan komunikasi harus antara 0 dan 100.000.000',
+    })
+    .optional(),
+  tunjangan_jabatan: z
+    .union([z.string(), z.number()])
+    .transform(val => Number(val))
+    .refine(val => !isNaN(val) && val >= 0 && val <= 100000000, {
+      message: 'Tunjangan jabatan harus antara 0 dan 100.000.000',
+    })
+    .optional(),
+  tunjangan_operasional: z
+    .union([z.string(), z.number()])
+    .transform(val => Number(val))
+    .refine(val => !isNaN(val) && val >= 0 && val <= 100000000, {
+      message: 'Tunjangan operasional harus antara 0 dan 100.000.000',
+    })
+    .optional(),
 });
 
 export const leaveRequestSchema = z.object({

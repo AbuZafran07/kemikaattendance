@@ -120,8 +120,7 @@ export async function generateThrDisbursementPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...GRAY_TEXT);
-  doc.text("Jl. Raya Industri No. 123, Jakarta Selatan", mx + 22, y + 13);
-  doc.text("Tel: (021) 123-4567 | Email: hrd@kemika.co.id", mx + 22, y + 17);
+  doc.text("Jl. Uri Beta Selatan Raya No. 78 Larangan Utara, Kota Tangerang 15154", mx + 22, y + 13);
 
   y = 38;
   doc.setDrawColor(...GREEN);

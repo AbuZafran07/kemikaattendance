@@ -878,6 +878,21 @@ const Payroll = () => {
     }, logo);
   };
 
+  // Search & pagination logic
+  const filteredPayroll = payrollData.filter((item) => {
+    if (!payrollSearch.trim()) return true;
+    const q = payrollSearch.toLowerCase();
+    return (
+      (item.employee_name || "").toLowerCase().includes(q) ||
+      (item.nik || "").toLowerCase().includes(q) ||
+      (item.departemen || "").toLowerCase().includes(q) ||
+      (item.jabatan || "").toLowerCase().includes(q)
+    );
+  });
+  const payrollTotalPages = Math.max(1, Math.ceil(filteredPayroll.length / payrollPerPage));
+  const safePage = Math.min(payrollPage, payrollTotalPages);
+  const paginatedPayroll = filteredPayroll.slice((safePage - 1) * payrollPerPage, safePage * payrollPerPage);
+
   const totalBruto = payrollData.reduce((s, p) => s + p.bruto_income, 0);
   const totalTHP = payrollData.reduce((s, p) => s + p.take_home_pay, 0);
   const totalPPh = payrollData.reduce((s, p) => s + p.pph21_monthly, 0);

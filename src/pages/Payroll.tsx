@@ -404,7 +404,6 @@ const Payroll = () => {
       const holidays: { id: string; name: string; date: string }[] =
         (settingsData?.value as any)?.holidays || [];
 
-      // Find Idul Fitri/Hari Raya holidays
       const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
       const idulFitriHolidays = holidays.filter((h) =>
         idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw))
@@ -416,81 +415,90 @@ const Payroll = () => {
           description: "Tambahkan hari libur Idul Fitri di Pengaturan Lembur > Hari Libur Nasional terlebih dahulu.",
           variant: "destructive",
         });
-        setCalculatingThr(false);
         return;
       }
 
       // Use the earliest Idul Fitri date as reference
-      const idulFitriDate = idulFitriHolidays
-        .map((h) => h.date)
-        .sort()[0];
+      const sorted = idulFitriHolidays.sort((a, b) => a.date.localeCompare(b.date));
+      const idulFitriDate = sorted[0].date;
+      const idulFitriName = sorted[0].name;
 
-      // 2. Fetch employee profiles (join_date, basic_salary)
+      // 2. Fetch employee profiles
       const empIds = employees.map((e) => e.id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, join_date, basic_salary")
+        .select("id, full_name, join_date, basic_salary")
         .in("id", empIds);
 
       if (!profiles || profiles.length === 0) {
         toast({ title: "Gagal", description: "Data karyawan tidak ditemukan.", variant: "destructive" });
-        setCalculatingThr(false);
         return;
       }
 
-      // 3. Calculate THR for each employee
-      const refDate = new Date(idulFitriDate);
-      let updatedCount = 0;
-
-      setIncomeAdditions((prev) => {
-        const next = new Map(prev);
-        for (const profile of profiles) {
-          const joinDate = new Date(profile.join_date);
-          const basicSalary = Number(profile.basic_salary) || 0;
-
-          // Calculate tenure in months
-          const diffMs = refDate.getTime() - joinDate.getTime();
-          if (diffMs < 0) continue; // Joined after Idul Fitri
-
-          const totalMonths =
-            (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-            (refDate.getMonth() - joinDate.getMonth()) +
-            (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
-
-          let thrAmount = 0;
-          if (totalMonths >= 12) {
-            // Full 1x basic salary
-            thrAmount = basicSalary;
-          } else if (totalMonths >= 1) {
-            // Prorata: (months / 12) * basic salary
-            thrAmount = Math.round((totalMonths / 12) * basicSalary);
-          }
-          // < 1 month: no THR
-
-          if (thrAmount > 0) {
-            const current = next.get(profile.id) || {
-              tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
-              thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-              pengembalian_employee: 0, insentif_penjualan: 0,
-            };
-            next.set(profile.id, { ...current, thr: thrAmount });
-            updatedCount++;
-          }
-        }
-        return next;
-      });
-
-      const formattedDate = format(refDate, "dd MMM yyyy");
-      toast({
-        title: "THR Berhasil Dihitung",
-        description: `${updatedCount} karyawan dihitung berdasarkan Idul Fitri ${formattedDate}. Basis: Gaji Pokok.`,
+      // 3. Show confirmation dialog
+      setThrConfirmData({
+        idulFitriDate,
+        idulFitriName,
+        profiles: profiles.map((p) => ({
+          id: p.id,
+          full_name: p.full_name,
+          join_date: p.join_date,
+          basic_salary: Number(p.basic_salary) || 0,
+        })),
       });
     } catch (error: any) {
-      console.error("Error calculating THR:", error);
-      toast({ title: "Gagal Hitung THR", description: error.message, variant: "destructive" });
+      console.error("Error fetching THR data:", error);
+      toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } finally {
       setCalculatingThr(false);
     }
+  };
+
+  const confirmCalculateTHR = () => {
+    if (!thrConfirmData) return;
+    const refDate = new Date(thrConfirmData.idulFitriDate);
+    let updatedCount = 0;
+
+    setIncomeAdditions((prev) => {
+      const next = new Map(prev);
+      for (const profile of thrConfirmData.profiles) {
+        const joinDate = new Date(profile.join_date);
+        const basicSalary = profile.basic_salary;
+
+        const diffMs = refDate.getTime() - joinDate.getTime();
+        if (diffMs < 0) continue;
+
+        const totalMonths =
+          (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
+          (refDate.getMonth() - joinDate.getMonth()) +
+          (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+
+        let thrAmount = 0;
+        if (totalMonths >= 12) {
+          thrAmount = basicSalary;
+        } else if (totalMonths >= 1) {
+          thrAmount = Math.round((totalMonths / 12) * basicSalary);
+        }
+
+        if (thrAmount > 0) {
+          const current = next.get(profile.id) || {
+            tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+            thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+            pengembalian_employee: 0, insentif_penjualan: 0,
+          };
+          next.set(profile.id, { ...current, thr: thrAmount });
+          updatedCount++;
+        }
+      }
+      return next;
+    });
+
+    const formattedDate = format(refDate, "dd MMM yyyy");
+    toast({
+      title: "THR Berhasil Dihitung",
+      description: `${updatedCount} karyawan dihitung berdasarkan ${thrConfirmData.idulFitriName} (${formattedDate}). Basis: Gaji Pokok.`,
+    });
+    setThrConfirmData(null);
   };
 
   const updateDeduction = (userId: string, field: keyof DeductionOverride, value: string) => {

@@ -32,6 +32,12 @@ import { format, eachDayOfInterval } from "date-fns";
 import { calculateCutoffTenure } from "@/lib/tenureCalculation";
 import logo from "@/assets/logo.png";
 
+/** Parse "YYYY-MM-DD" as local date (avoids UTC-shift timezone bug) */
+const parseLocalDate = (s: string): Date => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
 interface PayrollData {
   id: string;
   user_id: string;

@@ -435,16 +435,36 @@ const Payroll = () => {
         return;
       }
 
-      // 3. Show confirmation dialog
+      // Filter out employees with < 1 month tenure
+      const refDate = new Date(idulFitriDate);
+      const eligibleProfiles = profiles
+        .map((p) => {
+          const joinDate = new Date(p.join_date);
+          const diffMs = refDate.getTime() - joinDate.getTime();
+          if (diffMs < 0) return null;
+          const totalMonths =
+            (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
+            (refDate.getMonth() - joinDate.getMonth()) +
+            (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+          if (totalMonths < 1) return null;
+          return {
+            id: p.id,
+            full_name: p.full_name,
+            join_date: p.join_date,
+            basic_salary: Number(p.basic_salary) || 0,
+          };
+        })
+        .filter(Boolean) as { id: string; full_name: string; join_date: string; basic_salary: number }[];
+
+      if (eligibleProfiles.length === 0) {
+        toast({ title: "Tidak Ada Karyawan Berhak", description: "Semua karyawan memiliki masa kerja < 1 bulan sebelum Idul Fitri.", variant: "destructive" });
+        return;
+      }
+
       setThrConfirmData({
         idulFitriDate,
         idulFitriName,
-        profiles: profiles.map((p) => ({
-          id: p.id,
-          full_name: p.full_name,
-          join_date: p.join_date,
-          basic_salary: Number(p.basic_salary) || 0,
-        })),
+        profiles: eligibleProfiles,
       });
     } catch (error: any) {
       console.error("Error fetching THR data:", error);

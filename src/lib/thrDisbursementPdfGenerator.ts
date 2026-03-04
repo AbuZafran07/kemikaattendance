@@ -122,7 +122,7 @@ export async function generateThrDisbursementPDF(
   doc.setTextColor(...GRAY_TEXT);
   doc.text("Jl. Uri Beta Selatan Raya No. 78 Larangan Utara, Kota Tangerang 15154", mx + 22, y + 13);
 
-  y = 38;
+  y = 34;
   doc.setDrawColor(...GREEN);
   doc.setLineWidth(0.8);
   doc.line(mx, y, rightEnd, y);

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { isWeekend } from "@/hooks/usePolicySettings";
 import { format, eachDayOfInterval } from "date-fns";
+import { calculateCutoffTenure } from "@/lib/tenureCalculation";
 import logo from "@/assets/logo.png";
 
 interface PayrollData {
@@ -134,6 +135,7 @@ const Payroll = () => {
   const [thrConfirmData, setThrConfirmData] = useState<{
     idulFitriDate: string;
     idulFitriName: string;
+    cutoffDay: number;
     profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
   } | null>(null);
   const [hasIdulFitriInPeriod, setHasIdulFitriInPeriod] = useState(false);
@@ -441,38 +443,27 @@ const Payroll = () => {
       const idulFitriDate = sorted[0].date;
       const idulFitriName = sorted[0].name;
 
-      // 2. Fetch employee profiles
+      // 2. Fetch employee profiles and cutoff setting
       const empIds = employees.map((e) => e.id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name, join_date, basic_salary")
-        .in("id", empIds);
+      const [profilesResult, cutoffResult] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, join_date, basic_salary").in("id", empIds),
+        supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
+      ]);
+      const profiles = profilesResult.data;
+      const cutoffDay = (cutoffResult.data?.value as any)?.cutoff_day || 21;
 
       if (!profiles || profiles.length === 0) {
         toast({ title: "Gagal", description: "Data karyawan tidak ditemukan.", variant: "destructive" });
         return;
       }
 
-      // Filter out employees with < 1 month tenure (using months + days/30)
+      // Filter out employees with < 1 month tenure using cutoff-based calculation
       const refDate = new Date(idulFitriDate);
       const eligibleProfiles = profiles
         .map((p) => {
           const joinDate = new Date(p.join_date);
-          const diffMs = refDate.getTime() - joinDate.getTime();
-          if (diffMs < 0) return null;
-          // Calculate full months
-          let fullMonths =
-            (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-            (refDate.getMonth() - joinDate.getMonth());
-          // Calculate remaining days
-          let remainingDays = refDate.getDate() - joinDate.getDate();
-          if (remainingDays < 0) {
-            fullMonths -= 1;
-            // Get days in the previous month relative to refDate
-            const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
-            remainingDays += prevMonth.getDate();
-          }
-          const totalMonthsFraction = fullMonths + remainingDays / 30;
+          if (refDate.getTime() < joinDate.getTime()) return null;
+          const { totalMonthsFraction } = calculateCutoffTenure(joinDate, refDate, cutoffDay);
           if (totalMonthsFraction < 1) return null;
           return {
             id: p.id,
@@ -491,6 +482,7 @@ const Payroll = () => {
       setThrConfirmData({
         idulFitriDate,
         idulFitriName,
+        cutoffDay,
         profiles: eligibleProfiles,
       });
     } catch (error: any) {
@@ -504,6 +496,7 @@ const Payroll = () => {
   const confirmCalculateTHR = () => {
     if (!thrConfirmData) return;
     const refDate = new Date(thrConfirmData.idulFitriDate);
+    const cutoffDay = thrConfirmData.cutoffDay || 21;
     let updatedCount = 0;
 
     setIncomeAdditions((prev) => {
@@ -512,20 +505,9 @@ const Payroll = () => {
         const joinDate = new Date(profile.join_date);
         const basicSalary = profile.basic_salary;
 
-        const diffMs = refDate.getTime() - joinDate.getTime();
-        if (diffMs < 0) continue;
+        if (refDate.getTime() < joinDate.getTime()) continue;
 
-        // Calculate full months and remaining days for proportional THR
-        let fullMonths =
-          (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-          (refDate.getMonth() - joinDate.getMonth());
-        let remainingDays = refDate.getDate() - joinDate.getDate();
-        if (remainingDays < 0) {
-          fullMonths -= 1;
-          const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
-          remainingDays += prevMonth.getDate();
-        }
-        const totalMonthsFraction = fullMonths + remainingDays / 30;
+        const { totalMonthsFraction } = calculateCutoffTenure(joinDate, refDate, cutoffDay);
 
         let thrAmount = 0;
         if (totalMonthsFraction >= 12) {
@@ -1079,19 +1061,17 @@ const Payroll = () => {
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
       const refDate = new Date(idulFitriDate);
 
+      // Fetch cutoff day for tenure calculation
+      const { data: cutoffData } = await supabase
+        .from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle();
+      const cutoffDay = (cutoffData?.value as any)?.cutoff_day || 21;
+
       const { generateThrDisbursementPDF } = await import("@/lib/thrDisbursementPdfGenerator");
 
       const thrEmployees = thrRecipients.map(p => {
         const profile = profileMap.get(p.user_id);
         const joinDate = profile ? new Date(profile.join_date) : new Date();
-        let fullMonths = (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-          (refDate.getMonth() - joinDate.getMonth());
-        let remainingDays = refDate.getDate() - joinDate.getDate();
-        if (remainingDays < 0) {
-          fullMonths -= 1;
-          const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
-          remainingDays += prevMonth.getDate();
-        }
+        const { fullMonths, remainingDays } = calculateCutoffTenure(joinDate, refDate, cutoffDay);
         return {
           employee_name: p.employee_name || profile?.full_name || "-",
           nik: p.nik || profile?.nik || "-",
@@ -1100,8 +1080,8 @@ const Payroll = () => {
           join_date: profile?.join_date || "",
           basic_salary: p.basic_salary,
           thr_amount: p.thr || 0,
-          tenure_months: Math.max(fullMonths, 0),
-          tenure_days: Math.max(remainingDays, 0),
+          tenure_months: fullMonths,
+          tenure_days: remainingDays,
           bank_name: profile?.bank_name || "",
           bank_account_number: profile?.bank_account_number || "",
         };
@@ -1695,18 +1675,8 @@ const Payroll = () => {
                       .map((p) => {
                         const refDate = new Date(thrConfirmData.idulFitriDate);
                         const joinDate = new Date(p.join_date);
-                        const diffMs = refDate.getTime() - joinDate.getTime();
-                        if (diffMs < 0) return null;
-                        let fullMonths =
-                          (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-                          (refDate.getMonth() - joinDate.getMonth());
-                        let remainingDays = refDate.getDate() - joinDate.getDate();
-                        if (remainingDays < 0) {
-                          fullMonths -= 1;
-                          const prevMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 0);
-                          remainingDays += prevMonth.getDate();
-                        }
-                        const totalMonthsFraction = fullMonths + remainingDays / 30;
+                        if (refDate.getTime() < joinDate.getTime()) return null;
+                        const { fullMonths, remainingDays, totalMonthsFraction } = calculateCutoffTenure(joinDate, refDate, thrConfirmData.cutoffDay || 21);
                         let thrAmount = 0;
                         let label = "";
                         const tenureLabel = `${fullMonths} bln ${remainingDays} hr`;

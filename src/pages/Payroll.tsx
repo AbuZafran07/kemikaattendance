@@ -131,6 +131,11 @@ const Payroll = () => {
   const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);
   const [selectedIncomeEmp, setSelectedIncomeEmp] = useState<string | null>(null);
   const [calculatingThr, setCalculatingThr] = useState(false);
+  const [thrConfirmData, setThrConfirmData] = useState<{
+    idulFitriDate: string;
+    idulFitriName: string;
+    profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
+  } | null>(null);
   const { toast } = useToast();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -399,7 +404,6 @@ const Payroll = () => {
       const holidays: { id: string; name: string; date: string }[] =
         (settingsData?.value as any)?.holidays || [];
 
-      // Find Idul Fitri/Hari Raya holidays
       const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
       const idulFitriHolidays = holidays.filter((h) =>
         idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw))
@@ -411,81 +415,90 @@ const Payroll = () => {
           description: "Tambahkan hari libur Idul Fitri di Pengaturan Lembur > Hari Libur Nasional terlebih dahulu.",
           variant: "destructive",
         });
-        setCalculatingThr(false);
         return;
       }
 
       // Use the earliest Idul Fitri date as reference
-      const idulFitriDate = idulFitriHolidays
-        .map((h) => h.date)
-        .sort()[0];
+      const sorted = idulFitriHolidays.sort((a, b) => a.date.localeCompare(b.date));
+      const idulFitriDate = sorted[0].date;
+      const idulFitriName = sorted[0].name;
 
-      // 2. Fetch employee profiles (join_date, basic_salary)
+      // 2. Fetch employee profiles
       const empIds = employees.map((e) => e.id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, join_date, basic_salary")
+        .select("id, full_name, join_date, basic_salary")
         .in("id", empIds);
 
       if (!profiles || profiles.length === 0) {
         toast({ title: "Gagal", description: "Data karyawan tidak ditemukan.", variant: "destructive" });
-        setCalculatingThr(false);
         return;
       }
 
-      // 3. Calculate THR for each employee
-      const refDate = new Date(idulFitriDate);
-      let updatedCount = 0;
-
-      setIncomeAdditions((prev) => {
-        const next = new Map(prev);
-        for (const profile of profiles) {
-          const joinDate = new Date(profile.join_date);
-          const basicSalary = Number(profile.basic_salary) || 0;
-
-          // Calculate tenure in months
-          const diffMs = refDate.getTime() - joinDate.getTime();
-          if (diffMs < 0) continue; // Joined after Idul Fitri
-
-          const totalMonths =
-            (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
-            (refDate.getMonth() - joinDate.getMonth()) +
-            (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
-
-          let thrAmount = 0;
-          if (totalMonths >= 12) {
-            // Full 1x basic salary
-            thrAmount = basicSalary;
-          } else if (totalMonths >= 1) {
-            // Prorata: (months / 12) * basic salary
-            thrAmount = Math.round((totalMonths / 12) * basicSalary);
-          }
-          // < 1 month: no THR
-
-          if (thrAmount > 0) {
-            const current = next.get(profile.id) || {
-              tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
-              thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-              pengembalian_employee: 0, insentif_penjualan: 0,
-            };
-            next.set(profile.id, { ...current, thr: thrAmount });
-            updatedCount++;
-          }
-        }
-        return next;
-      });
-
-      const formattedDate = format(refDate, "dd MMM yyyy");
-      toast({
-        title: "THR Berhasil Dihitung",
-        description: `${updatedCount} karyawan dihitung berdasarkan Idul Fitri ${formattedDate}. Basis: Gaji Pokok.`,
+      // 3. Show confirmation dialog
+      setThrConfirmData({
+        idulFitriDate,
+        idulFitriName,
+        profiles: profiles.map((p) => ({
+          id: p.id,
+          full_name: p.full_name,
+          join_date: p.join_date,
+          basic_salary: Number(p.basic_salary) || 0,
+        })),
       });
     } catch (error: any) {
-      console.error("Error calculating THR:", error);
-      toast({ title: "Gagal Hitung THR", description: error.message, variant: "destructive" });
+      console.error("Error fetching THR data:", error);
+      toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } finally {
       setCalculatingThr(false);
     }
+  };
+
+  const confirmCalculateTHR = () => {
+    if (!thrConfirmData) return;
+    const refDate = new Date(thrConfirmData.idulFitriDate);
+    let updatedCount = 0;
+
+    setIncomeAdditions((prev) => {
+      const next = new Map(prev);
+      for (const profile of thrConfirmData.profiles) {
+        const joinDate = new Date(profile.join_date);
+        const basicSalary = profile.basic_salary;
+
+        const diffMs = refDate.getTime() - joinDate.getTime();
+        if (diffMs < 0) continue;
+
+        const totalMonths =
+          (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
+          (refDate.getMonth() - joinDate.getMonth()) +
+          (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+
+        let thrAmount = 0;
+        if (totalMonths >= 12) {
+          thrAmount = basicSalary;
+        } else if (totalMonths >= 1) {
+          thrAmount = Math.round((totalMonths / 12) * basicSalary);
+        }
+
+        if (thrAmount > 0) {
+          const current = next.get(profile.id) || {
+            tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+            thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+            pengembalian_employee: 0, insentif_penjualan: 0,
+          };
+          next.set(profile.id, { ...current, thr: thrAmount });
+          updatedCount++;
+        }
+      }
+      return next;
+    });
+
+    const formattedDate = format(refDate, "dd MMM yyyy");
+    toast({
+      title: "THR Berhasil Dihitung",
+      description: `${updatedCount} karyawan dihitung berdasarkan ${thrConfirmData.idulFitriName} (${formattedDate}). Basis: Gaji Pokok.`,
+    });
+    setThrConfirmData(null);
   };
 
   const updateDeduction = (userId: string, field: keyof DeductionOverride, value: string) => {
@@ -1512,7 +1525,88 @@ const Payroll = () => {
           </DialogContent>
         </Dialog>
 
-        {/* e-Payroll Bank Preview Dialog */}
+        {/* THR Confirmation Dialog */}
+        <Dialog open={!!thrConfirmData} onOpenChange={(open) => { if (!open) setThrConfirmData(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-primary" /> Konfirmasi Perhitungan THR
+              </DialogTitle>
+              <DialogDescription>
+                Periksa data berikut sebelum menghitung THR otomatis berdasarkan Permenaker No. 6 Tahun 2016.
+              </DialogDescription>
+            </DialogHeader>
+            {thrConfirmData && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Hari Raya</span>
+                    <span className="font-semibold">{thrConfirmData.idulFitriName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Tanggal Acuan</span>
+                    <span className="font-semibold">{format(new Date(thrConfirmData.idulFitriDate), "dd MMMM yyyy")}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Basis Perhitungan</span>
+                    <Badge variant="secondary">Gaji Pokok</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Jumlah Karyawan</span>
+                    <span className="font-semibold">{thrConfirmData.profiles.length} orang</span>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-3 max-h-48 overflow-y-auto">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Preview Perhitungan:</p>
+                  <div className="space-y-1">
+                    {thrConfirmData.profiles
+                      .map((p) => {
+                        const refDate = new Date(thrConfirmData.idulFitriDate);
+                        const joinDate = new Date(p.join_date);
+                        const diffMs = refDate.getTime() - joinDate.getTime();
+                        if (diffMs < 0) return null;
+                        const totalMonths =
+                          (refDate.getFullYear() - joinDate.getFullYear()) * 12 +
+                          (refDate.getMonth() - joinDate.getMonth()) +
+                          (refDate.getDate() >= joinDate.getDate() ? 0 : -1);
+                        let thrAmount = 0;
+                        let label = "";
+                        if (totalMonths >= 12) {
+                          thrAmount = p.basic_salary;
+                          label = "1× gaji";
+                        } else if (totalMonths >= 1) {
+                          thrAmount = Math.round((totalMonths / 12) * p.basic_salary);
+                          label = `${totalMonths}/12 bulan`;
+                        }
+                        if (thrAmount <= 0) return null;
+                        return { name: p.full_name, thrAmount, label, totalMonths };
+                      })
+                      .filter(Boolean)
+                      .sort((a, b) => a!.name.localeCompare(b!.name))
+                      .map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-0">
+                          <span>{item!.name}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px]">{item!.label}</Badge>
+                            <span className="font-mono font-medium">{formatRupiah(item!.thrAmount)}</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setThrConfirmData(null)}>Batal</Button>
+                  <Button className="flex-1 gap-2" onClick={confirmCalculateTHR}>
+                    <Gift className="h-4 w-4" /> Terapkan THR
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={showBankPreview} onOpenChange={setShowBankPreview}>
           <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
             <DialogHeader>

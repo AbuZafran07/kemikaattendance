@@ -86,7 +86,7 @@ export async function generateThrDisbursementPDF(
   idulFitriName: string,
   logoSrc: string,
 ) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const mx = 15; // margin x

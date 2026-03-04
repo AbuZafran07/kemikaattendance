@@ -1717,8 +1717,11 @@ const Payroll = () => {
                       .filter(Boolean)
                       .sort((a, b) => a!.name.localeCompare(b!.name))
                       .map((item, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-0">
-                          <span>{item!.name}</span>
+                        <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-border/50 last:border-0">
+                          <div className="flex flex-col">
+                            <span>{item!.name}</span>
+                            <span className="text-[10px] text-muted-foreground">Masa kerja: {item!.tenureLabel}</span>
+                          </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-[10px]">{item!.label}</Badge>
                             <span className="font-mono font-medium">{formatRupiah(item!.thrAmount)}</span>

@@ -108,10 +108,11 @@ export function generateBankPayrollCSV(
 export function downloadBankPayrollFile(
   csvContent: string,
   month: number,
-  year: number
+  year: number,
+  prefix: string = 'e-payroll'
 ) {
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  const fileName = `e-payroll_${monthNames[month - 1]}_${year}.txt`;
+  const fileName = `${prefix}_${monthNames[month - 1]}_${year}.txt`;
 
   const blob = new Blob([csvContent], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);

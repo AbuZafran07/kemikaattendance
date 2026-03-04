@@ -120,10 +120,9 @@ export async function generateThrDisbursementPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...GRAY_TEXT);
-  doc.text("Jl. Raya Industri No. 123, Jakarta Selatan", mx + 22, y + 13);
-  doc.text("Tel: (021) 123-4567 | Email: hrd@kemika.co.id", mx + 22, y + 17);
+  doc.text("Jl. Uri Beta Selatan Raya No. 78 Larangan Utara, Kota Tangerang 15154", mx + 22, y + 13);
 
-  y = 38;
+  y = 34;
   doc.setDrawColor(...GREEN);
   doc.setLineWidth(0.8);
   doc.line(mx, y, rightEnd, y);
@@ -249,16 +248,16 @@ export async function generateThrDisbursementPDF(
       fontSize: 8,
     },
     columnStyles: {
-      0: { halign: "center", cellWidth: 7 },
-      1: { cellWidth: 28 },
-      2: { cellWidth: 16, halign: "center" },
-      3: { cellWidth: 20 },
-      4: { halign: "center", cellWidth: 16 },
-      5: { halign: "right", cellWidth: 20 },
-      6: { halign: "center", cellWidth: 13 },
-      7: { halign: "right", cellWidth: 22 },
-      8: { cellWidth: 18 },
-      9: { cellWidth: 20 },
+      0: { halign: "center", cellWidth: 8 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 22, halign: "center" },
+      3: { cellWidth: 30 },
+      4: { halign: "center", cellWidth: 22 },
+      5: { halign: "right", cellWidth: 28 },
+      6: { halign: "center", cellWidth: 14 },
+      7: { halign: "right", cellWidth: 30 },
+      8: { cellWidth: 30 },
+      9: { cellWidth: 43 },
     },
     margin: { left: mx, right: mx },
     didDrawPage: (data) => {

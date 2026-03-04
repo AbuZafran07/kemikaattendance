@@ -1291,10 +1291,16 @@ const Payroll = () => {
                   e-Payroll Bank
                 </Button>
                 {hasIdulFitriInPeriod && (
-                  <Button variant="outline" onClick={handleExportThrPDF} disabled={generatingThrPdf} className="gap-2">
-                    {generatingThrPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-                    PDF THR
-                  </Button>
+                  <>
+                    <Button variant="outline" onClick={handleExportThrPDF} disabled={generatingThrPdf} className="gap-2">
+                      {generatingThrPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+                      PDF THR
+                    </Button>
+                    <Button variant="outline" onClick={handleOpenThrBankPreview} disabled={loadingThrBankPreview} className="gap-2">
+                      {loadingThrBankPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
+                      e-Payroll THR
+                    </Button>
+                  </>
                 )}
               </>
             )}

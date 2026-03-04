@@ -1535,16 +1535,18 @@ const Payroll = () => {
               <DialogTitle>Tambahan Penghasilan Insidental</DialogTitle>
               <DialogDescription>Klik nama karyawan untuk mengisi tambahan penghasilan. Tunjangan tetap diambil otomatis dari data karyawan.</DialogDescription>
             </DialogHeader>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 mb-1"
-              disabled={calculatingThr}
-              onClick={handleAutoCalculateTHR}
-            >
-              {calculatingThr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-              Hitung THR Otomatis (Permenaker No.6/2016)
-            </Button>
+            {hasIdulFitriInPeriod && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 mb-1"
+                disabled={calculatingThr}
+                onClick={handleAutoCalculateTHR}
+              >
+                {calculatingThr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+                Hitung THR Otomatis (Permenaker No.6/2016)
+              </Button>
+            )}
             <Input
               placeholder="🔍 Cari karyawan..."
               value={incomeSearch}

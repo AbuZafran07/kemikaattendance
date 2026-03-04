@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.attendance-insight]
 verify_jwt = false
+
+[functions.fetch-indonesia-holidays]
+verify_jwt = false

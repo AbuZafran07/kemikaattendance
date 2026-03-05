@@ -756,6 +756,7 @@ const Payroll = () => {
           bpjsConfig,
           ptkpConfig,
           biayaJabatanConfig,
+          taxBrackets,
         });
 
         return {

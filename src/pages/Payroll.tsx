@@ -20,6 +20,7 @@ import {
   calculateOvertimePay,
   formatRupiah,
   TERRate,
+  BPJSRatesConfig,
 } from "@/lib/payrollCalculation";
 import {
   Dialog,
@@ -613,6 +614,11 @@ const Payroll = () => {
 
       const allowanceMap = await calculateAttendanceAllowances();
 
+      // Fetch dynamic BPJS config
+      let bpjsConfig: BPJSRatesConfig | undefined;
+      const { data: bpjsData } = await supabase.rpc("get_bpjs_config");
+      if (bpjsData) bpjsConfig = bpjsData as unknown as BPJSRatesConfig;
+
       // Fetch TER rates from database
       const { data: allTERRates } = await supabase
         .from("pph21_ter_rates")
@@ -724,6 +730,7 @@ const Payroll = () => {
           bpjsKesehatanEnabled: emp.bpjs_kesehatan_enabled !== false,
           prevMonthsBruto: brutoJanNovMap.get(emp.id) || 0,
           prevMonthsBpjsKt: bpjsKtJanNovMap.get(emp.id) || 0,
+          bpjsConfig,
         });
 
         return {

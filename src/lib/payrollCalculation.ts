@@ -133,21 +133,13 @@ export function calculatePPh21Reconciliation(
   totalPphJanNov: number,
   biayaJabatanRate: number = BIAYA_JABATAN_RATE,
   biayaJabatanMaxYearly: number = BIAYA_JABATAN_MAX_YEARLY,
+  customBrackets?: TaxBracketConfig[],
 ): { tax: number; yearlyTax: number; adjustment: number; mode: "REKONSILIASI"; biayaJabatan: number; yearlyNetto: number; pkp: number } {
-  // Biaya Jabatan: rate% of bruto, max yearly
   const biayaJabatan = Math.min(yearlyBruto * biayaJabatanRate, biayaJabatanMaxYearly);
-
-  // Pengurang = Biaya Jabatan + JHT Employee (2%) + JP Employee (1%)
   const totalPengurang = biayaJabatan + yearlyBpjsKtEmployee;
-
-  // Netto Setahun
   const yearlyNetto = yearlyBruto - totalPengurang;
-
-  // PKP — no rounding, exact value like Excel
   const pkp = Math.max(0, yearlyNetto - ptkpValue);
-
-  // Progressive tax on exact PKP, Math.round on final result
-  const yearlyTax = calculatePPh21Annual(pkp);
+  const yearlyTax = calculatePPh21Annual(pkp, customBrackets);
 
   // December adjustment (can be negative = refund)
   const adjustment = yearlyTax - totalPphJanNov;

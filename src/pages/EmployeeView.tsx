@@ -30,6 +30,7 @@ import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
 import LateReasonDialog from "@/components/LateReasonDialog";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
 import { format } from "date-fns";
+import MarqueeBanner from "@/components/MarqueeBanner";
 
 // Office coordinates and work hours will be fetched from system settings
 

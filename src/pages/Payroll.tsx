@@ -629,6 +629,19 @@ const Payroll = () => {
       const { data: bjData } = await supabase.rpc("get_biaya_jabatan_config");
       if (bjData) biayaJabatanConfig = bjData as unknown as { rate_percent: number; max_yearly: number };
 
+      // Fetch dynamic PPh 21 brackets config
+      let taxBrackets: { limit: number; rate: number }[] | undefined;
+      const { data: bracketsData } = await supabase.rpc("get_pph21_brackets_config");
+      if (bracketsData) {
+        const parsed = bracketsData as any;
+        if (parsed?.brackets && Array.isArray(parsed.brackets)) {
+          taxBrackets = parsed.brackets.map((b: any) => ({
+            limit: b.limit === 0 ? Infinity : b.limit,
+            rate: b.rate / 100,
+          }));
+        }
+      }
+
       // Fetch TER rates from database
       const { data: allTERRates } = await supabase
         .from("pph21_ter_rates")

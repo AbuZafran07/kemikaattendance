@@ -33,8 +33,13 @@ export const BPJS_JP_EMPLOYER_RATE = 0.02;     // 2% employer
 export const BPJS_JKK_EMPLOYER_RATE = 0.0024;  // JKK 0.24% employer (risiko sangat rendah)
 export const BPJS_JKM_EMPLOYER_RATE = 0.003;   // JKM 0.3% employer
 
-// PPh 21 progressive tax brackets (UU HPP)
-const TAX_BRACKETS = [
+// PPh 21 progressive tax brackets (UU HPP) — defaults, can be overridden via system_settings
+export interface TaxBracketConfig {
+  limit: number;  // upper limit in Rp (Infinity for last bracket)
+  rate: number;   // decimal rate, e.g. 0.05
+}
+
+const DEFAULT_TAX_BRACKETS: TaxBracketConfig[] = [
   { limit: 60000000, rate: 0.05 },
   { limit: 250000000, rate: 0.15 },
   { limit: 500000000, rate: 0.25 },
@@ -64,12 +69,13 @@ export interface BPJSRatesConfig {
 const BIAYA_JABATAN_RATE = 0.05;
 const BIAYA_JABATAN_MAX_YEARLY = 6000000;
 
-export function calculatePPh21Annual(pkp: number): number {
+export function calculatePPh21Annual(pkp: number, customBrackets?: TaxBracketConfig[]): number {
   if (pkp <= 0) return 0;
+  const brackets = customBrackets || DEFAULT_TAX_BRACKETS;
   let remainingPkp = pkp;
   let totalTax = 0;
   let prevLimit = 0;
-  for (const bracket of TAX_BRACKETS) {
+  for (const bracket of brackets) {
     const taxableInBracket = Math.min(remainingPkp, bracket.limit - prevLimit);
     if (taxableInBracket <= 0) break;
     totalTax += taxableInBracket * bracket.rate;
@@ -79,8 +85,8 @@ export function calculatePPh21Annual(pkp: number): number {
   return Math.round(totalTax);
 }
 
-export function calculatePPh21Monthly(pkp: number): number {
-  return Math.round(calculatePPh21Annual(pkp) / 12);
+export function calculatePPh21Monthly(pkp: number, customBrackets?: TaxBracketConfig[]): number {
+  return Math.round(calculatePPh21Annual(pkp, customBrackets) / 12);
 }
 
 // ===== TER-based PPh21 Calculation =====

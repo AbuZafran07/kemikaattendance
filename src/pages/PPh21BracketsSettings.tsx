@@ -43,7 +43,7 @@ export default function PPh21BracketsSettings() {
         .maybeSingle();
 
       if (data?.value) {
-        const val = data.value as { brackets: TaxBracket[] };
+        const val = data.value as any;
         if (val.brackets && Array.isArray(val.brackets) && val.brackets.length > 0) {
           setBrackets(val.brackets);
         }

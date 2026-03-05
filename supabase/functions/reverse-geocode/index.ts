@@ -272,7 +272,7 @@ serve(async (req) => {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('[GEOCODE] Unexpected error:', message)
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

@@ -222,6 +222,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     ptkpConfig,
     bpjsConfig,
     biayaJabatanConfig,
+    taxBrackets,
   } = input;
 
   // Dynamic Biaya Jabatan config

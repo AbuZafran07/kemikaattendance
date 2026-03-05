@@ -34,6 +34,7 @@ const PTKP_LABELS: Record<string, string> = {
 };
 
 export default function PTKPSettings() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [ptkpValues, setPtkpValues] = useState<PTKPConfig>({ ...DEFAULT_PTKP });
   const [loading, setLoading] = useState(true);
@@ -121,7 +122,10 @@ export default function PTKPSettings() {
   return (
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-6 animate-fadeIn">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/settings")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pengaturan PTKP</h1>
             <p className="text-sm text-muted-foreground mt-1">

@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
+import MarqueeBanner from "@/components/MarqueeBanner";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -219,6 +220,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="flex flex-col h-screen bg-background">
+      {/* Marquee Banner */}
+      <MarqueeBanner />
       {/* Full-width Top Header (desktop) */}
       <div className="hidden lg:block flex-shrink-0">
         <div className="flex items-center justify-between h-16 px-6 bg-card border-b border-border">

@@ -22,6 +22,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { APP_VERSION } from "@/config/appVersion";
+import MarqueeBanner from "@/components/MarqueeBanner";
 
 const quickLinks = [
   { icon: Fingerprint, label: "Absensi", desc: "Check-in & Check-out harian" },
@@ -71,6 +72,8 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Marquee Banner */}
+      <MarqueeBanner />
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">

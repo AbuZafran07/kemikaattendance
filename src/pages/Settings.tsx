@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -67,6 +67,12 @@ export default function Settings() {
       description: "Konfigurasi tarif dan batas maksimal biaya jabatan PPh 21",
       icon: Briefcase,
       path: "/dashboard/settings/biaya-jabatan",
+    },
+    {
+      title: "Tarif PPh 21 Progresif",
+      description: "Konfigurasi lapisan tarif pajak penghasilan progresif",
+      icon: Layers,
+      path: "/dashboard/settings/pph21-brackets",
     },
     {
       title: "Pengaturan Notifikasi",

@@ -181,6 +181,8 @@ export interface PayrollInput {
   ptkpConfig?: Record<string, number>;
   // Dynamic Biaya Jabatan config
   biayaJabatanConfig?: { rate_percent: number; max_yearly: number };
+  // Dynamic PPh 21 brackets
+  taxBrackets?: TaxBracketConfig[];
 }
 
 export interface PayrollResult {

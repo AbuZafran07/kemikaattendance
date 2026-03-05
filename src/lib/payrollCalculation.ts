@@ -122,12 +122,14 @@ export function calculatePPh21TER(brutoMonthly: number, terRates: TERRate[]): { 
  */
 export function calculatePPh21Reconciliation(
   yearlyBruto: number,
-  yearlyBpjsKtEmployee: number, // Sum of 12 months JHT + JP employee
+  yearlyBpjsKtEmployee: number,
   ptkpValue: number,
-  totalPphJanNov: number
+  totalPphJanNov: number,
+  biayaJabatanRate: number = BIAYA_JABATAN_RATE,
+  biayaJabatanMaxYearly: number = BIAYA_JABATAN_MAX_YEARLY,
 ): { tax: number; yearlyTax: number; adjustment: number; mode: "REKONSILIASI"; biayaJabatan: number; yearlyNetto: number; pkp: number } {
-  // Biaya Jabatan: 5% of bruto, max 6,000,000/year
-  const biayaJabatan = Math.min(yearlyBruto * BIAYA_JABATAN_RATE, BIAYA_JABATAN_MAX_YEARLY);
+  // Biaya Jabatan: rate% of bruto, max yearly
+  const biayaJabatan = Math.min(yearlyBruto * biayaJabatanRate, biayaJabatanMaxYearly);
 
   // Pengurang = Biaya Jabatan + JHT Employee (2%) + JP Employee (1%)
   const totalPengurang = biayaJabatan + yearlyBpjsKtEmployee;

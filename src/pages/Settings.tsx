@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -61,6 +61,12 @@ export default function Settings() {
       description: "Kelola nilai Penghasilan Tidak Kena Pajak",
       icon: Receipt,
       path: "/dashboard/settings/ptkp",
+    },
+    {
+      title: "Biaya Jabatan",
+      description: "Konfigurasi tarif dan batas maksimal biaya jabatan PPh 21",
+      icon: Briefcase,
+      path: "/dashboard/settings/biaya-jabatan",
     },
     {
       title: "Pengaturan Notifikasi",

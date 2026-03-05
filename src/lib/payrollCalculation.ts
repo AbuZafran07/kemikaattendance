@@ -122,12 +122,14 @@ export function calculatePPh21TER(brutoMonthly: number, terRates: TERRate[]): { 
  */
 export function calculatePPh21Reconciliation(
   yearlyBruto: number,
-  yearlyBpjsKtEmployee: number, // Sum of 12 months JHT + JP employee
+  yearlyBpjsKtEmployee: number,
   ptkpValue: number,
-  totalPphJanNov: number
+  totalPphJanNov: number,
+  biayaJabatanRate: number = BIAYA_JABATAN_RATE,
+  biayaJabatanMaxYearly: number = BIAYA_JABATAN_MAX_YEARLY,
 ): { tax: number; yearlyTax: number; adjustment: number; mode: "REKONSILIASI"; biayaJabatan: number; yearlyNetto: number; pkp: number } {
-  // Biaya Jabatan: 5% of bruto, max 6,000,000/year
-  const biayaJabatan = Math.min(yearlyBruto * BIAYA_JABATAN_RATE, BIAYA_JABATAN_MAX_YEARLY);
+  // Biaya Jabatan: rate% of bruto, max yearly
+  const biayaJabatan = Math.min(yearlyBruto * biayaJabatanRate, biayaJabatanMaxYearly);
 
   // Pengurang = Biaya Jabatan + JHT Employee (2%) + JP Employee (1%)
   const totalPengurang = biayaJabatan + yearlyBpjsKtEmployee;
@@ -179,6 +181,8 @@ export interface PayrollInput {
   bpjsConfig?: BPJSRatesConfig;
   // Dynamic PTKP values
   ptkpConfig?: Record<string, number>;
+  // Dynamic Biaya Jabatan config
+  biayaJabatanConfig?: { rate_percent: number; max_yearly: number };
 }
 
 export interface PayrollResult {
@@ -217,7 +221,12 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     prevMonthsBruto = 0, prevMonthsBpjsKt = 0,
     ptkpConfig,
     bpjsConfig,
+    biayaJabatanConfig,
   } = input;
+
+  // Dynamic Biaya Jabatan config
+  const bjRate = biayaJabatanConfig ? biayaJabatanConfig.rate_percent / 100 : BIAYA_JABATAN_RATE;
+  const bjMaxYearly = biayaJabatanConfig ? biayaJabatanConfig.max_yearly : BIAYA_JABATAN_MAX_YEARLY;
 
   // Use dynamic config or fall back to hardcoded defaults
   const kesEmployeeRate = bpjsConfig ? bpjsConfig.kes_employee_rate / 100 : BPJS_KESEHATAN_RATE;
@@ -281,7 +290,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     // Yearly JHT+JP employee = Jan-Nov actual + December current
     const yearlyBpjsKt = prevMonthsBpjsKt + bpjsKetenagakerjaan;
 
-    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov);
+    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov, bjRate, bjMaxYearly);
     pph21Monthly = reconResult.tax; // Can be negative (refund)
     pph21Mode = "REKONSILIASI";
     pph21TerRate = 0;
@@ -291,7 +300,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     // Use Biaya Jabatan formula for consistency
     const annualBruto = brutoIncome * 12;
     const annualBpjsKt = bpjsKetenagakerjaan * 12;
-    const biayaJabatan = Math.min(annualBruto * BIAYA_JABATAN_RATE, BIAYA_JABATAN_MAX_YEARLY);
+    const biayaJabatan = Math.min(annualBruto * bjRate, bjMaxYearly);
     const annualNetto = annualBruto - biayaJabatan - annualBpjsKt;
     pkp = Math.max(0, annualNetto - ptkpValue);
     pph21Monthly = calculatePPh21Monthly(pkp);

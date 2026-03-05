@@ -67,12 +67,12 @@ export default function BiayaJabatanSettings() {
       if (existing) {
         await supabase
           .from("system_settings")
-          .update({ value: config as unknown as Record<string, unknown>, updated_at: new Date().toISOString() })
+          .update({ value: config as any, updated_at: new Date().toISOString() })
           .eq("key", "biaya_jabatan_config");
       } else {
         await supabase
           .from("system_settings")
-          .insert({ key: "biaya_jabatan_config", value: config as unknown as Record<string, unknown>, description: "Konfigurasi Biaya Jabatan" });
+          .insert({ key: "biaya_jabatan_config", value: config as any, description: "Konfigurasi Biaya Jabatan" });
       }
 
       toast({ title: "Berhasil", description: "Pengaturan Biaya Jabatan berhasil disimpan." });

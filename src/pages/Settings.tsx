@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -49,6 +49,12 @@ export default function Settings() {
       description: "Atur rekening perusahaan untuk e-Payroll bank",
       icon: Landmark,
       path: "/dashboard/settings/company-bank",
+    },
+    {
+      title: "Pengaturan BPJS",
+      description: "Konfigurasi tarif BPJS Ketenagakerjaan & Kesehatan",
+      icon: Shield,
+      path: "/dashboard/settings/bpjs",
     },
     {
       title: "Pengaturan Notifikasi",

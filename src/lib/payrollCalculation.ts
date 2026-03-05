@@ -21,12 +21,12 @@ export const PTKP_VALUES: Record<string, number> = {
 
 export const PTKP_OPTIONS = Object.keys(PTKP_VALUES);
 
-// BPJS rates (employee portion)
+// Default BPJS rates (employee portion) — can be overridden via bpjs_config
 export const BPJS_KESEHATAN_RATE = 0.01;      // 1% employee
 export const BPJS_KETENAGAKERJAAN_RATE = 0.02; // JHT 2% employee
 export const BPJS_JP_RATE = 0.01;              // JP 1% employee
 
-// BPJS rates (employer portion)
+// Default BPJS rates (employer portion)
 export const BPJS_KES_EMPLOYER_RATE = 0.04;    // 4% employer
 export const BPJS_JHT_EMPLOYER_RATE = 0.037;   // 3.7% employer
 export const BPJS_JP_EMPLOYER_RATE = 0.02;     // 2% employer
@@ -42,11 +42,23 @@ const TAX_BRACKETS = [
   { limit: Infinity, rate: 0.35 },
 ];
 
-// BPJS Kesehatan max salary cap (2024)
+// Default BPJS salary caps
 const BPJS_KES_MAX_SALARY = 12000000;
-
-// BPJS JP max salary cap (2025)
 const BPJS_JP_MAX_SALARY = 10547400;
+
+// Dynamic BPJS config interface (rates stored as percentages in DB)
+export interface BPJSRatesConfig {
+  kes_employee_rate: number;
+  kes_employer_rate: number;
+  kes_max_salary: number;
+  jht_employee_rate: number;
+  jht_employer_rate: number;
+  jp_employee_rate: number;
+  jp_employer_rate: number;
+  jp_max_salary: number;
+  jkk_employer_rate: number;
+  jkm_employer_rate: number;
+}
 
 // Biaya Jabatan (5% of bruto, max 6,000,000/year or 500,000/month)
 const BIAYA_JABATAN_RATE = 0.05;
@@ -163,6 +175,8 @@ export interface PayrollInput {
   // December reconciliation — actual yearly data from previous months
   prevMonthsBruto?: number;   // Sum of Jan-Nov bruto_income
   prevMonthsBpjsKt?: number;  // Sum of Jan-Nov bpjs_ketenagakerjaan (JHT+JP employee)
+  // Dynamic BPJS config
+  bpjsConfig?: BPJSRatesConfig;
 }
 
 export interface PayrollResult {
@@ -199,22 +213,35 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     month, terRates, totalPphJanNov = 0,
     bpjsKesehatanEnabled = true,
     prevMonthsBruto = 0, prevMonthsBpjsKt = 0,
+    bpjsConfig,
   } = input;
 
+  // Use dynamic config or fall back to hardcoded defaults
+  const kesEmployeeRate = bpjsConfig ? bpjsConfig.kes_employee_rate / 100 : BPJS_KESEHATAN_RATE;
+  const kesEmployerRate = bpjsConfig ? bpjsConfig.kes_employer_rate / 100 : BPJS_KES_EMPLOYER_RATE;
+  const kesMaxSalary = bpjsConfig ? bpjsConfig.kes_max_salary : BPJS_KES_MAX_SALARY;
+  const jhtEmployeeRate = bpjsConfig ? bpjsConfig.jht_employee_rate / 100 : BPJS_KETENAGAKERJAAN_RATE;
+  const jhtEmployerRate = bpjsConfig ? bpjsConfig.jht_employer_rate / 100 : BPJS_JHT_EMPLOYER_RATE;
+  const jpEmployeeRate = bpjsConfig ? bpjsConfig.jp_employee_rate / 100 : BPJS_JP_RATE;
+  const jpEmployerRate = bpjsConfig ? bpjsConfig.jp_employer_rate / 100 : BPJS_JP_EMPLOYER_RATE;
+  const jpMaxSalary = bpjsConfig ? bpjsConfig.jp_max_salary : BPJS_JP_MAX_SALARY;
+  const jkkEmployerRate = bpjsConfig ? bpjsConfig.jkk_employer_rate / 100 : BPJS_JKK_EMPLOYER_RATE;
+  const jkmEmployerRate = bpjsConfig ? bpjsConfig.jkm_employer_rate / 100 : BPJS_JKM_EMPLOYER_RATE;
+
   // Employee BPJS - based on basic salary only
-  const bpjsKesSalary = Math.min(basicSalary, BPJS_KES_MAX_SALARY);
-  const bpjsJpSalary = Math.min(basicSalary, BPJS_JP_MAX_SALARY);
-  const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KESEHATAN_RATE) : 0;
-  const bpjsJhtEmployee = Math.round(basicSalary * BPJS_KETENAGAKERJAAN_RATE);
-  const bpjsJpEmployee = Math.round(bpjsJpSalary * BPJS_JP_RATE);
+  const bpjsKesSalary = Math.min(basicSalary, kesMaxSalary);
+  const bpjsJpSalary = Math.min(basicSalary, jpMaxSalary);
+  const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * kesEmployeeRate) : 0;
+  const bpjsJhtEmployee = Math.round(basicSalary * jhtEmployeeRate);
+  const bpjsJpEmployee = Math.round(bpjsJpSalary * jpEmployeeRate);
   const bpjsKetenagakerjaan = bpjsJhtEmployee + bpjsJpEmployee;
 
   // Employer BPJS - based on basic salary only
-  const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * BPJS_KES_EMPLOYER_RATE) : 0;
-  const bpjsJhtEmployer = Math.round(basicSalary * BPJS_JHT_EMPLOYER_RATE);
-  const bpjsJpEmployer = Math.round(bpjsJpSalary * BPJS_JP_EMPLOYER_RATE);
-  const bpjsJkkEmployer = Math.round(basicSalary * BPJS_JKK_EMPLOYER_RATE);
-  const bpjsJkmEmployer = Math.round(basicSalary * BPJS_JKM_EMPLOYER_RATE);
+  const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * kesEmployerRate) : 0;
+  const bpjsJhtEmployer = Math.round(basicSalary * jhtEmployerRate);
+  const bpjsJpEmployer = Math.round(bpjsJpSalary * jpEmployerRate);
+  const bpjsJkkEmployer = Math.round(basicSalary * jkkEmployerRate);
+  const bpjsJkmEmployer = Math.round(basicSalary * jkmEmployerRate);
 
   // Bruto = Gaji Pokok + Semua Tunjangan/Tambahan + BPJS Perusahaan
   const totalBpjsEmployer = bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer;

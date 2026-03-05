@@ -624,6 +624,11 @@ const Payroll = () => {
       const { data: ptkpData } = await supabase.rpc("get_ptkp_config");
       if (ptkpData) ptkpConfig = ptkpData as unknown as Record<string, number>;
 
+      // Fetch dynamic Biaya Jabatan config
+      let biayaJabatanConfig: { rate_percent: number; max_yearly: number } | undefined;
+      const { data: bjData } = await supabase.rpc("get_biaya_jabatan_config");
+      if (bjData) biayaJabatanConfig = bjData as unknown as { rate_percent: number; max_yearly: number };
+
       // Fetch TER rates from database
       const { data: allTERRates } = await supabase
         .from("pph21_ter_rates")

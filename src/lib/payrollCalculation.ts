@@ -290,7 +290,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     // Yearly JHT+JP employee = Jan-Nov actual + December current
     const yearlyBpjsKt = prevMonthsBpjsKt + bpjsKetenagakerjaan;
 
-    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov);
+    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov, bjRate, bjMaxYearly);
     pph21Monthly = reconResult.tax; // Can be negative (refund)
     pph21Mode = "REKONSILIASI";
     pph21TerRate = 0;

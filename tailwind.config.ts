@@ -76,15 +76,20 @@ export default {
   				from: { opacity: '0', transform: 'translateY(20px)' },
   				to: { opacity: '1', transform: 'translateY(0)' }
   			},
-  			'fadeInDown': {
-  				from: { opacity: '0', transform: 'translateY(-20px)' },
-  				to: { opacity: '1', transform: 'translateY(0)' }
-  			}
+			'fadeInDown': {
+				from: { opacity: '0', transform: 'translateY(-20px)' },
+				to: { opacity: '1', transform: 'translateY(0)' }
+			},
+			'marquee': {
+				from: { transform: 'translateX(0)' },
+				to: { transform: 'translateX(-50%)' }
+			}
   		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
-  		},
+		animation: {
+			'accordion-down': 'accordion-down 0.2s ease-out',
+			'accordion-up': 'accordion-up 0.2s ease-out',
+			'marquee': 'marquee 20s linear infinite'
+		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
   			xs: 'var(--shadow-xs)',

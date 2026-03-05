@@ -736,6 +736,7 @@ const Payroll = () => {
           prevMonthsBruto: brutoJanNovMap.get(emp.id) || 0,
           prevMonthsBpjsKt: bpjsKtJanNovMap.get(emp.id) || 0,
           bpjsConfig,
+          ptkpConfig,
         });
 
         return {

@@ -69,6 +69,12 @@ export default function Settings() {
       path: "/dashboard/settings/biaya-jabatan",
     },
     {
+      title: "Tarif PPh 21 Progresif",
+      description: "Konfigurasi lapisan tarif pajak penghasilan progresif",
+      icon: Layers,
+      path: "/dashboard/settings/pph21-brackets",
+    },
+    {
       title: "Pengaturan Notifikasi",
       description: "Kelola notifikasi push untuk admin",
       icon: Bell,

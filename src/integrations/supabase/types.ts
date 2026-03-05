@@ -869,6 +869,7 @@ export type Database = {
         }[]
       }
       get_office_locations: { Args: never; Returns: Json }
+      get_ptkp_config: { Args: never; Returns: Json }
       get_work_hours: { Args: never; Returns: Json }
       has_role: {
         Args: {

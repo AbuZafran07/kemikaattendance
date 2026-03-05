@@ -619,6 +619,11 @@ const Payroll = () => {
       const { data: bpjsData } = await supabase.rpc("get_bpjs_config");
       if (bpjsData) bpjsConfig = bpjsData as unknown as BPJSRatesConfig;
 
+      // Fetch dynamic PTKP config
+      let ptkpConfig: Record<string, number> | undefined;
+      const { data: ptkpData } = await supabase.rpc("get_ptkp_config");
+      if (ptkpData) ptkpConfig = ptkpData as unknown as Record<string, number>;
+
       // Fetch TER rates from database
       const { data: allTERRates } = await supabase
         .from("pph21_ter_rates")
@@ -731,6 +736,7 @@ const Payroll = () => {
           prevMonthsBruto: brutoJanNovMap.get(emp.id) || 0,
           prevMonthsBpjsKt: bpjsKtJanNovMap.get(emp.id) || 0,
           bpjsConfig,
+          ptkpConfig,
         });
 
         return {

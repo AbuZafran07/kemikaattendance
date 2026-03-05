@@ -177,6 +177,8 @@ export interface PayrollInput {
   prevMonthsBpjsKt?: number;  // Sum of Jan-Nov bpjs_ketenagakerjaan (JHT+JP employee)
   // Dynamic BPJS config
   bpjsConfig?: BPJSRatesConfig;
+  // Dynamic PTKP values
+  ptkpConfig?: Record<string, number>;
 }
 
 export interface PayrollResult {
@@ -213,6 +215,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     month, terRates, totalPphJanNov = 0,
     bpjsKesehatanEnabled = true,
     prevMonthsBruto = 0, prevMonthsBpjsKt = 0,
+    ptkpConfig,
     bpjsConfig,
   } = input;
 
@@ -250,7 +253,9 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const totalBpjsEmployee = bpjsKesehatan + bpjsKetenagakerjaan;
   const nettoIncome = brutoIncome - totalBpjsEmployee - totalBpjsEmployer;
 
-  const ptkpValue = PTKP_VALUES[ptkpStatus] || PTKP_VALUES["TK/0"];
+  // Use dynamic PTKP config if available, fallback to hardcoded defaults
+  const effectivePtkp = ptkpConfig || PTKP_VALUES;
+  const ptkpValue = effectivePtkp[ptkpStatus] || effectivePtkp["TK/0"] || PTKP_VALUES["TK/0"];
 
   let pph21Monthly: number;
   let pph21Mode = "progressive";

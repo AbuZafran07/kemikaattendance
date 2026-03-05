@@ -51,6 +51,7 @@ import PayrollAnalytics from "./pages/PayrollAnalytics";
 import AnnouncementManagement from "./pages/AnnouncementManagement";
 import CompanyBankSettings from "./pages/CompanyBankSettings";
 import BPJSSettings from "./pages/BPJSSettings";
+import PTKPSettings from "./pages/PTKPSettings";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -105,6 +106,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/notifications" element={<ProtectedRoute requireAdmin><NotificationSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/company-bank" element={<ProtectedRoute requireAdmin><CompanyBankSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/bpjs" element={<ProtectedRoute requireAdmin><BPJSSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/ptkp" element={<ProtectedRoute requireAdmin><PTKPSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

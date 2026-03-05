@@ -179,6 +179,8 @@ export interface PayrollInput {
   bpjsConfig?: BPJSRatesConfig;
   // Dynamic PTKP values
   ptkpConfig?: Record<string, number>;
+  // Dynamic Biaya Jabatan config
+  biayaJabatanConfig?: { rate_percent: number; max_yearly: number };
 }
 
 export interface PayrollResult {
@@ -217,7 +219,12 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     prevMonthsBruto = 0, prevMonthsBpjsKt = 0,
     ptkpConfig,
     bpjsConfig,
+    biayaJabatanConfig,
   } = input;
+
+  // Dynamic Biaya Jabatan config
+  const bjRate = biayaJabatanConfig ? biayaJabatanConfig.rate_percent / 100 : BIAYA_JABATAN_RATE;
+  const bjMaxYearly = biayaJabatanConfig ? biayaJabatanConfig.max_yearly : BIAYA_JABATAN_MAX_YEARLY;
 
   // Use dynamic config or fall back to hardcoded defaults
   const kesEmployeeRate = bpjsConfig ? bpjsConfig.kes_employee_rate / 100 : BPJS_KESEHATAN_RATE;

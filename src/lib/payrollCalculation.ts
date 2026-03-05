@@ -298,7 +298,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     // Use Biaya Jabatan formula for consistency
     const annualBruto = brutoIncome * 12;
     const annualBpjsKt = bpjsKetenagakerjaan * 12;
-    const biayaJabatan = Math.min(annualBruto * BIAYA_JABATAN_RATE, BIAYA_JABATAN_MAX_YEARLY);
+    const biayaJabatan = Math.min(annualBruto * bjRate, bjMaxYearly);
     const annualNetto = annualBruto - biayaJabatan - annualBpjsKt;
     pkp = Math.max(0, annualNetto - ptkpValue);
     pph21Monthly = calculatePPh21Monthly(pkp);

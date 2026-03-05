@@ -291,7 +291,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     // Yearly JHT+JP employee = Jan-Nov actual + December current
     const yearlyBpjsKt = prevMonthsBpjsKt + bpjsKetenagakerjaan;
 
-    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov, bjRate, bjMaxYearly);
+    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov, bjRate, bjMaxYearly, taxBrackets);
     pph21Monthly = reconResult.tax; // Can be negative (refund)
     pph21Mode = "REKONSILIASI";
     pph21TerRate = 0;
@@ -304,7 +304,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     const biayaJabatan = Math.min(annualBruto * bjRate, bjMaxYearly);
     const annualNetto = annualBruto - biayaJabatan - annualBpjsKt;
     pkp = Math.max(0, annualNetto - ptkpValue);
-    pph21Monthly = calculatePPh21Monthly(pkp);
+    pph21Monthly = calculatePPh21Monthly(pkp, taxBrackets);
     pph21Mode = "progressive";
   }
 

@@ -774,6 +774,8 @@ const EmployeeView = () => {
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
+      {/* Marquee Banner */}
+      <MarqueeBanner />
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">

@@ -54,6 +54,7 @@ import BPJSSettings from "./pages/BPJSSettings";
 import PTKPSettings from "./pages/PTKPSettings";
 import BiayaJabatanSettings from "./pages/BiayaJabatanSettings";
 import PPh21BracketsSettings from "./pages/PPh21BracketsSettings";
+import BackupRestore from "./pages/BackupRestore";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -111,6 +112,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/ptkp" element={<ProtectedRoute requireAdmin><PTKPSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/biaya-jabatan" element={<ProtectedRoute requireAdmin><BiayaJabatanSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/pph21-brackets" element={<ProtectedRoute requireAdmin><PPh21BracketsSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/backup" element={<ProtectedRoute requireAdmin><BackupRestore /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

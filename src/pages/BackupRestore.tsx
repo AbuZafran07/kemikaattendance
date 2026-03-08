@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   CloudUpload, Download, Upload, RefreshCw, CheckCircle2, AlertCircle,
-  Trash2, FileJson, Clock, CalendarClock
+  Trash2, FileJson, Clock, CalendarClock, RotateCcw
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -57,6 +57,7 @@ export default function BackupRestore() {
   const [backupFiles, setBackupFiles] = useState<BackupFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
+  const [restoringFile, setRestoringFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchBackupFiles = useCallback(async () => {
@@ -171,6 +172,41 @@ export default function BackupRestore() {
       URL.revokeObjectURL(url);
     } catch {
       toast.error("Gagal mengunduh file backup");
+    }
+  };
+
+  const handleRestoreFromCloud = async (fileName: string) => {
+    setRestoringFile(fileName);
+    try {
+      const { data, error } = await supabase.storage.from("backups").download(fileName);
+      if (error) throw error;
+
+      const text = await data.text();
+      const backup = JSON.parse(text);
+
+      if (!backup.version || !backup.data || !backup.tables) throw new Error("Format file backup tidak valid");
+      if (backup.app !== "Kemika Attendance") throw new Error("File backup bukan dari aplikasi Kemika Attendance");
+
+      let restoredCount = 0;
+      const errors: string[] = [];
+      for (const table of backup.tables as string[]) {
+        const rows = backup.data[table];
+        if (!rows || !Array.isArray(rows) || rows.length === 0) continue;
+        const { error: upsertError } = await supabase.from(table as BackupDataKey).upsert(rows, { onConflict: "id" });
+        if (upsertError) errors.push(`${table}: ${upsertError.message}`);
+        else restoredCount += rows.length;
+      }
+
+      if (errors.length > 0) {
+        toast.warning(`Restore selesai dengan ${errors.length} error. ${restoredCount} records berhasil.`);
+        console.error("Restore errors:", errors);
+      } else {
+        toast.success(`Restore berhasil! ${restoredCount} records dipulihkan dari cloud.`);
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal restore dari cloud");
+    } finally {
+      setRestoringFile(null);
     }
   };
 
@@ -312,6 +348,36 @@ export default function BackupRestore() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Restore"
+                            disabled={restoringFile === file.name}
+                          >
+                            {restoringFile === file.name ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4 text-primary" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Restore dari Backup Cloud?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Data akan dipulihkan dari <strong>{file.name}</strong>. Data yang sudah ada akan diperbarui (upsert). Lanjutkan?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRestoreFromCloud(file.name)}>
+                              Restore
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                       <Button
                         variant="ghost"
                         size="icon"

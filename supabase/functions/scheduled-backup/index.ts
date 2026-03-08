@@ -14,9 +14,67 @@ const TABLES = [
 ];
 
 const MAX_BACKUPS = 4;
+const FIREBASE_SERVER_KEY = Deno.env.get("FIREBASE_SERVER_KEY");
+
+async function notifyAdmins(
+  supabase: ReturnType<typeof createClient>,
+  success: boolean,
+  details: string
+) {
+  try {
+    // Get all admin users with FCM tokens
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+
+    if (!adminRoles || adminRoles.length === 0) return;
+
+    const adminIds = adminRoles.map((r: { user_id: string }) => r.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, fcm_token, full_name")
+      .in("id", adminIds)
+      .not("fcm_token", "is", null);
+
+    if (!profiles || profiles.length === 0 || !FIREBASE_SERVER_KEY) {
+      console.log("No admin FCM tokens found or Firebase not configured, skipping push notification");
+      return;
+    }
+
+    const title = success
+      ? "✅ Auto Backup Berhasil"
+      : "❌ Auto Backup Gagal";
+    const body = success
+      ? `Backup terjadwal berhasil disimpan. ${details}`
+      : `Backup terjadwal gagal. ${details}`;
+
+    for (const profile of profiles) {
+      if (!profile.fcm_token) continue;
+      try {
+        await fetch("https://fcm.googleapis.com/fcm/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `key=${FIREBASE_SERVER_KEY}`,
+          },
+          body: JSON.stringify({
+            to: profile.fcm_token,
+            notification: { title, body, icon: "/logo.png" },
+            data: { type: "backup_status", success: String(success) },
+          }),
+        });
+        console.log(`Push notification sent to admin ${profile.id}`);
+      } catch (e) {
+        console.error(`Failed to send push to ${profile.id}:`, e);
+      }
+    }
+  } catch (e) {
+    console.error("Failed to notify admins:", e);
+  }
+}
 
 Deno.serve(async (req) => {
-  // Allow CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -26,13 +84,14 @@ Deno.serve(async (req) => {
     });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  try {
     // Fetch all table data
     const backupData: Record<string, unknown[]> = {};
+    let totalRecords = 0;
     for (const table of TABLES) {
       const { data, error } = await supabase.from(table).select("*");
       if (error) {
@@ -40,6 +99,7 @@ Deno.serve(async (req) => {
         backupData[table] = [];
       } else {
         backupData[table] = data || [];
+        totalRecords += (data || []).length;
       }
     }
 
@@ -55,14 +115,13 @@ Deno.serve(async (req) => {
     const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
     const fileName = `scheduled-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 
-    // Upload backup
     const { error: uploadError } = await supabase.storage
       .from("backups")
       .upload(fileName, blob, { contentType: "application/json", upsert: false });
 
     if (uploadError) throw uploadError;
 
-    // Cleanup: keep only the latest MAX_BACKUPS scheduled backups
+    // Cleanup old backups
     const { data: files } = await supabase.storage
       .from("backups")
       .list("", { sortBy: { column: "created_at", order: "desc" } });
@@ -78,11 +137,22 @@ Deno.serve(async (req) => {
 
     console.log(`Scheduled backup completed: ${fileName}`);
 
+    // Notify admins of success
+    await notifyAdmins(
+      supabase,
+      true,
+      `${totalRecords} records dari ${TABLES.length} tabel.`
+    );
+
     return new Response(JSON.stringify({ success: true, fileName }), {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (err) {
     console.error("Scheduled backup failed:", err);
+
+    // Notify admins of failure
+    await notifyAdmins(supabase, false, err.message || "Unknown error");
+
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },

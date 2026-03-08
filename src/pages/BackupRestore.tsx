@@ -57,6 +57,7 @@ export default function BackupRestore() {
   const [backupFiles, setBackupFiles] = useState<BackupFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
+  const [restoringFile, setRestoringFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchBackupFiles = useCallback(async () => {

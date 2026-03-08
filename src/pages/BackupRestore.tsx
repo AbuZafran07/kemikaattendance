@@ -192,12 +192,12 @@ export default function BackupRestore() {
           <CardContent className="space-y-3">
             {lastAutoBackup ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <CheckCircle2 className="h-4 w-4 text-primary" />
                 Backup terakhir: {new Date(lastAutoBackup).toLocaleString("id-ID")}
               </div>
             ) : (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
+                <AlertCircle className="h-4 w-4 text-destructive" />
                 Belum ada backup otomatis. Klik tombol di bawah untuk membuat backup pertama.
               </div>
             )}

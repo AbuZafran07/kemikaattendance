@@ -175,6 +175,41 @@ export default function BackupRestore() {
     }
   };
 
+  const handleRestoreFromCloud = async (fileName: string) => {
+    setRestoringFile(fileName);
+    try {
+      const { data, error } = await supabase.storage.from("backups").download(fileName);
+      if (error) throw error;
+
+      const text = await data.text();
+      const backup = JSON.parse(text);
+
+      if (!backup.version || !backup.data || !backup.tables) throw new Error("Format file backup tidak valid");
+      if (backup.app !== "Kemika Attendance") throw new Error("File backup bukan dari aplikasi Kemika Attendance");
+
+      let restoredCount = 0;
+      const errors: string[] = [];
+      for (const table of backup.tables as string[]) {
+        const rows = backup.data[table];
+        if (!rows || !Array.isArray(rows) || rows.length === 0) continue;
+        const { error: upsertError } = await supabase.from(table as BackupDataKey).upsert(rows, { onConflict: "id" });
+        if (upsertError) errors.push(`${table}: ${upsertError.message}`);
+        else restoredCount += rows.length;
+      }
+
+      if (errors.length > 0) {
+        toast.warning(`Restore selesai dengan ${errors.length} error. ${restoredCount} records berhasil.`);
+        console.error("Restore errors:", errors);
+      } else {
+        toast.success(`Restore berhasil! ${restoredCount} records dipulihkan dari cloud.`);
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal restore dari cloud");
+    } finally {
+      setRestoringFile(null);
+    }
+  };
+
   const handleDeleteBackup = async (fileName: string) => {
     setDeletingFile(fileName);
     try {

@@ -80,6 +80,12 @@ export default function Settings() {
       icon: Bell,
       path: "/dashboard/settings/notifications",
     },
+    {
+      title: "Backup & Restore",
+      description: "Backup dan pemulihan data sistem",
+      icon: DatabaseBackup,
+      path: "/dashboard/settings/backup",
+    },
   ];
 
   return (

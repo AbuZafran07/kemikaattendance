@@ -348,6 +348,36 @@ export default function BackupRestore() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Restore"
+                            disabled={restoringFile === file.name}
+                          >
+                            {restoringFile === file.name ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4 text-primary" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Restore dari Backup Cloud?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Data akan dipulihkan dari <strong>{file.name}</strong>. Data yang sudah ada akan diperbarui (upsert). Lanjutkan?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRestoreFromCloud(file.name)}>
+                              Restore
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                       <Button
                         variant="ghost"
                         size="icon"

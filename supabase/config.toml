@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.fetch-indonesia-holidays]
 verify_jwt = false
+
+[functions.scheduled-backup]
+verify_jwt = false

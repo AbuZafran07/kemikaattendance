@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   CloudUpload, Download, Upload, RefreshCw, CheckCircle2, AlertCircle,
-  Trash2, FileJson, Clock, CalendarClock
+  Trash2, FileJson, Clock, CalendarClock, RotateCcw
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,

@@ -86,13 +86,18 @@ const PayrollOverrideHistory = () => {
 
       const userIds = [...new Set((data || []).map(d => d.user_id))];
       let profileMap = new Map<string, string>();
+      let adminIds = new Set<string>();
+
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles").select("id, full_name").in("id", userIds);
+        const [{ data: profiles }, { data: adminRoles }] = await Promise.all([
+          supabase.from("profiles").select("id, full_name").in("id", userIds),
+          supabase.from("user_roles").select("user_id").eq("role", "admin"),
+        ]);
         profileMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
+        adminIds = new Set((adminRoles || []).map(r => r.user_id));
       }
 
-      setOverrides((data || []).map(d => ({
+      setOverrides((data || []).filter(d => !adminIds.has(d.user_id)).map(d => ({
         ...d,
         tunjangan_kehadiran: Number(d.tunjangan_kehadiran) || 0,
         tunjangan_kesehatan: Number(d.tunjangan_kesehatan) || 0,

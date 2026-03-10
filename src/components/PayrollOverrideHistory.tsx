@@ -97,7 +97,7 @@ const PayrollOverrideHistory = () => {
         adminIds = new Set((adminRoles || []).map(r => r.user_id));
       }
 
-      setOverrides((data || []).map(d => ({
+      setOverrides((data || []).filter(d => !adminIds.has(d.user_id)).map(d => ({
         ...d,
         tunjangan_kehadiran: Number(d.tunjangan_kehadiran) || 0,
         tunjangan_kesehatan: Number(d.tunjangan_kesehatan) || 0,

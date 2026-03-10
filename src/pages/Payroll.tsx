@@ -383,9 +383,13 @@ const Payroll = () => {
   };
 
   const openDeductionDialog = async () => {
-    const { data: emps } = await supabase
-      .from("profiles").select("id, full_name").eq("status", "Active").order("full_name");
-    setEmployees(emps || []);
+    const [{ data: empsRaw }, { data: adminRoles }] = await Promise.all([
+      supabase.from("profiles").select("id, full_name").eq("status", "Active").order("full_name"),
+      supabase.from("user_roles").select("user_id").eq("role", "admin"),
+    ]);
+    const adminIds = new Set((adminRoles || []).map(r => r.user_id));
+    const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
+    setEmployees(emps);
 
     // Merge existing DB overrides with employee list (fill missing with defaults)
     const overrides = new Map<string, DeductionOverride>(deductionOverrides);
@@ -399,9 +403,13 @@ const Payroll = () => {
   };
 
   const openIncomeDialog = async () => {
-    const { data: emps } = await supabase
-      .from("profiles").select("id, full_name").eq("status", "Active").order("full_name");
-    setEmployees(emps || []);
+    const [{ data: empsRaw }, { data: adminRoles }] = await Promise.all([
+      supabase.from("profiles").select("id, full_name").eq("status", "Active").order("full_name"),
+      supabase.from("user_roles").select("user_id").eq("role", "admin"),
+    ]);
+    const adminIds = new Set((adminRoles || []).map(r => r.user_id));
+    const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
+    setEmployees(emps);
 
     const additions = new Map<string, IncomeAddition>(incomeAdditions);
     for (const emp of emps || []) {

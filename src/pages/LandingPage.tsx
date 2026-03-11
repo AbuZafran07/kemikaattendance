@@ -39,24 +39,29 @@ interface Announcement {
   content: string;
   type: string;
   created_at: string;
+  expire_at: string | null;
 }
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const { data } = await supabase
         .from("company_announcements" as any)
-        .select("id, title, content, type, created_at")
+        .select("id, title, content, type, created_at, expire_at")
         .eq("is_active", true)
         .order("priority", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(6);
-      if (data) setAnnouncements(data as any);
+      if (data) {
+        const now = new Date().toISOString();
+        setAnnouncements((data as any[]).filter((a: any) => !a.expire_at || a.expire_at > now));
+      }
     };
-    fetch();
+    fetchData();
   }, []);
 
   const getIcon = (type: string) => {

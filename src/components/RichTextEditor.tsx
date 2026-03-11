@@ -12,8 +12,8 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignJustify,
 } from "lucide-react";
-
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -100,6 +100,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         </Button>
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => exec("justifyRight")} title="Align Right">
           <AlignRight className="h-3.5 w-3.5" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => exec("justifyFull")} title="Justify">
+          <AlignJustify className="h-3.5 w-3.5" />
         </Button>
       </div>
 

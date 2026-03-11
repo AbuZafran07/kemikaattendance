@@ -162,17 +162,18 @@ const LandingPage = () => {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {announcements.map((item) => (
-                  <Card key={item.id} className="border-border/60 hover:border-primary/30 transition-colors">
+                  <Card key={item.id} className="border-border/60 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setSelectedAnnouncement(item)}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className={`mt-0.5 rounded-lg p-2 ${getIconBg(item.type)}`}>{getIcon(item.type)}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">{item.content}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1 line-clamp-2">{item.content}</p>
                           <p className="text-[11px] text-muted-foreground/70 mt-2">
                             {format(new Date(item.created_at), "dd MMM yyyy")}
                           </p>
                         </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground/50 mt-1 shrink-0" />
                       </div>
                     </CardContent>
                   </Card>

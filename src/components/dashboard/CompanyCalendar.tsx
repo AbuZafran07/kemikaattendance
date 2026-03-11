@@ -299,9 +299,16 @@ const CompanyCalendar = () => {
                           )}
                         </div>
                       )}
+                      {companyEvents && companyEvents.map((e, i) => (
+                        <div key={`ce-${i}`} className="flex items-center gap-1 text-xs">
+                          <CalendarDays className="h-3 w-3 text-blue-500" />
+                          <span>{e.title}</span>
+                          {e.description && <span className="text-muted-foreground">- {e.description}</span>}
+                        </div>
+                      ))}
                       {leaveDays && leaveDays.map((l, i) => (
                         <div key={i} className="flex items-center gap-1 text-xs">
-                          <Briefcase className="h-3 w-3 text-blue-500" />
+                          <Briefcase className="h-3 w-3 text-indigo-500" />
                           <span>{l.label}</span>
                         </div>
                       ))}

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, CalendarDays, Loader2 } from "lucide-react";
+import { Plus, Trash2, CalendarDays, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,8 @@ export function CompanyEventManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [newEvent, setNewEvent] = useState({ title: "", description: "", date: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchEvents();
@@ -145,44 +147,62 @@ export function CompanyEventManager() {
             <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
           </div>
         ) : events.length > 0 ? (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama Event</TableHead>
-                  <TableHead>Keterangan</TableHead>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead className="w-16 text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {events.map((event) => (
-                  <TableRow key={event.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-                        {event.title}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {event.description || "-"}
-                    </TableCell>
-                    <TableCell>{formatDate(event.event_date)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveEvent(event.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+          <>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nama Event</TableHead>
+                    <TableHead>Keterangan</TableHead>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead className="w-16 text-right">Aksi</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {events.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                          {event.title}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {event.description || "-"}
+                      </TableCell>
+                      <TableCell>{formatDate(event.event_date)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveEvent(event.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {Math.ceil(events.length / ITEMS_PER_PAGE) > 1 && (
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-sm text-muted-foreground">
+                  Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, events.length)} dari {events.length} data
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">{currentPage} / {Math.ceil(events.length / ITEMS_PER_PAGE)}</span>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(Math.ceil(events.length / ITEMS_PER_PAGE), p + 1))} disabled={currentPage === Math.ceil(events.length / ITEMS_PER_PAGE)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-50" />

@@ -418,7 +418,7 @@ export default function Reports() {
         const ratePerHour = (allowanceConfig.work_hours_per_day || 8) > 0 ? ratePerDay / (allowanceConfig.work_hours_per_day || 8) : 0;
 
         // Build payroll rows
-        const employees = (profilesRes.data || []).filter((p) => !adminUserIds.has(p.id));
+        const employees = (profilesRes.data || []).filter((p) => !adminUserIds.has(p.id) && !isAttendanceExempt(p.departemen) && p.status === "Active");
         let filteredEmployees = department !== "all" ? employees.filter((p) => p.departemen === department) : employees;
 
         data = filteredEmployees.map((p) => {

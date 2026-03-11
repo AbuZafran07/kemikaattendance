@@ -78,6 +78,7 @@ const EmployeeView = () => {
     attendanceCount: 0,
   });
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementItem | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [currentLocation, setCurrentLocation] = useState<{

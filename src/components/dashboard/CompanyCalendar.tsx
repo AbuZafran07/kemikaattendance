@@ -239,8 +239,9 @@ const CompanyCalendar = () => {
             const today = isToday(date);
             const leaveDays = leaveDaysMap.get(dateStr);
             const travelDays = travelDaysMap.get(dateStr);
+            const companyEvents = companyEventsMap.get(dateStr);
 
-            const hasEvent = !!holidayName || !!specialPeriod || !!leaveDays || !!travelDays;
+            const hasEvent = !!holidayName || !!specialPeriod || !!leaveDays || !!travelDays || !!companyEvents;
 
             let bgClass = "bg-background hover:bg-accent/50";
             if (today) bgClass = "bg-primary/10 ring-1 ring-primary";

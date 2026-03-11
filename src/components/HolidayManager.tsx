@@ -266,7 +266,7 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {holidays.map((holiday) => (
+                {paginatedHolidays.map((holiday) => (
                   <TableRow key={holiday.id}>
                     <TableCell className="font-medium">{holiday.name}</TableCell>
                     <TableCell>{formatDate(holiday.date)}</TableCell>
@@ -285,6 +285,22 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
               </TableBody>
             </Table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-sm text-muted-foreground">
+                Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, holidays.length)} dari {holidays.length} data
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">{currentPage} / {totalPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />

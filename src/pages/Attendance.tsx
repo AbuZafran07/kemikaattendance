@@ -702,7 +702,7 @@ const Attendance = () => {
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
                     <p className="text-sm text-muted-foreground">
-                      Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, attendanceData.length)} dari {attendanceData.length} data
+                      Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredData.length)} dari {filteredData.length} data
                     </p>
                     <div className="flex items-center gap-2">
                       <Button

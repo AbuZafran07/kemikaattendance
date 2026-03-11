@@ -18,6 +18,7 @@ import { DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 import logoImage from "@/assets/logo.png";
 import { formatAttendanceStatus, formatLeaveType } from "@/lib/statusUtils";
 import { isWeekend } from "@/hooks/usePolicySettings";
+import { isAttendanceExempt } from "@/lib/employeeFilters";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {

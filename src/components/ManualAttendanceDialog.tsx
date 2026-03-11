@@ -85,7 +85,7 @@ const ManualAttendanceDialog = ({ open, onOpenChange, onSuccess }: ManualAttenda
       .order("full_name");
 
     if (profiles) {
-      setEmployees(profiles.filter(p => !adminIds.has(p.id)));
+      setEmployees(profiles.filter(p => !adminIds.has(p.id) && !isAttendanceExempt(p.departemen)));
     }
   };
 

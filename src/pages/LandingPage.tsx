@@ -192,7 +192,6 @@ const LandingPage = () => {
           <p className="text-[11px] text-muted-foreground/70">© {new Date().getFullYear()} — App Version {APP_VERSION}</p>
         </div>
       </footer>
-    </div>
 
       {/* Announcement Detail Dialog */}
       <Dialog open={!!selectedAnnouncement} onOpenChange={() => setSelectedAnnouncement(null)}>
@@ -215,6 +214,7 @@ const LandingPage = () => {
           )}
         </DialogContent>
       </Dialog>
+    </div>
   );
 };
 

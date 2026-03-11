@@ -145,8 +145,29 @@ const CompanyCalendar = () => {
     }
     setTravelDaysMap(map);
   };
+  const fetchCompanyEvents = async () => {
+    const mStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+    const mEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-  const monthStart = startOfMonth(currentMonth);
+    const { data } = await supabase
+      .from("company_events")
+      .select("title, description, event_date")
+      .gte("event_date", mStart)
+      .lte("event_date", mEnd);
+
+    const map = new Map<string, CompanyEvent[]>();
+    if (data) {
+      data.forEach((e: any) => {
+        const key = e.event_date;
+        const existing = map.get(key) || [];
+        existing.push({ title: e.title, description: e.description });
+        map.set(key, existing);
+      });
+    }
+    setCompanyEventsMap(map);
+  };
+
+
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 

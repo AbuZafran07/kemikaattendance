@@ -211,19 +211,13 @@ export default function AnnouncementManagement() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Tipe</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warning">Penting</SelectItem>
-                    <SelectItem value="success">Sukses</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
                 <Label>Prioritas</Label>
                 <Input type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <Label>Tanggal Expired</Label>
+                <Input type="date" value={form.expire_at} onChange={(e) => setForm({ ...form, expire_at: e.target.value })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Kosongkan jika tidak ada batas waktu</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

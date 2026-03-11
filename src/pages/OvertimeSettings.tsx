@@ -463,6 +463,9 @@ export default function OvertimeSettings() {
               onHolidaysChange={(holidays) => setConfig({ ...config, holidays })}
             />
 
+            {/* Event & Kegiatan Kantor */}
+            <CompanyEventManager />
+
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>

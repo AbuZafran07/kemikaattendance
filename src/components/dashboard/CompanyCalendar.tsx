@@ -266,8 +266,9 @@ const CompanyCalendar = () => {
                 )}
                 {!holidayName && hasEvent && (
                   <div className="flex gap-0.5 mt-0.5">
+                    {companyEvents && <div className="h-1 w-1 rounded-full bg-blue-500" />}
                     {specialPeriod && <div className="h-1 w-1 rounded-full bg-chart-4" />}
-                    {leaveDays && <div className="h-1 w-1 rounded-full bg-blue-500" />}
+                    {leaveDays && <div className="h-1 w-1 rounded-full bg-indigo-500" />}
                     {travelDays && <div className="h-1 w-1 rounded-full bg-green-500" />}
                   </div>
                 )}

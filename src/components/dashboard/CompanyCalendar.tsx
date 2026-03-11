@@ -34,6 +34,11 @@ interface TravelDay {
   purpose: string;
 }
 
+interface CompanyEvent {
+  title: string;
+  description: string | null;
+}
+
 const leaveTypeLabels: Record<string, string> = {
   cuti_tahunan: "Cuti Tahunan",
   izin: "Izin",

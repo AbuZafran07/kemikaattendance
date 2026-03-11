@@ -38,7 +38,7 @@ export default function AnnouncementManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", content: "", type: "info", priority: 0, is_active: true });
+  const [form, setForm] = useState({ title: "", content: "", type: "info", priority: 0, is_active: true, expire_at: "" });
 
   const fetchAnnouncements = async () => {
     setIsLoading(true);

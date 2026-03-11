@@ -25,6 +25,8 @@ export function CompanyEventManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [newEvent, setNewEvent] = useState({ title: "", description: "", date: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchEvents();

@@ -123,7 +123,7 @@ const Attendance = () => {
       return;
     }
 
-    // Filter out admin attendance records
+    // Filter out admin attendance records and exempt departments/inactive will be filtered after profile merge
     const nonAdminAttendance = (attendanceRecords || []).filter(
       record => !adminUserIds.has(record.user_id)
     );

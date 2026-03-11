@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { HolidayManager, Holiday } from "@/components/HolidayManager";
+import { CompanyEventManager } from "@/components/CompanyEventManager";
 
 interface OvertimePolicyConfig {
   min_hours: number;

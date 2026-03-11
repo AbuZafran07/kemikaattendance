@@ -209,6 +209,17 @@ export default function AnnouncementManagement() {
               <Label>Isi Pengumuman</Label>
               <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Tulis isi pengumuman..." rows={4} />
             </div>
+            <div>
+              <Label>Tipe</Label>
+              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="warning">Penting</SelectItem>
+                  <SelectItem value="success">Sukses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Prioritas</Label>

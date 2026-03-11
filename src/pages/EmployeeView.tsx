@@ -53,6 +53,7 @@ interface AnnouncementItem {
   content: string;
   type: string;
   created_at: string;
+  expire_at: string | null;
 }
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);

@@ -205,15 +205,12 @@ const Dashboard = () => {
     // Create set of admin user IDs - admins are excluded from attendance requirements
     const adminUserIds = new Set((adminRoles || []).map(r => r.user_id));
     
-    // Filter out admin accounts, BOD/Komisaris (exempt), and Inactive employees from attendance tracking
+    // Filter out: admins, BOD/Komisaris (exempt from attendance), and Inactive employees
     const nonAdminProfiles = (profiles || []).filter(p => 
-      !adminUserIds.has(p.id) && !isAttendanceExempt(p.departemen)
+      !adminUserIds.has(p.id) && 
+      !isAttendanceExempt(p.departemen) &&
+      p.status === "Active"
     );
-    // Further filter to only active employees for attendance counting
-    const activeAttendanceProfiles = nonAdminProfiles.filter(p => {
-      // profiles fetched here don't have status, so we need a separate check
-      return true; // will be filtered below with full profile data
-    });
     const employeeCount = nonAdminProfiles.length;
 
     // Create profiles map with signed URLs for photos

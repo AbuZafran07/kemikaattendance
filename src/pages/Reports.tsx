@@ -346,7 +346,7 @@ export default function Reports() {
           supabase.from("attendance").select("*").gte("check_in_time", `${monthStart}T00:00:00`).lte("check_in_time", `${monthEnd}T23:59:59`),
           supabase.from("leave_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
           supabase.from("business_travel_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
-          supabase.from("profiles").select("id, full_name, departemen, nik, jabatan"),
+          supabase.from("profiles").select("id, full_name, departemen, nik, jabatan, status"),
           supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
           supabase.from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle(),
           supabase.rpc("get_work_hours"),

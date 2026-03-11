@@ -12,8 +12,8 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-AlignJustify,
-
+  AlignJustify,
+} from "lucide-react";
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;

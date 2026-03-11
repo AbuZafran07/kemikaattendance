@@ -166,6 +166,15 @@ export default function AnnouncementManagement() {
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                         {format(new Date(a.created_at), "dd MMM yyyy")}
                       </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                        {a.expire_at ? (
+                          <Badge variant={new Date(a.expire_at) < new Date() ? "destructive" : "secondary"} className="text-[10px]">
+                            {format(new Date(a.expire_at), "dd MMM yyyy")}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(a)}>

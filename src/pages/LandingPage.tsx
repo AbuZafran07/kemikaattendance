@@ -193,6 +193,28 @@ const LandingPage = () => {
         </div>
       </footer>
     </div>
+
+      {/* Announcement Detail Dialog */}
+      <Dialog open={!!selectedAnnouncement} onOpenChange={() => setSelectedAnnouncement(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedAnnouncement && getIcon(selectedAnnouncement.type)}
+              {selectedAnnouncement?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedAnnouncement && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                {selectedAnnouncement.content}
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Dipublikasikan: {format(new Date(selectedAnnouncement.created_at), "dd MMM yyyy, HH:mm")}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
   );
 };
 

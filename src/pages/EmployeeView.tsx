@@ -111,12 +111,15 @@ const EmployeeView = () => {
   const fetchAnnouncements = async () => {
     const { data } = await supabase
       .from("company_announcements" as any)
-      .select("id, title, content, type, created_at")
+      .select("id, title, content, type, created_at, expire_at")
       .eq("is_active", true)
       .order("priority", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(3);
-    if (data) setAnnouncements(data as any);
+    if (data) {
+      const now = new Date().toISOString();
+      setAnnouncements((data as any[]).filter((a: any) => !a.expire_at || a.expire_at > now));
+    }
   };
 
   // Check if user is admin - admins don't need attendance

@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAttendancePhotoUrl } from "@/lib/attendancePhotoUpload";
+import { isAttendanceExempt } from "@/lib/employeeFilters";
 
 interface AttendanceRecord {
   id: string;

@@ -157,7 +157,7 @@ export default function AnnouncementManagement() {
                     <TableRow key={a.id}>
                       <TableCell>
                         <p className="font-medium text-sm">{a.title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5" dangerouslySetInnerHTML={{ __html: a.content }} />
+                        <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5" dangerouslySetInnerHTML={{ __html: a.content }} />
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">{typeBadge(a.type)}</TableCell>
                       <TableCell className="hidden sm:table-cell">

@@ -1070,7 +1070,7 @@ const EmployeeView = () => {
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
               {announcements.map((item) => (
-                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/60">
+                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/60 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setSelectedAnnouncement(item)}>
                   <div className={`mt-0.5 rounded-lg p-1.5 ${item.type === "warning" ? "bg-destructive/10" : "bg-primary/10"}`}>
                     {item.type === "warning" 
                       ? <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
@@ -1082,11 +1082,37 @@ const EmployeeView = () => {
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 line-clamp-2">{item.content}</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-1">{format(new Date(item.created_at), "dd MMM yyyy")}</p>
                   </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/50 mt-1 shrink-0" />
                 </div>
               ))}
             </CardContent>
           </Card>
         )}
+
+        {/* Announcement Detail Dialog */}
+        <Dialog open={!!selectedAnnouncement} onOpenChange={() => setSelectedAnnouncement(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                {selectedAnnouncement?.type === "warning" 
+                  ? <AlertTriangle className="h-4 w-4 text-destructive" />
+                  : <Info className="h-4 w-4 text-primary" />
+                }
+                {selectedAnnouncement?.title}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedAnnouncement && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                  {selectedAnnouncement.content}
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Dipublikasikan: {format(new Date(selectedAnnouncement.created_at), "dd MMM yyyy, HH:mm")}
+                </p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Company Calendar */}
         <CompanyCalendar />

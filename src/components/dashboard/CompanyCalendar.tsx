@@ -53,6 +53,7 @@ const CompanyCalendar = () => {
   const [specialPeriods, setSpecialPeriods] = useState<SpecialPeriod[]>([]);
   const [leaveDaysMap, setLeaveDaysMap] = useState<Map<string, LeaveDay[]>>(new Map());
   const [travelDaysMap, setTravelDaysMap] = useState<Map<string, TravelDay[]>>(new Map());
+  const [companyEventsMap, setCompanyEventsMap] = useState<Map<string, CompanyEvent[]>>(new Map());
 
   useEffect(() => {
     fetchCalendarData();

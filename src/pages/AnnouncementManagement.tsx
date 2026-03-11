@@ -148,6 +148,7 @@ export default function AnnouncementManagement() {
                     <TableHead className="hidden sm:table-cell">Tipe</TableHead>
                     <TableHead className="hidden sm:table-cell">Status</TableHead>
                     <TableHead className="hidden md:table-cell">Tanggal</TableHead>
+                    <TableHead className="hidden md:table-cell">Expired</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>

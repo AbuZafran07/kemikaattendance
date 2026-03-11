@@ -97,7 +97,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik");
+          .select("id, full_name, departemen, nik, status");
 
         if (profilesError) throw profilesError;
 

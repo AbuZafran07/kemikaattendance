@@ -246,8 +246,9 @@ const CompanyCalendar = () => {
             let bgClass = "bg-background hover:bg-accent/50";
             if (today) bgClass = "bg-primary/10 ring-1 ring-primary";
             else if (holidayName) bgClass = "bg-destructive/10";
+            else if (companyEvents) bgClass = "bg-blue-500/10";
             else if (travelDays) bgClass = "bg-green-500/10";
-            else if (leaveDays) bgClass = "bg-blue-500/10";
+            else if (leaveDays) bgClass = "bg-indigo-500/10";
             else if (specialPeriod) bgClass = "bg-chart-4/20";
             else if (weekend) bgClass = "bg-muted/50";
 

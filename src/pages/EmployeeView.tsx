@@ -1080,7 +1080,7 @@ const EmployeeView = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                    <div className="text-xs text-muted-foreground leading-relaxed mt-0.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: item.content }} />
+                    <div className="text-xs text-muted-foreground leading-relaxed mt-0.5 line-clamp-2 overflow-hidden break-words [&_*]:!text-xs [&_*]:!leading-relaxed" dangerouslySetInnerHTML={{ __html: item.content }} />
                     <p className="text-[10px] text-muted-foreground/60 mt-1">{format(new Date(item.created_at), "dd MMM yyyy")}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground/50 mt-1 shrink-0" />

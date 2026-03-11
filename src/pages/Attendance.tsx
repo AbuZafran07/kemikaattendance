@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAttendancePhotoUrl } from "@/lib/attendancePhotoUpload";
+import { isAttendanceExempt } from "@/lib/employeeFilters";
 
 interface AttendanceRecord {
   id: string;
@@ -122,7 +123,7 @@ const Attendance = () => {
       return;
     }
 
-    // Filter out admin attendance records
+    // Filter out admin attendance records and exempt departments/inactive will be filtered after profile merge
     const nonAdminAttendance = (attendanceRecords || []).filter(
       record => !adminUserIds.has(record.user_id)
     );
@@ -137,7 +138,7 @@ const Attendance = () => {
     // Fetch all profiles (excluding admins for display)
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, full_name, departemen, photo_url");
+      .select("id, full_name, departemen, photo_url, status");
 
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);

@@ -13,6 +13,7 @@ import { Search, UserPlus, X, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAttendanceExempt } from "@/lib/employeeFilters";
 
 interface Employee {
   id: string;
@@ -84,7 +85,7 @@ const ManualAttendanceDialog = ({ open, onOpenChange, onSuccess }: ManualAttenda
       .order("full_name");
 
     if (profiles) {
-      setEmployees(profiles.filter(p => !adminIds.has(p.id)));
+      setEmployees(profiles.filter(p => !adminIds.has(p.id) && !isAttendanceExempt(p.departemen)));
     }
   };
 

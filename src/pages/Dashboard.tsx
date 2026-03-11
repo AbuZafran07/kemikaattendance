@@ -11,6 +11,7 @@ import { format, subDays } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import logger from "@/lib/logger";
+import { isAttendanceExempt } from "@/lib/employeeFilters";
 
 // Helper to get signed URL for employee photos
 const getSignedPhotoUrl = async (filePath: string | null): Promise<string | null> => {
@@ -162,7 +163,7 @@ const Dashboard = () => {
       { data: approvedLeaveToday },
       { data: travelData },
     ] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, departemen, photo_url"),
+      supabase.from("profiles").select("id, full_name, departemen, photo_url, status"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
       supabase
         .from("attendance")
@@ -204,8 +205,12 @@ const Dashboard = () => {
     // Create set of admin user IDs - admins are excluded from attendance requirements
     const adminUserIds = new Set((adminRoles || []).map(r => r.user_id));
     
-    // Filter out admin accounts from profiles for attendance tracking
-    const nonAdminProfiles = (profiles || []).filter(p => !adminUserIds.has(p.id));
+    // Filter out: admins, BOD/Komisaris (exempt from attendance), and Inactive employees
+    const nonAdminProfiles = (profiles || []).filter(p => 
+      !adminUserIds.has(p.id) && 
+      !isAttendanceExempt(p.departemen) &&
+      p.status === "Active"
+    );
     const employeeCount = nonAdminProfiles.length;
 
     // Create profiles map with signed URLs for photos

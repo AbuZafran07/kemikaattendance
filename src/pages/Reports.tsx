@@ -18,6 +18,7 @@ import { DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
 import logoImage from "@/assets/logo.png";
 import { formatAttendanceStatus, formatLeaveType } from "@/lib/statusUtils";
 import { isWeekend } from "@/hooks/usePolicySettings";
+import { isAttendanceExempt } from "@/lib/employeeFilters";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -96,16 +97,22 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik");
+          .select("id, full_name, departemen, nik, status");
 
         if (profilesError) throw profilesError;
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge attendance data and exclude admins
+        // Build set of excluded user IDs (admins + exempt departments + inactive)
+        const excludedUserIds = new Set([
+          ...Array.from(adminUserIds),
+          ...(profiles || []).filter(p => isAttendanceExempt(p.departemen) || p.status !== "Active").map(p => p.id),
+        ]);
+
+        // Merge attendance data and exclude admins/exempt/inactive
         let mergedAttendance =
           attendanceData
-            ?.filter((record) => !adminUserIds.has(record.user_id))
+            ?.filter((record) => !excludedUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),
@@ -212,7 +219,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik");
+          .select("id, full_name, departemen, nik, status");
 
         if (profilesError) throw profilesError;
 
@@ -255,7 +262,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik");
+          .select("id, full_name, departemen, nik, status");
 
         if (profilesError) throw profilesError;
 
@@ -296,7 +303,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik");
+          .select("id, full_name, departemen, nik, status");
 
         if (profilesError) throw profilesError;
 
@@ -339,7 +346,7 @@ export default function Reports() {
           supabase.from("attendance").select("*").gte("check_in_time", `${monthStart}T00:00:00`).lte("check_in_time", `${monthEnd}T23:59:59`),
           supabase.from("leave_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
           supabase.from("business_travel_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
-          supabase.from("profiles").select("id, full_name, departemen, nik, jabatan"),
+          supabase.from("profiles").select("id, full_name, departemen, nik, jabatan, status"),
           supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
           supabase.from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle(),
           supabase.rpc("get_work_hours"),
@@ -411,7 +418,7 @@ export default function Reports() {
         const ratePerHour = (allowanceConfig.work_hours_per_day || 8) > 0 ? ratePerDay / (allowanceConfig.work_hours_per_day || 8) : 0;
 
         // Build payroll rows
-        const employees = (profilesRes.data || []).filter((p) => !adminUserIds.has(p.id));
+        const employees = (profilesRes.data || []).filter((p) => !adminUserIds.has(p.id) && !isAttendanceExempt(p.departemen) && p.status === "Active");
         let filteredEmployees = department !== "all" ? employees.filter((p) => p.departemen === department) : employees;
 
         data = filteredEmployees.map((p) => {

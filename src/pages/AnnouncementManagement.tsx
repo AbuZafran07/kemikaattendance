@@ -62,7 +62,7 @@ export default function AnnouncementManagement() {
 
   const openEdit = (a: Announcement) => {
     setEditingId(a.id);
-    setForm({ title: a.title, content: a.content, type: a.type, priority: a.priority, is_active: a.is_active });
+    setForm({ title: a.title, content: a.content, type: a.type, priority: a.priority, is_active: a.is_active, expire_at: a.expire_at ? a.expire_at.slice(0, 10) : "" });
     setDialogOpen(true);
   };
 

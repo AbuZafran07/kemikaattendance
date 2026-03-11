@@ -103,10 +103,16 @@ export default function Reports() {
 
         const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-        // Merge attendance data and exclude admins
+        // Build set of excluded user IDs (admins + exempt departments + inactive)
+        const excludedUserIds = new Set([
+          ...Array.from(adminUserIds),
+          ...(profiles || []).filter(p => isAttendanceExempt(p.departemen) || p.status !== "Active").map(p => p.id),
+        ]);
+
+        // Merge attendance data and exclude admins/exempt/inactive
         let mergedAttendance =
           attendanceData
-            ?.filter((record) => !adminUserIds.has(record.user_id))
+            ?.filter((record) => !excludedUserIds.has(record.user_id))
             ?.map((record) => ({
               ...record,
               profiles: profilesMap.get(record.user_id),

@@ -236,6 +236,36 @@ export type Database = {
         }
         Relationships: []
       }
+      company_events: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          event_date: string
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          event_date: string
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          event_date?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       employee_loans: {
         Row: {
           created_at: string

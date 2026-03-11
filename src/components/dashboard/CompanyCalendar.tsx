@@ -64,6 +64,7 @@ const CompanyCalendar = () => {
       fetchLeaveData();
       fetchTravelData();
     }
+    fetchCompanyEvents();
   }, [user, currentMonth]);
 
   const fetchCalendarData = async () => {

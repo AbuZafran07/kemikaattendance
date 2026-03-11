@@ -27,6 +27,7 @@ interface Announcement {
   created_by: string;
   created_at: string;
   updated_at: string;
+  expire_at: string | null;
 }
 
 export default function AnnouncementManagement() {

@@ -340,6 +340,10 @@ const CompanyCalendar = () => {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-blue-500" />
+            Event Kantor
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="h-2 w-2 rounded-full bg-indigo-500" />
             Cuti Saya
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

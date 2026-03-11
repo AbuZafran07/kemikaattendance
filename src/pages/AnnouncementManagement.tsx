@@ -73,17 +73,19 @@ export default function AnnouncementManagement() {
     }
     setIsSaving(true);
 
+    const expireAt = form.expire_at ? new Date(form.expire_at + "T23:59:59").toISOString() : null;
+
     if (editingId) {
       const { error } = await supabase
         .from("company_announcements" as any)
-        .update({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active } as any)
+        .update({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active, expire_at: expireAt } as any)
         .eq("id", editingId);
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
       else toast({ title: "Berhasil", description: "Pengumuman berhasil diperbarui" });
     } else {
       const { error } = await supabase
         .from("company_announcements" as any)
-        .insert({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active, created_by: user?.id } as any);
+        .insert({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active, expire_at: expireAt, created_by: user?.id } as any);
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
       else toast({ title: "Berhasil", description: "Pengumuman berhasil ditambahkan" });
     }

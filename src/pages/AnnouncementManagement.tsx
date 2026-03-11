@@ -4,7 +4,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/RichTextEditor";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -157,7 +157,7 @@ export default function AnnouncementManagement() {
                     <TableRow key={a.id}>
                       <TableCell>
                         <p className="font-medium text-sm">{a.title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.content}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5" dangerouslySetInnerHTML={{ __html: a.content }} />
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">{typeBadge(a.type)}</TableCell>
                       <TableCell className="hidden sm:table-cell">
@@ -207,7 +207,7 @@ export default function AnnouncementManagement() {
             </div>
             <div>
               <Label>Isi Pengumuman</Label>
-              <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Tulis isi pengumuman..." rows={4} />
+              <RichTextEditor value={form.content} onChange={(v) => setForm({ ...form, content: v })} placeholder="Tulis isi pengumuman..." />
             </div>
             <div>
               <Label>Tipe</Label>

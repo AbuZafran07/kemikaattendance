@@ -12,7 +12,7 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-} from "lucide-react";
+AlignJustify,
 
 interface RichTextEditorProps {
   value: string;

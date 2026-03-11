@@ -204,7 +204,7 @@ const LandingPage = () => {
           </DialogHeader>
           {selectedAnnouncement && (
             <div className="space-y-3">
-              <div className="text-sm text-muted-foreground leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: selectedAnnouncement.content }} />
+              <div className="text-sm text-muted-foreground leading-relaxed prose prose-sm max-w-none break-words overflow-hidden [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_div]:break-words [&_p]:break-words" dangerouslySetInnerHTML={{ __html: selectedAnnouncement.content }} />
               <p className="text-xs text-muted-foreground/70">
                 Dipublikasikan: {format(new Date(selectedAnnouncement.created_at), "dd MMM yyyy, HH:mm")}
               </p>

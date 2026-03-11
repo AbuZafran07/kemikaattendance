@@ -167,7 +167,7 @@ const CompanyCalendar = () => {
     setCompanyEventsMap(map);
   };
 
-
+  const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 

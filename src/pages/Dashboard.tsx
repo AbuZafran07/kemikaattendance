@@ -163,7 +163,7 @@ const Dashboard = () => {
       { data: approvedLeaveToday },
       { data: travelData },
     ] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, departemen, photo_url"),
+      supabase.from("profiles").select("id, full_name, departemen, photo_url, status"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
       supabase
         .from("attendance")

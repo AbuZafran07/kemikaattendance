@@ -207,7 +207,7 @@ export default function AnnouncementManagement() {
             </div>
             <div>
               <Label>Isi Pengumuman</Label>
-              <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Tulis isi pengumuman..." rows={4} />
+              <RichTextEditor value={form.content} onChange={(v) => setForm({ ...form, content: v })} placeholder="Tulis isi pengumuman..." />
             </div>
             <div>
               <Label>Tipe</Label>

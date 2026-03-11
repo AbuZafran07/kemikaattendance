@@ -138,7 +138,7 @@ const Attendance = () => {
     // Fetch all profiles (excluding admins for display)
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, full_name, departemen, photo_url");
+      .select("id, full_name, departemen, photo_url, status");
 
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import logger from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Camera,
   MapPin,
@@ -53,6 +54,7 @@ interface AnnouncementItem {
   content: string;
   type: string;
   created_at: string;
+  expire_at: string | null;
 }
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -77,6 +79,7 @@ const EmployeeView = () => {
     attendanceCount: 0,
   });
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementItem | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [currentLocation, setCurrentLocation] = useState<{
@@ -110,12 +113,15 @@ const EmployeeView = () => {
   const fetchAnnouncements = async () => {
     const { data } = await supabase
       .from("company_announcements" as any)
-      .select("id, title, content, type, created_at")
+      .select("id, title, content, type, created_at, expire_at")
       .eq("is_active", true)
       .order("priority", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(3);
-    if (data) setAnnouncements(data as any);
+    if (data) {
+      const now = new Date().toISOString();
+      setAnnouncements((data as any[]).filter((a: any) => !a.expire_at || a.expire_at > now));
+    }
   };
 
   // Check if user is admin - admins don't need attendance
@@ -1065,7 +1071,7 @@ const EmployeeView = () => {
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
               {announcements.map((item) => (
-                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/60">
+                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/60 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setSelectedAnnouncement(item)}>
                   <div className={`mt-0.5 rounded-lg p-1.5 ${item.type === "warning" ? "bg-destructive/10" : "bg-primary/10"}`}>
                     {item.type === "warning" 
                       ? <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
@@ -1077,11 +1083,37 @@ const EmployeeView = () => {
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 line-clamp-2">{item.content}</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-1">{format(new Date(item.created_at), "dd MMM yyyy")}</p>
                   </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/50 mt-1 shrink-0" />
                 </div>
               ))}
             </CardContent>
           </Card>
         )}
+
+        {/* Announcement Detail Dialog */}
+        <Dialog open={!!selectedAnnouncement} onOpenChange={() => setSelectedAnnouncement(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                {selectedAnnouncement?.type === "warning" 
+                  ? <AlertTriangle className="h-4 w-4 text-destructive" />
+                  : <Info className="h-4 w-4 text-primary" />
+                }
+                {selectedAnnouncement?.title}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedAnnouncement && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                  {selectedAnnouncement.content}
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Dipublikasikan: {format(new Date(selectedAnnouncement.created_at), "dd MMM yyyy, HH:mm")}
+                </p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Company Calendar */}
         <CompanyCalendar />

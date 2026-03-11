@@ -27,6 +27,7 @@ interface Announcement {
   created_by: string;
   created_at: string;
   updated_at: string;
+  expire_at: string | null;
 }
 
 export default function AnnouncementManagement() {
@@ -37,7 +38,7 @@ export default function AnnouncementManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", content: "", type: "info", priority: 0, is_active: true });
+  const [form, setForm] = useState({ title: "", content: "", type: "info", priority: 0, is_active: true, expire_at: "" });
 
   const fetchAnnouncements = async () => {
     setIsLoading(true);
@@ -55,13 +56,13 @@ export default function AnnouncementManagement() {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ title: "", content: "", type: "info", priority: 0, is_active: true });
+    setForm({ title: "", content: "", type: "info", priority: 0, is_active: true, expire_at: "" });
     setDialogOpen(true);
   };
 
   const openEdit = (a: Announcement) => {
     setEditingId(a.id);
-    setForm({ title: a.title, content: a.content, type: a.type, priority: a.priority, is_active: a.is_active });
+    setForm({ title: a.title, content: a.content, type: a.type, priority: a.priority, is_active: a.is_active, expire_at: a.expire_at ? a.expire_at.slice(0, 10) : "" });
     setDialogOpen(true);
   };
 
@@ -72,17 +73,19 @@ export default function AnnouncementManagement() {
     }
     setIsSaving(true);
 
+    const expireAt = form.expire_at ? new Date(form.expire_at + "T23:59:59").toISOString() : null;
+
     if (editingId) {
       const { error } = await supabase
         .from("company_announcements" as any)
-        .update({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active } as any)
+        .update({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active, expire_at: expireAt } as any)
         .eq("id", editingId);
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
       else toast({ title: "Berhasil", description: "Pengumuman berhasil diperbarui" });
     } else {
       const { error } = await supabase
         .from("company_announcements" as any)
-        .insert({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active, created_by: user?.id } as any);
+        .insert({ title: form.title, content: form.content, type: form.type, priority: form.priority, is_active: form.is_active, expire_at: expireAt, created_by: user?.id } as any);
       if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
       else toast({ title: "Berhasil", description: "Pengumuman berhasil ditambahkan" });
     }
@@ -145,6 +148,7 @@ export default function AnnouncementManagement() {
                     <TableHead className="hidden sm:table-cell">Tipe</TableHead>
                     <TableHead className="hidden sm:table-cell">Status</TableHead>
                     <TableHead className="hidden md:table-cell">Tanggal</TableHead>
+                    <TableHead className="hidden md:table-cell">Expired</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -161,6 +165,15 @@ export default function AnnouncementManagement() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                         {format(new Date(a.created_at), "dd MMM yyyy")}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                        {a.expire_at ? (
+                          <Badge variant={new Date(a.expire_at) < new Date() ? "destructive" : "secondary"} className="text-[10px]">
+                            {format(new Date(a.expire_at), "dd MMM yyyy")}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -196,21 +209,26 @@ export default function AnnouncementManagement() {
               <Label>Isi Pengumuman</Label>
               <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Tulis isi pengumuman..." rows={4} />
             </div>
+            <div>
+              <Label>Tipe</Label>
+              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="warning">Penting</SelectItem>
+                  <SelectItem value="success">Sukses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Tipe</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warning">Penting</SelectItem>
-                    <SelectItem value="success">Sukses</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <div>
                 <Label>Prioritas</Label>
                 <Input type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <Label>Tanggal Expired</Label>
+                <Input type="date" value={form.expire_at} onChange={(e) => setForm({ ...form, expire_at: e.target.value })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Kosongkan jika tidak ada batas waktu</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

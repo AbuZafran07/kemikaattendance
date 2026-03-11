@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import logo from "@/assets/logo.png";
 import kemikaIcon from "@/assets/kemika-icon.png";
 import {
@@ -39,24 +40,29 @@ interface Announcement {
   content: string;
   type: string;
   created_at: string;
+  expire_at: string | null;
 }
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const { data } = await supabase
         .from("company_announcements" as any)
-        .select("id, title, content, type, created_at")
+        .select("id, title, content, type, created_at, expire_at")
         .eq("is_active", true)
         .order("priority", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(6);
-      if (data) setAnnouncements(data as any);
+      if (data) {
+        const now = new Date().toISOString();
+        setAnnouncements((data as any[]).filter((a: any) => !a.expire_at || a.expire_at > now));
+      }
     };
-    fetch();
+    fetchData();
   }, []);
 
   const getIcon = (type: string) => {
@@ -157,17 +163,18 @@ const LandingPage = () => {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {announcements.map((item) => (
-                  <Card key={item.id} className="border-border/60 hover:border-primary/30 transition-colors">
+                  <Card key={item.id} className="border-border/60 hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setSelectedAnnouncement(item)}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className={`mt-0.5 rounded-lg p-2 ${getIconBg(item.type)}`}>{getIcon(item.type)}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">{item.content}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1 line-clamp-2">{item.content}</p>
                           <p className="text-[11px] text-muted-foreground/70 mt-2">
                             {format(new Date(item.created_at), "dd MMM yyyy")}
                           </p>
                         </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground/50 mt-1 shrink-0" />
                       </div>
                     </CardContent>
                   </Card>
@@ -185,6 +192,28 @@ const LandingPage = () => {
           <p className="text-[11px] text-muted-foreground/70">© {new Date().getFullYear()} — App Version {APP_VERSION}</p>
         </div>
       </footer>
+
+      {/* Announcement Detail Dialog */}
+      <Dialog open={!!selectedAnnouncement} onOpenChange={() => setSelectedAnnouncement(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedAnnouncement && getIcon(selectedAnnouncement.type)}
+              {selectedAnnouncement?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedAnnouncement && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                {selectedAnnouncement.content}
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Dipublikasikan: {format(new Date(selectedAnnouncement.created_at), "dd MMM yyyy, HH:mm")}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

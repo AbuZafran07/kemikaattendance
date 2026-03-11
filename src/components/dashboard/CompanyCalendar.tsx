@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday, parseISO } from "date-fns";
@@ -34,6 +34,11 @@ interface TravelDay {
   purpose: string;
 }
 
+interface CompanyEvent {
+  title: string;
+  description: string | null;
+}
+
 const leaveTypeLabels: Record<string, string> = {
   cuti_tahunan: "Cuti Tahunan",
   izin: "Izin",
@@ -48,6 +53,7 @@ const CompanyCalendar = () => {
   const [specialPeriods, setSpecialPeriods] = useState<SpecialPeriod[]>([]);
   const [leaveDaysMap, setLeaveDaysMap] = useState<Map<string, LeaveDay[]>>(new Map());
   const [travelDaysMap, setTravelDaysMap] = useState<Map<string, TravelDay[]>>(new Map());
+  const [companyEventsMap, setCompanyEventsMap] = useState<Map<string, CompanyEvent[]>>(new Map());
 
   useEffect(() => {
     fetchCalendarData();
@@ -58,6 +64,7 @@ const CompanyCalendar = () => {
       fetchLeaveData();
       fetchTravelData();
     }
+    fetchCompanyEvents();
   }, [user, currentMonth]);
 
   const fetchCalendarData = async () => {
@@ -138,6 +145,27 @@ const CompanyCalendar = () => {
     }
     setTravelDaysMap(map);
   };
+  const fetchCompanyEvents = async () => {
+    const mStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+    const mEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+
+    const { data } = await supabase
+      .from("company_events")
+      .select("title, description, event_date")
+      .gte("event_date", mStart)
+      .lte("event_date", mEnd);
+
+    const map = new Map<string, CompanyEvent[]>();
+    if (data) {
+      data.forEach((e: any) => {
+        const key = e.event_date;
+        const existing = map.get(key) || [];
+        existing.push({ title: e.title, description: e.description });
+        map.set(key, existing);
+      });
+    }
+    setCompanyEventsMap(map);
+  };
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -211,14 +239,16 @@ const CompanyCalendar = () => {
             const today = isToday(date);
             const leaveDays = leaveDaysMap.get(dateStr);
             const travelDays = travelDaysMap.get(dateStr);
+            const companyEvents = companyEventsMap.get(dateStr);
 
-            const hasEvent = !!holidayName || !!specialPeriod || !!leaveDays || !!travelDays;
+            const hasEvent = !!holidayName || !!specialPeriod || !!leaveDays || !!travelDays || !!companyEvents;
 
             let bgClass = "bg-background hover:bg-accent/50";
             if (today) bgClass = "bg-primary/10 ring-1 ring-primary";
             else if (holidayName) bgClass = "bg-destructive/10";
+            else if (companyEvents) bgClass = "bg-blue-500/10";
             else if (travelDays) bgClass = "bg-green-500/10";
-            else if (leaveDays) bgClass = "bg-blue-500/10";
+            else if (leaveDays) bgClass = "bg-indigo-500/10";
             else if (specialPeriod) bgClass = "bg-chart-4/20";
             else if (weekend) bgClass = "bg-muted/50";
 
@@ -236,8 +266,9 @@ const CompanyCalendar = () => {
                 )}
                 {!holidayName && hasEvent && (
                   <div className="flex gap-0.5 mt-0.5">
+                    {companyEvents && <div className="h-1 w-1 rounded-full bg-blue-500" />}
                     {specialPeriod && <div className="h-1 w-1 rounded-full bg-chart-4" />}
-                    {leaveDays && <div className="h-1 w-1 rounded-full bg-blue-500" />}
+                    {leaveDays && <div className="h-1 w-1 rounded-full bg-indigo-500" />}
                     {travelDays && <div className="h-1 w-1 rounded-full bg-green-500" />}
                   </div>
                 )}
@@ -268,9 +299,16 @@ const CompanyCalendar = () => {
                           )}
                         </div>
                       )}
+                      {companyEvents && companyEvents.map((e, i) => (
+                        <div key={`ce-${i}`} className="flex items-center gap-1 text-xs">
+                          <CalendarDays className="h-3 w-3 text-blue-500" />
+                          <span>{e.title}</span>
+                          {e.description && <span className="text-muted-foreground">- {e.description}</span>}
+                        </div>
+                      ))}
                       {leaveDays && leaveDays.map((l, i) => (
                         <div key={i} className="flex items-center gap-1 text-xs">
-                          <Briefcase className="h-3 w-3 text-blue-500" />
+                          <Briefcase className="h-3 w-3 text-indigo-500" />
                           <span>{l.label}</span>
                         </div>
                       ))}
@@ -302,6 +340,10 @@ const CompanyCalendar = () => {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-blue-500" />
+            Event Kantor
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="h-2 w-2 rounded-full bg-indigo-500" />
             Cuti Saya
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

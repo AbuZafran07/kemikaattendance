@@ -17,7 +17,6 @@ import {
   Clock,
   Megaphone,
   Info,
-  AlertTriangle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";

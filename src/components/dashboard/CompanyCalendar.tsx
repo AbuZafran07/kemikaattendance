@@ -151,17 +151,21 @@ const CompanyCalendar = () => {
 
     const { data } = await supabase
       .from("company_events")
-      .select("title, description, event_date")
-      .gte("event_date", mStart)
-      .lte("event_date", mEnd);
+      .select("title, description, start_date, end_date")
+      .gte("end_date", mStart)
+      .lte("start_date", mEnd);
 
     const map = new Map<string, CompanyEvent[]>();
     if (data) {
       data.forEach((e: any) => {
-        const key = e.event_date;
-        const existing = map.get(key) || [];
-        existing.push({ title: e.title, description: e.description });
-        map.set(key, existing);
+        const start = parseISO(e.start_date);
+        const end = parseISO(e.end_date);
+        eachDayOfInterval({ start, end }).forEach((d) => {
+          const key = format(d, "yyyy-MM-dd");
+          const existing = map.get(key) || [];
+          existing.push({ title: e.title, description: e.description });
+          map.set(key, existing);
+        });
       });
     }
     setCompanyEventsMap(map);

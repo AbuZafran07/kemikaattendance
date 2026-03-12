@@ -175,7 +175,7 @@ const LandingPage = () => {
                         <div className={`mt-0.5 rounded-lg p-2 ${getIconBg(item.type)}`}>{getIcon(item.type)}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
-                          <div className="text-xs text-muted-foreground leading-relaxed mt-1 line-clamp-2 overflow-hidden break-words [&_*]:!text-xs [&_*]:!leading-relaxed" dangerouslySetInnerHTML={{ __html: item.content }} />
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1 line-clamp-2 break-words">{stripHtml(item.content)}</p>
                           <p className="text-[11px] text-muted-foreground/70 mt-2">
                             {format(new Date(item.created_at), "dd MMM yyyy")}
                           </p>

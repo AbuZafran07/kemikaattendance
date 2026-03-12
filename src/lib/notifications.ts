@@ -176,6 +176,12 @@ export const NotificationTemplates = {
   lateCheckInNotification: (employeeName: string, time: string, lateMinutes: number) => ({
     title: '⚠️ Karyawan Terlambat',
     body: `${employeeName} check-in terlambat ${lateMinutes} menit pada ${time}`
+  }),
+
+  // Company event notifications
+  companyEventCreated: (eventTitle: string, eventDate: string) => ({
+    title: '📅 Event Kantor Baru',
+    body: `Event "${eventTitle}" dijadwalkan pada ${eventDate}`
   })
 };
 

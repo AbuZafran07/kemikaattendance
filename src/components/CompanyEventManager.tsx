@@ -61,6 +61,14 @@ export function CompanyEventManager() {
       toast({ title: "Gagal menambahkan event", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Berhasil", description: "Event kantor berhasil ditambahkan" });
+      
+      // Send notification to all employees
+      const { title, body } = NotificationTemplates.companyEventCreated(
+        newEvent.title.trim(),
+        formatDateForNotification(newEvent.date)
+      );
+      notifyAllEmployees(title, body, { type: 'company_event' });
+      
       setNewEvent({ title: "", description: "", date: "" });
       fetchEvents();
     }

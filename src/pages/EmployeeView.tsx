@@ -1036,58 +1036,6 @@ const EmployeeView = () => {
           </CardContent>
         </Card>
 
-        {/* Pengumuman */}
-        {announcements.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-primary" />
-                Pengumuman
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              {announcements.map((item) => (
-                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/60 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setSelectedAnnouncement(item)}>
-                  <div className={`mt-0.5 rounded-lg p-1.5 ${item.type === "warning" ? "bg-destructive/10" : "bg-primary/10"}`}>
-                    {item.type === "warning" 
-                      ? <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                      : <Info className="h-3.5 w-3.5 text-primary" />
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                    <div className="text-xs text-muted-foreground leading-relaxed mt-0.5 line-clamp-2 overflow-hidden break-words [&_*]:!text-xs [&_*]:!leading-relaxed" dangerouslySetInnerHTML={{ __html: item.content }} />
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">{format(new Date(item.created_at), "dd MMM yyyy")}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/50 mt-1 shrink-0" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Announcement Detail Dialog */}
-        <Dialog open={!!selectedAnnouncement} onOpenChange={() => setSelectedAnnouncement(null)}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base">
-                {selectedAnnouncement?.type === "warning" 
-                  ? <AlertTriangle className="h-4 w-4 text-destructive" />
-                  : <Info className="h-4 w-4 text-primary" />
-                }
-                {selectedAnnouncement?.title}
-              </DialogTitle>
-            </DialogHeader>
-            {selectedAnnouncement && (
-              <div className="space-y-3">
-                <div className="text-sm text-muted-foreground leading-relaxed prose prose-sm max-w-none break-words overflow-hidden [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_div]:break-words [&_p]:break-words" dangerouslySetInnerHTML={{ __html: selectedAnnouncement.content }} />
-                <p className="text-xs text-muted-foreground/70">
-                  Dipublikasikan: {format(new Date(selectedAnnouncement.created_at), "dd MMM yyyy, HH:mm")}
-                </p>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
 
         {/* Company Calendar */}
         <CompanyCalendar />

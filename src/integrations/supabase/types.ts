@@ -241,8 +241,9 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
-          event_date: string
+          end_date: string
           id: string
+          start_date: string
           title: string
           updated_at: string
         }
@@ -250,8 +251,9 @@ export type Database = {
           created_at?: string
           created_by: string
           description?: string | null
-          event_date: string
+          end_date: string
           id?: string
+          start_date: string
           title: string
           updated_at?: string
         }
@@ -259,8 +261,9 @@ export type Database = {
           created_at?: string
           created_by?: string
           description?: string | null
-          event_date?: string
+          end_date?: string
           id?: string
+          start_date?: string
           title?: string
           updated_at?: string
         }

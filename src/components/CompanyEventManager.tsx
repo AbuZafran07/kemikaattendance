@@ -10,6 +10,7 @@ import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { notifyAllEmployees, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 
 interface CompanyEvent {
   id: string;

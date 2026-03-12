@@ -16,7 +16,8 @@ interface CompanyEvent {
   id: string;
   title: string;
   description: string | null;
-  event_date: string;
+  start_date: string;
+  end_date: string;
 }
 
 export function CompanyEventManager() {

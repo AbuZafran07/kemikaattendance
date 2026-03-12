@@ -15,8 +15,6 @@ import {
   XCircle,
   Loader2,
   Clock,
-  Megaphone,
-  Info,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logo from "@/assets/logo.png";

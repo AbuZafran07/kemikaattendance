@@ -195,7 +195,7 @@ const LandingPage = () => {
 
       {/* Announcement Detail Dialog */}
       <Dialog open={!!selectedAnnouncement} onOpenChange={() => setSelectedAnnouncement(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedAnnouncement && getIcon(selectedAnnouncement.type)}

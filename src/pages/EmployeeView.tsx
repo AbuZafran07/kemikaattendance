@@ -96,7 +96,7 @@ const EmployeeView = () => {
     fetchTodayAttendance();
     fetchRecentAttendance();
     fetchStats();
-    fetchAnnouncements();
+    
   }, [profile?.id, user?.id]);
 
   const fetchAnnouncements = async () => {

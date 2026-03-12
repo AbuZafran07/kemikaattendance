@@ -76,6 +76,12 @@ const LandingPage = () => {
     return "bg-primary/10";
   };
 
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Marquee Banner */}

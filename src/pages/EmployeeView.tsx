@@ -47,14 +47,6 @@ interface StatsData {
   leaveTotal: number;
   attendanceCount: number;
 }
-interface AnnouncementItem {
-  id: string;
-  title: string;
-  content: string;
-  type: string;
-  created_at: string;
-  expire_at: string | null;
-}
 const EmployeeView = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);

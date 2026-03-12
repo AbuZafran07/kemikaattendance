@@ -176,6 +176,12 @@ export const NotificationTemplates = {
   lateCheckInNotification: (employeeName: string, time: string, lateMinutes: number) => ({
     title: '⚠️ Karyawan Terlambat',
     body: `${employeeName} check-in terlambat ${lateMinutes} menit pada ${time}`
+  }),
+
+  // Company event notifications
+  companyEventCreated: (eventTitle: string, eventDate: string) => ({
+    title: '📅 Event Kantor Baru',
+    body: `Event "${eventTitle}" dijadwalkan pada ${eventDate}`
   })
 };
 
@@ -190,6 +196,36 @@ export const formatLeaveTypeForNotification = (type: string): string => {
     lupa_absen: "Lupa Absen",
   };
   return typeMap[type] || type;
+};
+
+/**
+ * Send notification to all employees (all authenticated users with FCM tokens)
+ */
+export const notifyAllEmployees = async (title: string, body: string, data?: Record<string, string>): Promise<void> => {
+  try {
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('id, fcm_token')
+      .not('fcm_token', 'is', null);
+
+    if (error || !profiles?.length) {
+      logger.debug('No profiles with FCM tokens found:', error);
+      return;
+    }
+
+    for (const profile of profiles) {
+      if (profile.fcm_token) {
+        await sendPushNotification({
+          fcmToken: profile.fcm_token,
+          title,
+          body,
+          data
+        });
+      }
+    }
+  } catch (error) {
+    logger.error('Failed to notify all employees:', error);
+  }
 };
 
 /**

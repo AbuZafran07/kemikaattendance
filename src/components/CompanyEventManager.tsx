@@ -10,6 +10,7 @@ import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { notifyAllEmployees, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 
 interface CompanyEvent {
   id: string;
@@ -60,6 +61,14 @@ export function CompanyEventManager() {
       toast({ title: "Gagal menambahkan event", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Berhasil", description: "Event kantor berhasil ditambahkan" });
+      
+      // Send notification to all employees
+      const { title, body } = NotificationTemplates.companyEventCreated(
+        newEvent.title.trim(),
+        formatDateForNotification(newEvent.date)
+      );
+      notifyAllEmployees(title, body, { type: 'company_event' });
+      
       setNewEvent({ title: "", description: "", date: "" });
       fetchEvents();
     }

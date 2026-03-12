@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -51,18 +51,31 @@ interface RichTextEditorProps {
 
 export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const lastHtmlRef = useRef<string>(value);
+
+  // Only set innerHTML when value changes externally (not from user input)
+  useEffect(() => {
+    if (editorRef.current && value !== lastHtmlRef.current) {
+      lastHtmlRef.current = value;
+      editorRef.current.innerHTML = value;
+    }
+  }, [value]);
 
   const exec = useCallback((command: string, val?: string) => {
     document.execCommand(command, false, val);
     editorRef.current?.focus();
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      lastHtmlRef.current = html;
+      onChange(html);
     }
   }, [onChange]);
 
   const handleInput = () => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      lastHtmlRef.current = html;
+      onChange(html);
     }
   };
 
@@ -185,11 +198,16 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
       {/* Editor Area */}
       <div
-        ref={editorRef}
+        ref={(el) => {
+          (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+          if (el && !el.innerHTML && value) {
+            el.innerHTML = value;
+            lastHtmlRef.current = value;
+          }
+        }}
         contentEditable
         className="min-h-[120px] max-h-[300px] overflow-y-auto p-3 text-sm focus:outline-none prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
         onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: value }}
         data-placeholder={placeholder}
         suppressContentEditableWarning
       />

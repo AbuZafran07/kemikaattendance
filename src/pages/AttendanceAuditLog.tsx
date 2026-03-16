@@ -25,7 +25,7 @@ interface AuditLog {
   employee_name?: string;
 }
 
-const ITEMS_PER_PAGE = 10;
+
 
 const AttendanceAuditLog = () => {
   const navigate = useNavigate();

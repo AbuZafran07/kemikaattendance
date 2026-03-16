@@ -2,7 +2,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Table,
   TableBody,

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck } from "lucide-react";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
 import {
   Table,

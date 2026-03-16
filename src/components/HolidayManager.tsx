@@ -143,12 +143,12 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
     onHolidaysChange(holidays.filter((h) => h.id !== id));
   };
 
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(holidays.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(holidays.length / itemsPerPage);
   const paginatedHolidays = holidays.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const formatDate = (dateStr: string) => {

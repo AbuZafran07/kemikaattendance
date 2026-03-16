@@ -221,22 +221,13 @@ export function CompanyEventManager() {
                 </TableBody>
               </Table>
             </div>
-            {Math.ceil(events.length / ITEMS_PER_PAGE) > 1 && (
-              <div className="flex items-center justify-between mt-3">
-                <p className="text-sm text-muted-foreground">
-                  Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, events.length)} dari {events.length} data
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm">{currentPage} / {Math.ceil(events.length / ITEMS_PER_PAGE)}</span>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(Math.ceil(events.length / ITEMS_PER_PAGE), p + 1))} disabled={currentPage === Math.ceil(events.length / ITEMS_PER_PAGE)}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            <DataTablePagination
+              currentPage={currentPage}
+              totalItems={events.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
           </>
         ) : (
           <div className="text-center py-8 text-muted-foreground">

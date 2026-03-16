@@ -236,32 +236,13 @@ const AttendanceAuditLog = () => {
                   </Table>
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-muted-foreground">
-                      Halaman {currentPage} dari {totalPages} ({filteredLogs.length} log)
-                    </p>
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        <PaginationItem>
-                          <PaginationLink isActive>{currentPage}</PaginationLink>
-                        </PaginationItem>
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalItems={filteredLogs.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                />
               </>
             )}
           </CardContent>

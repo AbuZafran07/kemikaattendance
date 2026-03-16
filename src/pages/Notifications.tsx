@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
-import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane } from "lucide-react";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 

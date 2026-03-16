@@ -57,7 +57,7 @@ const Attendance = () => {
   const [endDate, setEndDate] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; type: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { toast } = useToast();
 
   // Edit state

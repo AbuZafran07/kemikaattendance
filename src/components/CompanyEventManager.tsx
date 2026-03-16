@@ -194,7 +194,7 @@ export function CompanyEventManager() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {events.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((event) => (
+                  {events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((event) => (
                     <TableRow key={event.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">

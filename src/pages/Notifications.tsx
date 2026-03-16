@@ -747,22 +747,13 @@ const Notifications = () => {
                     </div>
                   )}
                 </div>
-                {getTotalPages(businessTravelNotifications.length) > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      {(travelPage - 1) * itemsPerPage + 1} - {Math.min(travelPage * itemsPerPage, businessTravelNotifications.length)} dari {businessTravelNotifications.length}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setTravelPage(p => Math.max(1, p - 1))} disabled={travelPage === 1}>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">{travelPage} / {getTotalPages(businessTravelNotifications.length)}</span>
-                      <Button variant="outline" size="sm" onClick={() => setTravelPage(p => Math.min(getTotalPages(businessTravelNotifications.length), p + 1))} disabled={travelPage === getTotalPages(businessTravelNotifications.length)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={travelPage}
+                  totalItems={businessTravelNotifications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setTravelPage}
+                  showRowsPerPage={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>

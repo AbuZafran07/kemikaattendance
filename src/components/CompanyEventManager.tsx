@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, CalendarDays, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, CalendarDays, Loader2 } from "lucide-react";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +29,7 @@ export function CompanyEventManager() {
   const [newEvent, setNewEvent] = useState({ title: "", description: "", start_date: "", end_date: "" });
   const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchEvents();
@@ -193,7 +194,7 @@ export function CompanyEventManager() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {events.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((event) => (
+                  {events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((event) => (
                     <TableRow key={event.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
@@ -220,22 +221,13 @@ export function CompanyEventManager() {
                 </TableBody>
               </Table>
             </div>
-            {Math.ceil(events.length / ITEMS_PER_PAGE) > 1 && (
-              <div className="flex items-center justify-between mt-3">
-                <p className="text-sm text-muted-foreground">
-                  Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, events.length)} dari {events.length} data
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm">{currentPage} / {Math.ceil(events.length / ITEMS_PER_PAGE)}</span>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(Math.ceil(events.length / ITEMS_PER_PAGE), p + 1))} disabled={currentPage === Math.ceil(events.length / ITEMS_PER_PAGE)}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            <DataTablePagination
+              currentPage={currentPage}
+              totalItems={events.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
           </>
         ) : (
           <div className="text-center py-8 text-muted-foreground">

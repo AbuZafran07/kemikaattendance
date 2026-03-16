@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Calendar, Copy, Download, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Calendar, Copy, Download, Loader2 } from "lucide-react";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -142,12 +143,12 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
     onHolidaysChange(holidays.filter((h) => h.id !== id));
   };
 
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(holidays.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(holidays.length / itemsPerPage);
   const paginatedHolidays = holidays.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const formatDate = (dateStr: string) => {
@@ -286,22 +287,13 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
                 </TableBody>
               </Table>
             </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-3">
-                <p className="text-sm text-muted-foreground">
-                  Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, holidays.length)} dari {holidays.length} data
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm">{currentPage} / {totalPages}</span>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+            <DataTablePagination
+              currentPage={currentPage}
+              totalItems={holidays.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
           </>
         ) : (
           <div className="text-center py-8 text-muted-foreground">

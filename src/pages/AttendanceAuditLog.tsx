@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -25,7 +25,7 @@ interface AuditLog {
   employee_name?: string;
 }
 
-const ITEMS_PER_PAGE = 10;
+
 
 const AttendanceAuditLog = () => {
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ const AttendanceAuditLog = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   useEffect(() => {
     fetchAuditLogs();
   }, []);
@@ -95,10 +95,10 @@ const AttendanceAuditLog = () => {
     );
   });
 
-  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const formatTime = (timeStr: unknown) => {
@@ -236,32 +236,13 @@ const AttendanceAuditLog = () => {
                   </Table>
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-muted-foreground">
-                      Halaman {currentPage} dari {totalPages} ({filteredLogs.length} log)
-                    </p>
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        <PaginationItem>
-                          <PaginationLink isActive>{currentPage}</PaginationLink>
-                        </PaginationItem>
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalItems={filteredLogs.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                />
               </>
             )}
           </CardContent>

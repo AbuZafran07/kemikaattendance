@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
-import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane } from "lucide-react";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -586,22 +587,13 @@ const Notifications = () => {
                     <div className="text-center py-8 text-muted-foreground">Belum ada aktivitas absensi hari ini</div>
                   )}
                 </div>
-                {getTotalPages(attendanceNotifications.length) > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      {(attendancePage - 1) * itemsPerPage + 1} - {Math.min(attendancePage * itemsPerPage, attendanceNotifications.length)} dari {attendanceNotifications.length}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setAttendancePage(p => Math.max(1, p - 1))} disabled={attendancePage === 1}>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">{attendancePage} / {getTotalPages(attendanceNotifications.length)}</span>
-                      <Button variant="outline" size="sm" onClick={() => setAttendancePage(p => Math.min(getTotalPages(attendanceNotifications.length), p + 1))} disabled={attendancePage === getTotalPages(attendanceNotifications.length)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={attendancePage}
+                  totalItems={attendanceNotifications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setAttendancePage}
+                  showRowsPerPage={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -642,22 +634,13 @@ const Notifications = () => {
                     <div className="text-center py-8 text-muted-foreground">Tidak ada pengajuan cuti yang pending</div>
                   )}
                 </div>
-                {getTotalPages(leaveNotifications.length) > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      {(leavePage - 1) * itemsPerPage + 1} - {Math.min(leavePage * itemsPerPage, leaveNotifications.length)} dari {leaveNotifications.length}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setLeavePage(p => Math.max(1, p - 1))} disabled={leavePage === 1}>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">{leavePage} / {getTotalPages(leaveNotifications.length)}</span>
-                      <Button variant="outline" size="sm" onClick={() => setLeavePage(p => Math.min(getTotalPages(leaveNotifications.length), p + 1))} disabled={leavePage === getTotalPages(leaveNotifications.length)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={leavePage}
+                  totalItems={leaveNotifications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setLeavePage}
+                  showRowsPerPage={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -700,22 +683,13 @@ const Notifications = () => {
                     </div>
                   )}
                 </div>
-                {getTotalPages(overtimeNotifications.length) > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      {(overtimePage - 1) * itemsPerPage + 1} - {Math.min(overtimePage * itemsPerPage, overtimeNotifications.length)} dari {overtimeNotifications.length}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setOvertimePage(p => Math.max(1, p - 1))} disabled={overtimePage === 1}>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">{overtimePage} / {getTotalPages(overtimeNotifications.length)}</span>
-                      <Button variant="outline" size="sm" onClick={() => setOvertimePage(p => Math.min(getTotalPages(overtimeNotifications.length), p + 1))} disabled={overtimePage === getTotalPages(overtimeNotifications.length)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={overtimePage}
+                  totalItems={overtimeNotifications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setOvertimePage}
+                  showRowsPerPage={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -773,22 +747,13 @@ const Notifications = () => {
                     </div>
                   )}
                 </div>
-                {getTotalPages(businessTravelNotifications.length) > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      {(travelPage - 1) * itemsPerPage + 1} - {Math.min(travelPage * itemsPerPage, businessTravelNotifications.length)} dari {businessTravelNotifications.length}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setTravelPage(p => Math.max(1, p - 1))} disabled={travelPage === 1}>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">{travelPage} / {getTotalPages(businessTravelNotifications.length)}</span>
-                      <Button variant="outline" size="sm" onClick={() => setTravelPage(p => Math.min(getTotalPages(businessTravelNotifications.length), p + 1))} disabled={travelPage === getTotalPages(businessTravelNotifications.length)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={travelPage}
+                  totalItems={businessTravelNotifications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setTravelPage}
+                  showRowsPerPage={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>

@@ -587,22 +587,13 @@ const Notifications = () => {
                     <div className="text-center py-8 text-muted-foreground">Belum ada aktivitas absensi hari ini</div>
                   )}
                 </div>
-                {getTotalPages(attendanceNotifications.length) > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      {(attendancePage - 1) * itemsPerPage + 1} - {Math.min(attendancePage * itemsPerPage, attendanceNotifications.length)} dari {attendanceNotifications.length}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setAttendancePage(p => Math.max(1, p - 1))} disabled={attendancePage === 1}>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">{attendancePage} / {getTotalPages(attendanceNotifications.length)}</span>
-                      <Button variant="outline" size="sm" onClick={() => setAttendancePage(p => Math.min(getTotalPages(attendanceNotifications.length), p + 1))} disabled={attendancePage === getTotalPages(attendanceNotifications.length)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <DataTablePagination
+                  currentPage={attendancePage}
+                  totalItems={attendanceNotifications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setAttendancePage}
+                  showRowsPerPage={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>

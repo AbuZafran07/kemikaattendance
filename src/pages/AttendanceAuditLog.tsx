@@ -95,10 +95,10 @@ const AttendanceAuditLog = () => {
     );
   });
 
-  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const formatTime = (timeStr: unknown) => {

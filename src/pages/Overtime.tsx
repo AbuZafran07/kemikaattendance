@@ -23,7 +23,7 @@ import logger from "@/lib/logger";
 const Overtime = () => {
   const [overtimeRequests, setOvertimeRequests] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { userRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = userRole === 'admin';

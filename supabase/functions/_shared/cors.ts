@@ -11,6 +11,7 @@ const PRODUCTION_ORIGINS = [
   'https://lovable.dev',
   'https://preview--psaqqtfitxevwkgzupnp.lovable.app',
   'https://psaqqtfitxevwkgzupnp.lovable.app',
+  'https://kemikaattendance.lovable.app',
 ];
 
 // Localhost origins only allowed in development

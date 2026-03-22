@@ -1,28 +1,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+};
 
 serve(async (req) => {
-  const preflightResponse = handleCorsPreflightRequest(req);
-  if (preflightResponse) return preflightResponse;
-
-  const origin = req.headers.get("Origin");
-  const corsHeaders = getCorsHeaders(origin);
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
+    console.log("attendance-insight: request received");
+
     // Verify authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("attendance-insight: no auth header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const accessToken = authHeader.replace("Bearer ", "").trim();
-    if (!accessToken) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -30,14 +31,15 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Get the authenticated user (explicit token to avoid AuthSessionMissingError)
     const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
     if (userError || !user) {
-      console.error("Auth error:", userError);
+      console.error("attendance-insight: auth error:", userError?.message);
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log("attendance-insight: authenticated user:", user.id);
 
     const userId = user.id;
 
@@ -51,11 +53,13 @@ serve(async (req) => {
 
     const isAdmin = !!roleData;
 
-    const { employeeName, summary, targetUserId } = await req.json();
+    const body = await req.json();
+    const { employeeName, summary, targetUserId } = body;
+    console.log("attendance-insight: body received for", employeeName);
 
     // Authorization: only admins can view other employees' insights
     if (targetUserId && targetUserId !== userId && !isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden - can only view own insights" }), {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -99,7 +103,10 @@ serve(async (req) => {
     const safeName = employeeName.replace(/<[^>]*>/g, "").trim();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("attendance-insight: LOVABLE_API_KEY not set");
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
 
     const prompt = `Kamu adalah HR analyst profesional. Berdasarkan data kehadiran karyawan berikut, lakukan 2 hal:
 
@@ -122,6 +129,8 @@ Data Ringkasan:
 - Total Jam Kerja: ${summary.totalJamKerja}
 - Periode: ${summary.periode}`;
 
+    console.log("attendance-insight: calling AI gateway...");
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -136,6 +145,8 @@ Data Ringkasan:
         ],
       }),
     });
+
+    console.log("attendance-insight: AI gateway response status:", response.status);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -155,6 +166,7 @@ Data Ringkasan:
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || "";
+    console.log("attendance-insight: raw AI response:", rawContent.substring(0, 200));
     
     let insight = "Tidak dapat menghasilkan insight.";
     let isGood = false;
@@ -168,6 +180,8 @@ Data Ringkasan:
       insight = rawContent || insight;
       isGood = false;
     }
+
+    console.log("attendance-insight: success, insight length:", insight.length);
 
     return new Response(JSON.stringify({ insight, isGood }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

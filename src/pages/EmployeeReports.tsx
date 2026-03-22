@@ -202,28 +202,41 @@ async function getAIInsight(
   summary: EmployeeAttendanceData["summary"],
   periode: string
 ): Promise<{ insight: string; isGood: boolean }> {
-  try {
-    console.log("Calling attendance-insight for:", employeeName);
-    const { data, error } = await supabase.functions.invoke("attendance-insight", {
-      body: {
-        employeeName,
-        summary: {
-          ...summary,
-          totalJamKerja: `${Math.floor(summary.totalDuration / 60)} jam ${summary.totalDuration % 60} menit`,
-          periode,
+  const maxRetries = 2;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[AI Insight] Attempt ${attempt + 1}:`, employeeName);
+      const { data, error } = await supabase.functions.invoke("attendance-insight", {
+        body: {
+          employeeName,
+          summary: {
+            ...summary,
+            totalJamKerja: `${Math.floor(summary.totalDuration / 60)} jam ${summary.totalDuration % 60} menit`,
+            periode,
+          },
         },
-      },
-    });
-    console.log("AI insight response:", { data, error });
-    if (error) throw error;
-    return {
-      insight: data?.insight || "Tidak dapat menghasilkan insight.",
-      isGood: data?.isGood === true,
-    };
-  } catch (e) {
-    console.error("AI insight error details:", e);
-    return { insight: "Insight tidak tersedia.", isGood: false };
+      });
+
+      if (error) throw error;
+
+      const cleanedInsight = typeof data?.insight === "string" ? data.insight.trim() : "";
+
+      return {
+        insight: cleanedInsight || "Tidak dapat menghasilkan insight.",
+        isGood: data?.isGood === true,
+      };
+    } catch (e) {
+      console.error(`[AI Insight] Attempt ${attempt + 1} failed:`, e);
+
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+        continue;
+      }
+    }
   }
+
+  return { insight: "Insight tidak tersedia.", isGood: false };
 }
 
 export default function EmployeeReports() {

@@ -203,6 +203,7 @@ async function getAIInsight(
   periode: string
 ): Promise<{ insight: string; isGood: boolean }> {
   try {
+    console.log("Calling attendance-insight for:", employeeName);
     const { data, error } = await supabase.functions.invoke("attendance-insight", {
       body: {
         employeeName,
@@ -213,13 +214,14 @@ async function getAIInsight(
         },
       },
     });
+    console.log("AI insight response:", { data, error });
     if (error) throw error;
     return {
       insight: data?.insight || "Tidak dapat menghasilkan insight.",
       isGood: data?.isGood === true,
     };
   } catch (e) {
-    logger.error("AI insight error:", e);
+    console.error("AI insight error details:", e);
     return { insight: "Insight tidak tersedia.", isGood: false };
   }
 }

@@ -36,6 +36,11 @@ export function getAllowedOrigin(requestOrigin: string | null): string {
   if (requestOrigin.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/)) {
     return requestOrigin;
   }
+
+  // Allow preview origins on lovableproject.com
+  if (requestOrigin.match(/^https:\/\/[a-z0-9-]+\.lovableproject\.com$/)) {
+    return requestOrigin;
+  }
   
   // Only allow localhost origins in development mode
   if (isDevelopment() && DEVELOPMENT_ORIGINS.includes(requestOrigin)) {

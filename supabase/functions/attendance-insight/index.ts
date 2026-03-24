@@ -152,7 +152,7 @@ Data Ringkasan:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
         messages: [
-          { role: "system", content: "Kamu adalah HR analyst profesional Indonesia yang memberikan saran kehadiran langsung kepada karyawan secara ringkas dan konstruktif. Gunakan kata 'Anda' untuk menyapa karyawan. SELALU respond dalam format JSON murni tanpa markdown." },
+          { role: "system", content: "Kamu adalah HR analyst senior dan berpengalaman di Indonesia yang memberikan analisis kehadiran mendalam dan saran yang personal, komprehensif, serta memotivasi langsung kepada karyawan. Gunakan kata 'Anda' untuk menyapa karyawan. Berikan saran yang DETAIL, PRAKTIS, dan BERNILAI - bukan hanya kalimat generik. Hubungkan kehadiran dengan karir, profesionalisme, dan pengembangan diri. SELALU respond dalam format JSON murni tanpa markdown." },
           { role: "user", content: prompt },
         ],
       }),

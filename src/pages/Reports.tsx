@@ -342,7 +342,7 @@ export default function Reports() {
         const monthEnd = endDate;
 
         // Fetch all needed data in parallel
-        const [attendanceRes, leaveRes, travelRes, profilesRes, configRes, holidaysRes, workHoursRes] = await Promise.all([
+        const [attendanceRes, leaveRes, travelRes, profilesRes, configRes, holidaysRes, workHoursRes, specialWhRes] = await Promise.all([
           supabase.from("attendance").select("*").gte("check_in_time", `${monthStart}T00:00:00`).lte("check_in_time", `${monthEnd}T23:59:59`),
           supabase.from("leave_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
           supabase.from("business_travel_requests").select("*").eq("status", "approved").lte("start_date", monthEnd).gte("end_date", monthStart),
@@ -350,6 +350,7 @@ export default function Reports() {
           supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
           supabase.from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle(),
           supabase.rpc("get_work_hours"),
+          supabase.from("system_settings").select("value").eq("key", "special_work_hours").maybeSingle(),
         ]);
 
         if (attendanceRes.error) throw attendanceRes.error;
@@ -365,6 +366,20 @@ export default function Reports() {
         const lateTolerance = whParsed?.late_tolerance_minutes || 0;
         const [deadlineH, deadlineM] = checkInEnd.split(":").map(Number);
         const deadlineTotalMinutes = deadlineH * 60 + deadlineM + lateTolerance;
+        const specialPeriods = (specialWhRes.data?.value as any)?.periods || [];
+
+        // Dynamic check-in deadline per day (handles special periods like Ramadan)
+        const getCheckInDeadlineForDate = (dateStr: string): number => {
+          for (const sp of specialPeriods) {
+            if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
+              const spCheckInEnd = sp.check_in_end || checkInEnd;
+              const [h, m] = spCheckInEnd.split(":").map(Number);
+              const tol = sp.late_tolerance_minutes || 0;
+              return h * 60 + m + tol;
+            }
+          }
+          return deadlineTotalMinutes;
+        };
 
         // Calculate working days
         const rangeStart = parseISO(monthStart);
@@ -384,8 +399,10 @@ export default function Reports() {
           if (rec.status === "hadir" || rec.status === "terlambat") u.present++;
           if (rec.status === "terlambat" && rec.check_in_time) {
             const ci = new Date(rec.check_in_time);
+            const dateStr = format(ci, "yyyy-MM-dd");
             const ciMin = ci.getHours() * 60 + ci.getMinutes();
-            const lateMins = Math.max(0, ciMin - deadlineTotalMinutes);
+            const dailyDeadline = getCheckInDeadlineForDate(dateStr);
+            const lateMins = Math.max(0, ciMin - dailyDeadline);
             u.late++;
             u.lateHours += Math.ceil(lateMins / 60);
           }

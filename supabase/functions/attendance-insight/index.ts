@@ -77,7 +77,7 @@ serve(async (req) => {
       });
     }
 
-    const numericFields = ["hadir", "terlambat", "pulangCepat", "cuti", "dinas"];
+    const numericFields = ["hadir", "terlambat", "pulangCepat", "cuti", "cutiTahunan", "sakit", "izin", "lupaAbsen", "dinas"];
     for (const field of numericFields) {
       const val = summary[field];
       if (val !== undefined && (typeof val !== "number" || val < 0 || val > 366)) {

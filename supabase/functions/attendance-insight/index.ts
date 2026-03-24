@@ -112,19 +112,22 @@ serve(async (req) => {
 
 1. Berikan saran konstruktif yang ditujukan LANGSUNG KEPADA karyawan tersebut dalam Bahasa Indonesia (maksimal 3 kalimat pendek saja, total tidak lebih dari 150 kata). Gunakan kata "Anda" untuk menyapa karyawan. Pastikan setiap kalimat SELESAI dengan sempurna dan berakhir dengan tanda titik. Fokus pada pola kehadiran, keterlambatan, dan area perbaikan. Jangan gunakan bullet point, cukup paragraf singkat.
 
-2. Tentukan apakah kehadiran karyawan ini BAGUS atau tidak. Kehadiran dianggap BAGUS HANYA jika: TIDAK ADA sama sekali keterlambatan (terlambat = 0), TIDAK ADA sama sekali pulang cepat (pulang cepat = 0), TIDAK ADA sama sekali absen/tidak hadir, TIDAK ADA sama sekali cuti dalam periode tersebut (cuti = 0). Artinya karyawan hadir FULL setiap hari kerja tanpa ada catatan negatif apapun. Jika ada SATU SAJA keterlambatan, pulang cepat, absen, atau cuti, maka isGood = false. 
+PENTING tentang jenis cuti: Perhatikan dengan SEKSAMA perbedaan antara "Cuti Tahunan", "Sakit", "Izin", dan "Lupa Absen". Jika karyawan hanya memiliki hari Sakit, JANGAN sebut sebagai "cuti" - sebut sebagai "sakit". Sakit adalah hal yang wajar dan tidak bisa dikendalikan, jadi jangan memberikan saran negatif tentang hari sakit kecuali jumlahnya sangat banyak (>5 hari).
+
+2. Tentukan apakah kehadiran karyawan ini BAGUS atau tidak. Kehadiran dianggap BAGUS HANYA jika: TIDAK ADA sama sekali keterlambatan (terlambat = 0), TIDAK ADA sama sekali pulang cepat (pulang cepat = 0), TIDAK ADA sama sekali absen/tidak hadir, TIDAK ADA sama sekali cuti tahunan atau izin dalam periode tersebut. Hari sakit TIDAK mengurangi penilaian kehadiran baik (karena sakit bukan pilihan). Jika ada SATU SAJA keterlambatan, pulang cepat, absen, cuti tahunan, atau izin, maka isGood = false.
 
 PENTING: Respond dalam format JSON SAJA, tanpa markdown code block, tanpa backtick. Format:
 {"insight":"isi saran disini","isGood":true}
-
-Jika kehadiran bagus, isGood = true. Jika tidak, isGood = false.
 
 Nama Karyawan: ${safeName}
 Data Ringkasan:
 - Total Hari Hadir Tepat Waktu: ${summary.hadir}
 - Total Hari Terlambat: ${summary.terlambat}
 - Total Hari Pulang Cepat: ${summary.pulangCepat}
-- Total Hari Cuti: ${summary.cuti}
+- Total Hari Cuti Tahunan: ${summary.cutiTahunan || 0}
+- Total Hari Sakit: ${summary.sakit || 0}
+- Total Hari Izin: ${summary.izin || 0}
+- Total Hari Lupa Absen: ${summary.lupaAbsen || 0}
 - Total Hari Dinas: ${summary.dinas}
 - Total Jam Kerja: ${summary.totalJamKerja}
 - Periode: ${summary.periode}`;

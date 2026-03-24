@@ -220,8 +220,13 @@ export default function AttendanceAllowanceReport() {
         }
         const userAtt = attendanceByUser.get(userId)!;
 
-        // Count as present (hadir, terlambat, or pulang_cepat)
-        if (record.status === "hadir" || record.status === "terlambat" || record.status === "pulang_cepat") {
+        // Count as present only if BOTH check_in and check_out are filled
+        // If either is missing, the day's allowance value is 0
+        const hasCheckIn = !!record.check_in_time;
+        const hasCheckOut = !!record.check_out_time;
+        const isValidAttendance = hasCheckIn && hasCheckOut;
+
+        if (isValidAttendance && (record.status === "hadir" || record.status === "terlambat" || record.status === "pulang_cepat")) {
           userAtt.present += 1;
         }
 

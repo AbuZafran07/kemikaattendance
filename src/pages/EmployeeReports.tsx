@@ -47,6 +47,10 @@ interface EmployeeAttendanceData {
     terlambat: number;
     pulangCepat: number;
     cuti: number;
+    cutiTahunan: number;
+    sakit: number;
+    izin: number;
+    lupaAbsen: number;
     dinas: number;
     totalDuration: number;
   };

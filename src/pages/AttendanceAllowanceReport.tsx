@@ -186,6 +186,21 @@ export default function AttendanceAllowanceReport() {
       const [fridayOutH, fridayOutM] = fridayCheckOutStart.split(":").map(Number);
       const fridayCheckOutMinutes = fridayOutH * 60 + fridayOutM - earlyLeaveTolerance;
 
+      // Dynamic check-in deadline per day (handles special periods like Ramadan)
+      const getCheckInDeadlineForDate = (dateStr: string): number => {
+        // First check special periods (e.g., Ramadan 08:30-15:00)
+        for (const sp of specialPeriods) {
+          if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
+            const spCheckInEnd = sp.check_in_end || checkInEnd;
+            const [h, m] = spCheckInEnd.split(":").map(Number);
+            const tol = sp.late_tolerance_minutes || 0;
+            return h * 60 + m + tol;
+          }
+        }
+        // Normal work hours with tolerance
+        return deadlineTotalMinutes;
+      };
+
       const getCheckOutMinutesForDate = (dateStr: string): number => {
         // First check special periods (e.g., Ramadan)
         for (const sp of specialPeriods) {
@@ -230,11 +245,13 @@ export default function AttendanceAllowanceReport() {
           userAtt.present += 1;
         }
 
-        // Calculate lateness
+        // Calculate lateness using dynamic deadline per day
         if (record.status === "terlambat" && record.check_in_time) {
           const checkInDate = new Date(record.check_in_time);
+          const dateStr = format(checkInDate, "yyyy-MM-dd");
           const checkInMinutes = checkInDate.getHours() * 60 + checkInDate.getMinutes();
-          const lateMinutes = Math.max(0, checkInMinutes - deadlineTotalMinutes);
+          const dailyDeadline = getCheckInDeadlineForDate(dateStr);
+          const lateMinutes = Math.max(0, checkInMinutes - dailyDeadline);
           const lateHours = Math.ceil(lateMinutes / 60); // pembulatan ke atas per jam
           userAtt.late += 1;
           userAtt.totalLateHours += lateHours;

@@ -108,11 +108,20 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const prompt = `Kamu adalah HR analyst profesional. Berdasarkan data kehadiran karyawan berikut, lakukan 2 hal:
+    const prompt = `Kamu adalah HR analyst profesional dan berpengalaman. Berdasarkan data kehadiran karyawan berikut, lakukan 2 hal:
 
-1. Berikan saran konstruktif yang ditujukan LANGSUNG KEPADA karyawan tersebut dalam Bahasa Indonesia (maksimal 3 kalimat pendek saja, total tidak lebih dari 150 kata). Gunakan kata "Anda" untuk menyapa karyawan. Pastikan setiap kalimat SELESAI dengan sempurna dan berakhir dengan tanda titik. Fokus pada pola kehadiran, keterlambatan, dan area perbaikan. Jangan gunakan bullet point, cukup paragraf singkat.
+1. Berikan saran dan analisis yang KOMPREHENSIF, MENDALAM, dan BERNILAI yang ditujukan LANGSUNG KEPADA karyawan tersebut dalam Bahasa Indonesia (4-6 kalimat, 150-250 kata). Gunakan kata "Anda" untuk menyapa karyawan. Pastikan setiap kalimat SELESAI dengan sempurna dan berakhir dengan tanda titik. Jangan gunakan bullet point, cukup paragraf mengalir.
 
-PENTING tentang jenis cuti: Perhatikan dengan SEKSAMA perbedaan antara "Cuti Tahunan", "Sakit", "Izin", dan "Lupa Absen". Jika karyawan hanya memiliki hari Sakit, JANGAN sebut sebagai "cuti" - sebut sebagai "sakit". Sakit adalah hal yang wajar dan tidak bisa dikendalikan, jadi jangan memberikan saran negatif tentang hari sakit kecuali jumlahnya sangat banyak (>5 hari).
+Panduan isi saran:
+- Mulai dengan apresiasi/pengakuan atas hal positif yang sudah dicapai (misalnya jumlah hari hadir tepat waktu).
+- Jika ada keterlambatan, analisis dampaknya dan berikan tips praktis untuk memperbaiki (misalnya mengatur alarm, persiapan malam sebelumnya, mengecek kondisi lalu lintas).
+- Jika ada pulang cepat, sarankan komunikasi dengan atasan dan pentingnya menyelesaikan jam kerja penuh.
+- Jika ada lupa absen, berikan tips supaya tidak lupa (misalnya reminder di HP, kebiasaan langsung absen saat datang).
+- Hubungkan pola kehadiran dengan dampak karir jangka panjang, penilaian kinerja, dan peluang pengembangan profesional.
+- Berikan motivasi dan dorongan yang personal dan tulus. Jangan generik.
+- Jika kehadiran sempurna, berikan pujian yang lebih detail dan sarankan bagaimana mempertahankan konsistensi tersebut serta peluang menjadi role model bagi rekan kerja.
+
+PENTING tentang jenis cuti: Perhatikan dengan SEKSAMA perbedaan antara "Cuti Tahunan", "Sakit", "Izin", dan "Lupa Absen". Jika karyawan hanya memiliki hari Sakit, JANGAN sebut sebagai "cuti" - sebut sebagai "sakit". Sakit adalah hal yang wajar dan tidak bisa dikendalikan, jadi jangan memberikan saran negatif tentang hari sakit kecuali jumlahnya sangat banyak (>5 hari). Jika sakit, tunjukkan empati dan sarankan menjaga kesehatan.
 
 2. Tentukan apakah kehadiran karyawan ini BAGUS atau tidak. Kehadiran dianggap BAGUS HANYA jika: TIDAK ADA sama sekali keterlambatan (terlambat = 0), TIDAK ADA sama sekali pulang cepat (pulang cepat = 0), TIDAK ADA sama sekali absen/tidak hadir, TIDAK ADA sama sekali cuti tahunan atau izin dalam periode tersebut. Hari sakit TIDAK mengurangi penilaian kehadiran baik (karena sakit bukan pilihan). Jika ada SATU SAJA keterlambatan, pulang cepat, absen, cuti tahunan, atau izin, maka isGood = false.
 
@@ -143,7 +152,7 @@ Data Ringkasan:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
         messages: [
-          { role: "system", content: "Kamu adalah HR analyst profesional Indonesia yang memberikan saran kehadiran langsung kepada karyawan secara ringkas dan konstruktif. Gunakan kata 'Anda' untuk menyapa karyawan. SELALU respond dalam format JSON murni tanpa markdown." },
+          { role: "system", content: "Kamu adalah HR analyst senior dan berpengalaman di Indonesia yang memberikan analisis kehadiran mendalam dan saran yang personal, komprehensif, serta memotivasi langsung kepada karyawan. Gunakan kata 'Anda' untuk menyapa karyawan. Berikan saran yang DETAIL, PRAKTIS, dan BERNILAI - bukan hanya kalimat generik. Hubungkan kehadiran dengan karir, profesionalisme, dan pengembangan diri. SELALU respond dalam format JSON murni tanpa markdown." },
           { role: "user", content: prompt },
         ],
       }),

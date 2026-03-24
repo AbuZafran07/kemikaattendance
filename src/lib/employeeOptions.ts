@@ -26,9 +26,9 @@ export const DEPARTMENT_OPTIONS = [
   "BOD",
   "FAT Department",
   "HR & GA Department",
-  "MKT & Sales Department",
+  "Marketing & Sales Department",
   "Teknologi Informasi Department",
 ] as const;
 
-export type Jabatan = (typeof JABATAN_OPTIONS)[number];
-export type Department = (typeof DEPARTMENT_OPTIONS)[number];
+export type Jabatan = typeof JABATAN_OPTIONS[number];
+export type Department = typeof DEPARTMENT_OPTIONS[number];

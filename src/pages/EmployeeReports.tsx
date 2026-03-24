@@ -458,6 +458,8 @@ export default function EmployeeReports() {
           [`NIK: ${emp.nik}`],
           [`Departemen: ${emp.departemen}`],
           [`Periode: ${startDate} s/d ${endDate}`],
+          [`Hadir: ${empData.summary.hadir} | Terlambat: ${empData.summary.terlambat} | Pulang Cepat: ${empData.summary.pulangCepat}`],
+          [`Cuti Tahunan: ${empData.summary.cutiTahunan} | Sakit: ${empData.summary.sakit} | Izin: ${empData.summary.izin} | Lupa Absen: ${empData.summary.lupaAbsen} | Dinas: ${empData.summary.dinas}`],
         ];
 
         if (enableAI) {

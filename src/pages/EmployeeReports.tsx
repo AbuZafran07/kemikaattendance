@@ -47,6 +47,10 @@ interface EmployeeAttendanceData {
     terlambat: number;
     pulangCepat: number;
     cuti: number;
+    cutiTahunan: number;
+    sakit: number;
+    izin: number;
+    lupaAbsen: number;
     dinas: number;
     totalDuration: number;
   };
@@ -134,6 +138,21 @@ async function fetchEmployeeData(
     }
   });
 
+  // Break down leave by type
+  let cutiTahunan = 0, sakit = 0, izin = 0, lupaAbsen = 0;
+  leave.forEach((l: any) => {
+    const s = new Date(l.start_date) < rangeStart ? rangeStart : new Date(l.start_date);
+    const e = new Date(l.end_date) > rangeEnd ? rangeEnd : new Date(l.end_date);
+    let days = 0;
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      if (!isNonWorkingDay(new Date(d), holidayDates)) days++;
+    }
+    if (l.leave_type === "cuti_tahunan") cutiTahunan += days;
+    else if (l.leave_type === "sakit") sakit += days;
+    else if (l.leave_type === "izin") izin += days;
+    else if (l.leave_type === "lupa_absen") lupaAbsen += days;
+  });
+
   return {
     employee,
     attendance,
@@ -144,6 +163,10 @@ async function fetchEmployeeData(
       terlambat: attendance.filter((r) => r.status === "terlambat").length,
       pulangCepat: attendance.filter((r) => r.status === "pulang_cepat").length,
       cuti: totalLeaveDays,
+      cutiTahunan,
+      sakit,
+      izin,
+      lupaAbsen,
       dinas: totalTravelDays,
       totalDuration: attendance.reduce((sum, r) => sum + (r.duration_minutes || 0), 0),
     },

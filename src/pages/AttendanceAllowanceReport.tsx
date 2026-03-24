@@ -245,11 +245,13 @@ export default function AttendanceAllowanceReport() {
           userAtt.present += 1;
         }
 
-        // Calculate lateness
+        // Calculate lateness using dynamic deadline per day
         if (record.status === "terlambat" && record.check_in_time) {
           const checkInDate = new Date(record.check_in_time);
+          const dateStr = format(checkInDate, "yyyy-MM-dd");
           const checkInMinutes = checkInDate.getHours() * 60 + checkInDate.getMinutes();
-          const lateMinutes = Math.max(0, checkInMinutes - deadlineTotalMinutes);
+          const dailyDeadline = getCheckInDeadlineForDate(dateStr);
+          const lateMinutes = Math.max(0, checkInMinutes - dailyDeadline);
           const lateHours = Math.ceil(lateMinutes / 60); // pembulatan ke atas per jam
           userAtt.late += 1;
           userAtt.totalLateHours += lateHours;

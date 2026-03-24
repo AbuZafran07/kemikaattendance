@@ -521,11 +521,12 @@ export default function EmployeeReports() {
         doc.text(`Departemen: ${emp.departemen}`, 14, 40);
         doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 45);
 
-        doc.text(`Total Kehadiran: ${empData.attendance.length} hari | Cuti: ${s.cuti} hari | Dinas: ${s.dinas} hari`, 14, 55);
+        doc.text(`Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${s.dinas} hari`, 14, 55);
         doc.text(`Hadir Tepat Waktu: ${s.hadir} | Terlambat: ${s.terlambat} | Pulang Cepat: ${s.pulangCepat}`, 14, 60);
-        doc.text(`Total Jam Kerja: ${Math.floor(s.totalDuration / 60)} jam ${s.totalDuration % 60} menit`, 14, 65);
+        doc.text(`Cuti Tahunan: ${s.cutiTahunan} hari | Sakit: ${s.sakit} hari | Izin: ${s.izin} hari | Lupa Absen: ${s.lupaAbsen} hari`, 14, 65);
+        doc.text(`Total Jam Kerja: ${Math.floor(s.totalDuration / 60)} jam ${s.totalDuration % 60} menit`, 14, 70);
 
-        let tableStartY = 75;
+        let tableStartY = 80;
 
         // AI Insight
         if (enableAI) {

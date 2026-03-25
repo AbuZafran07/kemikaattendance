@@ -38,6 +38,7 @@ const loadImageAsBase64 = (src: string): Promise<string> => {
 };
 
 export default function Reports() {
+  const { departments: DEPARTMENT_OPTIONS } = useDepartmentJabatan();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);

@@ -47,6 +47,7 @@ import { compressEmployeePhoto, blobToFile } from "@/lib/imageCompression";
 import logger from "@/lib/logger";
 
 const Employees = () => {
+  const { departments: DEPARTMENT_OPTIONS, jabatanOptions: JABATAN_OPTIONS } = useDepartmentJabatan();
   const [employees, setEmployees] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

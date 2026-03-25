@@ -236,7 +236,35 @@ const EmployeePayrollHistory = () => {
                 <span className="text-muted-foreground">Gaji Pokok</span>
                 <span className="text-right font-medium">{formatRupiah(detailItem.basic_salary)}</span>
                 <span className="text-muted-foreground">Tunjangan Kehadiran</span>
-                <span className="text-right">{formatRupiah(Math.max(0, detailItem.allowance - (Number((profile as any)?.tunjangan_komunikasi) || 0) - (Number((profile as any)?.tunjangan_jabatan) || 0) - (Number((profile as any)?.tunjangan_operasional) || 0)))}</span>
+                <span className="text-right">{formatRupiah(Math.max(0, detailItem.allowance - (Number(profile?.tunjangan_komunikasi) || 0) - (Number(profile?.tunjangan_jabatan) || 0) - (Number(profile?.tunjangan_operasional) || 0) - (detailItem.thr || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.insentif_penjualan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0)))}</span>
+                {(detailItem.thr || 0) > 0 && <>
+                  <span className="text-muted-foreground">THR</span>
+                  <span className="text-right">{formatRupiah(detailItem.thr)}</span>
+                </>}
+                {(detailItem.tunjangan_kesehatan || 0) > 0 && <>
+                  <span className="text-muted-foreground">Tunjangan Kesehatan</span>
+                  <span className="text-right">{formatRupiah(detailItem.tunjangan_kesehatan)}</span>
+                </>}
+                {(detailItem.insentif_kinerja || 0) > 0 && <>
+                  <span className="text-muted-foreground">Insentif Kinerja</span>
+                  <span className="text-right">{formatRupiah(detailItem.insentif_kinerja)}</span>
+                </>}
+                {(detailItem.insentif_penjualan || 0) > 0 && <>
+                  <span className="text-muted-foreground">Insentif Penjualan</span>
+                  <span className="text-right">{formatRupiah(detailItem.insentif_penjualan)}</span>
+                </>}
+                {(detailItem.bonus_tahunan || 0) > 0 && <>
+                  <span className="text-muted-foreground">Bonus Tahunan</span>
+                  <span className="text-right">{formatRupiah(detailItem.bonus_tahunan)}</span>
+                </>}
+                {(detailItem.bonus_lainnya || 0) > 0 && <>
+                  <span className="text-muted-foreground">Bonus Lainnya</span>
+                  <span className="text-right">{formatRupiah(detailItem.bonus_lainnya)}</span>
+                </>}
+                {(detailItem.pengembalian_employee || 0) > 0 && <>
+                  <span className="text-muted-foreground">Pengembalian Karyawan</span>
+                  <span className="text-right">{formatRupiah(detailItem.pengembalian_employee)}</span>
+                </>}
                 <span className="text-muted-foreground">Lembur ({detailItem.overtime_hours} jam)</span>
                 <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>
               </div>

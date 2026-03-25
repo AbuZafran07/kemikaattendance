@@ -268,12 +268,33 @@ const CompanyCalendar = () => {
                     {holidayName}
                   </span>
                 )}
-                {!holidayName && hasEvent && (
+                {!holidayName && companyEvents && (
+                  <span className="text-[7px] leading-tight text-blue-600 text-center line-clamp-2 mt-0.5 px-0.5">
+                    {companyEvents[0].title}
+                  </span>
+                )}
+                {!holidayName && !companyEvents && leaveDays && (
+                  <span className="text-[7px] leading-tight text-indigo-600 text-center line-clamp-2 mt-0.5 px-0.5">
+                    {leaveDays[0].label}
+                  </span>
+                )}
+                {!holidayName && !companyEvents && !leaveDays && travelDays && (
+                  <span className="text-[7px] leading-tight text-green-600 text-center line-clamp-2 mt-0.5 px-0.5">
+                    Dinas: {travelDays[0].destination}
+                  </span>
+                )}
+                {!holidayName && !companyEvents && !leaveDays && !travelDays && specialPeriod && (
+                  <span className="text-[7px] leading-tight text-chart-4 text-center line-clamp-2 mt-0.5 px-0.5">
+                    {specialPeriod.name}
+                  </span>
+                )}
+                {/* Additional event dots when multiple types exist */}
+                {!holidayName && (companyEvents || specialPeriod || leaveDays || travelDays) && (
                   <div className="flex gap-0.5 mt-0.5">
-                    {companyEvents && <div className="h-1 w-1 rounded-full bg-blue-500" />}
-                    {specialPeriod && <div className="h-1 w-1 rounded-full bg-chart-4" />}
-                    {leaveDays && <div className="h-1 w-1 rounded-full bg-indigo-500" />}
-                    {travelDays && <div className="h-1 w-1 rounded-full bg-green-500" />}
+                    {companyEvents && companyEvents.length > 1 && <div className="h-1 w-1 rounded-full bg-blue-500" />}
+                    {specialPeriod && companyEvents && <div className="h-1 w-1 rounded-full bg-chart-4" />}
+                    {leaveDays && (companyEvents || specialPeriod) && <div className="h-1 w-1 rounded-full bg-indigo-500" />}
+                    {travelDays && (companyEvents || leaveDays || specialPeriod) && <div className="h-1 w-1 rounded-full bg-green-500" />}
                   </div>
                 )}
               </div>

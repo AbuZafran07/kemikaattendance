@@ -86,6 +86,12 @@ export default function Settings() {
       icon: DatabaseBackup,
       path: "/dashboard/settings/backup",
     },
+    {
+      title: "Departemen & Jabatan",
+      description: "Kelola daftar departemen dan jabatan perusahaan",
+      icon: Users,
+      path: "/dashboard/settings/department-jabatan",
+    },
   ];
 
   return (

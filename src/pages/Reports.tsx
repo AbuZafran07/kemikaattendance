@@ -14,7 +14,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, eachDayOfInterval, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
+import { useDepartmentJabatan } from "@/hooks/useDepartmentJabatan";
 import logoImage from "@/assets/logo.png";
 import { formatAttendanceStatus, formatLeaveType } from "@/lib/statusUtils";
 import { isWeekend } from "@/hooks/usePolicySettings";

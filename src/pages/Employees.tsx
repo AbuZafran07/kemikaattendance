@@ -41,7 +41,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { JABATAN_OPTIONS, DEPARTMENT_OPTIONS } from "@/lib/employeeOptions";
+import { useDepartmentJabatan } from "@/hooks/useDepartmentJabatan";
 import { employeeSchema, employeeEditSchema } from "@/lib/validationSchemas";
 import { compressEmployeePhoto, blobToFile } from "@/lib/imageCompression";
 import logger from "@/lib/logger";

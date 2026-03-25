@@ -44,6 +44,13 @@ interface PayrollItem {
   other_deduction: number;
   deduction_notes: string | null;
   period_id: string;
+  thr: number;
+  tunjangan_kesehatan: number;
+  insentif_kinerja: number;
+  insentif_penjualan: number;
+  bonus_tahunan: number;
+  bonus_lainnya: number;
+  pengembalian_employee: number;
 }
 
 interface PeriodInfo {

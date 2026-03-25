@@ -348,6 +348,45 @@ const Payroll = () => {
     const [coH, coM] = checkOutStart.split(":").map(Number);
     const coMinutes = coH * 60 + coM - earlyTol;
 
+    // Fetch special work hours for dynamic deadline (Ramadan, etc.)
+    const { data: specialWhData } = await supabase
+      .from("system_settings").select("value").eq("key", "special_work_hours").maybeSingle();
+    const specialPeriods = (specialWhData?.value as any)?.periods || [];
+
+    // Friday-specific work hours
+    const fridayEnabled = wh?.friday_enabled || false;
+    const fridayCheckOutStart = wh?.friday_check_out_start || "16:00";
+    const [fridayOutH, fridayOutM] = fridayCheckOutStart.split(":").map(Number);
+    const fridayCheckOutMinutes = fridayOutH * 60 + fridayOutM - earlyTol;
+
+    // Dynamic check-in deadline per day (handles special periods like Ramadan)
+    const getCheckInDeadlineForDate = (dateStr: string): number => {
+      for (const sp of specialPeriods) {
+        if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
+          const spCheckInEnd = sp.check_in_end || checkInEnd;
+          const [h, m] = spCheckInEnd.split(":").map(Number);
+          const tol = sp.late_tolerance_minutes || 0;
+          return h * 60 + m + tol;
+        }
+      }
+      return deadlineMinutes;
+    };
+
+    const getCheckOutMinutesForDate = (dateStr: string): number => {
+      for (const sp of specialPeriods) {
+        if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
+          const [h, m] = (sp.check_out_start || "17:00").split(":").map(Number);
+          const tol = sp.early_leave_tolerance_minutes || 0;
+          return h * 60 + m - tol;
+        }
+      }
+      const dayOfWeek = new Date(dateStr).getDay();
+      if (fridayEnabled && dayOfWeek === 5) {
+        return fridayCheckOutMinutes;
+      }
+      return coMinutes;
+    };
+
     const { data: attendanceData } = await supabase
       .from("attendance").select("user_id, check_in_time, check_out_time, status")
       .gte("check_in_time", format(periodStart, "yyyy-MM-dd'T'00:00:00"))
@@ -357,14 +396,29 @@ const Payroll = () => {
     for (const r of attendanceData || []) {
       if (!attByUser.has(r.user_id)) attByUser.set(r.user_id, { present: 0, lateHours: 0, earlyHours: 0 });
       const u = attByUser.get(r.user_id)!;
-      if (["hadir", "terlambat", "pulang_cepat"].includes(r.status)) u.present += 1;
+
+      // Only count as present if BOTH check_in and check_out exist
+      const hasCheckIn = !!r.check_in_time;
+      const hasCheckOut = !!r.check_out_time;
+      const isValidAttendance = hasCheckIn && hasCheckOut;
+
+      if (isValidAttendance && ["hadir", "terlambat", "pulang_cepat"].includes(r.status)) {
+        u.present += 1;
+      }
+
       if (r.status === "terlambat" && r.check_in_time) {
         const d = new Date(r.check_in_time);
-        u.lateHours += Math.ceil(Math.max(0, d.getHours() * 60 + d.getMinutes() - deadlineMinutes) / 60);
+        const dateStr = format(d, "yyyy-MM-dd");
+        const checkInMinutes = d.getHours() * 60 + d.getMinutes();
+        const dailyDeadline = getCheckInDeadlineForDate(dateStr);
+        const lateMinutes = Math.max(0, checkInMinutes - dailyDeadline);
+        u.lateHours += Math.ceil(lateMinutes / 60);
       }
       if (r.status === "pulang_cepat" && r.check_out_time) {
         const d = new Date(r.check_out_time);
-        const early = Math.max(0, coMinutes - (d.getHours() * 60 + d.getMinutes()));
+        const dateStr = format(d, "yyyy-MM-dd");
+        const expectedCheckOut = getCheckOutMinutesForDate(dateStr);
+        const early = Math.max(0, expectedCheckOut - (d.getHours() * 60 + d.getMinutes()));
         if (early > 0) u.earlyHours += Math.ceil(early / 60);
       }
     }
@@ -379,6 +433,32 @@ const Payroll = () => {
       const base = ratePerDay * att.present;
       allowanceMap.set(p.id, Math.max(0, Math.round(base - ratePerHour * att.lateHours - ratePerHour * att.earlyHours)));
     }
+
+    // Auto-save calculated allowance to payroll_overrides (tunjangan_kehadiran)
+    for (const [userId, allowance] of allowanceMap.entries()) {
+      const { data: existingOverride } = await supabase
+        .from("payroll_overrides")
+        .select("id, tunjangan_kehadiran")
+        .eq("user_id", userId)
+        .eq("period_month", selectedMonth)
+        .eq("period_year", selectedYear)
+        .maybeSingle();
+
+      if (existingOverride) {
+        await supabase.from("payroll_overrides").update({
+          tunjangan_kehadiran: allowance,
+          updated_at: new Date().toISOString(),
+        }).eq("id", existingOverride.id);
+      } else {
+        await supabase.from("payroll_overrides").insert({
+          user_id: userId,
+          period_month: selectedMonth,
+          period_year: selectedYear,
+          tunjangan_kehadiran: allowance,
+        });
+      }
+    }
+
     return allowanceMap;
   };
 

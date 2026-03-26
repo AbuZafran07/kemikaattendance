@@ -100,6 +100,7 @@ const CompanyCalendar = () => {
     if (overtimeSettings?.value) {
       const val = overtimeSettings.value as any;
       setHolidays(val.holidays || []);
+      setFullOvertimeConfig(val);
     }
 
     if (specialSettings?.value) {

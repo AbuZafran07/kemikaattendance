@@ -166,7 +166,7 @@ const CompanyCalendar = () => {
 
     const { data } = await supabase
       .from("company_events")
-      .select("title, description, start_date, end_date")
+      .select("id, title, description, start_date, end_date")
       .gte("end_date", mStart)
       .lte("start_date", mEnd);
 
@@ -178,7 +178,7 @@ const CompanyCalendar = () => {
         eachDayOfInterval({ start, end }).forEach((d) => {
           const key = format(d, "yyyy-MM-dd");
           const existing = map.get(key) || [];
-          existing.push({ title: e.title, description: e.description });
+          existing.push({ id: e.id, title: e.title, description: e.description, start_date: e.start_date, end_date: e.end_date });
           map.set(key, existing);
         });
       });

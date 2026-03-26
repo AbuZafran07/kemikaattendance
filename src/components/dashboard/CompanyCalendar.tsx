@@ -210,6 +210,30 @@ const CompanyCalendar = () => {
 
   const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
+  const handleAddEvent = async () => {
+    if (!addEventDate || !newEventTitle.trim() || !user) return;
+    setAddingEvent(true);
+    try {
+      const startDate = format(addEventDate, "yyyy-MM-dd");
+      const endDate = newEventEndDate || startDate;
+      const { error } = await supabase.from("company_events").insert({
+        title: newEventTitle.trim(),
+        description: newEventDescription.trim() || null,
+        start_date: startDate,
+        end_date: endDate,
+        created_by: user.id,
+      });
+      if (error) throw error;
+      toast.success("Event berhasil ditambahkan");
+      setAddEventDate(null);
+      fetchCompanyEvents();
+    } catch (err: any) {
+      toast.error("Gagal menambah event: " + err.message);
+    } finally {
+      setAddingEvent(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">

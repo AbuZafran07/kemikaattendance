@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();

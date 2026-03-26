@@ -56,6 +56,7 @@ import BiayaJabatanSettings from "./pages/BiayaJabatanSettings";
 import PPh21BracketsSettings from "./pages/PPh21BracketsSettings";
 import BackupRestore from "./pages/BackupRestore";
 import DepartmentJabatanSettings from "./pages/DepartmentJabatanSettings";
+import HolidayEventSettings from "./pages/HolidayEventSettings";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>

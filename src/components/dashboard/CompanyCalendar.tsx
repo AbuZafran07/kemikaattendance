@@ -2,11 +2,15 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane, CalendarDays, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane, CalendarDays, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -48,7 +52,8 @@ const leaveTypeLabels: Record<string, string> = {
 };
 
 const CompanyCalendar = () => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isAdmin = userRole === "admin";
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [specialPeriods, setSpecialPeriods] = useState<SpecialPeriod[]>([]);
@@ -56,6 +61,11 @@ const CompanyCalendar = () => {
   const [travelDaysMap, setTravelDaysMap] = useState<Map<string, TravelDay[]>>(new Map());
   const [companyEventsMap, setCompanyEventsMap] = useState<Map<string, CompanyEvent[]>>(new Map());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [addEventDate, setAddEventDate] = useState<Date | null>(null);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventEndDate, setNewEventEndDate] = useState("");
+  const [newEventDescription, setNewEventDescription] = useState("");
+  const [addingEvent, setAddingEvent] = useState(false);
 
   useEffect(() => {
     fetchCalendarData();
@@ -200,6 +210,30 @@ const CompanyCalendar = () => {
 
   const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
+  const handleAddEvent = async () => {
+    if (!addEventDate || !newEventTitle.trim() || !user) return;
+    setAddingEvent(true);
+    try {
+      const startDate = format(addEventDate, "yyyy-MM-dd");
+      const endDate = newEventEndDate || startDate;
+      const { error } = await supabase.from("company_events").insert({
+        title: newEventTitle.trim(),
+        description: newEventDescription.trim() || null,
+        start_date: startDate,
+        end_date: endDate,
+        created_by: user.id,
+      });
+      if (error) throw error;
+      toast.success("Event berhasil ditambahkan");
+      setAddEventDate(null);
+      fetchCompanyEvents();
+    } catch (err: any) {
+      toast.error("Gagal menambah event: " + err.message);
+    } finally {
+      setAddingEvent(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -258,10 +292,21 @@ const CompanyCalendar = () => {
             else if (specialPeriod) bgClass = "bg-chart-4/20";
             else if (weekend) bgClass = "bg-muted/50";
 
+            const handleDateClick = () => {
+              if (hasEvent) {
+                setSelectedDate(date);
+              } else if (isAdmin) {
+                setAddEventDate(date);
+                setNewEventTitle("");
+                setNewEventEndDate(format(date, "yyyy-MM-dd"));
+                setNewEventDescription("");
+              }
+            };
+
             const content = (
               <div
-                onClick={() => hasEvent ? setSelectedDate(date) : null}
-                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative transition-colors p-0.5 ${bgClass} ${hasEvent ? "cursor-pointer" : "cursor-default"}`}
+                onClick={handleDateClick}
+                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative transition-colors p-0.5 ${bgClass} ${hasEvent || isAdmin ? "cursor-pointer" : "cursor-default"}`}
               >
                 <span className={`font-medium text-xs ${weekend ? "text-destructive/70" : ""} ${holidayName ? "text-destructive" : ""} ${today ? "text-primary font-bold" : ""}`}>
                   {format(date, "d")}
@@ -462,6 +507,58 @@ const CompanyCalendar = () => {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Event Dialog (Admin only) */}
+      <Dialog open={!!addEventDate} onOpenChange={(open) => !open && setAddEventDate(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Tambah Event Kantor
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {addEventDate && format(addEventDate, "EEEE, d MMMM yyyy", { locale: id })}
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="event-title">Judul Event *</Label>
+              <Input
+                id="event-title"
+                placeholder="Contoh: Rapat Bulanan"
+                value={newEventTitle}
+                onChange={(e) => setNewEventTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="event-end-date">Tanggal Selesai</Label>
+              <Input
+                id="event-end-date"
+                type="date"
+                value={newEventEndDate}
+                onChange={(e) => setNewEventEndDate(e.target.value)}
+                min={addEventDate ? format(addEventDate, "yyyy-MM-dd") : undefined}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="event-desc">Deskripsi (opsional)</Label>
+              <Textarea
+                id="event-desc"
+                placeholder="Deskripsi event..."
+                value={newEventDescription}
+                onChange={(e) => setNewEventDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddEventDate(null)}>Batal</Button>
+            <Button onClick={handleAddEvent} disabled={!newEventTitle.trim() || addingEvent}>
+              {addingEvent ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>

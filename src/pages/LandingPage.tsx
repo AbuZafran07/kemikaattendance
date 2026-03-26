@@ -87,16 +87,16 @@ const LandingPage = () => {
       {/* Marquee Banner */}
       <MarqueeBanner />
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-[hsl(161,80%,14%)] sm:bg-background/90 sm:backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <img src={logo} alt="Kemika Logo" className="h-10 object-contain" />
             <div>
-              <p className="text-sm font-bold leading-tight text-foreground">PT KEMIKA KARYA PRATAMA</p>
-              <p className="text-xs text-muted-foreground">Spreading Solutions</p>
+              <p className="text-sm font-bold leading-tight text-white sm:text-foreground">PT KEMIKA KARYA PRATAMA</p>
+              <p className="text-xs text-white/70 sm:text-muted-foreground">Spreading Solutions</p>
             </div>
           </div>
-          <Button onClick={() => navigate("/login")} size="sm" className="gap-2">
+          <Button onClick={() => navigate("/login")} size="sm" className="gap-2 sm:bg-primary sm:text-primary-foreground bg-white text-[hsl(161,80%,14%)] hover:bg-white/90 sm:hover:bg-primary/90">
             <LogIn className="h-4 w-4" /> Masuk
           </Button>
         </div>

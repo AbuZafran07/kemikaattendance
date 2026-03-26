@@ -116,6 +116,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/pph21-brackets" element={<ProtectedRoute requireAdmin><PPh21BracketsSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/backup" element={<ProtectedRoute requireAdmin><BackupRestore /></ProtectedRoute>} />
             <Route path="/dashboard/settings/department-jabatan" element={<ProtectedRoute requireAdmin><DepartmentJabatanSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/holidays" element={<ProtectedRoute requireAdmin><HolidayEventSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

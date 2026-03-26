@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane, CalendarDays, Plus, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane, CalendarDays, Plus, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -40,8 +40,11 @@ interface TravelDay {
 }
 
 interface CompanyEvent {
+  id: string;
   title: string;
   description: string | null;
+  start_date: string;
+  end_date: string;
 }
 
 const leaveTypeLabels: Record<string, string> = {
@@ -66,6 +69,15 @@ const CompanyCalendar = () => {
   const [newEventEndDate, setNewEventEndDate] = useState("");
   const [newEventDescription, setNewEventDescription] = useState("");
   const [addingEvent, setAddingEvent] = useState(false);
+  const [addMode, setAddMode] = useState<"event" | "holiday">("event");
+  const [editingEvent, setEditingEvent] = useState<CompanyEvent | null>(null);
+  const [editEventTitle, setEditEventTitle] = useState("");
+  const [editEventDescription, setEditEventDescription] = useState("");
+  const [editEventStartDate, setEditEventStartDate] = useState("");
+  const [editEventEndDate, setEditEventEndDate] = useState("");
+  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
+  const [editHolidayName, setEditHolidayName] = useState("");
+  const [fullOvertimeConfig, setFullOvertimeConfig] = useState<any>(null);
 
   useEffect(() => {
     fetchCalendarData();
@@ -88,6 +100,7 @@ const CompanyCalendar = () => {
     if (overtimeSettings?.value) {
       const val = overtimeSettings.value as any;
       setHolidays(val.holidays || []);
+      setFullOvertimeConfig(val);
     }
 
     if (specialSettings?.value) {
@@ -163,7 +176,7 @@ const CompanyCalendar = () => {
 
     const { data } = await supabase
       .from("company_events")
-      .select("title, description, start_date, end_date")
+      .select("id, title, description, start_date, end_date")
       .gte("end_date", mStart)
       .lte("start_date", mEnd);
 
@@ -175,7 +188,7 @@ const CompanyCalendar = () => {
         eachDayOfInterval({ start, end }).forEach((d) => {
           const key = format(d, "yyyy-MM-dd");
           const existing = map.get(key) || [];
-          existing.push({ title: e.title, description: e.description });
+          existing.push({ id: e.id, title: e.title, description: e.description, start_date: e.start_date, end_date: e.end_date });
           map.set(key, existing);
         });
       });
@@ -231,6 +244,98 @@ const CompanyCalendar = () => {
       toast.error("Gagal menambah event: " + err.message);
     } finally {
       setAddingEvent(false);
+    }
+  };
+
+  const handleAddHoliday = async () => {
+    if (!addEventDate || !newEventTitle.trim()) return;
+    setAddingEvent(true);
+    try {
+      const dateStr = format(addEventDate, "yyyy-MM-dd");
+      const newHoliday: Holiday = { id: crypto.randomUUID(), name: newEventTitle.trim(), date: dateStr };
+      const updatedHolidays = [...holidays, newHoliday];
+      const updatedConfig = { ...(fullOvertimeConfig || {}), holidays: updatedHolidays };
+
+      const { data: existingData } = await supabase.from("system_settings").select("id").eq("key", "overtime_policy").maybeSingle();
+      if (existingData) {
+        const { error } = await supabase.from("system_settings").update({ value: updatedConfig, updated_at: new Date().toISOString() }).eq("key", "overtime_policy");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("system_settings").insert({ key: "overtime_policy", value: updatedConfig, description: "Konfigurasi kebijakan lembur" });
+        if (error) throw error;
+      }
+      setHolidays(updatedHolidays);
+      setFullOvertimeConfig(updatedConfig);
+      toast.success("Hari libur berhasil ditambahkan");
+      setAddEventDate(null);
+    } catch (err: any) {
+      toast.error("Gagal menambah hari libur: " + err.message);
+    } finally {
+      setAddingEvent(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (holidayId: string) => {
+    try {
+      const updatedHolidays = holidays.filter(h => h.id !== holidayId);
+      const updatedConfig = { ...(fullOvertimeConfig || {}), holidays: updatedHolidays };
+      const { error } = await supabase.from("system_settings").update({ value: updatedConfig, updated_at: new Date().toISOString() }).eq("key", "overtime_policy");
+      if (error) throw error;
+      setHolidays(updatedHolidays);
+      setFullOvertimeConfig(updatedConfig);
+      toast.success("Hari libur berhasil dihapus");
+      setSelectedDate(null);
+    } catch (err: any) {
+      toast.error("Gagal menghapus: " + err.message);
+    }
+  };
+
+  const handleEditHoliday = async () => {
+    if (!editingHoliday || !editHolidayName.trim()) return;
+    try {
+      const updatedHolidays = holidays.map(h => h.id === editingHoliday.id ? { ...h, name: editHolidayName.trim() } : h);
+      const updatedConfig = { ...(fullOvertimeConfig || {}), holidays: updatedHolidays };
+      const { error } = await supabase.from("system_settings").update({ value: updatedConfig, updated_at: new Date().toISOString() }).eq("key", "overtime_policy");
+      if (error) throw error;
+      setHolidays(updatedHolidays);
+      setFullOvertimeConfig(updatedConfig);
+      toast.success("Hari libur berhasil diperbarui");
+      setEditingHoliday(null);
+      setSelectedDate(null);
+    } catch (err: any) {
+      toast.error("Gagal mengubah: " + err.message);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const { error } = await supabase.from("company_events").delete().eq("id", eventId);
+      if (error) throw error;
+      toast.success("Event berhasil dihapus");
+      setSelectedDate(null);
+      fetchCompanyEvents();
+    } catch (err: any) {
+      toast.error("Gagal menghapus event: " + err.message);
+    }
+  };
+
+  const handleEditEvent = async () => {
+    if (!editingEvent || !editEventTitle.trim()) return;
+    try {
+      const { error } = await supabase.from("company_events").update({
+        title: editEventTitle.trim(),
+        description: editEventDescription.trim() || null,
+        start_date: editEventStartDate,
+        end_date: editEventEndDate,
+        updated_at: new Date().toISOString(),
+      }).eq("id", editingEvent.id);
+      if (error) throw error;
+      toast.success("Event berhasil diperbarui");
+      setEditingEvent(null);
+      setSelectedDate(null);
+      fetchCompanyEvents();
+    } catch (err: any) {
+      toast.error("Gagal mengubah event: " + err.message);
     }
   };
 
@@ -297,6 +402,7 @@ const CompanyCalendar = () => {
                 setSelectedDate(date);
               } else if (isAdmin) {
                 setAddEventDate(date);
+                setAddMode("event");
                 setNewEventTitle("");
                 setNewEventEndDate(format(date, "yyyy-MM-dd"));
                 setNewEventDescription("");
@@ -441,6 +547,7 @@ const CompanyCalendar = () => {
           {selectedDate && (() => {
             const dateStr = format(selectedDate, "yyyy-MM-dd");
             const holidayName = holidayMap.get(dateStr);
+            const holidayObj = holidays.find(h => h.date === dateStr);
             const specialPeriod = getSpecialPeriodForDate(selectedDate);
             const leaveDays = leaveDaysMap.get(dateStr);
             const travelDays = travelDaysMap.get(dateStr);
@@ -451,10 +558,24 @@ const CompanyCalendar = () => {
                 {holidayName && (
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10">
                     <Palmtree className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-sm">Hari Libur</p>
                       <p className="text-sm text-muted-foreground">{holidayName}</p>
                     </div>
+                    {isAdmin && holidayObj && (
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                          setEditingHoliday(holidayObj);
+                          setEditHolidayName(holidayObj.name);
+                          setSelectedDate(null);
+                        }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteHoliday(holidayObj.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {specialPeriod && (
@@ -475,11 +596,28 @@ const CompanyCalendar = () => {
                 {companyEvents && companyEvents.map((e, i) => (
                   <div key={`ce-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10">
                     <CalendarDays className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-sm">Event Kantor</p>
                       <p className="text-sm text-foreground">{e.title}</p>
                       {e.description && <p className="text-xs text-muted-foreground mt-1">{e.description}</p>}
                     </div>
+                    {isAdmin && (
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                          setEditingEvent(e);
+                          setEditEventTitle(e.title);
+                          setEditEventDescription(e.description || "");
+                          setEditEventStartDate(e.start_date);
+                          setEditEventEndDate(e.end_date);
+                          setSelectedDate(null);
+                        }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteEvent(e.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {leaveDays && leaveDays.map((l, i) => (
@@ -504,60 +642,162 @@ const CompanyCalendar = () => {
                 {!holidayName && !specialPeriod && !companyEvents && !leaveDays && !travelDays && (
                   <p className="text-sm text-muted-foreground text-center py-4">Tidak ada event pada tanggal ini.</p>
                 )}
+
+                {/* Admin quick add buttons */}
+                {isAdmin && (
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => {
+                      setAddEventDate(selectedDate);
+                      setAddMode("holiday");
+                      setNewEventTitle("");
+                      setSelectedDate(null);
+                    }}>
+                      <Palmtree className="h-3.5 w-3.5 mr-1" />
+                      Tambah Libur
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => {
+                      setAddEventDate(selectedDate);
+                      setAddMode("event");
+                      setNewEventTitle("");
+                      setNewEventEndDate(format(selectedDate, "yyyy-MM-dd"));
+                      setNewEventDescription("");
+                      setSelectedDate(null);
+                    }}>
+                      <CalendarDays className="h-3.5 w-3.5 mr-1" />
+                      Tambah Event
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })()}
         </DialogContent>
       </Dialog>
 
-      {/* Add Event Dialog (Admin only) */}
+      {/* Add Event/Holiday Dialog (Admin only) */}
       <Dialog open={!!addEventDate} onOpenChange={(open) => !open && setAddEventDate(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              Tambah Event Kantor
+              {addMode === "holiday" ? "Tambah Hari Libur" : "Tambah Event Kantor"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               {addEventDate && format(addEventDate, "EEEE, d MMMM yyyy", { locale: id })}
             </p>
+
+            {/* Mode tabs */}
+            <div className="flex gap-2">
+              <Button variant={addMode === "event" ? "default" : "outline"} size="sm" onClick={() => setAddMode("event")} className="flex-1">
+                <CalendarDays className="h-3.5 w-3.5 mr-1" />
+                Event Kantor
+              </Button>
+              <Button variant={addMode === "holiday" ? "default" : "outline"} size="sm" onClick={() => setAddMode("holiday")} className="flex-1">
+                <Palmtree className="h-3.5 w-3.5 mr-1" />
+                Hari Libur
+              </Button>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="event-title">Judul Event *</Label>
+              <Label>{addMode === "holiday" ? "Nama Hari Libur *" : "Judul Event *"}</Label>
               <Input
-                id="event-title"
-                placeholder="Contoh: Rapat Bulanan"
+                placeholder={addMode === "holiday" ? "Contoh: Hari Raya Idul Fitri" : "Contoh: Rapat Bulanan"}
                 value={newEventTitle}
                 onChange={(e) => setNewEventTitle(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-end-date">Tanggal Selesai</Label>
-              <Input
-                id="event-end-date"
-                type="date"
-                value={newEventEndDate}
-                onChange={(e) => setNewEventEndDate(e.target.value)}
-                min={addEventDate ? format(addEventDate, "yyyy-MM-dd") : undefined}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-desc">Deskripsi (opsional)</Label>
-              <Textarea
-                id="event-desc"
-                placeholder="Deskripsi event..."
-                value={newEventDescription}
-                onChange={(e) => setNewEventDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
+
+            {addMode === "event" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Tanggal Selesai</Label>
+                  <Input
+                    type="date"
+                    value={newEventEndDate}
+                    onChange={(e) => setNewEventEndDate(e.target.value)}
+                    min={addEventDate ? format(addEventDate, "yyyy-MM-dd") : undefined}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Deskripsi (opsional)</Label>
+                  <Textarea
+                    placeholder="Deskripsi event..."
+                    value={newEventDescription}
+                    onChange={(e) => setNewEventDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddEventDate(null)}>Batal</Button>
-            <Button onClick={handleAddEvent} disabled={!newEventTitle.trim() || addingEvent}>
+            <Button onClick={addMode === "holiday" ? handleAddHoliday : handleAddEvent} disabled={!newEventTitle.trim() || addingEvent}>
               {addingEvent ? "Menyimpan..." : "Simpan"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Holiday Dialog */}
+      <Dialog open={!!editingHoliday} onOpenChange={(open) => !open && setEditingHoliday(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit Hari Libur
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {editingHoliday && (
+              <p className="text-sm text-muted-foreground">{editingHoliday.date}</p>
+            )}
+            <div className="space-y-2">
+              <Label>Nama Hari Libur</Label>
+              <Input value={editHolidayName} onChange={(e) => setEditHolidayName(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingHoliday(null)}>Batal</Button>
+            <Button onClick={handleEditHoliday} disabled={!editHolidayName.trim()}>Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Event Dialog */}
+      <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit Event Kantor
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Judul Event</Label>
+              <Input value={editEventTitle} onChange={(e) => setEditEventTitle(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Tanggal Mulai</Label>
+                <Input type="date" value={editEventStartDate} onChange={(e) => setEditEventStartDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Tanggal Selesai</Label>
+                <Input type="date" value={editEventEndDate} onChange={(e) => setEditEventEndDate(e.target.value)} min={editEventStartDate} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Deskripsi (opsional)</Label>
+              <Textarea value={editEventDescription} onChange={(e) => setEditEventDescription(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingEvent(null)}>Batal</Button>
+            <Button onClick={handleEditEvent} disabled={!editEventTitle.trim()}>Simpan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

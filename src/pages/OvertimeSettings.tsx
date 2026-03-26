@@ -28,7 +28,7 @@ interface OvertimePolicyConfig {
   meal_allowance_amount: number;
   transport_allowance_enabled: boolean;
   transport_allowance_amount: number;
-  holidays: Holiday[];
+  holidays: { id: string; name: string; date: string }[];
 }
 
 export default function OvertimeSettings() {

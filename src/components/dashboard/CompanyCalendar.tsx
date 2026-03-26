@@ -69,6 +69,15 @@ const CompanyCalendar = () => {
   const [newEventEndDate, setNewEventEndDate] = useState("");
   const [newEventDescription, setNewEventDescription] = useState("");
   const [addingEvent, setAddingEvent] = useState(false);
+  const [addMode, setAddMode] = useState<"event" | "holiday">("event");
+  const [editingEvent, setEditingEvent] = useState<CompanyEvent | null>(null);
+  const [editEventTitle, setEditEventTitle] = useState("");
+  const [editEventDescription, setEditEventDescription] = useState("");
+  const [editEventStartDate, setEditEventStartDate] = useState("");
+  const [editEventEndDate, setEditEventEndDate] = useState("");
+  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
+  const [editHolidayName, setEditHolidayName] = useState("");
+  const [fullOvertimeConfig, setFullOvertimeConfig] = useState<any>(null);
 
   useEffect(() => {
     fetchCalendarData();

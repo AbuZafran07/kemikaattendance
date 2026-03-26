@@ -268,10 +268,21 @@ const CompanyCalendar = () => {
             else if (specialPeriod) bgClass = "bg-chart-4/20";
             else if (weekend) bgClass = "bg-muted/50";
 
+            const handleDateClick = () => {
+              if (hasEvent) {
+                setSelectedDate(date);
+              } else if (isAdmin) {
+                setAddEventDate(date);
+                setNewEventTitle("");
+                setNewEventEndDate(format(date, "yyyy-MM-dd"));
+                setNewEventDescription("");
+              }
+            };
+
             const content = (
               <div
-                onClick={() => hasEvent ? setSelectedDate(date) : null}
-                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative transition-colors p-0.5 ${bgClass} ${hasEvent ? "cursor-pointer" : "cursor-default"}`}
+                onClick={handleDateClick}
+                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative transition-colors p-0.5 ${bgClass} ${hasEvent || isAdmin ? "cursor-pointer" : "cursor-default"}`}
               >
                 <span className={`font-medium text-xs ${weekend ? "text-destructive/70" : ""} ${holidayName ? "text-destructive" : ""} ${today ? "text-primary font-bold" : ""}`}>
                   {format(date, "d")}

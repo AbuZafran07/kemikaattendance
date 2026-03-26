@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane, CalendarDays } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar, ChevronLeft, ChevronRight, Star, Palmtree, Clock, Briefcase, Plane, CalendarDays, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday, parseISO } from "date-fns";
@@ -54,6 +55,7 @@ const CompanyCalendar = () => {
   const [leaveDaysMap, setLeaveDaysMap] = useState<Map<string, LeaveDay[]>>(new Map());
   const [travelDaysMap, setTravelDaysMap] = useState<Map<string, TravelDay[]>>(new Map());
   const [companyEventsMap, setCompanyEventsMap] = useState<Map<string, CompanyEvent[]>>(new Map());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     fetchCalendarData();
@@ -258,7 +260,8 @@ const CompanyCalendar = () => {
 
             const content = (
               <div
-                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative cursor-default transition-colors p-0.5 ${bgClass}`}
+                onClick={() => hasEvent ? setSelectedDate(date) : null}
+                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative transition-colors p-0.5 ${bgClass} ${hasEvent ? "cursor-pointer" : "cursor-default"}`}
               >
                 <span className={`font-medium text-xs ${weekend ? "text-destructive/70" : ""} ${holidayName ? "text-destructive" : ""} ${today ? "text-primary font-bold" : ""}`}>
                   {format(date, "d")}
@@ -288,7 +291,6 @@ const CompanyCalendar = () => {
                     {specialPeriod.name}
                   </span>
                 )}
-                {/* Additional event dots when multiple types exist */}
                 {!holidayName && (companyEvents || specialPeriod || leaveDays || travelDays) && (
                   <div className="flex gap-0.5 mt-0.5">
                     {companyEvents && companyEvents.length > 1 && <div className="h-1 w-1 rounded-full bg-blue-500" />}
@@ -381,6 +383,87 @@ const CompanyCalendar = () => {
           </div>
         </div>
       </CardContent>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              {selectedDate && format(selectedDate, "EEEE, d MMMM yyyy", { locale: id })}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedDate && (() => {
+            const dateStr = format(selectedDate, "yyyy-MM-dd");
+            const holidayName = holidayMap.get(dateStr);
+            const specialPeriod = getSpecialPeriodForDate(selectedDate);
+            const leaveDays = leaveDaysMap.get(dateStr);
+            const travelDays = travelDaysMap.get(dateStr);
+            const companyEvents = companyEventsMap.get(dateStr);
+
+            return (
+              <div className="space-y-3">
+                {holidayName && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10">
+                    <Palmtree className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Hari Libur</p>
+                      <p className="text-sm text-muted-foreground">{holidayName}</p>
+                    </div>
+                  </div>
+                )}
+                {specialPeriod && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-chart-4/10">
+                    <Clock className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Jam Kerja Khusus</p>
+                      <p className="text-sm text-muted-foreground">{specialPeriod.name}</p>
+                      {specialPeriod.check_in_end && (
+                        <p className="text-xs text-muted-foreground">Masuk: s.d. {specialPeriod.check_in_end}</p>
+                      )}
+                      {specialPeriod.check_out_start && (
+                        <p className="text-xs text-muted-foreground">Pulang: mulai {specialPeriod.check_out_start}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {companyEvents && companyEvents.map((e, i) => (
+                  <div key={`ce-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10">
+                    <CalendarDays className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Event Kantor</p>
+                      <p className="text-sm text-foreground">{e.title}</p>
+                      {e.description && <p className="text-xs text-muted-foreground mt-1">{e.description}</p>}
+                    </div>
+                  </div>
+                ))}
+                {leaveDays && leaveDays.map((l, i) => (
+                  <div key={`l-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-indigo-500/10">
+                    <Briefcase className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Cuti / Izin</p>
+                      <p className="text-sm text-muted-foreground">{l.label}</p>
+                    </div>
+                  </div>
+                ))}
+                {travelDays && travelDays.map((t, i) => (
+                  <div key={`t-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10">
+                    <Plane className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Perjalanan Dinas</p>
+                      <p className="text-sm text-foreground">{t.destination}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t.purpose}</p>
+                    </div>
+                  </div>
+                ))}
+                {!holidayName && !specialPeriod && !companyEvents && !leaveDays && !travelDays && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Tidak ada event pada tanggal ini.</p>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

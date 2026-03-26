@@ -22,7 +22,7 @@ export const EmployeeBottomNav = () => {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className="flex items-end justify-around h-16 max-w-lg mx-auto relative">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || 

@@ -40,8 +40,11 @@ interface TravelDay {
 }
 
 interface CompanyEvent {
+  id: string;
   title: string;
   description: string | null;
+  start_date: string;
+  end_date: string;
 }
 
 const leaveTypeLabels: Record<string, string> = {

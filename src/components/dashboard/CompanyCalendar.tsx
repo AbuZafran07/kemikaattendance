@@ -247,6 +247,98 @@ const CompanyCalendar = () => {
     }
   };
 
+  const handleAddHoliday = async () => {
+    if (!addEventDate || !newEventTitle.trim()) return;
+    setAddingEvent(true);
+    try {
+      const dateStr = format(addEventDate, "yyyy-MM-dd");
+      const newHoliday: Holiday = { id: crypto.randomUUID(), name: newEventTitle.trim(), date: dateStr };
+      const updatedHolidays = [...holidays, newHoliday];
+      const updatedConfig = { ...(fullOvertimeConfig || {}), holidays: updatedHolidays };
+
+      const { data: existingData } = await supabase.from("system_settings").select("id").eq("key", "overtime_policy").maybeSingle();
+      if (existingData) {
+        const { error } = await supabase.from("system_settings").update({ value: updatedConfig, updated_at: new Date().toISOString() }).eq("key", "overtime_policy");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("system_settings").insert({ key: "overtime_policy", value: updatedConfig, description: "Konfigurasi kebijakan lembur" });
+        if (error) throw error;
+      }
+      setHolidays(updatedHolidays);
+      setFullOvertimeConfig(updatedConfig);
+      toast.success("Hari libur berhasil ditambahkan");
+      setAddEventDate(null);
+    } catch (err: any) {
+      toast.error("Gagal menambah hari libur: " + err.message);
+    } finally {
+      setAddingEvent(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (holidayId: string) => {
+    try {
+      const updatedHolidays = holidays.filter(h => h.id !== holidayId);
+      const updatedConfig = { ...(fullOvertimeConfig || {}), holidays: updatedHolidays };
+      const { error } = await supabase.from("system_settings").update({ value: updatedConfig, updated_at: new Date().toISOString() }).eq("key", "overtime_policy");
+      if (error) throw error;
+      setHolidays(updatedHolidays);
+      setFullOvertimeConfig(updatedConfig);
+      toast.success("Hari libur berhasil dihapus");
+      setSelectedDate(null);
+    } catch (err: any) {
+      toast.error("Gagal menghapus: " + err.message);
+    }
+  };
+
+  const handleEditHoliday = async () => {
+    if (!editingHoliday || !editHolidayName.trim()) return;
+    try {
+      const updatedHolidays = holidays.map(h => h.id === editingHoliday.id ? { ...h, name: editHolidayName.trim() } : h);
+      const updatedConfig = { ...(fullOvertimeConfig || {}), holidays: updatedHolidays };
+      const { error } = await supabase.from("system_settings").update({ value: updatedConfig, updated_at: new Date().toISOString() }).eq("key", "overtime_policy");
+      if (error) throw error;
+      setHolidays(updatedHolidays);
+      setFullOvertimeConfig(updatedConfig);
+      toast.success("Hari libur berhasil diperbarui");
+      setEditingHoliday(null);
+      setSelectedDate(null);
+    } catch (err: any) {
+      toast.error("Gagal mengubah: " + err.message);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const { error } = await supabase.from("company_events").delete().eq("id", eventId);
+      if (error) throw error;
+      toast.success("Event berhasil dihapus");
+      setSelectedDate(null);
+      fetchCompanyEvents();
+    } catch (err: any) {
+      toast.error("Gagal menghapus event: " + err.message);
+    }
+  };
+
+  const handleEditEvent = async () => {
+    if (!editingEvent || !editEventTitle.trim()) return;
+    try {
+      const { error } = await supabase.from("company_events").update({
+        title: editEventTitle.trim(),
+        description: editEventDescription.trim() || null,
+        start_date: editEventStartDate,
+        end_date: editEventEndDate,
+        updated_at: new Date().toISOString(),
+      }).eq("id", editingEvent.id);
+      if (error) throw error;
+      toast.success("Event berhasil diperbarui");
+      setEditingEvent(null);
+      setSelectedDate(null);
+      fetchCompanyEvents();
+    } catch (err: any) {
+      toast.error("Gagal mengubah event: " + err.message);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">

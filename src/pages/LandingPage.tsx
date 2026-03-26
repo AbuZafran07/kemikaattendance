@@ -87,7 +87,7 @@ const LandingPage = () => {
       {/* Marquee Banner */}
       <MarqueeBanner />
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <img src={logo} alt="Kemika Logo" className="h-10 object-contain" />

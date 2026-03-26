@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, CalendarDays, Loader2 } from "lucide-react";
+import { Plus, Trash2, CalendarDays, Loader2, Pencil, Check, X } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
@@ -30,6 +30,8 @@ export function CompanyEventManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", description: "", start_date: "", end_date: "" });
 
   useEffect(() => {
     fetchEvents();
@@ -92,6 +94,49 @@ export function CompanyEventManager() {
     } else {
       setEvents(events.filter(e => e.id !== eventId));
       toast({ title: "Berhasil", description: "Event berhasil dihapus" });
+    }
+  };
+
+  const handleStartEdit = (event: CompanyEvent) => {
+    setEditingId(event.id);
+    setEditForm({
+      title: event.title,
+      description: event.description || "",
+      start_date: event.start_date,
+      end_date: event.end_date,
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ title: "", description: "", start_date: "", end_date: "" });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editForm.title.trim() || !editForm.start_date) return;
+    const endDate = editForm.end_date || editForm.start_date;
+    if (endDate < editForm.start_date) {
+      toast({ title: "Error", description: "Tanggal selesai tidak boleh sebelum tanggal mulai", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("company_events")
+      .update({
+        title: editForm.title.trim(),
+        description: editForm.description.trim() || null,
+        start_date: editForm.start_date,
+        end_date: endDate,
+      })
+      .eq("id", editingId);
+
+    if (error) {
+      toast({ title: "Gagal menyimpan", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Event berhasil diperbarui" });
+      setEditingId(null);
+      setEditForm({ title: "", description: "", start_date: "", end_date: "" });
+      fetchEvents();
     }
   };
 
@@ -190,32 +235,102 @@ export function CompanyEventManager() {
                     <TableHead>Nama Event</TableHead>
                     <TableHead>Keterangan</TableHead>
                     <TableHead>Tanggal</TableHead>
-                    <TableHead className="w-16 text-right">Aksi</TableHead>
+                    <TableHead className="w-24 text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((event) => (
                     <TableRow key={event.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-                          {event.title}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {event.description || "-"}
-                      </TableCell>
-                      <TableCell className="text-sm">{formatDateRange(event.start_date, event.end_date)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveEvent(event.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                      {editingId === event.id ? (
+                        <>
+                          <TableCell>
+                            <Input
+                              value={editForm.title}
+                              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                              className="h-8 text-sm"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={editForm.description}
+                              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                              className="h-8 text-sm"
+                              placeholder="Keterangan"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="date"
+                                value={editForm.start_date}
+                                onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                                className="h-8 text-sm w-36"
+                              />
+                              <span className="text-xs text-muted-foreground">-</span>
+                              <Input
+                                type="date"
+                                value={editForm.end_date}
+                                min={editForm.start_date}
+                                onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                                className="h-8 text-sm w-36"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleSaveEdit}
+                                className="h-8 w-8 text-green-600 hover:text-green-700"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleCancelEdit}
+                                className="h-8 w-8 text-muted-foreground"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                              {event.title}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {event.description || "-"}
+                          </TableCell>
+                          <TableCell className="text-sm">{formatDateRange(event.start_date, event.end_date)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleStartEdit(event)}
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveEvent(event.id)}
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

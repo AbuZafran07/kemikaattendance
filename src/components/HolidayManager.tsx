@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Calendar, Copy, Download, Loader2 } from "lucide-react";
+import { Plus, Trash2, Calendar, Copy, Download, Loader2, Pencil, Check, X } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -28,7 +28,9 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
   const [newHoliday, setNewHoliday] = useState({ name: "", date: "" });
   const [isFetching, setIsFetching] = useState(false);
   const [fetchYear, setFetchYear] = useState(String(new Date().getFullYear()));
-  // Detect years present in current holidays
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", date: "" });
+
   const availableYears = useMemo(() => {
     const years = new Set<number>();
     holidays.forEach(h => {
@@ -143,9 +145,29 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
     onHolidaysChange(holidays.filter((h) => h.id !== id));
   };
 
+  const handleStartEdit = (holiday: Holiday) => {
+    setEditingId(holiday.id);
+    setEditForm({ name: holiday.name, date: holiday.date });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ name: "", date: "" });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingId || !editForm.name.trim() || !editForm.date) return;
+    const updated = holidays.map(h =>
+      h.id === editingId ? { ...h, name: editForm.name.trim(), date: editForm.date } : h
+    );
+    onHolidaysChange(updated.sort((a, b) => a.date.localeCompare(b.date)));
+    setEditingId(null);
+    setEditForm({ name: "", date: "" });
+    toast({ title: "Berhasil", description: "Data hari libur diperbarui. Jangan lupa simpan perubahan." });
+  };
+
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(holidays.length / itemsPerPage);
   const paginatedHolidays = holidays.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -264,24 +286,76 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
                   <TableRow>
                     <TableHead>Nama Hari Libur</TableHead>
                     <TableHead>Tanggal</TableHead>
-                    <TableHead className="w-16 text-right">Aksi</TableHead>
+                    <TableHead className="w-24 text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedHolidays.map((holiday) => (
                     <TableRow key={holiday.id}>
-                      <TableCell className="font-medium">{holiday.name}</TableCell>
-                      <TableCell>{formatDate(holiday.date)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveHoliday(holiday.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                      {editingId === holiday.id ? (
+                        <>
+                          <TableCell>
+                            <Input
+                              value={editForm.name}
+                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                              className="h-8 text-sm"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={editForm.date}
+                              onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                              className="h-8 text-sm w-40"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleSaveEdit}
+                                className="h-8 w-8 text-green-600 hover:text-green-700"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleCancelEdit}
+                                className="h-8 w-8 text-muted-foreground"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="font-medium">{holiday.name}</TableCell>
+                          <TableCell>{formatDate(holiday.date)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleStartEdit(holiday)}
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveHoliday(holiday.id)}
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

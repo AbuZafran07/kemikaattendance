@@ -260,7 +260,8 @@ const CompanyCalendar = () => {
 
             const content = (
               <div
-                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative cursor-default transition-colors p-0.5 ${bgClass}`}
+                onClick={() => hasEvent ? setSelectedDate(date) : null}
+                className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] relative transition-colors p-0.5 ${bgClass} ${hasEvent ? "cursor-pointer" : "cursor-default"}`}
               >
                 <span className={`font-medium text-xs ${weekend ? "text-destructive/70" : ""} ${holidayName ? "text-destructive" : ""} ${today ? "text-primary font-bold" : ""}`}>
                   {format(date, "d")}
@@ -290,7 +291,6 @@ const CompanyCalendar = () => {
                     {specialPeriod.name}
                   </span>
                 )}
-                {/* Additional event dots when multiple types exist */}
                 {!holidayName && (companyEvents || specialPeriod || leaveDays || travelDays) && (
                   <div className="flex gap-0.5 mt-0.5">
                     {companyEvents && companyEvents.length > 1 && <div className="h-1 w-1 rounded-full bg-blue-500" />}

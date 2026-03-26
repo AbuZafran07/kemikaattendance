@@ -52,7 +52,8 @@ const leaveTypeLabels: Record<string, string> = {
 };
 
 const CompanyCalendar = () => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isAdmin = userRole === "admin";
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [specialPeriods, setSpecialPeriods] = useState<SpecialPeriod[]>([]);
@@ -60,6 +61,11 @@ const CompanyCalendar = () => {
   const [travelDaysMap, setTravelDaysMap] = useState<Map<string, TravelDay[]>>(new Map());
   const [companyEventsMap, setCompanyEventsMap] = useState<Map<string, CompanyEvent[]>>(new Map());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [addEventDate, setAddEventDate] = useState<Date | null>(null);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventEndDate, setNewEventEndDate] = useState("");
+  const [newEventDescription, setNewEventDescription] = useState("");
+  const [addingEvent, setAddingEvent] = useState(false);
 
   useEffect(() => {
     fetchCalendarData();

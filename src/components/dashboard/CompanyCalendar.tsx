@@ -509,6 +509,58 @@ const CompanyCalendar = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Add Event Dialog (Admin only) */}
+      <Dialog open={!!addEventDate} onOpenChange={(open) => !open && setAddEventDate(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Tambah Event Kantor
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {addEventDate && format(addEventDate, "EEEE, d MMMM yyyy", { locale: id })}
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="event-title">Judul Event *</Label>
+              <Input
+                id="event-title"
+                placeholder="Contoh: Rapat Bulanan"
+                value={newEventTitle}
+                onChange={(e) => setNewEventTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="event-end-date">Tanggal Selesai</Label>
+              <Input
+                id="event-end-date"
+                type="date"
+                value={newEventEndDate}
+                onChange={(e) => setNewEventEndDate(e.target.value)}
+                min={addEventDate ? format(addEventDate, "yyyy-MM-dd") : undefined}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="event-desc">Deskripsi (opsional)</Label>
+              <Textarea
+                id="event-desc"
+                placeholder="Deskripsi event..."
+                value={newEventDescription}
+                onChange={(e) => setNewEventDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddEventDate(null)}>Batal</Button>
+            <Button onClick={handleAddEvent} disabled={!newEventTitle.trim() || addingEvent}>
+              {addingEvent ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

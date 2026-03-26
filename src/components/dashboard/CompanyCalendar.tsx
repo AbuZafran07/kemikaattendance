@@ -383,6 +383,87 @@ const CompanyCalendar = () => {
           </div>
         </div>
       </CardContent>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              {selectedDate && format(selectedDate, "EEEE, d MMMM yyyy", { locale: id })}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedDate && (() => {
+            const dateStr = format(selectedDate, "yyyy-MM-dd");
+            const holidayName = holidayMap.get(dateStr);
+            const specialPeriod = getSpecialPeriodForDate(selectedDate);
+            const leaveDays = leaveDaysMap.get(dateStr);
+            const travelDays = travelDaysMap.get(dateStr);
+            const companyEvents = companyEventsMap.get(dateStr);
+
+            return (
+              <div className="space-y-3">
+                {holidayName && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10">
+                    <Palmtree className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Hari Libur</p>
+                      <p className="text-sm text-muted-foreground">{holidayName}</p>
+                    </div>
+                  </div>
+                )}
+                {specialPeriod && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-chart-4/10">
+                    <Clock className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Jam Kerja Khusus</p>
+                      <p className="text-sm text-muted-foreground">{specialPeriod.name}</p>
+                      {specialPeriod.check_in_end && (
+                        <p className="text-xs text-muted-foreground">Masuk: s.d. {specialPeriod.check_in_end}</p>
+                      )}
+                      {specialPeriod.check_out_start && (
+                        <p className="text-xs text-muted-foreground">Pulang: mulai {specialPeriod.check_out_start}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {companyEvents && companyEvents.map((e, i) => (
+                  <div key={`ce-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10">
+                    <CalendarDays className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Event Kantor</p>
+                      <p className="text-sm text-foreground">{e.title}</p>
+                      {e.description && <p className="text-xs text-muted-foreground mt-1">{e.description}</p>}
+                    </div>
+                  </div>
+                ))}
+                {leaveDays && leaveDays.map((l, i) => (
+                  <div key={`l-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-indigo-500/10">
+                    <Briefcase className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Cuti / Izin</p>
+                      <p className="text-sm text-muted-foreground">{l.label}</p>
+                    </div>
+                  </div>
+                ))}
+                {travelDays && travelDays.map((t, i) => (
+                  <div key={`t-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10">
+                    <Plane className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Perjalanan Dinas</p>
+                      <p className="text-sm text-foreground">{t.destination}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t.purpose}</p>
+                    </div>
+                  </div>
+                ))}
+                {!holidayName && !specialPeriod && !companyEvents && !leaveDays && !travelDays && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Tidak ada event pada tanggal ini.</p>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

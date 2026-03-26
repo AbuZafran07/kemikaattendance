@@ -758,7 +758,7 @@ const EmployeeView = () => {
       {/* Marquee Banner */}
       <MarqueeBanner />
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
+      <header className="bg-card border-b border-border fixed top-0 left-0 right-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <img src={logo} alt="Kemika" className="h-10 object-contain" />
           <Button variant="ghost" size="icon" onClick={signOut}>
@@ -767,7 +767,7 @@ const EmployeeView = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-lg space-y-6">
+      <div className="container mx-auto px-4 pt-20 pb-6 max-w-lg space-y-6">
         {/* Welcome Card with Profile */}
         <Card>
           <CardHeader className="pb-4 bg-[#049466]/[0.04]">

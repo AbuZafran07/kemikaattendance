@@ -84,26 +84,27 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Marquee Banner */}
-      <MarqueeBanner />
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-xl" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="Kemika Logo" className="h-10 object-contain" />
-            <div>
-              <p className="text-sm font-bold leading-tight text-foreground">PT KEMIKA KARYA PRATAMA</p>
-              <p className="text-xs text-muted-foreground">Spreading Solutions</p>
+      {/* Fixed Header with Marquee */}
+      <div className="fixed top-0 left-0 right-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <MarqueeBanner />
+        <header className="border-b border-border/50 bg-background/90 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Kemika Logo" className="h-10 object-contain" />
+              <div>
+                <p className="text-sm font-bold leading-tight text-foreground">PT KEMIKA KARYA PRATAMA</p>
+                <p className="text-xs text-muted-foreground">Spreading Solutions</p>
+              </div>
             </div>
+            <Button onClick={() => navigate("/login")} size="sm" className="gap-2">
+              <LogIn className="h-4 w-4" /> Masuk
+            </Button>
           </div>
-          <Button onClick={() => navigate("/login")} size="sm" className="gap-2">
-            <LogIn className="h-4 w-4" /> Masuk
-          </Button>
-        </div>
-      </header>
+        </header>
+      </div>
 
-      {/* Spacer for fixed header */}
-      <div className="h-16" />
+      {/* Spacer for fixed header + marquee */}
+      <div className="h-20" />
 
       {/* Hero */}
       <section className="relative overflow-hidden">

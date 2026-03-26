@@ -402,6 +402,7 @@ const CompanyCalendar = () => {
                 setSelectedDate(date);
               } else if (isAdmin) {
                 setAddEventDate(date);
+                setAddMode("event");
                 setNewEventTitle("");
                 setNewEventEndDate(format(date, "yyyy-MM-dd"));
                 setNewEventDescription("");

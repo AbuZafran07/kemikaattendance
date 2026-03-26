@@ -755,19 +755,20 @@ const EmployeeView = () => {
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
-      {/* Marquee Banner */}
-      <MarqueeBanner />
-      {/* Header */}
-      <header className="bg-card border-b border-border fixed top-0 left-0 right-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <img src={logo} alt="Kemika" className="h-10 object-contain" />
-          <Button variant="ghost" size="icon" onClick={signOut}>
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
+      {/* Fixed Header with Marquee */}
+      <div className="fixed top-0 left-0 right-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <MarqueeBanner />
+        <header className="bg-card border-b border-border">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+            <img src={logo} alt="Kemika" className="h-10 object-contain" />
+            <Button variant="ghost" size="icon" onClick={signOut}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </header>
+      </div>
 
-      <div className="container mx-auto px-4 pt-20 pb-6 max-w-lg space-y-6">
+      <div className="container mx-auto px-4 pt-24 pb-6 max-w-lg space-y-6">
         {/* Welcome Card with Profile */}
         <Card>
           <CardHeader className="pb-4 bg-[#049466]/[0.04]">

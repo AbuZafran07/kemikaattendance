@@ -457,14 +457,7 @@ export default function OvertimeSettings() {
               </CardContent>
             </Card>
 
-            {/* Hari Libur Nasional */}
-            <HolidayManager
-              holidays={config.holidays}
-              onHolidaysChange={(holidays) => setConfig({ ...config, holidays })}
-            />
-
-            {/* Event & Kegiatan Kantor */}
-            <CompanyEventManager />
+            {/* Note: Hari Libur & Event Kantor dipindah ke menu terpisah */}
 
             <Alert>
               <Info className="h-4 w-4" />

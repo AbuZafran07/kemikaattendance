@@ -39,6 +39,12 @@ export default function Settings() {
       path: "/dashboard/settings/overtime",
     },
     {
+      title: "Hari Libur & Event Kantor",
+      description: "Kelola daftar hari libur nasional dan event kegiatan kantor",
+      icon: Palmtree,
+      path: "/dashboard/settings/holidays",
+    },
+    {
       title: "Tunjangan Kehadiran",
       description: "Konfigurasi perhitungan tunjangan kehadiran",
       icon: Coins,

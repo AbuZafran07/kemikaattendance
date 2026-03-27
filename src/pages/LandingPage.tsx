@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { APP_VERSION } from "@/config/appVersion";
 import MarqueeBanner from "@/components/MarqueeBanner";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 const quickLinks = [
   { icon: Fingerprint, label: "Absensi", desc: "Check-in & Check-out harian" },
@@ -222,6 +223,8 @@ const LandingPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <PWAInstallPrompt />
     </div>
   );
 };

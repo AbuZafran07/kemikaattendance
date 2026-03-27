@@ -29,6 +29,7 @@ import LateReasonDialog from "@/components/LateReasonDialog";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
 import { format } from "date-fns";
 import MarqueeBanner from "@/components/MarqueeBanner";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 // Office coordinates and work hours will be fetched from system settings
 

@@ -756,7 +756,7 @@ const EmployeeView = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 pb-24">
       {/* Fixed Header with Marquee */}
-      <div className="fixed top-0 left-0 right-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-card" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <MarqueeBanner />
         <header className="bg-card border-b border-border">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">

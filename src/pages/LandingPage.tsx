@@ -223,6 +223,8 @@ const LandingPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <PWAInstallPrompt />
     </div>
   );
 };

@@ -85,7 +85,7 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Fixed Header with Marquee */}
-      <div className="fixed top-0 left-0 right-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <MarqueeBanner />
         <header className="border-b border-border/50 bg-background/90 backdrop-blur-xl">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">

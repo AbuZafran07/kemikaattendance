@@ -1042,6 +1042,7 @@ const EmployeeView = () => {
       </div>
 
       <EmployeeBottomNav />
+      <PWAInstallPrompt />
 
       <CameraCapture
         isOpen={showCamera}

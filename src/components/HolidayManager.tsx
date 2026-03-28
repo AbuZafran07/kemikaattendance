@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Calendar, Copy, Download, Loader2, Pencil, Check, X, Upload, FileDown } from "lucide-react";
+import { Plus, Trash2, Calendar, Copy, Download, Loader2, Pencil, Check, X, Upload, FileDown, FileSpreadsheet } from "lucide-react";
+import { exportToExcelFile } from "@/lib/excelExport";
+import ExcelJS from "exceljs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -403,6 +405,22 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
             variant="outline"
             size="sm"
             className="h-8 text-xs"
+            disabled={holidays.length === 0}
+            onClick={() => {
+              const data = holidays.map(h => ({
+                "Nama Hari Libur": h.name,
+                "Tanggal": h.date,
+              }));
+              exportToExcelFile(data, "Hari Libur", `hari-libur-${new Date().toISOString().slice(0, 10)}.xlsx`);
+            }}
+          >
+            <FileSpreadsheet className="h-3 w-3 mr-1" />
+            Ekspor Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
             onClick={() => {
               const input = document.createElement("input");
               input.type = "file";
@@ -445,6 +463,81 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
           >
             <Upload className="h-3 w-3 mr-1" />
             Impor JSON
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".xlsx,.xls";
+              input.onchange = async (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                try {
+                  const buffer = await file.arrayBuffer();
+                  const workbook = new ExcelJS.Workbook();
+                  await workbook.xlsx.load(buffer);
+                  const sheet = workbook.worksheets[0];
+                  if (!sheet) throw new Error("File Excel kosong");
+
+                  const rows: { name: string; date: string }[] = [];
+                  let nameCol = -1;
+                  let dateCol = -1;
+
+                  sheet.getRow(1).eachCell((cell, colNumber) => {
+                    const val = String(cell.value ?? "").toLowerCase().trim();
+                    if (val.includes("nama") || val.includes("name") || val.includes("libur")) nameCol = colNumber;
+                    if (val.includes("tanggal") || val.includes("date")) dateCol = colNumber;
+                  });
+
+                  if (nameCol === -1) nameCol = 1;
+                  if (dateCol === -1) dateCol = 2;
+
+                  sheet.eachRow((row, rowNumber) => {
+                    if (rowNumber === 1) return;
+                    const name = String(row.getCell(nameCol).value ?? "").trim();
+                    let dateVal = row.getCell(dateCol).value;
+                    let date = "";
+                    if (dateVal instanceof Date) {
+                      date = dateVal.toISOString().slice(0, 10);
+                    } else if (typeof dateVal === "string") {
+                      const parsed = new Date(dateVal);
+                      if (!isNaN(parsed.getTime())) date = parsed.toISOString().slice(0, 10);
+                      else date = dateVal.trim();
+                    }
+                    if (name && date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                      rows.push({ name, date });
+                    }
+                  });
+
+                  if (rows.length === 0) throw new Error("Tidak ada data valid ditemukan dalam file Excel");
+
+                  const existingDates = new Set(holidays.map(h => h.date));
+                  let added = 0;
+                  const merged = [...holidays];
+                  rows.forEach(r => {
+                    if (!existingDates.has(r.date)) {
+                      merged.push({ id: crypto.randomUUID(), name: r.name, date: r.date });
+                      existingDates.add(r.date);
+                      added++;
+                    }
+                  });
+                  onHolidaysChange(merged.sort((a, b) => a.date.localeCompare(b.date)));
+                  toast({
+                    title: "Berhasil",
+                    description: `${added} hari libur berhasil diimpor dari ${rows.length} data Excel. Jangan lupa simpan perubahan.`,
+                  });
+                } catch (err: any) {
+                  toast({ title: "Gagal Impor Excel", description: err.message || "File Excel tidak valid", variant: "destructive" });
+                }
+              };
+              input.click();
+            }}
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Impor Excel
           </Button>
         </div>
 

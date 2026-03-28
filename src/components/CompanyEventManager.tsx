@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, CalendarDays, Loader2, Pencil, Check, X, FileDown, Upload } from "lucide-react";
+import { Plus, Trash2, CalendarDays, Loader2, Pencil, Check, X, FileDown, Upload, FileSpreadsheet } from "lucide-react";
+import { exportToExcelFile } from "@/lib/excelExport";
+import ExcelJS from "exceljs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
@@ -379,6 +381,24 @@ export function CompanyEventManager() {
             variant="outline"
             size="sm"
             className="h-8 text-xs"
+            disabled={events.length === 0}
+            onClick={() => {
+              const data = events.map(ev => ({
+                "Nama Event": ev.title,
+                "Keterangan": ev.description || "",
+                "Tanggal Mulai": ev.start_date,
+                "Tanggal Selesai": ev.end_date,
+              }));
+              exportToExcelFile(data, "Event Kantor", `event-kantor-${new Date().toISOString().slice(0, 10)}.xlsx`);
+            }}
+          >
+            <FileSpreadsheet className="h-3 w-3 mr-1" />
+            Ekspor Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
             onClick={() => {
               const input = document.createElement("input");
               input.type = "file";
@@ -423,6 +443,84 @@ export function CompanyEventManager() {
           >
             <Upload className="h-3 w-3 mr-1" />
             Impor JSON
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".xlsx,.xls";
+              input.onchange = async (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file || !user) return;
+                try {
+                  const buffer = await file.arrayBuffer();
+                  const workbook = new ExcelJS.Workbook();
+                  await workbook.xlsx.load(buffer);
+                  const sheet = workbook.worksheets[0];
+                  if (!sheet) throw new Error("File Excel kosong");
+
+                  let titleCol = -1, descCol = -1, startCol = -1, endCol = -1;
+                  sheet.getRow(1).eachCell((cell, colNumber) => {
+                    const val = String(cell.value ?? "").toLowerCase().trim();
+                    if (val.includes("nama") || val.includes("title") || val.includes("event")) titleCol = colNumber;
+                    if (val.includes("keterangan") || val.includes("desc")) descCol = colNumber;
+                    if (val.includes("mulai") || val.includes("start")) startCol = colNumber;
+                    if (val.includes("selesai") || val.includes("end")) endCol = colNumber;
+                  });
+
+                  if (titleCol === -1) titleCol = 1;
+                  if (startCol === -1) startCol = descCol === -1 ? 2 : 3;
+                  if (endCol === -1) endCol = startCol + 1;
+
+                  const parseDate = (val: any): string => {
+                    if (val instanceof Date) return val.toISOString().slice(0, 10);
+                    if (typeof val === "string") {
+                      const d = new Date(val);
+                      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+                    }
+                    return "";
+                  };
+
+                  const inserts: any[] = [];
+                  sheet.eachRow((row, rowNumber) => {
+                    if (rowNumber === 1) return;
+                    const title = String(row.getCell(titleCol).value ?? "").trim();
+                    const desc = descCol > 0 ? String(row.getCell(descCol).value ?? "").trim() : "";
+                    const startDate = parseDate(row.getCell(startCol).value);
+                    const endDate = parseDate(row.getCell(endCol).value) || startDate;
+                    if (title && startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+                      inserts.push({
+                        title,
+                        description: desc || null,
+                        start_date: startDate,
+                        end_date: endDate,
+                        created_by: user.id,
+                      });
+                    }
+                  });
+
+                  if (inserts.length === 0) throw new Error("Tidak ada data valid ditemukan dalam file Excel");
+
+                  const { error } = await supabase.from("company_events").insert(inserts);
+                  if (error) throw error;
+
+                  toast({
+                    title: "Berhasil",
+                    description: `${inserts.length} event berhasil diimpor dari Excel.`,
+                  });
+                  fetchEvents();
+                } catch (err: any) {
+                  toast({ title: "Gagal Impor Excel", description: err.message || "File Excel tidak valid", variant: "destructive" });
+                }
+              };
+              input.click();
+            }}
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Impor Excel
           </Button>
         </div>
       </CardContent>

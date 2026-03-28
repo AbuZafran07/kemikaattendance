@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, CalendarDays, Loader2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, CalendarDays, Loader2, Pencil, Check, X, FileDown, Upload } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
@@ -351,6 +351,80 @@ export function CompanyEventManager() {
             <p className="text-sm">Tambahkan event untuk ditampilkan di kalender perusahaan</p>
           </div>
         )}
+
+        {/* Export / Import */}
+        <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border border-border">
+          <FileDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground">Ekspor / Impor:</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            disabled={events.length === 0}
+            onClick={() => {
+              const exportData = events.map(({ id, ...rest }) => rest);
+              const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `event-kantor-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <FileDown className="h-3 w-3 mr-1" />
+            Ekspor JSON
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".json";
+              input.onchange = async (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file || !user) return;
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                  try {
+                    const imported = JSON.parse(ev.target?.result as string);
+                    if (!Array.isArray(imported)) throw new Error("Format tidak valid");
+                    const valid = imported.filter(
+                      (item: any) => item.title && item.start_date && typeof item.title === "string"
+                    );
+                    if (valid.length === 0) throw new Error("Tidak ada data valid");
+
+                    const inserts = valid.map((item: any) => ({
+                      title: item.title,
+                      description: item.description || null,
+                      start_date: item.start_date,
+                      end_date: item.end_date || item.start_date,
+                      created_by: user.id,
+                    }));
+
+                    const { error } = await supabase.from("company_events").insert(inserts);
+                    if (error) throw error;
+
+                    toast({
+                      title: "Berhasil",
+                      description: `${inserts.length} event berhasil diimpor.`,
+                    });
+                    fetchEvents();
+                  } catch (err: any) {
+                    toast({ title: "Gagal Impor", description: err.message || "File JSON tidak valid", variant: "destructive" });
+                  }
+                };
+                reader.readAsText(file);
+              };
+              input.click();
+            }}
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Impor JSON
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

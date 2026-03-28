@@ -377,6 +377,77 @@ export function HolidayManager({ holidays, onHolidaysChange }: HolidayManagerPro
           </div>
         )}
 
+        {/* Export / Import */}
+        <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border border-border">
+          <FileDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground">Ekspor / Impor:</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            disabled={holidays.length === 0}
+            onClick={() => {
+              const blob = new Blob([JSON.stringify(holidays, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `hari-libur-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <FileDown className="h-3 w-3 mr-1" />
+            Ekspor JSON
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".json";
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  try {
+                    const imported = JSON.parse(ev.target?.result as string);
+                    if (!Array.isArray(imported)) throw new Error("Format tidak valid");
+                    const valid = imported.filter(
+                      (h: any) => h.name && h.date && typeof h.name === "string" && typeof h.date === "string"
+                    );
+                    if (valid.length === 0) throw new Error("Tidak ada data valid");
+                    const existingDates = new Set(holidays.map(h => h.date));
+                    let added = 0;
+                    const merged = [...holidays];
+                    valid.forEach((h: any) => {
+                      if (!existingDates.has(h.date)) {
+                        merged.push({ id: crypto.randomUUID(), name: h.name, date: h.date });
+                        existingDates.add(h.date);
+                        added++;
+                      }
+                    });
+                    onHolidaysChange(merged.sort((a, b) => a.date.localeCompare(b.date)));
+                    toast({
+                      title: "Berhasil",
+                      description: `${added} hari libur berhasil diimpor dari ${valid.length} data. Jangan lupa simpan perubahan.`,
+                    });
+                  } catch (err: any) {
+                    toast({ title: "Gagal Impor", description: err.message || "File JSON tidak valid", variant: "destructive" });
+                  }
+                };
+                reader.readAsText(file);
+              };
+              input.click();
+            }}
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Impor JSON
+          </Button>
+        </div>
+
         <p className="text-xs text-muted-foreground">
           Daftar hari libur ini digunakan untuk menentukan tarif lembur (multiplier hari libur) dan validasi pengajuan lembur di hari libur.
         </p>

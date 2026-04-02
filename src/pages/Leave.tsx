@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatLeaveTypeForNotification, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
+import AdminCreateLeaveDialog from "@/components/AdminCreateLeaveDialog";
 import logger from "@/lib/logger";
 
 const Leave = () => {

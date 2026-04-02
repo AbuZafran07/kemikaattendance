@@ -512,10 +512,29 @@ export default function OvertimeSettings() {
 }
 
 function OvertimeSimulator({ formatCurrency }: { formatCurrency: (v: number) => string }) {
-  const [salary, setSalary] = useState<number>(5000000);
+  const [employees, setEmployees] = useState<{ id: string; full_name: string; basic_salary: number }[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const [salary, setSalary] = useState<number>(0);
   const [hours, setHours] = useState<number>(3);
   const [dayType, setDayType] = useState<'weekday' | 'weekend' | 'holiday'>('weekday');
   const [workDays, setWorkDays] = useState<5 | 6>(5);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, basic_salary")
+        .order("full_name");
+      if (data) setEmployees(data.map(e => ({ ...e, basic_salary: Number(e.basic_salary) || 0 })));
+    };
+    fetchEmployees();
+  }, []);
+
+  const handleEmployeeChange = (employeeId: string) => {
+    setSelectedEmployeeId(employeeId);
+    const emp = employees.find(e => e.id === employeeId);
+    if (emp) setSalary(emp.basic_salary);
+  };
 
   const result = calculateOvertimePayPP35(salary, hours, dayType, workDays);
   const hourlyRate = salary / 173;
@@ -541,15 +560,20 @@ function OvertimeSimulator({ formatCurrency }: { formatCurrency: (v: number) => 
         {/* Input fields */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="space-y-2">
-            <Label>Gaji Pokok / Bulan</Label>
-            <Input
-              type="number"
-              min={0}
-              step={500000}
-              value={salary}
-              onChange={(e) => setSalary(parseInt(e.target.value) || 0)}
-            />
-            <p className="text-xs text-muted-foreground">{formatCurrency(salary)}</p>
+            <Label>Pilih Karyawan</Label>
+            <Select value={selectedEmployeeId} onValueChange={handleEmployeeChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih karyawan..." />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Gapok: {formatCurrency(salary)}</p>
           </div>
           <div className="space-y-2">
             <Label>Jam Lembur</Label>

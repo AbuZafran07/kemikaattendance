@@ -221,6 +221,19 @@ const BusinessTravel = () => {
           : "Perjalanan dinas disetujui",
       });
 
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (currentUser) {
+        await logApprovalAction({
+          request_type: "business_travel",
+          request_id: selectedRequest.id,
+          action_type: "approved",
+          performed_by: currentUser.id,
+          target_user_id: selectedRequest.user_id,
+          notes: null,
+          details: { destination: selectedRequest.destination, start_date: selectedRequest.start_date },
+        });
+      }
+
       // Send notification to employee
       const startDate = formatDateForNotification(selectedRequest.start_date);
       const notification = NotificationTemplates.businessTravelApproved(selectedRequest.destination, startDate);

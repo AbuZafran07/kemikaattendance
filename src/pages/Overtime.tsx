@@ -2,7 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Eye, Plus } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Table,
@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
+import AdminCreateOvertimeDialog from "@/components/AdminCreateOvertimeDialog";
 import logger from "@/lib/logger";
 
 const Overtime = () => {
@@ -34,6 +35,7 @@ const Overtime = () => {
   const [dialogAction, setDialogAction] = useState<"approve" | "reject">("approve");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [detailRequest, setDetailRequest] = useState<any | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Pagination
   const totalPages = Math.ceil(overtimeRequests.length / itemsPerPage);
@@ -212,11 +214,17 @@ const Overtime = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manajemen Lembur</h1>
-          <p className="text-muted-foreground mt-1">
-            Kelola permintaan lembur karyawan
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Manajemen Lembur</h1>
+            <p className="text-muted-foreground mt-1">Kelola permintaan lembur karyawan</p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Buat Lembur
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -360,6 +368,12 @@ const Overtime = () => {
         action={dialogAction}
         onConfirm={dialogAction === "approve" ? handleApprove : handleReject}
         title="Permintaan Lembur"
+      />
+
+      <AdminCreateOvertimeDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={fetchOvertimeRequests}
       />
 
       {/* Detail Dialog */}

@@ -2,7 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle2, XCircle, Clock, Eye } from "lucide-react";
+import { Calendar, CheckCircle2, XCircle, Clock, Eye, Plus } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatLeaveTypeForNotification, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
+import AdminCreateLeaveDialog from "@/components/AdminCreateLeaveDialog";
 import logger from "@/lib/logger";
 
 const Leave = () => {
@@ -27,6 +28,7 @@ const Leave = () => {
   const [dialogAction, setDialogAction] = useState<"approve" | "reject">("approve");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [detailRequest, setDetailRequest] = useState<any | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Pagination
   const totalPages = Math.ceil(leaveRequests.length / itemsPerPage);
@@ -217,9 +219,17 @@ const Leave = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manajemen Cuti</h1>
-          <p className="text-muted-foreground mt-1">Kelola permintaan cuti dan izin karyawan</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Manajemen Cuti</h1>
+            <p className="text-muted-foreground mt-1">Kelola permintaan cuti dan izin karyawan</p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Buat Cuti
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -347,6 +357,12 @@ const Leave = () => {
         action={dialogAction}
         onConfirm={dialogAction === "approve" ? handleApprove : handleReject}
         title="Permintaan Cuti"
+      />
+
+      <AdminCreateLeaveDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={fetchLeaveRequests}
       />
 
       {/* Detail Dialog */}

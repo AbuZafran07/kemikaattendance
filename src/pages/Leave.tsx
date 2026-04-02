@@ -359,6 +359,12 @@ const Leave = () => {
         title="Permintaan Cuti"
       />
 
+      <AdminCreateLeaveDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={fetchLeaveRequests}
+      />
+
       {/* Detail Dialog */}
       <Dialog open={!!detailRequest} onOpenChange={(open) => !open && setDetailRequest(null)}>
         <DialogContent className="max-w-lg">

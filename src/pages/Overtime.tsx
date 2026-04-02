@@ -370,6 +370,12 @@ const Overtime = () => {
         title="Permintaan Lembur"
       />
 
+      <AdminCreateOvertimeDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={fetchOvertimeRequests}
+      />
+
       {/* Detail Dialog */}
       <Dialog open={!!detailRequest} onOpenChange={(open) => !open && setDetailRequest(null)}>
         <DialogContent className="max-w-lg">

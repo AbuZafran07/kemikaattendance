@@ -697,11 +697,13 @@ const Payroll = () => {
         .from("overtime_requests").select("user_id, hours, overtime_date")
         .eq("status", "approved").gte("overtime_date", startDate).lte("overtime_date", endDateStr);
 
-      // Fetch holidays for day-type detection
+      // Fetch holidays and work_days_per_week for day-type detection
       const { data: holidaySettings } = await supabase
         .from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle();
-      const holidaysList: string[] = ((holidaySettings?.value as any)?.holidays || []).map((h: any) => h.date);
+      const overtimePolicy = holidaySettings?.value as any;
+      const holidaysList: string[] = (overtimePolicy?.holidays || []).map((h: any) => h.date);
       const holidaySet = new Set(holidaysList);
+      const workDaysPerWeek: 5 | 6 = overtimePolicy?.work_days_per_week === 6 ? 6 : 5;
 
       // Store overtime entries per user with day type for PP 35 calculation
       const overtimeEntriesMap = new Map<string, { hours: number; dayType: 'weekday' | 'weekend' | 'holiday' }[]>();
@@ -816,7 +818,7 @@ const Payroll = () => {
         const entries = overtimeEntriesMap.get(emp.id) || [];
         let overtimeTotal = 0;
         for (const entry of entries) {
-          overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType).total;
+          overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
         }
         const ptkpStatus = emp.ptkp_status || "TK/0";
         const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;

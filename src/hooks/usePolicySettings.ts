@@ -36,6 +36,7 @@ export interface OvertimePolicyConfig {
   meal_allowance_amount: number;
   transport_allowance_enabled: boolean;
   transport_allowance_amount: number;
+  work_days_per_week: 5 | 6;
   holidays: Holiday[];
 }
 
@@ -68,6 +69,7 @@ const DEFAULT_OVERTIME_POLICY: OvertimePolicyConfig = {
   meal_allowance_amount: 50000,
   transport_allowance_enabled: true,
   transport_allowance_amount: 30000,
+  work_days_per_week: 5,
   holidays: [],
 };
 

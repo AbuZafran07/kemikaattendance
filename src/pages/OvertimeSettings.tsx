@@ -33,6 +33,7 @@ interface OvertimePolicyConfig {
   meal_allowance_amount: number;
   transport_allowance_enabled: boolean;
   transport_allowance_amount: number;
+  work_days_per_week: 5 | 6;
   holidays: { id: string; name: string; date: string }[];
 }
 
@@ -57,6 +58,7 @@ export default function OvertimeSettings() {
     meal_allowance_amount: 50000,
     transport_allowance_enabled: true,
     transport_allowance_amount: 30000,
+    work_days_per_week: 5,
     holidays: [],
   });
 
@@ -243,20 +245,39 @@ export default function OvertimeSettings() {
                 <CardDescription className="text-xs sm:text-sm">Konfigurasi aturan dan batasan pengajuan lembur</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
-                <div className="space-y-2">
-                  <Label htmlFor="min_days_advance">Minimal Pengajuan (hari sebelumnya)</Label>
-                  <Input
-                    id="min_days_advance"
-                    type="number"
-                    min="0"
-                    max="7"
-                    value={config.min_days_advance_request}
-                    onChange={(e) =>
-                      setConfig({ ...config, min_days_advance_request: parseInt(e.target.value) || 0 })
-                    }
-                    className="w-32"
-                  />
-                  <p className="text-xs text-muted-foreground">Berapa hari minimal sebelum tanggal lembur harus diajukan (0 = bisa di hari yang sama)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="work_days_per_week">Hari Kerja per Minggu</Label>
+                    <Select
+                      value={String(config.work_days_per_week)}
+                      onValueChange={(v) => setConfig({ ...config, work_days_per_week: parseInt(v) as 5 | 6 })}
+                    >
+                      <SelectTrigger id="work_days_per_week" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 Hari (Senin - Jumat)</SelectItem>
+                        <SelectItem value="6">6 Hari (Senin - Sabtu)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Mempengaruhi perhitungan multiplier lembur weekend/libur sesuai PP 35/2021
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="min_days_advance">Minimal Pengajuan (hari sebelumnya)</Label>
+                    <Input
+                      id="min_days_advance"
+                      type="number"
+                      min="0"
+                      max="7"
+                      value={config.min_days_advance_request}
+                      onChange={(e) =>
+                        setConfig({ ...config, min_days_advance_request: parseInt(e.target.value) || 0 })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">0 = bisa di hari yang sama</p>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between">

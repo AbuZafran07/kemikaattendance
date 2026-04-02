@@ -64,7 +64,8 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("leave_requests").insert({
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      const { data, error } = await supabase.from("leave_requests").insert({
         user_id: selectedUserId,
         leave_type: leaveType as any,
         start_date: startDate,
@@ -72,12 +73,24 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
         total_days: totalDays,
         reason: reason.trim(),
         status: "approved" as any,
-        approved_by: (await supabase.auth.getUser()).data.user?.id,
+        approved_by: currentUser?.id,
         approved_at: new Date().toISOString(),
         approval_notes: "Dibuat langsung oleh Admin",
-      });
+      }).select("id").single();
 
       if (error) throw error;
+
+      if (currentUser && data) {
+        await logApprovalAction({
+          request_type: "leave",
+          request_id: data.id,
+          action_type: "created_by_admin",
+          performed_by: currentUser.id,
+          target_user_id: selectedUserId,
+          notes: "Dibuat langsung oleh Admin",
+          details: { leave_type: leaveType, start_date: startDate, end_date: endDate, total_days: totalDays },
+        });
+      }
 
       toast({ title: "Berhasil", description: "Cuti karyawan berhasil dibuat" });
       onCreated();

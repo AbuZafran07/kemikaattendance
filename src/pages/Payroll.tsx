@@ -18,6 +18,7 @@ import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
   calculateOvertimePay,
+  calculateOvertimePayPP35,
   formatRupiah,
   TERRate,
   BPJSRatesConfig,

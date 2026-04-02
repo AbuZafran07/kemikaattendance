@@ -338,13 +338,54 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   };
 }
 
-export function calculateOvertimePay(monthlySalary: number, overtimeHours: number): number {
-  if (overtimeHours <= 0) return 0;
+/**
+ * Perhitungan lembur sesuai PP 35 Tahun 2021
+ * @param dayType - 'weekday' | 'weekend' | 'holiday'
+ * @param workDaysPerWeek - 5 atau 6 hari kerja per minggu (default 5)
+ */
+export function calculateOvertimePayPP35(
+  monthlySalary: number,
+  overtimeHours: number,
+  dayType: 'weekday' | 'weekend' | 'holiday' = 'weekday',
+  workDaysPerWeek: 5 | 6 = 5
+): { total: number; breakdown: { hour: number; multiplier: number; amount: number }[] } {
+  if (overtimeHours <= 0) return { total: 0, breakdown: [] };
   const hourlyRate = monthlySalary / 173;
-  const firstHourPay = Math.min(overtimeHours, 1) * hourlyRate * 1.5;
-  const remainingHours = Math.max(0, overtimeHours - 1);
-  const remainingPay = remainingHours * hourlyRate * 2;
-  return Math.round(firstHourPay + remainingPay);
+  const breakdown: { hour: number; multiplier: number; amount: number }[] = [];
+  let total = 0;
+
+  for (let h = 1; h <= overtimeHours; h++) {
+    let multiplier: number;
+
+    if (dayType === 'weekday') {
+      // Hari kerja biasa: jam 1 = 1.5x, jam 2+ = 2x
+      multiplier = h === 1 ? 1.5 : 2;
+    } else {
+      // Weekend / Hari libur nasional
+      if (workDaysPerWeek === 6) {
+        // 6 hari kerja: jam 1-7 = 2x, jam 8 = 3x, jam 9+ = 4x
+        if (h <= 7) multiplier = 2;
+        else if (h === 8) multiplier = 3;
+        else multiplier = 4;
+      } else {
+        // 5 hari kerja: jam 1-8 = 2x, jam 9 = 3x, jam 10+ = 4x
+        if (h <= 8) multiplier = 2;
+        else if (h === 9) multiplier = 3;
+        else multiplier = 4;
+      }
+    }
+
+    const amount = Math.round(hourlyRate * multiplier);
+    breakdown.push({ hour: h, multiplier, amount });
+    total += amount;
+  }
+
+  return { total, breakdown };
+}
+
+// Backward-compatible wrapper (hari kerja biasa)
+export function calculateOvertimePay(monthlySalary: number, overtimeHours: number): number {
+  return calculateOvertimePayPP35(monthlySalary, overtimeHours, 'weekday').total;
 }
 
 export function formatRupiah(amount: number): string {

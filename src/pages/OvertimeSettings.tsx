@@ -58,6 +58,7 @@ export default function OvertimeSettings() {
     meal_allowance_amount: 50000,
     transport_allowance_enabled: true,
     transport_allowance_amount: 30000,
+    work_days_per_week: 5,
     holidays: [],
   });
 

@@ -35,6 +35,7 @@ const Overtime = () => {
   const [dialogAction, setDialogAction] = useState<"approve" | "reject">("approve");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [detailRequest, setDetailRequest] = useState<any | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Pagination
   const totalPages = Math.ceil(overtimeRequests.length / itemsPerPage);

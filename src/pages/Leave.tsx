@@ -195,7 +195,18 @@ const Leave = () => {
         description: "Permintaan cuti telah ditolak",
       });
       
-      if (request) {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (request && currentUser) {
+        await logApprovalAction({
+          request_type: "leave",
+          request_id: selectedRequestId,
+          action_type: "rejected",
+          performed_by: currentUser.id,
+          target_user_id: request.user_id,
+          notes: reason,
+          details: { leave_type: request.leave_type },
+        });
+
         const leaveType = formatLeaveTypeForNotification(request.leave_type);
         const notification = NotificationTemplates.leaveRequestRejected(leaveType, reason);
         notifyEmployee(request.user_id, notification.title, notification.body, { type: 'leave_rejected' });

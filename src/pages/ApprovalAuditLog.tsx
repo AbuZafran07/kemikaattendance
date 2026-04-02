@@ -42,12 +42,14 @@ const ApprovalAuditLog = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: rawData, error } = await supabase
         .from("approval_audit_logs" as any)
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+
+      const data = (rawData || []) as any[];
 
       if (!data || data.length === 0) {
         setLogs([]);

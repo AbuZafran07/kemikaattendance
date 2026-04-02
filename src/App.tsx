@@ -41,6 +41,7 @@ import BusinessTravel from "./pages/BusinessTravel";
 import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
 import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
 import AttendanceAuditLog from "./pages/AttendanceAuditLog";
+import ApprovalAuditLog from "./pages/ApprovalAuditLog";
 import Payroll from "./pages/Payroll";
 import LoanManagement from "./pages/LoanManagement";
 import EmployeePayrollHistory from "./pages/EmployeePayrollHistory";

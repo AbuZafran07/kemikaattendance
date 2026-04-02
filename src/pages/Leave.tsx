@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatLeaveTypeForNotification, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
 import AdminCreateLeaveDialog from "@/components/AdminCreateLeaveDialog";
+import { logApprovalAction } from "@/lib/approvalAuditLog";
 import logger from "@/lib/logger";
 
 const Leave = () => {

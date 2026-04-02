@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
+import AdminCreateOvertimeDialog from "@/components/AdminCreateOvertimeDialog";
 import logger from "@/lib/logger";
 
 const Overtime = () => {

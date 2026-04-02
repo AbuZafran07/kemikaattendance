@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye, Plus } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 import logger from "@/lib/logger";
 import { logApprovalAction } from "@/lib/approvalAuditLog";
+import AdminCreateBusinessTravelDialog from "@/components/AdminCreateBusinessTravelDialog";
 
 interface BusinessTravelRequest {
   id: string;
@@ -60,6 +61,7 @@ const BusinessTravel = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [detailRequest, setDetailRequest] = useState<BusinessTravelRequest | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination
@@ -382,9 +384,17 @@ const BusinessTravel = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manajemen Perjalanan Dinas</h1>
-          <p className="text-muted-foreground mt-1">Kelola permintaan perjalanan dinas karyawan</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Manajemen Perjalanan Dinas</h1>
+            <p className="text-muted-foreground mt-1">Kelola permintaan perjalanan dinas karyawan</p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Buat Dinas
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -692,6 +702,12 @@ const BusinessTravel = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AdminCreateBusinessTravelDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={fetchRequests}
+      />
     </DashboardLayout>
   );
 };

@@ -61,6 +61,7 @@ const BusinessTravel = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [detailRequest, setDetailRequest] = useState<BusinessTravelRequest | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination

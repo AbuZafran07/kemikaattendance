@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 import logger from "@/lib/logger";
 import { logApprovalAction } from "@/lib/approvalAuditLog";
+import AdminCreateBusinessTravelDialog from "@/components/AdminCreateBusinessTravelDialog";
 
 interface BusinessTravelRequest {
   id: string;

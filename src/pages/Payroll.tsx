@@ -18,6 +18,7 @@ import { exportToExcelFile } from "@/lib/excelExport";
 import {
   calculatePayroll,
   calculateOvertimePay,
+  calculateOvertimePayPP35,
   formatRupiah,
   TERRate,
   BPJSRatesConfig,
@@ -691,13 +692,32 @@ const Payroll = () => {
       const endDate = new Date(selectedYear, selectedMonth, 0);
       const endDateStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
 
+      // Fetch overtime with date for PP 35 day-type calculation
       const { data: overtimeData } = await supabase
-        .from("overtime_requests").select("user_id, hours")
+        .from("overtime_requests").select("user_id, hours, overtime_date")
         .eq("status", "approved").gte("overtime_date", startDate).lte("overtime_date", endDateStr);
 
-      const overtimeMap = new Map<string, number>();
+      // Fetch holidays for day-type detection
+      const { data: holidaySettings } = await supabase
+        .from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle();
+      const holidaysList: string[] = ((holidaySettings?.value as any)?.holidays || []).map((h: any) => h.date);
+      const holidaySet = new Set(holidaysList);
+
+      // Store overtime entries per user with day type for PP 35 calculation
+      const overtimeEntriesMap = new Map<string, { hours: number; dayType: 'weekday' | 'weekend' | 'holiday' }[]>();
+      const overtimeHoursMap = new Map<string, number>();
       (overtimeData || []).forEach((ot) => {
-        overtimeMap.set(ot.user_id, (overtimeMap.get(ot.user_id) || 0) + ot.hours);
+        const dateStr = ot.overtime_date;
+        let dayType: 'weekday' | 'weekend' | 'holiday' = 'weekday';
+        if (holidaySet.has(dateStr)) {
+          dayType = 'holiday';
+        } else if (isWeekend(dateStr)) {
+          dayType = 'weekend';
+        }
+
+        if (!overtimeEntriesMap.has(ot.user_id)) overtimeEntriesMap.set(ot.user_id, []);
+        overtimeEntriesMap.get(ot.user_id)!.push({ hours: ot.hours, dayType });
+        overtimeHoursMap.set(ot.user_id, (overtimeHoursMap.get(ot.user_id) || 0) + ot.hours);
       });
 
       const allowanceMap = await calculateAttendanceAllowances();
@@ -791,8 +811,13 @@ const Payroll = () => {
 
       const payrollRecords = emps.map((emp: any) => {
         const basicSalary = Number(emp.basic_salary) || 0;
-        const overtimeHours = overtimeMap.get(emp.id) || 0;
-        const overtimeTotal = calculateOvertimePay(basicSalary, overtimeHours);
+        const overtimeHours = overtimeHoursMap.get(emp.id) || 0;
+        // Calculate overtime pay per PP 35: each day's overtime calculated separately
+        const entries = overtimeEntriesMap.get(emp.id) || [];
+        let overtimeTotal = 0;
+        for (const entry of entries) {
+          overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType).total;
+        }
         const ptkpStatus = emp.ptkp_status || "TK/0";
         const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);

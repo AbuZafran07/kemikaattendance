@@ -36,6 +36,7 @@ export interface OvertimePolicyConfig {
   meal_allowance_amount: number;
   transport_allowance_enabled: boolean;
   transport_allowance_amount: number;
+  work_days_per_week: 5 | 6;
   holidays: Holiday[];
 }
 

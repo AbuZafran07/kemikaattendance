@@ -702,6 +702,12 @@ const BusinessTravel = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AdminCreateBusinessTravelDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={fetchRequests}
+      />
     </DashboardLayout>
   );
 };

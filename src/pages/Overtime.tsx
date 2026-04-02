@@ -214,11 +214,17 @@ const Overtime = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manajemen Lembur</h1>
-          <p className="text-muted-foreground mt-1">
-            Kelola permintaan lembur karyawan
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Manajemen Lembur</h1>
+            <p className="text-muted-foreground mt-1">Kelola permintaan lembur karyawan</p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Buat Lembur
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

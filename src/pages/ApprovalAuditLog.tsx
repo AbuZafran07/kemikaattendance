@@ -43,7 +43,7 @@ const ApprovalAuditLog = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from("approval_audit_logs")
+        .from("approval_audit_logs" as any)
         .select("*")
         .order("created_at", { ascending: false });
 

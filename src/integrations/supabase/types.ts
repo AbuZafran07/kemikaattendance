@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_audit_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          notes: string | null
+          performed_by: string
+          request_id: string
+          request_type: string
+          target_user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          notes?: string | null
+          performed_by: string
+          request_id: string
+          request_type: string
+          target_user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          notes?: string | null
+          performed_by?: string
+          request_id?: string
+          request_type?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           check_in_latitude: number

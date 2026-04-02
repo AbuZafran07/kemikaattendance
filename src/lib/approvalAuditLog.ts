@@ -13,7 +13,7 @@ interface AuditLogEntry {
 
 export const logApprovalAction = async (entry: AuditLogEntry) => {
   try {
-    const { error } = await supabase.from("approval_audit_logs").insert({
+    const { error } = await supabase.from("approval_audit_logs" as any).insert({
       request_type: entry.request_type,
       request_id: entry.request_id,
       action_type: entry.action_type,
@@ -21,7 +21,7 @@ export const logApprovalAction = async (entry: AuditLogEntry) => {
       target_user_id: entry.target_user_id,
       details: entry.details || {},
       notes: entry.notes || null,
-    });
+    } as any);
 
     if (error) {
       logger.error("Failed to log approval action:", error);

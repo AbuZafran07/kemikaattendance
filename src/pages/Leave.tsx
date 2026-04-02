@@ -148,7 +148,18 @@ const Leave = () => {
         description: "Permintaan cuti telah disetujui",
       });
       
-      if (request) {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (request && currentUser) {
+        await logApprovalAction({
+          request_type: "leave",
+          request_id: selectedRequestId,
+          action_type: "approved",
+          performed_by: currentUser.id,
+          target_user_id: request.user_id,
+          notes: reason || null,
+          details: { leave_type: request.leave_type, start_date: request.start_date, end_date: request.end_date },
+        });
+
         const leaveType = formatLeaveTypeForNotification(request.leave_type);
         const startDate = formatDateForNotification(request.start_date);
         const endDate = formatDateForNotification(request.end_date);

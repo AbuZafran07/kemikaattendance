@@ -463,10 +463,14 @@ export default function OvertimeSettings() {
 
             {/* Note: Hari Libur & Event Kantor dipindah ke menu terpisah */}
 
+            {/* Simulasi Perhitungan Lembur PP 35/2021 */}
+            <OvertimeSimulator formatCurrency={formatCurrency} />
+
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
                 Perubahan pengaturan ini akan berlaku untuk pengajuan lembur baru. Pengajuan lembur yang sudah disetujui tidak akan terpengaruh.
+                Perhitungan lembur mengacu pada <strong>PP No. 35 Tahun 2021</strong> tentang PKWT, Alih Daya, Waktu Kerja, dan PHK.
               </AlertDescription>
             </Alert>
 
@@ -483,5 +487,151 @@ export default function OvertimeSettings() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+function OvertimeSimulator({ formatCurrency }: { formatCurrency: (v: number) => string }) {
+  const [salary, setSalary] = useState<number>(5000000);
+  const [hours, setHours] = useState<number>(3);
+  const [dayType, setDayType] = useState<'weekday' | 'weekend' | 'holiday'>('weekday');
+  const [workDays, setWorkDays] = useState<5 | 6>(5);
+
+  const result = calculateOvertimePayPP35(salary, hours, dayType, workDays);
+  const hourlyRate = salary / 173;
+
+  const dayTypeLabel = {
+    weekday: 'Hari Kerja',
+    weekend: 'Hari Istirahat (Weekend)',
+    holiday: 'Hari Libur Nasional',
+  };
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <Calculator className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+          Simulasi Perhitungan Lembur
+        </CardTitle>
+        <CardDescription className="text-xs sm:text-sm">
+          Hitung estimasi upah lembur karyawan sesuai <strong>PP 35 Tahun 2021</strong>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+        {/* Input fields */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="space-y-2">
+            <Label>Gaji Pokok / Bulan</Label>
+            <Input
+              type="number"
+              min={0}
+              step={500000}
+              value={salary}
+              onChange={(e) => setSalary(parseInt(e.target.value) || 0)}
+            />
+            <p className="text-xs text-muted-foreground">{formatCurrency(salary)}</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Jam Lembur</Label>
+            <Input
+              type="number"
+              min={1}
+              max={12}
+              value={hours}
+              onChange={(e) => setHours(parseInt(e.target.value) || 1)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Tipe Hari</Label>
+            <Select value={dayType} onValueChange={(v) => setDayType(v as any)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekday">Hari Kerja</SelectItem>
+                <SelectItem value="weekend">Weekend</SelectItem>
+                <SelectItem value="holiday">Hari Libur Nasional</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Hari Kerja / Minggu</Label>
+            <Select value={String(workDays)} onValueChange={(v) => setWorkDays(parseInt(v) as 5 | 6)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 Hari</SelectItem>
+                <SelectItem value="6">6 Hari</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Info dasar */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border bg-background p-3">
+            <p className="text-xs text-muted-foreground">Upah Per Jam (1/173)</p>
+            <p className="text-sm font-semibold mt-1">{formatRupiah(Math.round(hourlyRate))}</p>
+          </div>
+          <div className="rounded-lg border bg-background p-3">
+            <p className="text-xs text-muted-foreground">Tipe</p>
+            <p className="text-sm font-semibold mt-1">{dayTypeLabel[dayType]}</p>
+          </div>
+          <div className="rounded-lg border border-primary bg-background p-3 col-span-2 sm:col-span-1">
+            <p className="text-xs text-muted-foreground">Total Upah Lembur</p>
+            <p className="text-lg font-bold text-primary mt-1">{formatRupiah(result.total)}</p>
+          </div>
+        </div>
+
+        {/* Breakdown table */}
+        {result.breakdown.length > 0 && (
+          <div className="rounded-lg border bg-background overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Jam Ke-</TableHead>
+                  <TableHead className="text-xs">Multiplier</TableHead>
+                  <TableHead className="text-xs">Rumus</TableHead>
+                  <TableHead className="text-xs text-right">Upah</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {result.breakdown.map((row) => (
+                  <TableRow key={row.hour}>
+                    <TableCell className="text-sm font-medium">Jam {row.hour}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">{row.multiplier}x</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      1/173 × {formatCurrency(salary)} × {row.multiplier}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium text-right">
+                      {formatRupiah(row.amount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/50 font-semibold">
+                  <TableCell colSpan={3} className="text-sm">Total</TableCell>
+                  <TableCell className="text-sm text-right text-primary">{formatRupiah(result.total)}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* PP 35 Reference */}
+        <div className="rounded-lg border bg-muted/30 p-3 sm:p-4 space-y-2">
+          <p className="text-xs font-semibold">Referensi PP 35/2021 - Pasal 31:</p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Hari Kerja:</strong> Jam 1 = 1,5x upah/jam, Jam 2+ = 2x upah/jam</p>
+            <p><strong>Hari Istirahat (5 hari kerja/minggu):</strong> Jam 1-8 = 2x, Jam 9 = 3x, Jam 10+ = 4x</p>
+            <p><strong>Hari Istirahat (6 hari kerja/minggu):</strong> Jam 1-7 = 2x, Jam 8 = 3x, Jam 9+ = 4x</p>
+            <p><strong>Upah per jam</strong> = 1/173 × upah sebulan</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

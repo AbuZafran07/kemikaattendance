@@ -811,8 +811,13 @@ const Payroll = () => {
 
       const payrollRecords = emps.map((emp: any) => {
         const basicSalary = Number(emp.basic_salary) || 0;
-        const overtimeHours = overtimeMap.get(emp.id) || 0;
-        const overtimeTotal = calculateOvertimePay(basicSalary, overtimeHours);
+        const overtimeHours = overtimeHoursMap.get(emp.id) || 0;
+        // Calculate overtime pay per PP 35: each day's overtime calculated separately
+        const entries = overtimeEntriesMap.get(emp.id) || [];
+        let overtimeTotal = 0;
+        for (const entry of entries) {
+          overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType).total;
+        }
         const ptkpStatus = emp.ptkp_status || "TK/0";
         const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);

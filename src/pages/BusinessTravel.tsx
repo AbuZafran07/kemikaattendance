@@ -274,6 +274,19 @@ const BusinessTravel = () => {
         description: "Perjalanan dinas ditolak",
       });
 
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (currentUser) {
+        await logApprovalAction({
+          request_type: "business_travel",
+          request_id: selectedRequest.id,
+          action_type: "rejected",
+          performed_by: currentUser.id,
+          target_user_id: selectedRequest.user_id,
+          notes: rejectionReason || "Ditolak oleh admin",
+          details: { destination: selectedRequest.destination },
+        });
+      }
+
       // Send notification to employee
       const notification = NotificationTemplates.businessTravelRejected(
         selectedRequest.destination, 

@@ -19,7 +19,8 @@ import {
   CreditCard,
   BarChart3,
   FileCheck,
-  Megaphone
+  Megaphone,
+  ShieldCheck
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";

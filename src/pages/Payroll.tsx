@@ -703,8 +703,9 @@ const Payroll = () => {
       const holidaysList: string[] = ((holidaySettings?.value as any)?.holidays || []).map((h: any) => h.date);
       const holidaySet = new Set(holidaysList);
 
-      // Calculate overtime per user using PP 35 rates (per-entry day type)
-      const overtimeMap = new Map<string, { totalHours: number; totalPay: number }>();
+      // Store overtime entries per user with day type for PP 35 calculation
+      const overtimeEntriesMap = new Map<string, { hours: number; dayType: 'weekday' | 'weekend' | 'holiday' }[]>();
+      const overtimeHoursMap = new Map<string, number>();
       (overtimeData || []).forEach((ot) => {
         const dateStr = ot.overtime_date;
         let dayType: 'weekday' | 'weekend' | 'holiday' = 'weekday';
@@ -714,14 +715,9 @@ const Payroll = () => {
           dayType = 'weekend';
         }
 
-        const existing = overtimeMap.get(ot.user_id) || { totalHours: 0, totalPay: 0 };
-        existing.totalHours += ot.hours;
-        // Each overtime entry is calculated separately per PP 35 (multiplier resets per day)
-        // We need the employee salary here, but we don't have it yet — store entries for later
         if (!overtimeEntriesMap.has(ot.user_id)) overtimeEntriesMap.set(ot.user_id, []);
         overtimeEntriesMap.get(ot.user_id)!.push({ hours: ot.hours, dayType });
-        existing.totalHours = existing.totalHours; // will recalc below
-        overtimeMap.set(ot.user_id, existing);
+        overtimeHoursMap.set(ot.user_id, (overtimeHoursMap.get(ot.user_id) || 0) + ot.hours);
       });
 
       const allowanceMap = await calculateAttendanceAllowances();

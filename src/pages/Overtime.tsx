@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
 import AdminCreateOvertimeDialog from "@/components/AdminCreateOvertimeDialog";
+import { logApprovalAction } from "@/lib/approvalAuditLog";
 import logger from "@/lib/logger";
 
 const Overtime = () => {

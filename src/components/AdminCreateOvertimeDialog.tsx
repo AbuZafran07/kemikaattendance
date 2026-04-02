@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { logApprovalAction } from "@/lib/approvalAuditLog";
 
 interface AdminCreateOvertimeDialogProps {
   open: boolean;
@@ -60,18 +61,31 @@ const AdminCreateOvertimeDialog = ({ open, onOpenChange, onCreated }: AdminCreat
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("overtime_requests").insert({
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      const { data, error } = await supabase.from("overtime_requests").insert({
         user_id: selectedUserId,
         overtime_date: overtimeDate,
         hours: numHours,
         reason: reason.trim(),
         status: "approved" as any,
-        approved_by: (await supabase.auth.getUser()).data.user?.id,
+        approved_by: currentUser?.id,
         approved_at: new Date().toISOString(),
         approval_notes: "Dibuat langsung oleh Admin",
-      });
+      }).select("id").single();
 
       if (error) throw error;
+
+      if (currentUser && data) {
+        await logApprovalAction({
+          request_type: "overtime",
+          request_id: data.id,
+          action_type: "created_by_admin",
+          performed_by: currentUser.id,
+          target_user_id: selectedUserId,
+          notes: "Dibuat langsung oleh Admin",
+          details: { overtime_date: overtimeDate, hours: numHours },
+        });
+      }
 
       toast({ title: "Berhasil", description: "Lembur karyawan berhasil dibuat" });
       onCreated();

@@ -19,7 +19,8 @@ import {
   CreditCard,
   BarChart3,
   FileCheck,
-  Megaphone
+  Megaphone,
+  ShieldCheck
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ const navigationGroups = [
     label: "LAPORAN",
     items: [
       { name: "Laporan", href: "/dashboard/reports", icon: FileText },
+      { name: "Audit Log", href: "/dashboard/approval-audit-log", icon: ShieldCheck },
       { name: "Notifikasi", href: "/dashboard/notifications", icon: Bell },
     ],
   },

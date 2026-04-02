@@ -41,6 +41,7 @@ import BusinessTravel from "./pages/BusinessTravel";
 import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
 import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
 import AttendanceAuditLog from "./pages/AttendanceAuditLog";
+import ApprovalAuditLog from "./pages/ApprovalAuditLog";
 import Payroll from "./pages/Payroll";
 import LoanManagement from "./pages/LoanManagement";
 import EmployeePayrollHistory from "./pages/EmployeePayrollHistory";
@@ -87,6 +88,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceSettings /></ProtectedRoute>} />
             <Route path="/dashboard/reports/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceReport /></ProtectedRoute>} />
             <Route path="/dashboard/attendance/audit-log" element={<ProtectedRoute requireAdmin><AttendanceAuditLog /></ProtectedRoute>} />
+            <Route path="/dashboard/approval-audit-log" element={<ProtectedRoute requireAdmin><ApprovalAuditLog /></ProtectedRoute>} />
             <Route path="/dashboard/payroll" element={<ProtectedRoute requireAdmin><Payroll /></ProtectedRoute>} />
             <Route path="/dashboard/loans" element={<ProtectedRoute requireAdmin><LoanManagement /></ProtectedRoute>} />
             <Route path="/dashboard/ter-management" element={<ProtectedRoute requireAdmin><TERManagement /></ProtectedRoute>} />

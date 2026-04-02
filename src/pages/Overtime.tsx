@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
 import AdminCreateOvertimeDialog from "@/components/AdminCreateOvertimeDialog";
+import { logApprovalAction } from "@/lib/approvalAuditLog";
 import logger from "@/lib/logger";
 
 const Overtime = () => {
@@ -154,7 +155,18 @@ const Overtime = () => {
         description: "Permintaan lembur telah disetujui",
       });
       
-      if (request) {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (request && currentUser) {
+        await logApprovalAction({
+          request_type: "overtime",
+          request_id: selectedRequestId,
+          action_type: "approved",
+          performed_by: currentUser.id,
+          target_user_id: request.user_id,
+          notes: reason || null,
+          details: { overtime_date: request.overtime_date, hours: request.hours },
+        });
+
         const date = formatDateForNotification(request.overtime_date);
         const notification = NotificationTemplates.overtimeRequestApproved(date, request.hours);
         notifyEmployee(request.user_id, notification.title, notification.body, { type: 'overtime_approved' });
@@ -188,7 +200,18 @@ const Overtime = () => {
         description: "Permintaan lembur telah ditolak",
       });
       
-      if (request) {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (request && currentUser) {
+        await logApprovalAction({
+          request_type: "overtime",
+          request_id: selectedRequestId,
+          action_type: "rejected",
+          performed_by: currentUser.id,
+          target_user_id: request.user_id,
+          notes: reason,
+          details: { overtime_date: request.overtime_date, hours: request.hours },
+        });
+
         const date = formatDateForNotification(request.overtime_date);
         const notification = NotificationTemplates.overtimeRequestRejected(date);
         notifyEmployee(request.user_id, notification.title, notification.body, { type: 'overtime_rejected' });

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { notifyEmployee, NotificationTemplates, formatLeaveTypeForNotification, formatDateForNotification } from "@/lib/notifications";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
 import AdminCreateLeaveDialog from "@/components/AdminCreateLeaveDialog";
+import { logApprovalAction } from "@/lib/approvalAuditLog";
 import logger from "@/lib/logger";
 
 const Leave = () => {
@@ -147,7 +148,18 @@ const Leave = () => {
         description: "Permintaan cuti telah disetujui",
       });
       
-      if (request) {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (request && currentUser) {
+        await logApprovalAction({
+          request_type: "leave",
+          request_id: selectedRequestId,
+          action_type: "approved",
+          performed_by: currentUser.id,
+          target_user_id: request.user_id,
+          notes: reason || null,
+          details: { leave_type: request.leave_type, start_date: request.start_date, end_date: request.end_date },
+        });
+
         const leaveType = formatLeaveTypeForNotification(request.leave_type);
         const startDate = formatDateForNotification(request.start_date);
         const endDate = formatDateForNotification(request.end_date);
@@ -183,7 +195,18 @@ const Leave = () => {
         description: "Permintaan cuti telah ditolak",
       });
       
-      if (request) {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (request && currentUser) {
+        await logApprovalAction({
+          request_type: "leave",
+          request_id: selectedRequestId,
+          action_type: "rejected",
+          performed_by: currentUser.id,
+          target_user_id: request.user_id,
+          notes: reason,
+          details: { leave_type: request.leave_type },
+        });
+
         const leaveType = formatLeaveTypeForNotification(request.leave_type);
         const notification = NotificationTemplates.leaveRequestRejected(leaveType, reason);
         notifyEmployee(request.user_id, notification.title, notification.body, { type: 'leave_rejected' });

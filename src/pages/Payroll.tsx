@@ -692,13 +692,36 @@ const Payroll = () => {
       const endDate = new Date(selectedYear, selectedMonth, 0);
       const endDateStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
 
+      // Fetch overtime with date for PP 35 day-type calculation
       const { data: overtimeData } = await supabase
-        .from("overtime_requests").select("user_id, hours")
+        .from("overtime_requests").select("user_id, hours, overtime_date")
         .eq("status", "approved").gte("overtime_date", startDate).lte("overtime_date", endDateStr);
 
-      const overtimeMap = new Map<string, number>();
+      // Fetch holidays for day-type detection
+      const { data: holidaySettings } = await supabase
+        .from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle();
+      const holidaysList: string[] = ((holidaySettings?.value as any)?.holidays || []).map((h: any) => h.date);
+      const holidaySet = new Set(holidaysList);
+
+      // Calculate overtime per user using PP 35 rates (per-entry day type)
+      const overtimeMap = new Map<string, { totalHours: number; totalPay: number }>();
       (overtimeData || []).forEach((ot) => {
-        overtimeMap.set(ot.user_id, (overtimeMap.get(ot.user_id) || 0) + ot.hours);
+        const dateStr = ot.overtime_date;
+        let dayType: 'weekday' | 'weekend' | 'holiday' = 'weekday';
+        if (holidaySet.has(dateStr)) {
+          dayType = 'holiday';
+        } else if (isWeekend(dateStr)) {
+          dayType = 'weekend';
+        }
+
+        const existing = overtimeMap.get(ot.user_id) || { totalHours: 0, totalPay: 0 };
+        existing.totalHours += ot.hours;
+        // Each overtime entry is calculated separately per PP 35 (multiplier resets per day)
+        // We need the employee salary here, but we don't have it yet — store entries for later
+        if (!overtimeEntriesMap.has(ot.user_id)) overtimeEntriesMap.set(ot.user_id, []);
+        overtimeEntriesMap.get(ot.user_id)!.push({ hours: ot.hours, dayType });
+        existing.totalHours = existing.totalHours; // will recalc below
+        overtimeMap.set(ot.user_id, existing);
       });
 
       const allowanceMap = await calculateAttendanceAllowances();

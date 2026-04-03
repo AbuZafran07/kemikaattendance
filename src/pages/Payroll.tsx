@@ -1880,7 +1880,7 @@ const Payroll = () => {
               {employees
                 .filter(emp => emp.full_name.toLowerCase().includes(incomeSearch.toLowerCase()))
                 .map((emp) => {
-                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
                   const totalInc = Object.values(inc).reduce((s, v) => s + (Number(v) || 0), 0);
                   const hasValue = totalInc > 0;
                   const isExpanded = selectedIncomeEmp === emp.id;

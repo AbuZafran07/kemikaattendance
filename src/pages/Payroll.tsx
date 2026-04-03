@@ -497,7 +497,7 @@ const Payroll = () => {
     const additions = new Map<string, IncomeAddition>(incomeAdditions);
     for (const emp of emps || []) {
       if (!additions.has(emp.id)) {
-        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 });
+        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 });
       }
     }
     setIncomeAdditions(additions);

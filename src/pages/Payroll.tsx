@@ -400,6 +400,14 @@ const Payroll = () => {
       if (!attByUser.has(r.user_id)) attByUser.set(r.user_id, { present: 0, lateHours: 0, earlyHours: 0 });
       const u = attByUser.get(r.user_id)!;
 
+      // Skip attendance on holidays — not counted for allowance
+      if (r.check_in_time) {
+        const attendanceDateStr = format(new Date(r.check_in_time), "yyyy-MM-dd");
+        if (holidaySet.has(attendanceDateStr)) {
+          continue;
+        }
+      }
+
       // Only count as present if BOTH check_in and check_out exist
       const hasCheckIn = !!r.check_in_time;
       const hasCheckOut = !!r.check_out_time;

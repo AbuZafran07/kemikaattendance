@@ -235,6 +235,15 @@ export default function AttendanceAllowanceReport() {
         }
         const userAtt = attendanceByUser.get(userId)!;
 
+        // Skip attendance on holidays — holidays are not working days,
+        // so attendance on those days should NOT count for allowance
+        if (record.check_in_time) {
+          const attendanceDateStr = format(new Date(record.check_in_time), "yyyy-MM-dd");
+          if (holidayDates.has(attendanceDateStr)) {
+            continue;
+          }
+        }
+
         // Count as present only if BOTH check_in and check_out are filled
         // If either is missing, the day's allowance value is 0
         const hasCheckIn = !!record.check_in_time;

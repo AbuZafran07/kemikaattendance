@@ -146,6 +146,25 @@ export default function AttendanceAllowanceReport() {
       });
       const totalWorkingDays = workingDays.length;
 
+      // Calculate period info for display
+      const weekendDays = allDays.filter((d) => isWeekend(format(d, "yyyy-MM-dd"))).length;
+      const holidaysInPeriod = allDays.filter((d) => {
+        const ds = format(d, "yyyy-MM-dd");
+        return holidayDates.has(ds) && !isWeekend(ds);
+      });
+      const holidayNames = holidaysInPeriod.map((d) => {
+        const ds = format(d, "yyyy-MM-dd");
+        const h = holidays.find((hol) => hol.date === ds);
+        return h ? `${h.name} (${format(d, "dd MMM")})` : format(d, "dd MMM");
+      });
+      setPeriodInfo({
+        totalDays: allDays.length,
+        weekendDays,
+        holidayDays: holidaysInPeriod.length,
+        holidayNames,
+        workingDays: totalWorkingDays,
+      });
+
       // Fetch work hours for late calculation
       const { data: whData } = await supabase.rpc("get_work_hours");
       const whParsed = whData as Record<string, any> | null;

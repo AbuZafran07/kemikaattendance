@@ -513,6 +513,31 @@ export default function AttendanceAllowanceReport() {
         {/* Results */}
         {results.length > 0 && (
           <>
+            {/* Period Info */}
+            {periodInfo && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">Total Hari: {periodInfo.totalDays}</Badge>
+                      <Badge variant="outline">Weekend: {periodInfo.weekendDays}</Badge>
+                      <Badge variant="secondary">Hari Libur: {periodInfo.holidayDays}</Badge>
+                      <Badge className="bg-primary text-primary-foreground">Hari Kerja: {periodInfo.workingDays}</Badge>
+                    </div>
+                  </div>
+                  {periodInfo.holidayDays > 0 && (
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      <span className="font-medium">Hari libur dalam periode:</span>{" "}
+                      {periodInfo.holidayNames.join(", ")}
+                    </div>
+                  )}
+                  {periodInfo.holidayDays === 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">Tidak ada hari libur nasional dalam periode ini.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Summary */}
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-4">
               <Card>

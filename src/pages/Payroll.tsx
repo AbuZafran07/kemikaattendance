@@ -815,12 +815,17 @@ const Payroll = () => {
 
       const payrollRecords = emps.map((emp: any) => {
         const basicSalary = Number(emp.basic_salary) || 0;
+        const inc = incomeAdditions.get(emp.id);
         const overtimeHours = overtimeHoursMap.get(emp.id) || 0;
-        // Calculate overtime pay per PP 35: each day's overtime calculated separately
-        const entries = overtimeEntriesMap.get(emp.id) || [];
+        // Use manual overtime override if provided, otherwise calculate per PP 35
         let overtimeTotal = 0;
-        for (const entry of entries) {
-          overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
+        if (inc?.overtime_override && inc.overtime_override > 0) {
+          overtimeTotal = inc.overtime_override;
+        } else {
+          const entries = overtimeEntriesMap.get(emp.id) || [];
+          for (const entry of entries) {
+            overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
+          }
         }
         const ptkpStatus = emp.ptkp_status || "TK/0";
         const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;

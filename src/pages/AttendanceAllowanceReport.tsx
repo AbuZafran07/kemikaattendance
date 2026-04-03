@@ -74,6 +74,7 @@ export default function AttendanceAllowanceReport() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [results, setResults] = useState<EmployeeAllowance[]>([]);
   const [workHours, setWorkHours] = useState<any>(null);
+  const [periodInfo, setPeriodInfo] = useState<{ totalDays: number; weekendDays: number; holidayDays: number; holidayNames: string[]; workingDays: number } | null>(null);
 
   useEffect(() => {
     fetchConfig();

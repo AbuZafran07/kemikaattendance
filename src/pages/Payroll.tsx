@@ -815,8 +815,10 @@ const Payroll = () => {
 
       const payrollRecords = emps.map((emp: any) => {
         const basicSalary = Number(emp.basic_salary) || 0;
-        const inc = incomeAdditions.get(emp.id);
         const overtimeHours = overtimeHoursMap.get(emp.id) || 0;
+        const ded = deductionOverrides.get(emp.id);
+        const inc = incomeAdditions.get(emp.id);
+        const loanDed = loanDeductionMap.get(emp.id);
         // Use manual overtime override if provided, otherwise calculate per PP 35
         let overtimeTotal = 0;
         if (inc?.overtime_override && inc.overtime_override > 0) {
@@ -827,11 +829,6 @@ const Payroll = () => {
             overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
           }
         }
-        const ptkpStatus = emp.ptkp_status || "TK/0";
-        const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;
-        const ded = deductionOverrides.get(emp.id);
-        const inc = incomeAdditions.get(emp.id);
-        const loanDed = loanDeductionMap.get(emp.id);
 
         // Use manual override for attendance allowance if provided, otherwise auto-calculated
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;

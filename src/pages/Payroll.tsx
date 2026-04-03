@@ -829,6 +829,8 @@ const Payroll = () => {
             overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
           }
         }
+        const ptkpStatus = emp.ptkp_status || "TK/0";
+        const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;
 
         // Use manual override for attendance allowance if provided, otherwise auto-calculated
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;

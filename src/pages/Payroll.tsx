@@ -109,6 +109,7 @@ interface IncomeAddition {
   bonus_lainnya: number;
   pengembalian_employee: number;
   insentif_penjualan: number;
+  overtime_override: number;
 }
 
 const MONTHS = [

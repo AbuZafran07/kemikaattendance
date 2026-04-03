@@ -135,10 +135,11 @@ const PayrollOverrideHistory = () => {
           bonus_lainnya: editItem.bonus_lainnya,
           pengembalian_employee: editItem.pengembalian_employee,
           insentif_penjualan: editItem.insentif_penjualan,
+          overtime_override: editItem.overtime_override,
           loan_deduction: editItem.loan_deduction,
           other_deduction: editItem.other_deduction,
           deduction_notes: editItem.deduction_notes || "",
-        })
+        } as any)
         .eq("id", editItem.id);
 
       if (error) throw error;

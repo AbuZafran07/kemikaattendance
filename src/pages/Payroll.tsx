@@ -224,7 +224,7 @@ const Payroll = () => {
       }
 
       const records = Array.from(allUserIds).map(userId => {
-        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
         const ded = deductionOverrides.get(userId) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
         // Only save if there's any non-zero value
         const hasData = Object.values(inc).some(v => Number(v) > 0) || ded.loan_deduction > 0 || ded.other_deduction > 0 || ded.deduction_notes.trim().length > 0;

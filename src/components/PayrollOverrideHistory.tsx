@@ -349,6 +349,7 @@ const PayrollOverrideHistory = () => {
                     ["bonus_lainnya", "Bonus Lainnya"],
                     ["pengembalian_employee", "Pengembalian"],
                     ["insentif_penjualan", "Insentif Penjualan"],
+                    ["overtime_override", "Override Lembur"],
                   ] as const).map(([field, label]) => (
                     <div key={field}>
                       <Label className="text-xs">{label}</Label>

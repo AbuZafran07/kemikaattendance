@@ -266,7 +266,7 @@ const PayrollOverrideHistory = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((item, idx) => {
-                    const totalIncome = item.tunjangan_kehadiran + item.tunjangan_kesehatan + item.bonus_tahunan + item.thr + item.insentif_kinerja + item.bonus_lainnya + item.pengembalian_employee + item.insentif_penjualan;
+                    const totalIncome = item.tunjangan_kehadiran + item.tunjangan_kesehatan + item.bonus_tahunan + item.thr + item.insentif_kinerja + item.bonus_lainnya + item.pengembalian_employee + item.insentif_penjualan + item.overtime_override;
                     const totalDeduction = item.loan_deduction + item.other_deduction;
                     return (
                       <TableRow key={item.id}>

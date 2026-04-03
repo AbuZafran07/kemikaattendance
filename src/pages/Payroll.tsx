@@ -622,7 +622,7 @@ const Payroll = () => {
           const current = next.get(profile.id) || {
             tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
             thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-            pengembalian_employee: 0, insentif_penjualan: 0,
+            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
           };
           next.set(profile.id, { ...current, thr: thrAmount });
           updatedCount++;

@@ -196,6 +196,7 @@ const Payroll = () => {
           bonus_lainnya: Number(row.bonus_lainnya) || 0,
           pengembalian_employee: Number(row.pengembalian_employee) || 0,
           insentif_penjualan: Number(row.insentif_penjualan) || 0,
+          overtime_override: Number((row as any).overtime_override) || 0,
         });
         newDeductions.set(row.user_id, {
           loan_deduction: Number(row.loan_deduction) || 0,

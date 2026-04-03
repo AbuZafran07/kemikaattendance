@@ -108,6 +108,7 @@ const PayrollOverrideHistory = () => {
         bonus_lainnya: Number(d.bonus_lainnya) || 0,
         pengembalian_employee: Number(d.pengembalian_employee) || 0,
         insentif_penjualan: Number(d.insentif_penjualan) || 0,
+        overtime_override: Number((d as any).overtime_override) || 0,
         loan_deduction: Number(d.loan_deduction) || 0,
         other_deduction: Number(d.other_deduction) || 0,
         employee_name: profileMap.get(d.user_id) || "Unknown",

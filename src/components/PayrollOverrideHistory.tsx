@@ -285,6 +285,7 @@ const PayrollOverrideHistory = () => {
                                 {item.bonus_lainnya > 0 && <Badge variant="outline" className="text-[9px]">Lainnya</Badge>}
                                 {item.pengembalian_employee > 0 && <Badge variant="outline" className="text-[9px]">Pengembalian</Badge>}
                                 {item.insentif_penjualan > 0 && <Badge variant="outline" className="text-[9px]">Penjualan</Badge>}
+                                {item.overtime_override > 0 && <Badge variant="outline" className="text-[9px]">Lembur</Badge>}
                               </div>
                             </div>
                           ) : (

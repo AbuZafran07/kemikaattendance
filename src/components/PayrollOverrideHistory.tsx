@@ -51,6 +51,7 @@ interface OverrideRow {
   bonus_lainnya: number;
   pengembalian_employee: number;
   insentif_penjualan: number;
+  overtime_override: number;
   loan_deduction: number;
   other_deduction: number;
   deduction_notes: string | null;
@@ -107,6 +108,7 @@ const PayrollOverrideHistory = () => {
         bonus_lainnya: Number(d.bonus_lainnya) || 0,
         pengembalian_employee: Number(d.pengembalian_employee) || 0,
         insentif_penjualan: Number(d.insentif_penjualan) || 0,
+        overtime_override: Number((d as any).overtime_override) || 0,
         loan_deduction: Number(d.loan_deduction) || 0,
         other_deduction: Number(d.other_deduction) || 0,
         employee_name: profileMap.get(d.user_id) || "Unknown",
@@ -133,10 +135,11 @@ const PayrollOverrideHistory = () => {
           bonus_lainnya: editItem.bonus_lainnya,
           pengembalian_employee: editItem.pengembalian_employee,
           insentif_penjualan: editItem.insentif_penjualan,
+          overtime_override: editItem.overtime_override,
           loan_deduction: editItem.loan_deduction,
           other_deduction: editItem.other_deduction,
           deduction_notes: editItem.deduction_notes || "",
-        })
+        } as any)
         .eq("id", editItem.id);
 
       if (error) throw error;
@@ -178,7 +181,8 @@ const PayrollOverrideHistory = () => {
       "Bonus Lainnya": item.bonus_lainnya,
       "Pengembalian": item.pengembalian_employee,
       "Insentif Penjualan": item.insentif_penjualan,
-      "Total Tambahan": item.tunjangan_kehadiran + item.tunjangan_kesehatan + item.bonus_tahunan + item.thr + item.insentif_kinerja + item.bonus_lainnya + item.pengembalian_employee + item.insentif_penjualan,
+      "Total Tambahan": item.tunjangan_kehadiran + item.tunjangan_kesehatan + item.bonus_tahunan + item.thr + item.insentif_kinerja + item.bonus_lainnya + item.pengembalian_employee + item.insentif_penjualan + item.overtime_override,
+      "Override Lembur": item.overtime_override,
       "Pot. Pinjaman": item.loan_deduction,
       "Pot. Lainnya": item.other_deduction,
       "Total Potongan": item.loan_deduction + item.other_deduction,
@@ -263,7 +267,7 @@ const PayrollOverrideHistory = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((item, idx) => {
-                    const totalIncome = item.tunjangan_kehadiran + item.tunjangan_kesehatan + item.bonus_tahunan + item.thr + item.insentif_kinerja + item.bonus_lainnya + item.pengembalian_employee + item.insentif_penjualan;
+                    const totalIncome = item.tunjangan_kehadiran + item.tunjangan_kesehatan + item.bonus_tahunan + item.thr + item.insentif_kinerja + item.bonus_lainnya + item.pengembalian_employee + item.insentif_penjualan + item.overtime_override;
                     const totalDeduction = item.loan_deduction + item.other_deduction;
                     return (
                       <TableRow key={item.id}>
@@ -282,6 +286,7 @@ const PayrollOverrideHistory = () => {
                                 {item.bonus_lainnya > 0 && <Badge variant="outline" className="text-[9px]">Lainnya</Badge>}
                                 {item.pengembalian_employee > 0 && <Badge variant="outline" className="text-[9px]">Pengembalian</Badge>}
                                 {item.insentif_penjualan > 0 && <Badge variant="outline" className="text-[9px]">Penjualan</Badge>}
+                                {item.overtime_override > 0 && <Badge variant="outline" className="text-[9px]">Lembur</Badge>}
                               </div>
                             </div>
                           ) : (
@@ -345,6 +350,7 @@ const PayrollOverrideHistory = () => {
                     ["bonus_lainnya", "Bonus Lainnya"],
                     ["pengembalian_employee", "Pengembalian"],
                     ["insentif_penjualan", "Insentif Penjualan"],
+                    ["overtime_override", "Override Lembur"],
                   ] as const).map(([field, label]) => (
                     <div key={field}>
                       <Label className="text-xs">{label}</Label>

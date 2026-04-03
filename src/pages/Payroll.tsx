@@ -109,6 +109,7 @@ interface IncomeAddition {
   bonus_lainnya: number;
   pengembalian_employee: number;
   insentif_penjualan: number;
+  overtime_override: number;
 }
 
 const MONTHS = [
@@ -195,6 +196,7 @@ const Payroll = () => {
           bonus_lainnya: Number(row.bonus_lainnya) || 0,
           pengembalian_employee: Number(row.pengembalian_employee) || 0,
           insentif_penjualan: Number(row.insentif_penjualan) || 0,
+          overtime_override: Number((row as any).overtime_override) || 0,
         });
         newDeductions.set(row.user_id, {
           loan_deduction: Number(row.loan_deduction) || 0,
@@ -222,7 +224,7 @@ const Payroll = () => {
       }
 
       const records = Array.from(allUserIds).map(userId => {
-        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
         const ded = deductionOverrides.get(userId) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
         // Only save if there's any non-zero value
         const hasData = Object.values(inc).some(v => Number(v) > 0) || ded.loan_deduction > 0 || ded.other_deduction > 0 || ded.deduction_notes.trim().length > 0;
@@ -495,7 +497,7 @@ const Payroll = () => {
     const additions = new Map<string, IncomeAddition>(incomeAdditions);
     for (const emp of emps || []) {
       if (!additions.has(emp.id)) {
-        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 });
+        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 });
       }
     }
     setIncomeAdditions(additions);
@@ -505,7 +507,7 @@ const Payroll = () => {
   const updateIncome = (userId: string, field: keyof IncomeAddition, value: string) => {
     setIncomeAdditions(prev => {
       const next = new Map(prev);
-      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
       next.set(userId, { ...current, [field]: Number(value) || 0 });
       return next;
     });
@@ -620,7 +622,7 @@ const Payroll = () => {
           const current = next.get(profile.id) || {
             tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
             thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-            pengembalian_employee: 0, insentif_penjualan: 0,
+            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
           };
           next.set(profile.id, { ...current, thr: thrAmount });
           updatedCount++;
@@ -814,17 +816,21 @@ const Payroll = () => {
       const payrollRecords = emps.map((emp: any) => {
         const basicSalary = Number(emp.basic_salary) || 0;
         const overtimeHours = overtimeHoursMap.get(emp.id) || 0;
-        // Calculate overtime pay per PP 35: each day's overtime calculated separately
-        const entries = overtimeEntriesMap.get(emp.id) || [];
-        let overtimeTotal = 0;
-        for (const entry of entries) {
-          overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
-        }
-        const ptkpStatus = emp.ptkp_status || "TK/0";
-        const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);
         const inc = incomeAdditions.get(emp.id);
         const loanDed = loanDeductionMap.get(emp.id);
+        // Use manual overtime override if provided, otherwise calculate per PP 35
+        let overtimeTotal = 0;
+        if (inc?.overtime_override && inc.overtime_override > 0) {
+          overtimeTotal = inc.overtime_override;
+        } else {
+          const entries = overtimeEntriesMap.get(emp.id) || [];
+          for (const entry of entries) {
+            overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
+          }
+        }
+        const ptkpStatus = emp.ptkp_status || "TK/0";
+        const autoAttendanceAllowance = allowanceMap.get(emp.id) || 0;
 
         // Use manual override for attendance allowance if provided, otherwise auto-calculated
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;
@@ -1878,7 +1884,7 @@ const Payroll = () => {
               {employees
                 .filter(emp => emp.full_name.toLowerCase().includes(incomeSearch.toLowerCase()))
                 .map((emp) => {
-                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0 };
+                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
                   const totalInc = Object.values(inc).reduce((s, v) => s + (Number(v) || 0), 0);
                   const hasValue = totalInc > 0;
                   const isExpanded = selectedIncomeEmp === emp.id;
@@ -1943,6 +1949,12 @@ const Payroll = () => {
                               <Label className="text-xs">Insentif Penjualan</Label>
                               <Input type="number" value={inc.insentif_penjualan || ""} placeholder="0"
                                 onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Override Lembur</Label>
+                              <Input type="number" value={inc.overtime_override || ""} placeholder="0 (otomatis)"
+                                onChange={(e) => updateIncome(emp.id, "overtime_override", e.target.value)} />
+                              <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis PP 35</span>
                             </div>
                           </div>
                         </div>

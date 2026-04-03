@@ -74,6 +74,7 @@ export default function AttendanceAllowanceReport() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [results, setResults] = useState<EmployeeAllowance[]>([]);
   const [workHours, setWorkHours] = useState<any>(null);
+  const [periodInfo, setPeriodInfo] = useState<{ totalDays: number; weekendDays: number; holidayDays: number; holidayNames: string[]; workingDays: number } | null>(null);
 
   useEffect(() => {
     fetchConfig();
@@ -144,6 +145,25 @@ export default function AttendanceAllowanceReport() {
         return !isWeekend(dateStr) && !holidayDates.has(dateStr);
       });
       const totalWorkingDays = workingDays.length;
+
+      // Calculate period info for display
+      const weekendDays = allDays.filter((d) => isWeekend(format(d, "yyyy-MM-dd"))).length;
+      const holidaysInPeriod = allDays.filter((d) => {
+        const ds = format(d, "yyyy-MM-dd");
+        return holidayDates.has(ds) && !isWeekend(ds);
+      });
+      const holidayNames = holidaysInPeriod.map((d) => {
+        const ds = format(d, "yyyy-MM-dd");
+        const h = holidays.find((hol) => hol.date === ds);
+        return h ? `${h.name} (${format(d, "dd MMM")})` : format(d, "dd MMM");
+      });
+      setPeriodInfo({
+        totalDays: allDays.length,
+        weekendDays,
+        holidayDays: holidaysInPeriod.length,
+        holidayNames,
+        workingDays: totalWorkingDays,
+      });
 
       // Fetch work hours for late calculation
       const { data: whData } = await supabase.rpc("get_work_hours");
@@ -493,6 +513,31 @@ export default function AttendanceAllowanceReport() {
         {/* Results */}
         {results.length > 0 && (
           <>
+            {/* Period Info */}
+            {periodInfo && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">Total Hari: {periodInfo.totalDays}</Badge>
+                      <Badge variant="outline">Weekend: {periodInfo.weekendDays}</Badge>
+                      <Badge variant="secondary">Hari Libur: {periodInfo.holidayDays}</Badge>
+                      <Badge className="bg-primary text-primary-foreground">Hari Kerja: {periodInfo.workingDays}</Badge>
+                    </div>
+                  </div>
+                  {periodInfo.holidayDays > 0 && (
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      <span className="font-medium">Hari libur dalam periode:</span>{" "}
+                      {periodInfo.holidayNames.join(", ")}
+                    </div>
+                  )}
+                  {periodInfo.holidayDays === 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">Tidak ada hari libur nasional dalam periode ini.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Summary */}
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-4">
               <Card>

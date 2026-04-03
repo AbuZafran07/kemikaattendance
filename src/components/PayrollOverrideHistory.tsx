@@ -51,6 +51,7 @@ interface OverrideRow {
   bonus_lainnya: number;
   pengembalian_employee: number;
   insentif_penjualan: number;
+  overtime_override: number;
   loan_deduction: number;
   other_deduction: number;
   deduction_notes: string | null;

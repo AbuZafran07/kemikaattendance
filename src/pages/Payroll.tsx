@@ -1950,6 +1950,12 @@ const Payroll = () => {
                               <Input type="number" value={inc.insentif_penjualan || ""} placeholder="0"
                                 onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
                             </div>
+                            <div>
+                              <Label className="text-xs">Override Lembur</Label>
+                              <Input type="number" value={inc.overtime_override || ""} placeholder="0 (otomatis)"
+                                onChange={(e) => updateIncome(emp.id, "overtime_override", e.target.value)} />
+                              <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis PP 35</span>
+                            </div>
                           </div>
                         </div>
                       )}

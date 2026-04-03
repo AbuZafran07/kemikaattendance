@@ -672,6 +672,7 @@ export type Database = {
           insentif_penjualan: number
           loan_deduction: number
           other_deduction: number
+          overtime_override: number
           pengembalian_employee: number
           period_month: number
           period_year: number
@@ -691,6 +692,7 @@ export type Database = {
           insentif_penjualan?: number
           loan_deduction?: number
           other_deduction?: number
+          overtime_override?: number
           pengembalian_employee?: number
           period_month: number
           period_year: number
@@ -710,6 +712,7 @@ export type Database = {
           insentif_penjualan?: number
           loan_deduction?: number
           other_deduction?: number
+          overtime_override?: number
           pengembalian_employee?: number
           period_month?: number
           period_year?: number

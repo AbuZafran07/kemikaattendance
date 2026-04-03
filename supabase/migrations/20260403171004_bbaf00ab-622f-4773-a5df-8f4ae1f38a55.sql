@@ -1,0 +1,1 @@
+ALTER TABLE public.payroll_overrides ADD COLUMN overtime_override numeric NOT NULL DEFAULT 0;

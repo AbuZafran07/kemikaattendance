@@ -106,6 +106,9 @@ const Employees = () => {
     bank_name: "",
     bank_account_number: "",
     join_date: "",
+    leave_active: true,
+    annual_leave_quota: "12",
+    remaining_leave: "12",
   });
 
   useEffect(() => {
@@ -358,8 +361,10 @@ const Employees = () => {
           tunjangan_komunikasi: (result.data.tunjangan_komunikasi ?? (Number(editFormData.tunjangan_komunikasi) || 0)),
           tunjangan_jabatan: (result.data.tunjangan_jabatan ?? (Number(editFormData.tunjangan_jabatan) || 0)),
           tunjangan_operasional: (result.data.tunjangan_operasional ?? (Number(editFormData.tunjangan_operasional) || 0)),
-          bpjs_kesehatan_enabled: editFormData.bpjs_kesehatan_enabled,
+           bpjs_kesehatan_enabled: editFormData.bpjs_kesehatan_enabled,
           contract_type: editFormData.contract_type,
+          annual_leave_quota: editFormData.leave_active ? (Number(editFormData.annual_leave_quota) || 12) : 0,
+          remaining_leave: editFormData.leave_active ? (Number(editFormData.remaining_leave) || 0) : 0,
           npwp: result.data.npwp || null,
           bank_name: result.data.bank_name || null,
           bank_account_number: result.data.bank_account_number || null,
@@ -412,6 +417,9 @@ const Employees = () => {
       bank_name: employee.bank_name || "",
       bank_account_number: employee.bank_account_number || "",
       join_date: employee.join_date || "",
+      leave_active: (employee.annual_leave_quota ?? 12) > 0,
+      annual_leave_quota: String(employee.annual_leave_quota ?? 12),
+      remaining_leave: String(employee.remaining_leave ?? 12),
     });
     setPhotoPreview(employee.photo_url);
     setPhotoFile(null);
@@ -458,6 +466,9 @@ const Employees = () => {
       bank_name: "",
       bank_account_number: "",
       join_date: "",
+      leave_active: true,
+      annual_leave_quota: "12",
+      remaining_leave: "12",
     });
     setPhotoFile(null);
     setPhotoPreview(null);
@@ -1040,6 +1051,48 @@ const Employees = () => {
                     <Badge variant="destructive" className="text-xs">Tidak Ikut</Badge>
                   )}
                 </div>
+
+                {/* Cuti Section */}
+                <div className="col-span-2 border-t border-border pt-3 mt-2">
+                  <p className="text-sm font-semibold text-muted-foreground mb-3">📅 Pengaturan Cuti</p>
+                </div>
+                <div className="col-span-2 flex items-center space-x-2 mb-2">
+                  <Checkbox
+                    id="edit_leave_active"
+                    checked={editFormData.leave_active}
+                    onCheckedChange={(checked) => setEditFormData({ ...editFormData, leave_active: !!checked })}
+                  />
+                  <Label htmlFor="edit_leave_active" className="text-sm font-normal cursor-pointer">
+                    Cuti Aktif
+                  </Label>
+                  {!editFormData.leave_active && (
+                    <Badge variant="destructive" className="text-xs">Belum Dapat Cuti</Badge>
+                  )}
+                </div>
+                {editFormData.leave_active && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_annual_leave_quota">Kuota Cuti Tahunan</Label>
+                      <Input
+                        id="edit_annual_leave_quota"
+                        type="number"
+                        min="0"
+                        value={editFormData.annual_leave_quota}
+                        onChange={(e) => setEditFormData({ ...editFormData, annual_leave_quota: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_remaining_leave">Sisa Cuti</Label>
+                      <Input
+                        id="edit_remaining_leave"
+                        type="number"
+                        min="0"
+                        value={editFormData.remaining_leave}
+                        onChange={(e) => setEditFormData({ ...editFormData, remaining_leave: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="edit_tunjangan_komunikasi">Tunjangan Komunikasi (Rp)</Label>
                   <Input

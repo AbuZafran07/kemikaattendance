@@ -35,6 +35,8 @@ const LeaveRequest = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
+  const isLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
+
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
@@ -276,6 +278,15 @@ const LeaveRequest = () => {
             <CardDescription>Isi formulir pengajuan cuti</CardDescription>
           </CardHeader>
           <CardContent>
+            {isLeaveInactive ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Fitur cuti Anda belum diaktifkan. Silakan hubungi HRGA untuk mengaktifkan hak cuti Anda.
+                </AlertDescription>
+              </Alert>
+            ) : (
+            <>
             {isPolicyLoading ? (
               <p className="text-muted-foreground">Memuat kebijakan...</p>
             ) : (
@@ -402,6 +413,8 @@ const LeaveRequest = () => {
                   </form>
                 </Form>
               </>
+            )}
+            </>
             )}
           </CardContent>
         </Card>

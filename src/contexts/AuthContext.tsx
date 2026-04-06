@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import logger from '@/lib/logger';
 
 interface AuthContextType {
@@ -77,6 +78,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserRole(null);
         setProfile(null);
         setLoading(false);
+        toast.error('Akun Anda tidak aktif', {
+          description: 'Anda telah dikeluarkan dari sistem karena akun Anda dinonaktifkan. Silakan hubungi HRGA.',
+          duration: 8000,
+        });
         navigate('/login');
         return;
       }

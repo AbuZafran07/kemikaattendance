@@ -414,6 +414,7 @@ const LeaveRequest = () => {
                 </Form>
               </>
             )}
+            </>
             )}
           </CardContent>
         </Card>

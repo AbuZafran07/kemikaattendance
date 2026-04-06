@@ -7,7 +7,7 @@ import DepartmentBreakdown from "@/components/dashboard/DepartmentBreakdown";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import PendingRequests from "@/components/dashboard/PendingRequests";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
-import { format, subDays } from "date-fns";
+import { format, subDays, isWeekend, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import logger from "@/lib/logger";

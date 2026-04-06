@@ -6,14 +6,6 @@ function isDevelopment(): boolean {
   return Deno.env.get('ENVIRONMENT') !== 'production';
 }
 
-// Production domains that should always be allowed
-const PRODUCTION_ORIGINS = [
-  'https://lovable.dev',
-  'https://preview--psaqqtfitxevwkgzupnp.lovable.app',
-  'https://psaqqtfitxevwkgzupnp.lovable.app',
-  'https://kemikaattendance.lovable.app',
-];
-
 // Localhost origins only allowed in development
 const DEVELOPMENT_ORIGINS = [
   'http://localhost:3000',
@@ -27,18 +19,8 @@ export function getAllowedOrigin(requestOrigin: string | null): string {
     return '';
   }
 
-  // Always allow production origins
-  if (PRODUCTION_ORIGINS.includes(requestOrigin)) {
-    return requestOrigin;
-  }
-  
-  // Allow any lovable.app subdomain
-  if (requestOrigin.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/)) {
-    return requestOrigin;
-  }
-
-  // Allow preview origins on lovableproject.com
-  if (requestOrigin.match(/^https:\/\/[a-z0-9-]+\.lovableproject\.com$/)) {
+  // Allow any secure production origin, including custom company domains
+  if (requestOrigin.startsWith('https://')) {
     return requestOrigin;
   }
   

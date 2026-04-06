@@ -1,25 +1,28 @@
 import { Home, Plane, Bell, User, LayoutGrid } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useNotificationBadge } from "@/hooks/useNotificationBadge";
 
 interface NavItem {
   label: string;
   icon: React.ElementType;
   path: string;
   isCenter?: boolean;
+  showBadge?: boolean;
 }
 
 const navItems: NavItem[] = [
   { label: "Beranda", icon: Home, path: "/employee" },
   { label: "Dinas", icon: Plane, path: "/employee/business-travel" },
   { label: "Self Service", icon: LayoutGrid, path: "/employee/self-service", isCenter: true },
-  { label: "Notifikasi", icon: Bell, path: "/employee/notifications" },
+  { label: "Notifikasi", icon: Bell, path: "/employee/notifications", showBadge: true },
   { label: "Profil", icon: User, path: "/employee/profile" },
 ];
 
 export const EmployeeBottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { badgeCount } = useNotificationBadge();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -56,12 +59,19 @@ export const EmployeeBottomNav = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className="flex flex-col items-center justify-center py-2 px-3"
+              className="flex flex-col items-center justify-center py-2 px-3 relative"
             >
-              <item.icon className={cn(
-                "h-5 w-5 transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )} />
+              <div className="relative">
+                <item.icon className={cn(
+                  "h-5 w-5 transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )} />
+                {item.showBadge && badgeCount > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none">
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </span>
+                )}
+              </div>
               <span className={cn(
                 "text-xs mt-1",
                 isActive ? "text-primary font-medium" : "text-muted-foreground"

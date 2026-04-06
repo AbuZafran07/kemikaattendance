@@ -35,6 +35,8 @@ const LeaveRequest = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
+  const isLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
+
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {

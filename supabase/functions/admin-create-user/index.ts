@@ -22,9 +22,8 @@ serve(async (req: Request): Promise<Response> => {
   const corsHeaders = getCorsHeaders(origin);
 
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightRequest(req);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

@@ -1052,47 +1052,8 @@ const Employees = () => {
                   )}
                 </div>
 
-                {/* Cuti Section */}
-                <div className="col-span-2 border-t border-border pt-3 mt-2">
-                  <p className="text-sm font-semibold text-muted-foreground mb-3">📅 Pengaturan Cuti</p>
-                </div>
-                <div className="col-span-2 flex items-center space-x-2 mb-2">
-                  <Checkbox
-                    id="edit_leave_active"
-                    checked={editFormData.leave_active}
-                    onCheckedChange={(checked) => setEditFormData({ ...editFormData, leave_active: !!checked })}
-                  />
-                  <Label htmlFor="edit_leave_active" className="text-sm font-normal cursor-pointer">
-                    Cuti Aktif
-                  </Label>
-                  {!editFormData.leave_active && (
-                    <Badge variant="destructive" className="text-xs">Belum Dapat Cuti</Badge>
-                  )}
-                </div>
-                {editFormData.leave_active && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_annual_leave_quota">Kuota Cuti Tahunan</Label>
-                      <Input
-                        id="edit_annual_leave_quota"
-                        type="number"
-                        min="0"
-                        value={editFormData.annual_leave_quota}
-                        onChange={(e) => setEditFormData({ ...editFormData, annual_leave_quota: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_remaining_leave">Sisa Cuti</Label>
-                      <Input
-                        id="edit_remaining_leave"
-                        type="number"
-                        min="0"
-                        value={editFormData.remaining_leave}
-                        onChange={(e) => setEditFormData({ ...editFormData, remaining_leave: e.target.value })}
-                      />
-                    </div>
-                  </>
-                )}
+
+
                 <div className="space-y-2">
                   <Label htmlFor="edit_tunjangan_komunikasi">Tunjangan Komunikasi (Rp)</Label>
                   <Input

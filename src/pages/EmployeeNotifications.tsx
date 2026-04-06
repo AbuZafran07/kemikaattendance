@@ -8,6 +8,7 @@ import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { useNotificationBadge } from "@/hooks/useNotificationBadge";
 
 interface Notification {
   id: string;

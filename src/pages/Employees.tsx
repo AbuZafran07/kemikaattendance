@@ -1148,6 +1148,27 @@ const Employees = () => {
                 <div className="col-span-2 border-t border-border pt-3 mt-2">
                   <p className="text-sm font-semibold text-muted-foreground mb-3">📅 Pengaturan Cuti</p>
                 </div>
+                {/* Tenure info for leave eligibility */}
+                {editFormData.join_date && (() => {
+                  const joinDate = new Date(editFormData.join_date + 'T00:00:00');
+                  const now = new Date();
+                  const diffMs = now.getTime() - joinDate.getTime();
+                  const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
+                  const eligibleDate = new Date(joinDate);
+                  eligibleDate.setFullYear(eligibleDate.getFullYear() + 1);
+                  const isEligible = diffMonths >= 12;
+                  return (
+                    <div className="col-span-2 mb-2">
+                      <div className={`text-xs rounded-md px-3 py-2 border ${isEligible ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300' : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300'}`}>
+                        <p className="font-medium">{isEligible ? '✅' : '⏳'} Masa kerja: {diffMonths} bulan (bergabung {editFormData.join_date})</p>
+                        {isEligible 
+                          ? <p>Karyawan sudah memenuhi syarat masa kerja minimum 12 bulan untuk mendapatkan cuti.</p>
+                          : <p>Cuti akan otomatis aktif setelah 12 bulan masa kerja (tanggal {eligibleDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}).</p>
+                        }
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="col-span-2 flex items-center space-x-2 mb-2">
                   <Checkbox
                     id="edit_leave_active"
@@ -1157,7 +1178,9 @@ const Employees = () => {
                   <Label htmlFor="edit_leave_active" className="text-sm font-normal cursor-pointer">
                     Cuti Aktif
                   </Label>
-                  {!editFormData.leave_active && (
+                  {editFormData.leave_active ? (
+                    <Badge className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Cuti Aktif</Badge>
+                  ) : (
                     <Badge variant="destructive" className="text-xs">Belum Dapat Cuti</Badge>
                   )}
                 </div>

@@ -62,6 +62,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserData = async (userId: string) => {
     try {
+      // Fetch user profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      // Auto-logout if profile is Inactive
+      if (profileData?.status === 'Inactive') {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSession(null);
+        setUserRole(null);
+        setProfile(null);
+        setLoading(false);
+        navigate('/login');
+        return;
+      }
+
+      setProfile(profileData);
+
       // Fetch user role
       const { data: roleData } = await supabase
         .from('user_roles')
@@ -70,15 +91,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
       
       setUserRole(roleData?.role || 'employee');
-
-      // Fetch user profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      setProfile(profileData);
     } catch (error) {
       logger.error('Error fetching user data');
     } finally {

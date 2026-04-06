@@ -78,6 +78,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserRole(null);
         setProfile(null);
         setLoading(false);
+        toast.error('Akun Anda tidak aktif', {
+          description: 'Anda telah dikeluarkan dari sistem karena akun Anda dinonaktifkan. Silakan hubungi HRGA.',
+          duration: 8000,
+        });
         navigate('/login');
         return;
       }

@@ -62,8 +62,57 @@ const Dashboard = () => {
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
   const [departmentData, setDepartmentData] = useState<any[]>([]);
 
+  // Auto-activate leave for employees with 12+ months tenure
+  const autoActivateLeave = async () => {
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, join_date, annual_leave_quota, remaining_leave, status')
+        .eq('status', 'Active');
+
+      if (!profiles) return;
+
+      const now = new Date();
+      const MIN_TENURE_MONTHS = 12;
+
+      // Fetch leave policy for default quota
+      const { data: leavePolicySetting } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'leave_policy')
+        .single();
+
+      const defaultQuota = (leavePolicySetting?.value as Record<string, unknown>)?.annual_leave_quota as number || 12;
+
+      for (const profile of profiles) {
+        if (!profile.join_date) continue;
+        // Skip if already has quota (leave already active)
+        if ((profile.annual_leave_quota || 0) > 0 && (profile.remaining_leave || 0) > 0) continue;
+
+        const joinDate = new Date(profile.join_date + 'T00:00:00');
+        const diffMs = now.getTime() - joinDate.getTime();
+        const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
+
+        if (diffMonths >= MIN_TENURE_MONTHS && (profile.annual_leave_quota === null || profile.annual_leave_quota === 0)) {
+          await supabase
+            .from('profiles')
+            .update({
+              annual_leave_quota: defaultQuota,
+              remaining_leave: defaultQuota,
+            })
+            .eq('id', profile.id);
+
+          logger.info(`Auto-activated leave for employee ${profile.id} (tenure: ${diffMonths} months)`);
+        }
+      }
+    } catch (error) {
+      logger.error('Error auto-activating leave:', error);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
+    autoActivateLeave();
 
     // Real-time listener for attendance
     const attendanceChannel = supabase

@@ -68,7 +68,7 @@ const Dashboard = () => {
     try {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, join_date, annual_leave_quota, remaining_leave, status')
+        .select('id, full_name, join_date, annual_leave_quota, remaining_leave, status')
         .eq('status', 'Active');
 
       if (!profiles) return;
@@ -84,6 +84,8 @@ const Dashboard = () => {
         .single();
 
       const defaultQuota = (leavePolicySetting?.value as Record<string, unknown>)?.annual_leave_quota as number || 12;
+
+      const activatedEmployees: string[] = [];
 
       for (const profile of profiles) {
         if (!profile.join_date) continue;
@@ -103,8 +105,24 @@ const Dashboard = () => {
             })
             .eq('id', profile.id);
 
+          activatedEmployees.push(profile.full_name);
           logger.info(`Auto-activated leave for employee ${profile.id} (tenure: ${diffMonths} months)`);
         }
+      }
+
+      // Notify admins about newly activated employees
+      if (activatedEmployees.length > 0) {
+        const names = activatedEmployees.join(', ');
+        await notifyAdmins(
+          '🎉 Cuti Otomatis Diaktifkan',
+          `${activatedEmployees.length} karyawan telah memenuhi masa kerja 12 bulan dan cuti mereka otomatis diaktifkan: ${names}`,
+          { type: 'leave_auto_activated', url: '/employees' }
+        );
+
+        toast({
+          title: "Cuti Otomatis Diaktifkan",
+          description: `${activatedEmployees.length} karyawan baru memenuhi syarat cuti: ${names}`,
+        });
       }
     } catch (error) {
       logger.error('Error auto-activating leave:', error);

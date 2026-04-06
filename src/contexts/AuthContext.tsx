@@ -93,6 +93,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     if (!error && data.user) {
+      // Check if employee profile is inactive
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileData?.status === 'Inactive') {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSession(null);
+        setUserRole(null);
+        setProfile(null);
+        return { error: { message: 'Akun Anda tidak aktif. Silakan hubungi HRGA.' } };
+      }
+
       // Fetch role immediately to ensure correct navigation
       const { data: roleData } = await supabase
         .from('user_roles')

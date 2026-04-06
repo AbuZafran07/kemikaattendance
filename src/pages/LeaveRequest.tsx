@@ -413,6 +413,7 @@ const LeaveRequest = () => {
                 </Form>
               </>
             )}
+            )}
           </CardContent>
         </Card>
       </div>

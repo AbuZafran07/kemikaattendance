@@ -23,6 +23,11 @@ const EmployeeNotifications = () => {
   const { signOut, profile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const { clearBadge } = useNotificationBadge();
+
+  useEffect(() => {
+    clearBadge();
+  }, [clearBadge]);
 
   useEffect(() => {
     fetchNotifications();

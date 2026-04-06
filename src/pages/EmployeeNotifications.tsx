@@ -8,6 +8,7 @@ import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { useNotificationBadge } from "@/hooks/useNotificationBadge";
 
 interface Notification {
   id: string;
@@ -22,6 +23,11 @@ const EmployeeNotifications = () => {
   const { signOut, profile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const { clearBadge } = useNotificationBadge();
+
+  useEffect(() => {
+    clearBadge();
+  }, [clearBadge]);
 
   useEffect(() => {
     fetchNotifications();

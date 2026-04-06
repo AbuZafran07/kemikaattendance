@@ -94,5 +94,12 @@ export const useNotificationBadge = () => {
     };
   }, [fetchBadgeCount]);
 
-  return { badgeCount, refreshBadge: fetchBadgeCount };
+  const clearBadge = useCallback(() => {
+    setBadgeCount(0);
+    if ('clearAppBadge' in navigator) {
+      (navigator as any).clearAppBadge();
+    }
+  }, []);
+
+  return { badgeCount, refreshBadge: fetchBadgeCount, clearBadge };
 };

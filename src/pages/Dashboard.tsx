@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import { notifyAdmins } from "@/lib/notifications";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import StatsCards from "@/components/dashboard/StatsCards";

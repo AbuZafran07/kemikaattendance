@@ -286,6 +286,7 @@ const LeaveRequest = () => {
                 </AlertDescription>
               </Alert>
             ) : (
+            <>
             {isPolicyLoading ? (
               <p className="text-muted-foreground">Memuat kebijakan...</p>
             ) : (

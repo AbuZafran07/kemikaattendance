@@ -7,7 +7,7 @@ import DepartmentBreakdown from "@/components/dashboard/DepartmentBreakdown";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import PendingRequests from "@/components/dashboard/PendingRequests";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
-import { format, subDays } from "date-fns";
+import { format, subDays, isWeekend, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import logger from "@/lib/logger";
@@ -305,10 +305,29 @@ const Dashboard = () => {
     setPendingOvertime(overtimeWithProfiles);
     setPendingTravel(travelWithProfiles);
 
+    // Fetch holidays for filtering weekend/holiday from chart
+    const { data: overtimePolicySetting } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'overtime_policy')
+      .single();
+    
+    const holidays: string[] = [];
+    if (overtimePolicySetting?.value && typeof overtimePolicySetting.value === 'object') {
+      const policy = overtimePolicySetting.value as Record<string, unknown>;
+      if (Array.isArray(policy.holidays)) {
+        policy.holidays.forEach((h: { date?: string }) => {
+          if (h.date) holidays.push(h.date);
+        });
+      }
+    }
+
     const weeklyStats: Record<string, { hadir: number; terlambat: number; tidak_hadir: number }> = {};
     for (let i = 6; i >= 0; i--) {
       const date = subDays(today, i);
       const key = format(date, "yyyy-MM-dd");
+      // Skip weekends and holidays
+      if (isWeekend(date) || holidays.includes(key)) continue;
       weeklyStats[key] = { hadir: 0, terlambat: 0, tidak_hadir: 0 };
     }
 
@@ -321,7 +340,7 @@ const Dashboard = () => {
     });
 
     const chartData = Object.entries(weeklyStats).map(([date, d]) => ({
-      day: format(new Date(date), "EEE", { locale: id }),
+      day: format(new Date(date), "EEE dd/MM", { locale: id }),
       ...d,
       tidak_hadir: Math.max(0, (employeeCount || 0) - d.hadir - d.terlambat),
     }));

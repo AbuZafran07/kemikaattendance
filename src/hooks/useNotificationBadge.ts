@@ -83,11 +83,32 @@ export const useNotificationBadge = () => {
   useEffect(() => {
     fetchBadgeCount();
 
-    // Refresh every 60 seconds
+    // Refresh every 60 seconds as fallback
     const interval = setInterval(fetchBadgeCount, 60000);
+
+    // Real-time subscriptions for instant badge updates
+    const channel = supabase
+      .channel('badge-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'leave_requests' },
+        () => fetchBadgeCount()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'overtime_requests' },
+        () => fetchBadgeCount()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'business_travel_requests' },
+        () => fetchBadgeCount()
+      )
+      .subscribe();
 
     return () => {
       clearInterval(interval);
+      supabase.removeChannel(channel);
       if ('clearAppBadge' in navigator) {
         (navigator as any).clearAppBadge();
       }

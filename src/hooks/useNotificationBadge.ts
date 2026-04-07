@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { playNotificationSound } from '@/lib/notificationSound';
 
 export const useNotificationBadge = () => {
   const [badgeCount, setBadgeCount] = useState(0);
+  const prevCountRef = useRef(0);
   const { profile } = useAuth();
 
   const updateAppBadge = useCallback((count: number) => {
@@ -73,6 +75,11 @@ export const useNotificationBadge = () => {
         (overtimeUpdated.count || 0) +
         (travelUpdated.count || 0);
 
+      // Play sound if count increased
+      if (total > prevCountRef.current && prevCountRef.current >= 0) {
+        playNotificationSound();
+      }
+      prevCountRef.current = total;
       setBadgeCount(total);
       updateAppBadge(total);
     } catch (error) {

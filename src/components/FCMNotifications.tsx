@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { requestNotificationPermission, onMessageListener } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { playNotificationSound } from '@/lib/notificationSound';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -38,6 +39,7 @@ export const FCMNotifications = () => {
     // Listen for foreground messages
     const unsubscribe = onMessageListener()
       .then((payload: any) => {
+        playNotificationSound();
         toast({
           title: payload.notification?.title || 'Notifikasi Baru',
           description: payload.notification?.body || '',

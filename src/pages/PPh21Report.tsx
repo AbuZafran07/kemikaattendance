@@ -65,6 +65,7 @@ const loadImageAsBase64 = (src: string): Promise<string> =>
 
 const PPh21Report = () => {
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [data, setData] = useState<EmployeePPh21Data[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");

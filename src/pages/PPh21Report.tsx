@@ -353,6 +353,127 @@ const PPh21Report = () => {
     toast({ title: "PDF berhasil di-download" });
   };
 
+  const exportMonthlyPDF = async (month: number) => {
+    const monthName = MONTH_NAMES[month - 1];
+    const monthData = data.filter(d => d.monthly[month - 1]?.bruto > 0).map(d => ({
+      ...d,
+      m: d.monthly[month - 1],
+    }));
+
+    if (monthData.length === 0) {
+      toast({ title: "Tidak ada data", description: `Belum ada data PPh 21 untuk ${monthName} ${selectedYear}`, variant: "destructive" });
+      return;
+    }
+
+    const monthTotalBruto = monthData.reduce((s, d) => s + d.m.bruto, 0);
+    const monthTotalPph21 = monthData.reduce((s, d) => s + d.m.pph21, 0);
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pw = doc.internal.pageSize.getWidth();
+    const ph = doc.internal.pageSize.getHeight();
+    const mx = 10;
+
+    try {
+      const logoBase64 = await loadImageAsBase64(logo);
+      doc.addImage(logoBase64, "PNG", mx, 8, 16, 16);
+    } catch {}
+
+    doc.setFontSize(14); doc.setFont("helvetica", "bold");
+    doc.text(`LAPORAN PPh 21 — ${monthName.toUpperCase()} ${selectedYear}`, mx + 20, 14);
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text(`Masa Pajak: ${monthName} ${selectedYear} | PT. Kemika Karya Pratama`, mx + 20, 20);
+    doc.setDrawColor(0, 135, 81); doc.setLineWidth(0.8);
+    doc.line(mx, 26, pw - mx, 26);
+
+    let y = 32;
+    const cardItems = [
+      { label: "Total Karyawan", value: String(monthData.length) },
+      { label: "Total Bruto", value: formatRupiah(monthTotalBruto) },
+      { label: "Total PPh 21", value: formatRupiah(monthTotalPph21) },
+    ];
+    const cw = (pw - 2 * mx - 2 * 4) / 3;
+    cardItems.forEach((c, i) => {
+      const cx = mx + i * (cw + 4);
+      doc.setFillColor(245, 245, 245);
+      doc.roundedRect(cx, y, cw, 14, 2, 2, "F");
+      doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(100);
+      doc.text(c.label, cx + 3, y + 5);
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+      doc.text(c.value, cx + 3, y + 11);
+    });
+    y += 20;
+
+    autoTable(doc, {
+      startY: y,
+      head: [["No", "Nama", "NIK", "NPWP", "Jabatan", "Departemen", "Bruto", "PPh 21", "Tarif TER", "Mode"]],
+      body: monthData.map((d, i) => [
+        i + 1, d.full_name, d.nik, d.npwp, d.jabatan, d.departemen,
+        formatRupiah(d.m.bruto), formatRupiah(d.m.pph21),
+        d.m.ter_rate ? `${(d.m.ter_rate * 100).toFixed(2)}%` : "-",
+        d.m.mode,
+      ]),
+      margin: { left: mx, right: mx },
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [0, 135, 81], textColor: 255, fontStyle: "bold", fontSize: 7 },
+      columnStyles: {
+        0: { cellWidth: 8, halign: "center" },
+        6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "right" },
+      },
+      foot: [["", "TOTAL", "", "", "", "", formatRupiah(monthTotalBruto), formatRupiah(monthTotalPph21), "", ""]],
+      footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold", fontSize: 7 },
+    });
+
+    const fy = (doc as any).lastAutoTable?.finalY || y + 60;
+    doc.setFontSize(7); doc.setTextColor(128); doc.setFont("helvetica", "normal");
+    doc.text(`Dicetak pada: ${new Date().toLocaleString("id-ID")}`, mx, Math.min(fy + 10, ph - 8));
+    doc.text("Dokumen ini digenerate otomatis oleh sistem.", pw - mx, Math.min(fy + 10, ph - 8), { align: "right" });
+
+    doc.save(`Laporan_PPh21_${monthName}_${selectedYear}.pdf`);
+    toast({ title: `PDF ${monthName} berhasil di-download` });
+  };
+
+  const exportMonthlyExcel = async (month: number) => {
+    const monthName = MONTH_NAMES[month - 1];
+    const monthData = data.filter(d => d.monthly[month - 1]?.bruto > 0);
+
+    if (monthData.length === 0) {
+      toast({ title: "Tidak ada data", description: `Belum ada data PPh 21 untuk ${monthName} ${selectedYear}`, variant: "destructive" });
+      return;
+    }
+
+    const rows = monthData.map((d, idx) => ({
+      "No": idx + 1,
+      "Nama": d.full_name,
+      "NIK": d.nik,
+      "NPWP": d.npwp,
+      "Jabatan": d.jabatan,
+      "Departemen": d.departemen,
+      "PTKP": d.ptkp_status,
+      "Bruto": d.monthly[month - 1].bruto,
+      "PPh 21": d.monthly[month - 1].pph21,
+      "Tarif TER": d.monthly[month - 1].ter_rate ? `${(d.monthly[month - 1].ter_rate! * 100).toFixed(2)}%` : "-",
+      "Mode": d.monthly[month - 1].mode,
+    }));
+
+    const ExcelJS = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet(`PPh21 ${monthName} ${selectedYear}`);
+    const cols = Object.keys(rows[0]);
+    ws.addRow(cols);
+    ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF008751" } };
+    ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    for (const row of rows) ws.addRow(Object.values(row));
+    cols.forEach((_, i) => { ws.getColumn(i + 1).width = 18; });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url;
+    a.download = `Laporan_PPh21_${monthName}_${selectedYear}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+    toast({ title: `Excel ${monthName} berhasil di-download` });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">

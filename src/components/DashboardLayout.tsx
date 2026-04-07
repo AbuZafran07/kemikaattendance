@@ -67,6 +67,7 @@ const navigationGroups = [
       { name: "Pinjaman", href: "/dashboard/loans", icon: CreditCard },
       { name: "Tarif TER PPh21", href: "/dashboard/ter-management", icon: FileText },
       { name: "Bukti Potong 1721-A1", href: "/dashboard/bukti-potong", icon: FileCheck },
+      { name: "Laporan PPh 21", href: "/dashboard/reports/pph21", icon: FileText },
     ],
   },
   {

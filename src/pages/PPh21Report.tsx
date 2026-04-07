@@ -581,7 +581,48 @@ const PPh21Report = () => {
           </Card>
         )}
 
-        {/* Detail Table */}
+        {/* Monthly Export */}
+        {data.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Download className="h-5 w-5" /> Export Laporan Per Bulan
+              </CardTitle>
+              <CardDescription>Pilih bulan untuk export laporan PPh 21 bulanan (untuk lapor masa pajak)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <Select value={selectedMonth !== null ? String(selectedMonth) : ""} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Pilih Bulan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTH_NAMES.map((name, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => selectedMonth && exportMonthlyExcel(selectedMonth)}
+                  disabled={selectedMonth === null}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Excel Bulanan
+                </Button>
+                <Button
+                  onClick={() => selectedMonth && exportMonthlyPDF(selectedMonth)}
+                  disabled={selectedMonth === null}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <FileText className="h-4 w-4" /> PDF Bulanan
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">

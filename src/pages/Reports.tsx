@@ -997,27 +997,6 @@ export default function Reports() {
               </Button>
             </CardContent>
           </Card>
-
-          <Card
-            className="border-primary/20 hover:border-primary/40 transition-colors cursor-pointer"
-            onClick={() => navigate("/dashboard/reports/pph21")}
-          >
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Calculator className="h-5 w-5 text-primary" />
-                <CardTitle>Laporan PPh 21</CardTitle>
-              </div>
-              <CardDescription>Rekap pajak penghasilan pasal 21 untuk pelaporan</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Rekap tahunan & bulanan PPh 21 per karyawan dengan detail biaya jabatan, PKP, dan selisih kurang/lebih bayar
-              </p>
-              <Button variant="link" className="mt-2 p-0 h-auto">
-                Buka Laporan PPh 21 →
-              </Button>
-            </CardContent>
-          </Card>
         </div>
 
         <Card>

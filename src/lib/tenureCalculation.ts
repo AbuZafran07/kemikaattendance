@@ -79,3 +79,50 @@ export function calculateCutoffTenure(
 
   return { fullMonths, remainingDays, totalMonthsFraction };
 }
+
+/**
+ * Calculate prorate factor for an employee who joined mid-cutoff period.
+ * 
+ * @param joinDate Employee join date
+ * @param periodMonth Payroll period month (1-12)
+ * @param periodYear Payroll period year
+ * @param cutoffDay The cutoff day (default 21)
+ * @returns factor between 0 and 1 (1 = full month, 0.5 = half month, etc.)
+ */
+export function calculateProrateFactor(
+  joinDate: Date,
+  periodMonth: number,
+  periodYear: number,
+  cutoffDay: number = 21
+): number {
+  // Cutoff period for payroll month M:
+  // Start: cutoffDay of month (M-1)
+  // End: cutoffDay-1 of month M
+  const prevMonth = periodMonth - 1; // 0-indexed for Date constructor
+  const periodStartMonth = prevMonth - 1; // JS month (0-based) for month M-1
+  const periodStart = new Date(periodYear, periodStartMonth, cutoffDay);
+  
+  // Handle year boundary (e.g. January payroll → start is Dec cutoffDay of prev year)
+  // Date constructor handles this automatically with negative months
+  
+  const periodEndDay = cutoffDay - 1;
+  const periodEnd = new Date(periodYear, prevMonth, periodEndDay); // month M, day cutoffDay-1
+  
+  // If join date is before or on period start, full salary
+  if (joinDate.getTime() <= periodStart.getTime()) {
+    return 1;
+  }
+  
+  // If join date is after period end, no salary
+  if (joinDate.getTime() > periodEnd.getTime()) {
+    return 0;
+  }
+  
+  // Employee joined mid-period: calculate working days ratio
+  // Total days in period
+  const totalDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  // Days worked (from join date to period end, inclusive)
+  const workedDays = Math.round((periodEnd.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  
+  return Math.min(1, Math.max(0, workedDays / totalDays));
+}

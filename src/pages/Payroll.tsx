@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { isWeekend } from "@/hooks/usePolicySettings";
 import { format, eachDayOfInterval } from "date-fns";
-import { calculateCutoffTenure } from "@/lib/tenureCalculation";
+import { calculateCutoffTenure, calculateProrateFactor } from "@/lib/tenureCalculation";
 import logo from "@/assets/logo.png";
 
 /** Parse "YYYY-MM-DD" as local date (avoids UTC-shift timezone bug) */
@@ -685,7 +685,7 @@ const Payroll = () => {
       }
 
       const { data: empsRaw } = await supabase
-        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled").eq("status", "Active");
+        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled, join_date").eq("status", "Active");
 
       // Exclude admin users from payroll
       const { data: adminRoles } = await supabase
@@ -821,8 +821,18 @@ const Payroll = () => {
         loanDeductionMap.set(loan.user_id, existing);
       }
 
+      // Fetch cutoff day for prorate calculation
+      const { data: cutoffSettingData } = await supabase
+        .from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle();
+      const cutoffDay = (cutoffSettingData?.value as any)?.cutoff_day || 21;
+
       const payrollRecords = emps.map((emp: any) => {
-        const basicSalary = Number(emp.basic_salary) || 0;
+        // Calculate prorate factor for employees joining mid-period
+        const joinDate = emp.join_date ? parseLocalDate(emp.join_date) : new Date(2000, 0, 1);
+        const prorateFactor = calculateProrateFactor(joinDate, selectedMonth, selectedYear, cutoffDay);
+
+        const fullBasicSalary = Number(emp.basic_salary) || 0;
+        const basicSalary = Math.round(fullBasicSalary * prorateFactor);
         const overtimeHours = overtimeHoursMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);
         const inc = incomeAdditions.get(emp.id);
@@ -834,7 +844,7 @@ const Payroll = () => {
         } else {
           const entries = overtimeEntriesMap.get(emp.id) || [];
           for (const entry of entries) {
-            overtimeTotal += calculateOvertimePayPP35(basicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
+            overtimeTotal += calculateOvertimePayPP35(fullBasicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
           }
         }
         const ptkpStatus = emp.ptkp_status || "TK/0";
@@ -843,10 +853,10 @@ const Payroll = () => {
         // Use manual override for attendance allowance if provided, otherwise auto-calculated
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;
 
-        // Fixed allowances from profile
-        const tunjanganKomunikasi = Number(emp.tunjangan_komunikasi) || 0;
-        const tunjanganJabatan = Number(emp.tunjangan_jabatan) || 0;
-        const tunjanganOperasional = Number(emp.tunjangan_operasional) || 0;
+        // Fixed allowances from profile (prorated)
+        const tunjanganKomunikasi = Math.round((Number(emp.tunjangan_komunikasi) || 0) * prorateFactor);
+        const tunjanganJabatan = Math.round((Number(emp.tunjangan_jabatan) || 0) * prorateFactor);
+        const tunjanganOperasional = Math.round((Number(emp.tunjangan_operasional) || 0) * prorateFactor);
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
 
         // Incidental income from dialog (exclude tunjangan_kehadiran as it's handled separately)

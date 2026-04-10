@@ -685,7 +685,7 @@ const Payroll = () => {
       }
 
       const { data: empsRaw } = await supabase
-        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled").eq("status", "Active");
+        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled, join_date").eq("status", "Active");
 
       // Exclude admin users from payroll
       const { data: adminRoles } = await supabase

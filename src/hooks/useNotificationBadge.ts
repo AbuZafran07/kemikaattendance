@@ -5,7 +5,7 @@ import { playNotificationSound } from '@/lib/notificationSound';
 
 export const useNotificationBadge = () => {
   const [badgeCount, setBadgeCount] = useState(0);
-  const prevCountRef = useRef(0);
+  const prevCountRef = useRef(-1); // -1 means first fetch, skip sound
   const { profile } = useAuth();
 
   const updateAppBadge = useCallback((count: number) => {
@@ -75,8 +75,8 @@ export const useNotificationBadge = () => {
         (overtimeUpdated.count || 0) +
         (travelUpdated.count || 0);
 
-      // Play sound if count increased
-      if (total > prevCountRef.current && prevCountRef.current >= 0) {
+      // Play sound only if count increased AND it's not the first fetch
+      if (prevCountRef.current >= 0 && total > prevCountRef.current) {
         playNotificationSound();
       }
       prevCountRef.current = total;

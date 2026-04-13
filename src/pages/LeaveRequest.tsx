@@ -35,7 +35,7 @@ const LeaveRequest = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  const isLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
+  const isAnnualLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
 
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
@@ -167,9 +167,13 @@ const LeaveRequest = () => {
 
     // Check quota based on leave type
     if (leaveType === "cuti_tahunan") {
-      const remainingQuota = policy.annual_leave_quota - usedQuotas.annual;
-      if (totalDays > remainingQuota) {
-        errors.push(`Sisa kuota cuti tahunan tidak mencukupi. Tersisa: ${remainingQuota} hari`);
+      if (isAnnualLeaveInactive) {
+        errors.push("Cuti tahunan belum aktif. Masa kerja Anda belum genap 1 tahun.");
+      } else {
+        const remainingQuota = policy.annual_leave_quota - usedQuotas.annual;
+        if (totalDays > remainingQuota) {
+          errors.push(`Sisa kuota cuti tahunan tidak mencukupi. Tersisa: ${remainingQuota} hari`);
+        }
       }
     } else if (leaveType === "sakit") {
       const remainingQuota = policy.sick_leave_quota - usedQuotas.sick;
@@ -184,7 +188,7 @@ const LeaveRequest = () => {
     }
 
     setValidationErrors(errors);
-  }, [leaveType, startDate, endDate, totalDays, policy, usedQuotas]);
+  }, [leaveType, startDate, endDate, totalDays, policy, usedQuotas, isAnnualLeaveInactive]);
 
   const getQuotaInfo = () => {
     return {
@@ -278,15 +282,6 @@ const LeaveRequest = () => {
             <CardDescription>Isi formulir pengajuan cuti</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLeaveInactive ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Fitur cuti Anda belum diaktifkan. Silakan hubungi HRGA untuk mengaktifkan hak cuti Anda.
-                </AlertDescription>
-              </Alert>
-            ) : (
-            <>
             {isPolicyLoading ? (
               <p className="text-muted-foreground">Memuat kebijakan...</p>
             ) : (

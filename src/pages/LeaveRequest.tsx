@@ -287,13 +287,24 @@ const LeaveRequest = () => {
             ) : (
               <>
                 {/* Quota Info */}
+                {isAnnualLeaveInactive && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      Cuti tahunan belum aktif karena masa kerja belum genap 1 tahun. Anda masih dapat mengajukan cuti sakit, izin, atau lupa absen.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <Alert className="mb-4">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="text-xs space-y-1">
                       <p>Sisa Kuota Tahun Ini:</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Cuti Tahunan: <strong>{quotaInfo.annual.remaining}</strong>/{quotaInfo.annual.total} hari</span>
+                        {!isAnnualLeaveInactive && (
+                          <span>Cuti Tahunan: <strong>{quotaInfo.annual.remaining}</strong>/{quotaInfo.annual.total} hari</span>
+                        )}
                         <span>Sakit: <strong>{quotaInfo.sick.remaining}</strong>/{quotaInfo.sick.total} hari</span>
                         <span>Izin: <strong>{quotaInfo.permission.remaining}</strong>/{quotaInfo.permission.total} hari</span>
                       </div>
@@ -316,8 +327,8 @@ const LeaveRequest = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="cuti_tahunan">
-                                Cuti Tahunan (Sisa: {quotaInfo.annual.remaining} hari)
+                              <SelectItem value="cuti_tahunan" disabled={isAnnualLeaveInactive}>
+                                Cuti Tahunan {isAnnualLeaveInactive ? "(Belum Aktif)" : `(Sisa: ${quotaInfo.annual.remaining} hari)`}
                               </SelectItem>
                               <SelectItem value="izin">
                                 Izin (Sisa: {quotaInfo.permission.remaining} hari)

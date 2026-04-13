@@ -35,7 +35,7 @@ const LeaveRequest = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  const isLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
+  const isAnnualLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
 
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
@@ -167,9 +167,13 @@ const LeaveRequest = () => {
 
     // Check quota based on leave type
     if (leaveType === "cuti_tahunan") {
-      const remainingQuota = policy.annual_leave_quota - usedQuotas.annual;
-      if (totalDays > remainingQuota) {
-        errors.push(`Sisa kuota cuti tahunan tidak mencukupi. Tersisa: ${remainingQuota} hari`);
+      if (isAnnualLeaveInactive) {
+        errors.push("Cuti tahunan belum aktif. Masa kerja Anda belum genap 1 tahun.");
+      } else {
+        const remainingQuota = policy.annual_leave_quota - usedQuotas.annual;
+        if (totalDays > remainingQuota) {
+          errors.push(`Sisa kuota cuti tahunan tidak mencukupi. Tersisa: ${remainingQuota} hari`);
+        }
       }
     } else if (leaveType === "sakit") {
       const remainingQuota = policy.sick_leave_quota - usedQuotas.sick;
@@ -184,7 +188,7 @@ const LeaveRequest = () => {
     }
 
     setValidationErrors(errors);
-  }, [leaveType, startDate, endDate, totalDays, policy, usedQuotas]);
+  }, [leaveType, startDate, endDate, totalDays, policy, usedQuotas, isAnnualLeaveInactive]);
 
   const getQuotaInfo = () => {
     return {
@@ -278,27 +282,29 @@ const LeaveRequest = () => {
             <CardDescription>Isi formulir pengajuan cuti</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLeaveInactive ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Fitur cuti Anda belum diaktifkan. Silakan hubungi HRGA untuk mengaktifkan hak cuti Anda.
-                </AlertDescription>
-              </Alert>
-            ) : (
-            <>
             {isPolicyLoading ? (
               <p className="text-muted-foreground">Memuat kebijakan...</p>
             ) : (
               <>
                 {/* Quota Info */}
+                {isAnnualLeaveInactive && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      Cuti tahunan belum aktif karena masa kerja belum genap 1 tahun. Anda masih dapat mengajukan cuti sakit, izin, atau lupa absen.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <Alert className="mb-4">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="text-xs space-y-1">
                       <p>Sisa Kuota Tahun Ini:</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Cuti Tahunan: <strong>{quotaInfo.annual.remaining}</strong>/{quotaInfo.annual.total} hari</span>
+                        {!isAnnualLeaveInactive && (
+                          <span>Cuti Tahunan: <strong>{quotaInfo.annual.remaining}</strong>/{quotaInfo.annual.total} hari</span>
+                        )}
                         <span>Sakit: <strong>{quotaInfo.sick.remaining}</strong>/{quotaInfo.sick.total} hari</span>
                         <span>Izin: <strong>{quotaInfo.permission.remaining}</strong>/{quotaInfo.permission.total} hari</span>
                       </div>
@@ -321,8 +327,8 @@ const LeaveRequest = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="cuti_tahunan">
-                                Cuti Tahunan (Sisa: {quotaInfo.annual.remaining} hari)
+                              <SelectItem value="cuti_tahunan" disabled={isAnnualLeaveInactive}>
+                                Cuti Tahunan {isAnnualLeaveInactive ? "(Belum Aktif)" : `(Sisa: ${quotaInfo.annual.remaining} hari)`}
                               </SelectItem>
                               <SelectItem value="izin">
                                 Izin (Sisa: {quotaInfo.permission.remaining} hari)
@@ -413,8 +419,6 @@ const LeaveRequest = () => {
                   </form>
                 </Form>
               </>
-            )}
-            </>
             )}
           </CardContent>
         </Card>

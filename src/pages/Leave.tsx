@@ -2,10 +2,11 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle2, XCircle, Clock, Eye, Plus } from "lucide-react";
+import { Calendar, CheckCircle2, XCircle, Clock, Eye, Plus, Trash2 } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +31,8 @@ const Leave = () => {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [detailRequest, setDetailRequest] = useState<any | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Pagination
   const totalPages = Math.ceil(leaveRequests.length / itemsPerPage);
@@ -216,6 +219,36 @@ const Leave = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    try {
+      const request = leaveRequests.find((r) => r.id === deleteTargetId);
+      
+      // Restore leave quota if it was an approved cuti_tahunan
+      if (request && request.status === "approved" && request.leave_type === "cuti_tahunan") {
+        const { error: restoreError } = await supabase
+          .from("profiles")
+          .update({ remaining_leave: (request.profiles?.remaining_leave || 0) + request.total_days })
+          .eq("id", request.user_id);
+        if (restoreError) {
+          logger.error("Failed to restore leave quota:", restoreError);
+        }
+      }
+
+      const { error } = await supabase.from("leave_requests").delete().eq("id", deleteTargetId);
+      if (error) throw error;
+
+      toast({ title: "Berhasil", description: "Permintaan cuti berhasil dihapus" });
+      fetchLeaveRequests();
+    } catch (err) {
+      logger.error("Failed to delete leave request:", err);
+      toast({ title: "Gagal", description: "Gagal menghapus permintaan cuti", variant: "destructive" });
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
@@ -347,6 +380,11 @@ const Leave = () => {
                                   </Button>
                                 </>
                               )}
+                              {request.status !== "pending" && (
+                                <Button size="sm" variant="destructive" onClick={() => { setDeleteTargetId(request.id); setDeleteConfirmOpen(true); }}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         )}
@@ -455,6 +493,21 @@ const Leave = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Permintaan Cuti</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus permintaan cuti ini? Jika cuti tahunan yang sudah disetujui, kuota cuti karyawan akan dikembalikan. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

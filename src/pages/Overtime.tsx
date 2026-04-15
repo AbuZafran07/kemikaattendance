@@ -378,6 +378,11 @@ const Overtime = () => {
                                   </Button>
                                 </>
                               )}
+                              {request.status !== "pending" && (
+                                <Button size="sm" variant="destructive" onClick={() => { setDeleteTargetId(request.id); setDeleteConfirmOpen(true); }}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         )}

@@ -224,6 +224,22 @@ const Overtime = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    try {
+      const { error } = await supabase.from("overtime_requests").delete().eq("id", deleteTargetId);
+      if (error) throw error;
+      toast({ title: "Berhasil", description: "Permintaan lembur berhasil dihapus" });
+      fetchOvertimeRequests();
+    } catch (err) {
+      logger.error("Failed to delete overtime request:", err);
+      toast({ title: "Gagal", description: "Gagal menghapus permintaan lembur", variant: "destructive" });
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':

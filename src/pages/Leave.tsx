@@ -247,7 +247,7 @@ const Leave = () => {
       setDeleteConfirmOpen(false);
       setDeleteTargetId(null);
     }
-  
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {

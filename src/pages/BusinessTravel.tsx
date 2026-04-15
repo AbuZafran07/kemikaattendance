@@ -20,6 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
@@ -63,6 +64,8 @@ const BusinessTravel = () => {
   const [detailRequest, setDetailRequest] = useState<BusinessTravelRequest | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Pagination
   const totalPages = Math.ceil(requests.length / itemsPerPage);

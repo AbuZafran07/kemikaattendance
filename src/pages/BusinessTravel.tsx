@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye, Plus } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye, Plus, Trash2 } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";

@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye, Plus } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye, Plus, Trash2 } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyEmployee, NotificationTemplates, formatDateForNotification } from "@/lib/notifications";
@@ -63,6 +64,8 @@ const BusinessTravel = () => {
   const [detailRequest, setDetailRequest] = useState<BusinessTravelRequest | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Pagination
   const totalPages = Math.ceil(requests.length / itemsPerPage);
@@ -381,6 +384,22 @@ const BusinessTravel = () => {
     }
   };
 
+  const handleDeleteTravel = async () => {
+    if (!deleteTargetId) return;
+    try {
+      const { error } = await supabase.from("business_travel_requests").delete().eq("id", deleteTargetId);
+      if (error) throw error;
+      toast({ title: "Berhasil", description: "Permintaan perjalanan dinas berhasil dihapus" });
+      fetchRequests();
+    } catch (err) {
+      logger.error("Failed to delete business travel request:", err);
+      toast({ title: "Gagal", description: "Gagal menghapus permintaan perjalanan dinas", variant: "destructive" });
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -501,6 +520,11 @@ const BusinessTravel = () => {
                               {request.status === "approved" && (
                                 <Button size="sm" variant="outline" onClick={() => handleUploadDocument(request)}>
                                   <Upload className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {request.status !== "pending" && (
+                                <Button size="sm" variant="destructive" onClick={() => { setDeleteTargetId(request.id); setDeleteConfirmOpen(true); }}>
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
@@ -708,6 +732,21 @@ const BusinessTravel = () => {
         onOpenChange={setCreateDialogOpen}
         onCreated={fetchRequests}
       />
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Permintaan Perjalanan Dinas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus permintaan perjalanan dinas ini? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTravel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

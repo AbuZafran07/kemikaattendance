@@ -238,6 +238,7 @@ const Overtime = () => {
       setDeleteConfirmOpen(false);
       setDeleteTargetId(null);
     }
+  };
   
 
   const getStatusBadge = (status: string) => {

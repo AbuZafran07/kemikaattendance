@@ -219,6 +219,36 @@ const Leave = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    try {
+      const request = leaveRequests.find((r) => r.id === deleteTargetId);
+      
+      // Restore leave quota if it was an approved cuti_tahunan
+      if (request && request.status === "approved" && request.leave_type === "cuti_tahunan") {
+        const { error: restoreError } = await supabase
+          .from("profiles")
+          .update({ remaining_leave: (request.profiles?.remaining_leave || 0) + request.total_days })
+          .eq("id", request.user_id);
+        if (restoreError) {
+          logger.error("Failed to restore leave quota:", restoreError);
+        }
+      }
+
+      const { error } = await supabase.from("leave_requests").delete().eq("id", deleteTargetId);
+      if (error) throw error;
+
+      toast({ title: "Berhasil", description: "Permintaan cuti berhasil dihapus" });
+      fetchLeaveRequests();
+    } catch (err) {
+      logger.error("Failed to delete leave request:", err);
+      toast({ title: "Gagal", description: "Gagal menghapus permintaan cuti", variant: "destructive" });
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":

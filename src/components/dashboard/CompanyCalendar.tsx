@@ -32,6 +32,9 @@ interface SpecialPeriod {
 interface LeaveDay {
   leave_type: string;
   label: string;
+  delegate_name?: string | null;
+  delegate_jabatan?: string | null;
+  delegation_notes?: string | null;
 }
 
 interface TravelDay {

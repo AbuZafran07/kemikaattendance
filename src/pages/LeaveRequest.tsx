@@ -25,6 +25,12 @@ interface Holiday {
   date: string;
 }
 
+interface DepartmentColleague {
+  id: string;
+  full_name: string;
+  jabatan: string;
+}
+
 const LeaveRequest = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -34,6 +40,7 @@ const LeaveRequest = () => {
   const [usedQuotas, setUsedQuotas] = useState({ annual: 0, sick: 0, permission: 0 });
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [colleagues, setColleagues] = useState<DepartmentColleague[]>([]);
 
   const isAnnualLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
 
@@ -44,6 +51,8 @@ const LeaveRequest = () => {
       startDate: "",
       endDate: "",
       reason: "",
+      delegatedTo: "",
+      delegationNotes: "",
     },
   });
 

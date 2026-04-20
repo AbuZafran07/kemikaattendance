@@ -641,9 +641,23 @@ const CompanyCalendar = () => {
                 {leaveDays && leaveDays.map((l, i) => (
                   <div key={`l-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-indigo-500/10">
                     <Briefcase className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-sm">Cuti / Izin</p>
                       <p className="text-sm text-muted-foreground">{l.label}</p>
+                      {l.delegate_name && (
+                        <div className="mt-2 pt-2 border-t border-indigo-500/20 space-y-0.5">
+                          <p className="text-xs text-muted-foreground">Tugas didelegasikan ke:</p>
+                          <p className="text-xs font-medium">
+                            {l.delegate_name}
+                            {l.delegate_jabatan ? ` - ${l.delegate_jabatan}` : ""}
+                          </p>
+                          {l.delegation_notes && (
+                            <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-wrap">
+                              "{l.delegation_notes}"
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,15 +17,25 @@ interface AdminCreateLeaveDialogProps {
   onCreated: () => void;
 }
 
+interface EmployeeRow {
+  id: string;
+  full_name: string;
+  nik: string;
+  departemen: string;
+  jabatan: string;
+}
+
 const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLeaveDialogProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [employees, setEmployees] = useState<{ id: string; full_name: string; nik: string }[]>([]);
+  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [leaveType, setLeaveType] = useState("cuti_tahunan");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
+  const [delegatedTo, setDelegatedTo] = useState("");
+  const [delegationNotes, setDelegationNotes] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -40,19 +50,43 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
     setStartDate("");
     setEndDate("");
     setReason("");
+    setDelegatedTo("");
+    setDelegationNotes("");
   };
 
   const fetchEmployees = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, full_name, nik")
+      .select("id, full_name, nik, departemen, jabatan")
+      .eq("status", "Active")
       .order("full_name");
     if (data) setEmployees(data);
   };
 
+  const selectedEmployee = useMemo(
+    () => employees.find((e) => e.id === selectedUserId),
+    [employees, selectedUserId]
+  );
+
+  // Reset delegation when employee changes (department might differ)
+  useEffect(() => {
+    setDelegatedTo("");
+  }, [selectedUserId]);
+
+  const colleagues = useMemo(() => {
+    if (!selectedEmployee) return [];
+    return employees.filter(
+      (e) => e.departemen === selectedEmployee.departemen && e.id !== selectedEmployee.id
+    );
+  }, [employees, selectedEmployee]);
+
   const handleSubmit = async () => {
     if (!selectedUserId || !startDate || !endDate || !reason.trim()) {
       toast({ title: "Lengkapi semua field", variant: "destructive" });
+      return;
+    }
+    if (!delegatedTo || !delegationNotes.trim()) {
+      toast({ title: "Pendelegasian tugas wajib diisi", description: "Pilih karyawan pengganti dan tuliskan detail tugas", variant: "destructive" });
       return;
     }
 
@@ -76,7 +110,9 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
         approved_by: currentUser?.id,
         approved_at: new Date().toISOString(),
         approval_notes: "Dibuat langsung oleh Admin",
-      }).select("id").single();
+        delegated_to: delegatedTo,
+        delegation_notes: delegationNotes.trim(),
+      } as any).select("id").single();
 
       if (error) throw error;
 
@@ -104,7 +140,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Buat Cuti Karyawan</DialogTitle>
           <DialogDescription>Admin membuat pengajuan cuti langsung untuk karyawan (otomatis disetujui)</DialogDescription>
@@ -153,6 +189,48 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
             <Label>Alasan</Label>
             <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Alasan cuti..." />
           </div>
+
+          <div className="border-t pt-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold">Pendelegasian Tugas</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedEmployee
+                  ? <>Pilih rekan dari departemen <strong>{selectedEmployee.departemen}</strong> yang akan menggantikan tugas.</>
+                  : "Pilih karyawan terlebih dahulu untuk melihat daftar rekan satu departemen."}
+              </p>
+            </div>
+            <div>
+              <Label>Karyawan Pengganti</Label>
+              <Select value={delegatedTo} onValueChange={setDelegatedTo} disabled={!selectedEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder={
+                    !selectedEmployee
+                      ? "Pilih karyawan dulu"
+                      : colleagues.length === 0
+                        ? "Tidak ada rekan di departemen ini"
+                        : "Pilih karyawan pengganti"
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {colleagues.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.full_name} - {c.jabatan}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Detail Tugas yang Didelegasikan</Label>
+              <Textarea
+                value={delegationNotes}
+                onChange={(e) => setDelegationNotes(e.target.value)}
+                placeholder="Tuliskan tugas-tugas yang didelegasikan..."
+                rows={3}
+              />
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>
             <Button onClick={handleSubmit} disabled={loading}>

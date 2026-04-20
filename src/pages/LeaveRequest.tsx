@@ -25,6 +25,12 @@ interface Holiday {
   date: string;
 }
 
+interface DepartmentColleague {
+  id: string;
+  full_name: string;
+  jabatan: string;
+}
+
 const LeaveRequest = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -34,6 +40,7 @@ const LeaveRequest = () => {
   const [usedQuotas, setUsedQuotas] = useState({ annual: 0, sick: 0, permission: 0 });
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [colleagues, setColleagues] = useState<DepartmentColleague[]>([]);
 
   const isAnnualLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
 
@@ -44,6 +51,8 @@ const LeaveRequest = () => {
       startDate: "",
       endDate: "",
       reason: "",
+      delegatedTo: "",
+      delegationNotes: "",
     },
   });
 
@@ -106,6 +115,26 @@ const LeaveRequest = () => {
 
     fetchHolidays();
   }, []);
+
+  // Fetch colleagues from same department (for task delegation)
+  useEffect(() => {
+    const fetchColleagues = async () => {
+      if (!profile?.id || !profile?.departemen) return;
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, full_name, jabatan")
+          .eq("departemen", profile.departemen)
+          .eq("status", "Active")
+          .neq("id", profile.id)
+          .order("full_name");
+        if (data) setColleagues(data);
+      } catch (error) {
+        console.error("Error fetching colleagues:", error);
+      }
+    };
+    fetchColleagues();
+  }, [profile?.id, profile?.departemen]);
 
   // Calculate working days only (exclude Saturday, Sunday, and national holidays)
   const calculateWorkingDays = (start: string, end: string, holidayList: Holiday[]) => {
@@ -233,7 +262,9 @@ const LeaveRequest = () => {
           end_date: data.endDate,
           total_days: totalDays,
           reason: data.reason || "",
-        },
+          delegated_to: data.delegatedTo,
+          delegation_notes: data.delegationNotes,
+        } as any,
       ]);
 
       if (error) throw error;
@@ -408,6 +439,58 @@ const LeaveRequest = () => {
                         </FormItem>
                       )}
                     />
+
+                    <div className="border-t pt-4 space-y-4">
+                      <div>
+                        <p className="text-sm font-semibold">Pendelegasian Tugas</p>
+                        <p className="text-xs text-muted-foreground">
+                          Wajib diisi. Pilih rekan dari departemen <strong>{profile?.departemen}</strong> yang akan menggantikan tugas Anda selama cuti.
+                        </p>
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="delegatedTo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Karyawan Pengganti</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={colleagues.length === 0 ? "Tidak ada rekan di departemen Anda" : "Pilih karyawan pengganti"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {colleagues.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.full_name} - {c.jabatan}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="delegationNotes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Detail Tugas yang Didelegasikan</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                rows={3}
+                                placeholder="Tuliskan tugas-tugas yang akan didelegasikan selama cuti..."
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     <Button
                       type="submit"

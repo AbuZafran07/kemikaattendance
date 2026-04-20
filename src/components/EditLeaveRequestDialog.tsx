@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { differenceInDays, parseISO } from "date-fns";
 import logger from "@/lib/logger";
@@ -25,6 +26,8 @@ interface LeaveRequest {
   total_days: number;
   reason: string;
   status: string;
+  delegated_to?: string | null;
+  delegation_notes?: string | null;
 }
 
 interface EditLeaveRequestDialogProps {
@@ -34,17 +37,42 @@ interface EditLeaveRequestDialogProps {
   onUpdated: () => void;
 }
 
+interface Colleague {
+  id: string;
+  full_name: string;
+  jabatan: string;
+}
+
 export const EditLeaveRequestDialog = ({
   open,
   onOpenChange,
   request,
   onUpdated,
 }: EditLeaveRequestDialogProps) => {
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [leaveType, setLeaveType] = useState(request.leave_type);
   const [startDate, setStartDate] = useState(request.start_date);
   const [endDate, setEndDate] = useState(request.end_date);
   const [reason, setReason] = useState(request.reason);
+  const [delegatedTo, setDelegatedTo] = useState(request.delegated_to || "");
+  const [delegationNotes, setDelegationNotes] = useState(request.delegation_notes || "");
+  const [colleagues, setColleagues] = useState<Colleague[]>([]);
+
+  useEffect(() => {
+    const fetchColleagues = async () => {
+      if (!profile?.id || !profile?.departemen) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, jabatan")
+        .eq("departemen", profile.departemen)
+        .eq("status", "Active")
+        .neq("id", profile.id)
+        .order("full_name");
+      if (data) setColleagues(data);
+    };
+    if (open) fetchColleagues();
+  }, [open, profile?.id, profile?.departemen]);
 
   const calculateTotalDays = (start: string, end: string) => {
     if (!start || !end) return 0;
@@ -54,6 +82,10 @@ export const EditLeaveRequestDialog = ({
   const handleSubmit = async () => {
     if (!leaveType || !startDate || !endDate || !reason.trim()) {
       toast.error("Harap lengkapi semua field");
+      return;
+    }
+    if (!delegatedTo || !delegationNotes.trim()) {
+      toast.error("Pendelegasian tugas wajib diisi");
       return;
     }
 
@@ -73,7 +105,9 @@ export const EditLeaveRequestDialog = ({
           end_date: endDate,
           total_days: totalDays,
           reason: reason.trim(),
-        })
+          delegated_to: delegatedTo,
+          delegation_notes: delegationNotes.trim(),
+        } as any)
         .eq("id", request.id);
 
       if (error) throw error;
@@ -91,7 +125,7 @@ export const EditLeaveRequestDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Pengajuan Cuti</DialogTitle>
           <DialogDescription>
@@ -150,6 +184,39 @@ export const EditLeaveRequestDialog = ({
               placeholder="Masukkan alasan pengajuan..."
               rows={3}
             />
+          </div>
+
+          <div className="border-t pt-3 space-y-3">
+            <div>
+              <p className="text-sm font-semibold">Pendelegasian Tugas</p>
+              <p className="text-xs text-muted-foreground">
+                Rekan dari departemen <strong>{profile?.departemen}</strong>.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Karyawan Pengganti</Label>
+              <Select value={delegatedTo} onValueChange={setDelegatedTo}>
+                <SelectTrigger>
+                  <SelectValue placeholder={colleagues.length === 0 ? "Tidak ada rekan" : "Pilih karyawan pengganti"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {colleagues.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.full_name} - {c.jabatan}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Detail Tugas yang Didelegasikan</Label>
+              <Textarea
+                value={delegationNotes}
+                onChange={(e) => setDelegationNotes(e.target.value)}
+                placeholder="Tuliskan tugas-tugas yang didelegasikan..."
+                rows={3}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter>

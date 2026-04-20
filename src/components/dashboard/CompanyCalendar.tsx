@@ -32,6 +32,9 @@ interface SpecialPeriod {
 interface LeaveDay {
   leave_type: string;
   label: string;
+  delegate_name?: string | null;
+  delegate_jabatan?: string | null;
+  delegation_notes?: string | null;
 }
 
 interface TravelDay {
@@ -116,24 +119,39 @@ const CompanyCalendar = () => {
 
     const { data } = await supabase
       .from("leave_requests")
-      .select("start_date, end_date, leave_type")
+      .select("start_date, end_date, leave_type, delegated_to, delegation_notes")
       .eq("user_id", user.id)
       .eq("status", "approved")
       .gte("end_date", monthStart)
       .lte("start_date", monthEnd);
 
+    // Fetch delegate profiles
+    const delegateIds = [...new Set((data || []).map((d: any) => d.delegated_to).filter(Boolean))];
+    let delegateMap = new Map<string, { full_name: string; jabatan: string }>();
+    if (delegateIds.length > 0) {
+      const { data: delegates } = await supabase
+        .from("profiles")
+        .select("id, full_name, jabatan")
+        .in("id", delegateIds);
+      delegateMap = new Map((delegates || []).map((p) => [p.id, { full_name: p.full_name, jabatan: p.jabatan }]));
+    }
+
     const map = new Map<string, LeaveDay[]>();
     if (data) {
-      data.forEach((leave) => {
+      data.forEach((leave: any) => {
         const start = parseISO(leave.start_date);
         const end = parseISO(leave.end_date);
         const days = eachDayOfInterval({ start, end });
+        const delegate = leave.delegated_to ? delegateMap.get(leave.delegated_to) : null;
         days.forEach((d) => {
           const key = format(d, "yyyy-MM-dd");
           const existing = map.get(key) || [];
           existing.push({
             leave_type: leave.leave_type,
             label: leaveTypeLabels[leave.leave_type] || leave.leave_type,
+            delegate_name: delegate?.full_name || null,
+            delegate_jabatan: delegate?.jabatan || null,
+            delegation_notes: leave.delegation_notes || null,
           });
           map.set(key, existing);
         });
@@ -623,9 +641,23 @@ const CompanyCalendar = () => {
                 {leaveDays && leaveDays.map((l, i) => (
                   <div key={`l-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-indigo-500/10">
                     <Briefcase className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-sm">Cuti / Izin</p>
                       <p className="text-sm text-muted-foreground">{l.label}</p>
+                      {l.delegate_name && (
+                        <div className="mt-2 pt-2 border-t border-indigo-500/20 space-y-0.5">
+                          <p className="text-xs text-muted-foreground">Tugas didelegasikan ke:</p>
+                          <p className="text-xs font-medium">
+                            {l.delegate_name}
+                            {l.delegate_jabatan ? ` - ${l.delegate_jabatan}` : ""}
+                          </p>
+                          {l.delegation_notes && (
+                            <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-wrap">
+                              "{l.delegation_notes}"
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

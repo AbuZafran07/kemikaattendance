@@ -93,13 +93,18 @@ const Leave = () => {
       return;
     }
 
-    // Get unique user IDs
-    const userIds = [...new Set(leaveData.map(r => r.user_id))];
-    
+    // Get unique user IDs (employee + delegated)
+    const userIds = [
+      ...new Set([
+        ...leaveData.map((r) => r.user_id),
+        ...leaveData.map((r: any) => r.delegated_to).filter(Boolean),
+      ]),
+    ];
+
     // Fetch profiles for those users
     const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, full_name, nik, departemen")
+      .select("id, full_name, nik, departemen, jabatan, remaining_leave")
       .in("id", userIds);
 
     if (profilesError) {
@@ -111,10 +116,11 @@ const Leave = () => {
       (profilesData || []).map(p => [p.id, p])
     );
 
-    // Combine leave requests with profiles
-    const combinedData = leaveData.map(request => ({
+    // Combine leave requests with profiles + delegate info
+    const combinedData = leaveData.map((request: any) => ({
       ...request,
-      profiles: profilesMap.get(request.user_id) || null
+      profiles: profilesMap.get(request.user_id) || null,
+      delegate_profile: request.delegated_to ? profilesMap.get(request.delegated_to) || null : null,
     }));
 
     logger.debug("Leave requests fetched:", combinedData);
@@ -473,6 +479,24 @@ const Leave = () => {
                 <p className="text-sm text-muted-foreground">Alasan</p>
                 <p className="font-medium whitespace-pre-wrap">{detailRequest.reason}</p>
               </div>
+              {(detailRequest.delegated_to || detailRequest.delegation_notes) && (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <p className="text-sm font-semibold">Pendelegasian Tugas</p>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Karyawan Pengganti</p>
+                    <p className="text-sm font-medium">
+                      {detailRequest.delegate_profile?.full_name || "-"}
+                      {detailRequest.delegate_profile?.jabatan ? ` - ${detailRequest.delegate_profile.jabatan}` : ""}
+                    </p>
+                  </div>
+                  {detailRequest.delegation_notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Detail Tugas</p>
+                      <p className="text-sm whitespace-pre-wrap">{detailRequest.delegation_notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
               {detailRequest.approval_notes && (
                 <div>
                   <p className="text-sm text-muted-foreground">Catatan Persetujuan</p>

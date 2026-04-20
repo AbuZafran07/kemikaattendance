@@ -119,24 +119,39 @@ const CompanyCalendar = () => {
 
     const { data } = await supabase
       .from("leave_requests")
-      .select("start_date, end_date, leave_type")
+      .select("start_date, end_date, leave_type, delegated_to, delegation_notes")
       .eq("user_id", user.id)
       .eq("status", "approved")
       .gte("end_date", monthStart)
       .lte("start_date", monthEnd);
 
+    // Fetch delegate profiles
+    const delegateIds = [...new Set((data || []).map((d: any) => d.delegated_to).filter(Boolean))];
+    let delegateMap = new Map<string, { full_name: string; jabatan: string }>();
+    if (delegateIds.length > 0) {
+      const { data: delegates } = await supabase
+        .from("profiles")
+        .select("id, full_name, jabatan")
+        .in("id", delegateIds);
+      delegateMap = new Map((delegates || []).map((p) => [p.id, { full_name: p.full_name, jabatan: p.jabatan }]));
+    }
+
     const map = new Map<string, LeaveDay[]>();
     if (data) {
-      data.forEach((leave) => {
+      data.forEach((leave: any) => {
         const start = parseISO(leave.start_date);
         const end = parseISO(leave.end_date);
         const days = eachDayOfInterval({ start, end });
+        const delegate = leave.delegated_to ? delegateMap.get(leave.delegated_to) : null;
         days.forEach((d) => {
           const key = format(d, "yyyy-MM-dd");
           const existing = map.get(key) || [];
           existing.push({
             leave_type: leave.leave_type,
             label: leaveTypeLabels[leave.leave_type] || leave.leave_type,
+            delegate_name: delegate?.full_name || null,
+            delegate_jabatan: delegate?.jabatan || null,
+            delegation_notes: leave.delegation_notes || null,
           });
           map.set(key, existing);
         });

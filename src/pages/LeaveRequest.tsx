@@ -262,7 +262,9 @@ const LeaveRequest = () => {
           end_date: data.endDate,
           total_days: totalDays,
           reason: data.reason || "",
-        },
+          delegated_to: data.delegatedTo,
+          delegation_notes: data.delegationNotes,
+        } as any,
       ]);
 
       if (error) throw error;

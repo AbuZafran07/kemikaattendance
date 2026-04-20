@@ -116,10 +116,11 @@ const Leave = () => {
       (profilesData || []).map(p => [p.id, p])
     );
 
-    // Combine leave requests with profiles
-    const combinedData = leaveData.map(request => ({
+    // Combine leave requests with profiles + delegate info
+    const combinedData = leaveData.map((request: any) => ({
       ...request,
-      profiles: profilesMap.get(request.user_id) || null
+      profiles: profilesMap.get(request.user_id) || null,
+      delegate_profile: request.delegated_to ? profilesMap.get(request.delegated_to) || null : null,
     }));
 
     logger.debug("Leave requests fetched:", combinedData);

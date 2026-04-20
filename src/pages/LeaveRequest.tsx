@@ -440,6 +440,58 @@ const LeaveRequest = () => {
                       )}
                     />
 
+                    <div className="border-t pt-4 space-y-4">
+                      <div>
+                        <p className="text-sm font-semibold">Pendelegasian Tugas</p>
+                        <p className="text-xs text-muted-foreground">
+                          Wajib diisi. Pilih rekan dari departemen <strong>{profile?.departemen}</strong> yang akan menggantikan tugas Anda selama cuti.
+                        </p>
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="delegatedTo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Karyawan Pengganti</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={colleagues.length === 0 ? "Tidak ada rekan di departemen Anda" : "Pilih karyawan pengganti"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {colleagues.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.full_name} - {c.jabatan}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="delegationNotes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Detail Tugas yang Didelegasikan</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                rows={3}
+                                placeholder="Tuliskan tugas-tugas yang akan didelegasikan selama cuti..."
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <Button
                       type="submit"
                       className="w-full"

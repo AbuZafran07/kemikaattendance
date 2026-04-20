@@ -146,7 +146,7 @@ const MyDelegatedTasks = () => {
                   </div>
                 </div>
                 {active && (
-                  <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs shrink-0">
+                  <Badge className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs shrink-0">
                     Aktif
                   </Badge>
                 )}

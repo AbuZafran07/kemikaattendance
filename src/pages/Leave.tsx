@@ -93,13 +93,18 @@ const Leave = () => {
       return;
     }
 
-    // Get unique user IDs
-    const userIds = [...new Set(leaveData.map(r => r.user_id))];
-    
+    // Get unique user IDs (employee + delegated)
+    const userIds = [
+      ...new Set([
+        ...leaveData.map((r) => r.user_id),
+        ...leaveData.map((r: any) => r.delegated_to).filter(Boolean),
+      ]),
+    ];
+
     // Fetch profiles for those users
     const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, full_name, nik, departemen")
+      .select("id, full_name, nik, departemen, jabatan, remaining_leave")
       .in("id", userIds);
 
     if (profilesError) {

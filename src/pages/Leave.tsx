@@ -479,6 +479,24 @@ const Leave = () => {
                 <p className="text-sm text-muted-foreground">Alasan</p>
                 <p className="font-medium whitespace-pre-wrap">{detailRequest.reason}</p>
               </div>
+              {(detailRequest.delegated_to || detailRequest.delegation_notes) && (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <p className="text-sm font-semibold">Pendelegasian Tugas</p>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Karyawan Pengganti</p>
+                    <p className="text-sm font-medium">
+                      {detailRequest.delegate_profile?.full_name || "-"}
+                      {detailRequest.delegate_profile?.jabatan ? ` - ${detailRequest.delegate_profile.jabatan}` : ""}
+                    </p>
+                  </div>
+                  {detailRequest.delegation_notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Detail Tugas</p>
+                      <p className="text-sm whitespace-pre-wrap">{detailRequest.delegation_notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
               {detailRequest.approval_notes && (
                 <div>
                   <p className="text-sm text-muted-foreground">Catatan Persetujuan</p>

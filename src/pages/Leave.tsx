@@ -174,6 +174,28 @@ const Leave = () => {
         const endDate = formatDateForNotification(request.end_date);
         const notification = NotificationTemplates.leaveRequestApproved(leaveType, startDate, endDate);
         notifyEmployee(request.user_id, notification.title, notification.body, { type: 'leave_approved' });
+
+        // Notify the delegated employee (replacement) if assigned
+        if (request.delegated_to) {
+          const { data: requesterProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', request.user_id)
+            .single();
+          const requesterName = requesterProfile?.full_name || 'Rekan Anda';
+          const delegationNotif = NotificationTemplates.leaveDelegationAssigned(
+            requesterName,
+            startDate,
+            endDate,
+            request.delegation_notes || 'Lihat detail di aplikasi'
+          );
+          notifyEmployee(
+            request.delegated_to,
+            delegationNotif.title,
+            delegationNotif.body,
+            { type: 'leave_delegation_assigned', leave_request_id: selectedRequestId }
+          );
+        }
       }
       
       fetchLeaveRequests();

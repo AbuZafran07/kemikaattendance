@@ -30,6 +30,7 @@ import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
 import { format } from "date-fns";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import MyDelegatedTasks from "@/components/MyDelegatedTasks";
 
 // Office coordinates and work hours will be fetched from system settings
 
@@ -1036,6 +1037,9 @@ const EmployeeView = () => {
           </CardContent>
         </Card>
 
+
+        {/* My Delegated Tasks - Tugas yang didelegasikan ke saya */}
+        <MyDelegatedTasks />
 
         {/* Company Calendar */}
         <CompanyCalendar />

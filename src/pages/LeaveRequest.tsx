@@ -116,6 +116,26 @@ const LeaveRequest = () => {
     fetchHolidays();
   }, []);
 
+  // Fetch colleagues from same department (for task delegation)
+  useEffect(() => {
+    const fetchColleagues = async () => {
+      if (!profile?.id || !profile?.departemen) return;
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, full_name, jabatan")
+          .eq("departemen", profile.departemen)
+          .eq("status", "Active")
+          .neq("id", profile.id)
+          .order("full_name");
+        if (data) setColleagues(data);
+      } catch (error) {
+        console.error("Error fetching colleagues:", error);
+      }
+    };
+    fetchColleagues();
+  }, [profile?.id, profile?.departemen]);
+
   // Calculate working days only (exclude Saturday, Sunday, and national holidays)
   const calculateWorkingDays = (start: string, end: string, holidayList: Holiday[]) => {
     if (!start || !end) return 0;

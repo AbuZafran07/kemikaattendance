@@ -130,6 +130,19 @@ export const NotificationTemplates = {
     body: `Pengajuan ${leaveType} Anda ditolak${reason ? `: ${reason}` : ''}`
   }),
 
+  // Delegation notification (for replacement employee)
+  leaveDelegationAssigned: (
+    requesterName: string,
+    startDate: string,
+    endDate: string,
+    delegationNotes: string
+  ) => ({
+    title: '📌 Anda Ditunjuk Sebagai Pengganti',
+    body: `${requesterName} cuti ${startDate} - ${endDate}. Tugas: ${
+      delegationNotes.length > 100 ? delegationNotes.slice(0, 100) + '…' : delegationNotes
+    }`
+  }),
+
   // Overtime notifications
   overtimeRequestSubmitted: (employeeName: string, hours: number, date: string) => ({
     title: '⏰ Pengajuan Lembur Baru',

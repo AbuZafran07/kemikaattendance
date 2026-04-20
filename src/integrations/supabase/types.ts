@@ -392,6 +392,8 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           created_at: string
+          delegated_to: string | null
+          delegation_notes: string | null
           end_date: string
           id: string
           leave_type: Database["public"]["Enums"]["leave_type"]
@@ -408,6 +410,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          delegated_to?: string | null
+          delegation_notes?: string | null
           end_date: string
           id?: string
           leave_type: Database["public"]["Enums"]["leave_type"]
@@ -424,6 +428,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          delegated_to?: string | null
+          delegation_notes?: string | null
           end_date?: string
           id?: string
           leave_type?: Database["public"]["Enums"]["leave_type"]

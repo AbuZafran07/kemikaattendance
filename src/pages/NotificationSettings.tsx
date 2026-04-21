@@ -33,6 +33,8 @@ const NotificationSettings = () => {
     notifyOvertimeRequest: true,
     notifyMissedCheckIn: true,
     missedCheckInTime: "09:00",
+    notifyMissedCheckOut: true,
+    missedCheckOutTime: "17:00",
     notifyLowLeaveQuota: true,
     lowLeaveQuotaThreshold: 3,
   });

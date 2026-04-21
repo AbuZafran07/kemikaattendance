@@ -17,6 +17,8 @@ interface NotificationSettingsConfig {
   notifyOvertimeRequest: boolean;
   notifyMissedCheckIn: boolean;
   missedCheckInTime: string;
+  notifyMissedCheckOut: boolean;
+  missedCheckOutTime: string;
   notifyLowLeaveQuota: boolean;
   lowLeaveQuotaThreshold: number;
 }
@@ -31,6 +33,8 @@ const NotificationSettings = () => {
     notifyOvertimeRequest: true,
     notifyMissedCheckIn: true,
     missedCheckInTime: "09:00",
+    notifyMissedCheckOut: true,
+    missedCheckOutTime: "17:00",
     notifyLowLeaveQuota: true,
     lowLeaveQuotaThreshold: 3,
   });
@@ -229,6 +233,44 @@ const NotificationSettings = () => {
                   onChange={(e) => handleTimeChange(e.target.value)}
                   className="w-32"
                 />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between border-t pt-4">
+              <Label htmlFor="notifyMissedCheckOut" className="cursor-pointer">
+                <div>
+                  <p className="font-medium">Pengingat Belum Check-Out</p>
+                  <p className="text-sm text-muted-foreground">
+                    Kirim notifikasi ke karyawan yang sudah check-in tapi belum check-out
+                  </p>
+                </div>
+              </Label>
+              <Switch
+                id="notifyMissedCheckOut"
+                checked={settings.notifyMissedCheckOut}
+                onCheckedChange={() => handleToggle('notifyMissedCheckOut')}
+              />
+            </div>
+
+            {settings.notifyMissedCheckOut && (
+              <div className="ml-6 space-y-2">
+                <div className="flex items-center gap-4">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="missedCheckOutTime" className="text-sm">
+                    Waktu pengiriman pengingat:
+                  </Label>
+                  <Input
+                    id="missedCheckOutTime"
+                    type="time"
+                    value={settings.missedCheckOutTime}
+                    onChange={(e) => setSettings({ ...settings, missedCheckOutTime: e.target.value })}
+                    className="w-32"
+                  />
+                  <span className="text-xs text-muted-foreground">WIB</span>
+                </div>
+                <p className="text-xs text-muted-foreground ml-6">
+                  Cron berjalan tiap jam (Senin–Jumat). Notifikasi hanya dikirim pada jam yang sama dengan pengaturan ini.
+                </p>
               </div>
             )}
           </CardContent>

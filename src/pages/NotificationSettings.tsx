@@ -17,6 +17,8 @@ interface NotificationSettingsConfig {
   notifyOvertimeRequest: boolean;
   notifyMissedCheckIn: boolean;
   missedCheckInTime: string;
+  notifyMissedCheckOut: boolean;
+  missedCheckOutTime: string;
   notifyLowLeaveQuota: boolean;
   lowLeaveQuotaThreshold: number;
 }

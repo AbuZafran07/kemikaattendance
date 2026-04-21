@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.scheduled-backup]
 verify_jwt = false
+
+[functions.checkout-reminder]
+verify_jwt = false

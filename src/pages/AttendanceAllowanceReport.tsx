@@ -438,12 +438,20 @@ export default function AttendanceAllowanceReport() {
       );
 
       // ===== Table =====
+      // Mangkir = Hari Kerja - (Hadir + Telat + Pulang Cepat)
+      // Catatan: days_present sudah memuat hadir+telat+pulang_cepat yang valid (check-in & check-out)
+      // sehingga mangkir mencerminkan hari kerja tanpa absensi tercatat (tidak termasuk cuti/sakit/izin/dinas yang sudah disetujui).
+      const calcMangkir = (r: EmployeeAllowance) =>
+        Math.max(0, r.total_working_days - r.days_present);
+
       const tableData = results.map((r, idx) => [
         idx + 1,
         r.nik,
         r.full_name,
         r.jabatan,
+        r.total_working_days,
         r.days_present,
+        r.excluded ? "-" : calcMangkir(r),
         r.days_late,
         r.total_late_hours,
         r.days_early_leave,
@@ -455,16 +463,26 @@ export default function AttendanceAllowanceReport() {
       ]);
 
       const totalAllowance = results.reduce((s, r) => s + (r.excluded ? 0 : r.final_allowance), 0);
-      tableData.push(["", "", "", "TOTAL", "", "", "", "", "", "", "", "", formatCurrency(totalAllowance)]);
+      const totalMangkir = results.reduce((s, r) => s + (r.excluded ? 0 : calcMangkir(r)), 0);
+      const totalPresent = results.reduce((s, r) => s + (r.excluded ? 0 : r.days_present), 0);
+      tableData.push(["", "", "", "TOTAL", "", totalPresent, totalMangkir, "", "", "", "", "", "", "", formatCurrency(totalAllowance)]);
 
       autoTable(doc, {
         startY: 32,
-        head: [["No", "NIK", "Nama", "Jabatan", "Hadir", "Telat", "Jam Telat", "P.Cepat", "Jam P.Cepat", "Base", "Pot. Telat", "Pot. P.Cepat", "Tunjangan"]],
+        head: [[
+          "No", "NIK", "Nama", "Jabatan",
+          "H.Kerja", "Hadir", "Mangkir",
+          "Telat", "Jam Telat", "P.Cepat", "Jam P.Cepat",
+          "Base", "Pot. Telat", "Pot. P.Cepat", "Tunjangan",
+        ]],
         body: tableData,
         styles: { fontSize: 7 },
         headStyles: { fillColor: GREEN, textColor: [255, 255, 255], fontStyle: "bold" },
         alternateRowStyles: { fillColor: [245, 250, 247] },
         margin: { left: 8, right: 8 },
+        columnStyles: {
+          6: { textColor: [200, 50, 50], fontStyle: "bold" },
+        },
       });
 
       // ===== Footer (matches payroll PDF style) =====

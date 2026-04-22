@@ -517,7 +517,14 @@ export default function EmployeeReports() {
 
         if (enableAI) {
           setProgressText("Generating AI insight...");
-          const { insight } = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+          const workingDaysInPeriod = countWorkingDaysInRange(startDate, endDate, holidayDates);
+          const { insight } = await getAIInsight(
+            emp.full_name,
+            empData.summary,
+            `${startDate} s/d ${endDate}`,
+            emp.work_type,
+            workingDaysInPeriod,
+          );
           headerRows.push([""]);
           headerRows.push([`AI Insight: ${insight}`]);
         }
@@ -590,7 +597,14 @@ export default function EmployeeReports() {
         if (enableAI) {
           setProgressText(`AI insight: ${emp.full_name} (${i + 1}/${total})`);
           setProgress(((total + i + 1) / (total * 2)) * 100);
-          const { insight, isGood } = await getAIInsight(emp.full_name, s, `${startDate} s/d ${endDate}`);
+          const workingDaysInPeriod = countWorkingDaysInRange(startDate, endDate, holidayDates);
+          const { insight, isGood } = await getAIInsight(
+            emp.full_name,
+            s,
+            `${startDate} s/d ${endDate}`,
+            emp.work_type,
+            workingDaysInPeriod,
+          );
 
           // Star image at top-right corner for good attendance
           if (isGood) {

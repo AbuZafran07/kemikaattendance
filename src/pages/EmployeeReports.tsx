@@ -220,11 +220,51 @@ function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate:
     .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 }
 
+function countWorkingDaysInRange(startDate: string, endDate: string, holidayDates: Set<string>): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  let count = 0;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (!isNonWorkingDay(new Date(d), holidayDates)) count++;
+  }
+  return count;
+}
+
 async function getAIInsight(
   employeeName: string,
   summary: EmployeeAttendanceData["summary"],
-  periode: string
+  periode: string,
+  workType?: string,
+  workingDaysInPeriod?: number
 ): Promise<{ insight: string; isGood: boolean }> {
+  // Hybrid (WFA) employees do NOT have attendance obligations.
+  // Skip AI star evaluation entirely so they never receive an unjustified star.
+  if (workType && workType.toLowerCase() === "wfa") {
+    return {
+      insight: "Karyawan dengan tipe kerja Hybrid (WFA) tidak diwajibkan melakukan absensi harian, sehingga penilaian kehadiran tidak diterapkan.",
+      isGood: false,
+    };
+  }
+
+  // Compute "absent without notice" = working days - (hadir + terlambat + pulangCepat + cutiTahunan + sakit + izin + lupaAbsen + dinas)
+  const accountedDays =
+    summary.hadir +
+    summary.terlambat +
+    summary.pulangCepat +
+    (summary.cutiTahunan || 0) +
+    (summary.sakit || 0) +
+    (summary.izin || 0) +
+    (summary.lupaAbsen || 0) +
+    summary.dinas;
+  const absentNoNotice = workingDaysInPeriod !== undefined
+    ? Math.max(0, workingDaysInPeriod - accountedDays)
+    : 0;
+
+  // Hard guard: if employee was absent without notice on any working day, never award the star.
+  // Also guard: if employee did not check in at all (hadir + terlambat == 0) but the period has working days, no star.
+  const totalCheckedIn = summary.hadir + summary.terlambat + summary.pulangCepat;
+  const hasNoAttendanceAtAll = (workingDaysInPeriod || 0) > 0 && totalCheckedIn === 0;
+
   const maxRetries = 2;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -235,6 +275,8 @@ async function getAIInsight(
           employeeName,
           summary: {
             ...summary,
+            tidakHadir: absentNoNotice,
+            hariKerja: workingDaysInPeriod || 0,
             totalJamKerja: `${Math.floor(summary.totalDuration / 60)} jam ${summary.totalDuration % 60} menit`,
             periode,
           },
@@ -244,10 +286,13 @@ async function getAIInsight(
       if (error) throw error;
 
       const cleanedInsight = typeof data?.insight === "string" ? data.insight.trim() : "";
+      // Override AI: enforce strict rule client-side too.
+      const aiIsGood = data?.isGood === true;
+      const isGood = aiIsGood && absentNoNotice === 0 && !hasNoAttendanceAtAll;
 
       return {
         insight: cleanedInsight || "Tidak dapat menghasilkan insight.",
-        isGood: data?.isGood === true,
+        isGood,
       };
     } catch (e) {
       console.error(`[AI Insight] Attempt ${attempt + 1} failed:`, e);
@@ -283,7 +328,7 @@ export default function EmployeeReports() {
   const fetchEmployees = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, full_name, nik, departemen, status")
+      .select("id, full_name, nik, departemen, status, work_type")
       .order("full_name");
     if (data) {
       const filtered = data.filter((e: any) => !EXCLUDED_DEPARTMENTS.includes(e.departemen) && e.status === "Active");
@@ -341,6 +386,7 @@ export default function EmployeeReports() {
 
         // AI insights sheet data
         let insightRows: Record<string, any>[] = [];
+        const workingDaysInPeriod = countWorkingDaysInRange(startDate, endDate, holidayDates);
         if (enableAI) {
           for (let i = 0; i < total; i++) {
             const emp = targetEmployees[i];
@@ -348,12 +394,19 @@ export default function EmployeeReports() {
             setProgress(((total + i + 1) / (total * 2)) * 100);
 
             const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp, holidayDates);
-            const { insight, isGood } = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+            const { insight, isGood } = await getAIInsight(
+              emp.full_name,
+              empData.summary,
+              `${startDate} s/d ${endDate}`,
+              emp.work_type,
+              workingDaysInPeriod,
+            );
 
             insightRows.push({
               "Nama Karyawan": `${isGood ? "⭐ " : ""}${emp.full_name}`,
               NIK: emp.nik,
               Departemen: emp.departemen,
+              "Tipe Kerja": emp.work_type === "wfa" ? "Hybrid (WFA)" : "WFO",
               "Hadir Tepat Waktu": empData.summary.hadir,
               Terlambat: empData.summary.terlambat,
               "Pulang Cepat": empData.summary.pulangCepat,
@@ -464,7 +517,14 @@ export default function EmployeeReports() {
 
         if (enableAI) {
           setProgressText("Generating AI insight...");
-          const { insight } = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+          const workingDaysInPeriod = countWorkingDaysInRange(startDate, endDate, holidayDates);
+          const { insight } = await getAIInsight(
+            emp.full_name,
+            empData.summary,
+            `${startDate} s/d ${endDate}`,
+            emp.work_type,
+            workingDaysInPeriod,
+          );
           headerRows.push([""]);
           headerRows.push([`AI Insight: ${insight}`]);
         }
@@ -537,7 +597,14 @@ export default function EmployeeReports() {
         if (enableAI) {
           setProgressText(`AI insight: ${emp.full_name} (${i + 1}/${total})`);
           setProgress(((total + i + 1) / (total * 2)) * 100);
-          const { insight, isGood } = await getAIInsight(emp.full_name, s, `${startDate} s/d ${endDate}`);
+          const workingDaysInPeriod = countWorkingDaysInRange(startDate, endDate, holidayDates);
+          const { insight, isGood } = await getAIInsight(
+            emp.full_name,
+            s,
+            `${startDate} s/d ${endDate}`,
+            emp.work_type,
+            workingDaysInPeriod,
+          );
 
           // Star image at top-right corner for good attendance
           if (isGood) {

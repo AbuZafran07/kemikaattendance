@@ -390,19 +390,39 @@ export default function AttendanceAllowanceReport() {
       const curMonth = new Date(year, month - 1);
       const monthLabel = `${cutoffDay} ${format(prevMonth, "MMMM", { locale: idLocale })} - ${periodEndDay} ${format(curMonth, "MMMM yyyy", { locale: idLocale })}`;
 
-      const doc = new jsPDF({ orientation: "landscape" });
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pw = doc.internal.pageSize.getWidth();
+      const ph = doc.internal.pageSize.getHeight();
 
-      // Logo
+      // Kemika brand colors (matching payroll PDF standard)
+      const GREEN: [number, number, number] = [0, 135, 81];
+      const GRAY_TEXT: [number, number, number] = [80, 80, 80];
+
+      // ===== Green header bar with logo =====
+      doc.setFillColor(...GREEN);
+      doc.rect(0, 0, pw, 18, "F");
+
+      // Logo on the left of the green bar
       try {
         const logoBase64 = await loadImageAsBase64("/logo.png");
-        doc.addImage(logoBase64, "PNG", 14, 10, 20, 20);
+        doc.addImage(logoBase64, "PNG", 6, 2, 14, 14);
       } catch {}
 
-      doc.setFontSize(14);
-      doc.text("Laporan Tunjangan Kehadiran", 40, 18);
-      doc.setFontSize(10);
-      doc.text(`Periode: ${monthLabel}`, 40, 25);
+      // Title centered in the green bar
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      doc.text("Laporan Tunjangan Kehadiran", pw / 2, 8, { align: "center" });
 
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Periode: ${monthLabel}`, 22, 15);
+      doc.text("PT. KEMIKA KARYA PRATAMA", pw - 8, 15, { align: "right" });
+
+      // Reset text color for body
+      doc.setTextColor(30, 30, 30);
+
+      // ===== Summary line =====
       const ratePerDay = results[0]?.total_working_days > 0
         ? (config?.max_amount || 0) / results[0].total_working_days
         : 0;
@@ -410,8 +430,14 @@ export default function AttendanceAllowanceReport() {
         ? ratePerDay / (config?.work_hours_per_day || 8)
         : 0;
 
-      doc.text(`Tunjangan Maks: ${formatCurrency(config?.max_amount || 0)}  |  Hari Kerja: ${results[0]?.total_working_days}  |  Tarif/hari: ${formatCurrency(ratePerDay)}  |  Tarif potongan/jam: ${formatCurrency(ratePerHour)}`, 14, 35);
+      doc.setFontSize(9);
+      doc.text(
+        `Tunjangan Maks: ${formatCurrency(config?.max_amount || 0)}  |  Hari Kerja: ${results[0]?.total_working_days}  |  Tarif/hari: ${formatCurrency(ratePerDay)}  |  Tarif potongan/jam: ${formatCurrency(ratePerHour)}`,
+        8,
+        26,
+      );
 
+      // ===== Table =====
       const tableData = results.map((r, idx) => [
         idx + 1,
         r.nik,
@@ -432,12 +458,30 @@ export default function AttendanceAllowanceReport() {
       tableData.push(["", "", "", "TOTAL", "", "", "", "", "", "", "", "", formatCurrency(totalAllowance)]);
 
       autoTable(doc, {
-        startY: 40,
+        startY: 32,
         head: [["No", "NIK", "Nama", "Jabatan", "Hadir", "Telat", "Jam Telat", "P.Cepat", "Jam P.Cepat", "Base", "Pot. Telat", "Pot. P.Cepat", "Tunjangan"]],
         body: tableData,
         styles: { fontSize: 7 },
-        headStyles: { fillColor: [41, 128, 185] },
+        headStyles: { fillColor: GREEN, textColor: [255, 255, 255], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [245, 250, 247] },
+        margin: { left: 8, right: 8 },
       });
+
+      // ===== Footer (matches payroll PDF style) =====
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setDrawColor(...GREEN);
+        doc.setLineWidth(0.5);
+        doc.line(8, ph - 10, pw - 8, ph - 10);
+
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...GRAY_TEXT);
+        doc.text("Dokumen ini dicetak melalui sistem digital dan tidak memerlukan tanda tangan sebagai validasi.", 8, ph - 6);
+        doc.text(`PT. Kemika Karya Pratama — Laporan Tunjangan Kehadiran ${monthLabel}`, pw / 2, ph - 6, { align: "center" });
+        doc.text(`Halaman ${i} / ${pageCount}`, pw - 8, ph - 6, { align: "right" });
+      }
 
       doc.save(`Tunjangan_Kehadiran_${selectedMonth}.pdf`);
       toast.success("File PDF berhasil diunduh");

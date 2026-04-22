@@ -386,6 +386,7 @@ export default function EmployeeReports() {
 
         // AI insights sheet data
         let insightRows: Record<string, any>[] = [];
+        const workingDaysInPeriod = countWorkingDaysInRange(startDate, endDate, holidayDates);
         if (enableAI) {
           for (let i = 0; i < total; i++) {
             const emp = targetEmployees[i];
@@ -393,12 +394,19 @@ export default function EmployeeReports() {
             setProgress(((total + i + 1) / (total * 2)) * 100);
 
             const empData = await fetchEmployeeData(emp.id, startDate, endDate, emp, holidayDates);
-            const { insight, isGood } = await getAIInsight(emp.full_name, empData.summary, `${startDate} s/d ${endDate}`);
+            const { insight, isGood } = await getAIInsight(
+              emp.full_name,
+              empData.summary,
+              `${startDate} s/d ${endDate}`,
+              emp.work_type,
+              workingDaysInPeriod,
+            );
 
             insightRows.push({
               "Nama Karyawan": `${isGood ? "⭐ " : ""}${emp.full_name}`,
               NIK: emp.nik,
               Departemen: emp.departemen,
+              "Tipe Kerja": emp.work_type === "wfa" ? "Hybrid (WFA)" : "WFO",
               "Hadir Tepat Waktu": empData.summary.hadir,
               Terlambat: empData.summary.terlambat,
               "Pulang Cepat": empData.summary.pulangCepat,

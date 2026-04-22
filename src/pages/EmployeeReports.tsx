@@ -283,7 +283,7 @@ export default function EmployeeReports() {
   const fetchEmployees = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, full_name, nik, departemen, status")
+      .select("id, full_name, nik, departemen, status, work_type")
       .order("full_name");
     if (data) {
       const filtered = data.filter((e: any) => !EXCLUDED_DEPARTMENTS.includes(e.departemen) && e.status === "Active");

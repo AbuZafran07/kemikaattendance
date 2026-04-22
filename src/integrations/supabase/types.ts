@@ -792,6 +792,7 @@ export type Database = {
           bank_name: string | null
           basic_salary: number | null
           bpjs_kesehatan_enabled: boolean
+          bpjs_ketenagakerjaan_enabled: boolean
           contract_type: string
           created_at: string
           departemen: string
@@ -821,6 +822,7 @@ export type Database = {
           bank_name?: string | null
           basic_salary?: number | null
           bpjs_kesehatan_enabled?: boolean
+          bpjs_ketenagakerjaan_enabled?: boolean
           contract_type?: string
           created_at?: string
           departemen: string
@@ -850,6 +852,7 @@ export type Database = {
           bank_name?: string | null
           basic_salary?: number | null
           bpjs_kesehatan_enabled?: boolean
+          bpjs_ketenagakerjaan_enabled?: boolean
           contract_type?: string
           created_at?: string
           departemen?: string

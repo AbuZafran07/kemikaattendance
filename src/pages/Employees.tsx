@@ -101,6 +101,7 @@ const Employees = () => {
     tunjangan_jabatan: "",
     tunjangan_operasional: "",
     bpjs_kesehatan_enabled: true,
+    bpjs_ketenagakerjaan_enabled: true,
     contract_type: "permanent",
     npwp: "",
     bank_name: "",
@@ -362,6 +363,7 @@ const Employees = () => {
           tunjangan_jabatan: (result.data.tunjangan_jabatan ?? (Number(editFormData.tunjangan_jabatan) || 0)),
           tunjangan_operasional: (result.data.tunjangan_operasional ?? (Number(editFormData.tunjangan_operasional) || 0)),
            bpjs_kesehatan_enabled: editFormData.bpjs_kesehatan_enabled,
+           bpjs_ketenagakerjaan_enabled: editFormData.bpjs_ketenagakerjaan_enabled,
           contract_type: editFormData.contract_type,
           annual_leave_quota: editFormData.leave_active ? (Number(editFormData.annual_leave_quota) || 12) : 0,
           remaining_leave: editFormData.leave_active ? (Number(editFormData.remaining_leave) || 0) : 0,
@@ -412,6 +414,7 @@ const Employees = () => {
       tunjangan_jabatan: String(employee.tunjangan_jabatan || ""),
       tunjangan_operasional: String(employee.tunjangan_operasional || ""),
       bpjs_kesehatan_enabled: employee.bpjs_kesehatan_enabled !== false,
+      bpjs_ketenagakerjaan_enabled: employee.bpjs_ketenagakerjaan_enabled !== false,
       contract_type: employee.contract_type || "permanent",
       npwp: employee.npwp || "",
       bank_name: employee.bank_name || "",
@@ -461,6 +464,7 @@ const Employees = () => {
       tunjangan_jabatan: "",
       tunjangan_operasional: "",
       bpjs_kesehatan_enabled: true,
+      bpjs_ketenagakerjaan_enabled: true,
       contract_type: "permanent",
       npwp: "",
       bank_name: "",
@@ -1048,6 +1052,19 @@ const Employees = () => {
                     Ikut BPJS Kesehatan
                   </Label>
                   {!editFormData.bpjs_kesehatan_enabled && (
+                    <Badge variant="destructive" className="text-xs">Tidak Ikut</Badge>
+                  )}
+                </div>
+                <div className="col-span-2 flex items-center space-x-2 mb-2">
+                  <Checkbox
+                    id="edit_bpjs_tk"
+                    checked={editFormData.bpjs_ketenagakerjaan_enabled}
+                    onCheckedChange={(checked) => setEditFormData({ ...editFormData, bpjs_ketenagakerjaan_enabled: !!checked })}
+                  />
+                  <Label htmlFor="edit_bpjs_tk" className="text-sm font-normal cursor-pointer">
+                    Ikut BPJS Ketenagakerjaan (JHT, JP, JKK, JKM)
+                  </Label>
+                  {!editFormData.bpjs_ketenagakerjaan_enabled && (
                     <Badge variant="destructive" className="text-xs">Tidak Ikut</Badge>
                   )}
                 </div>

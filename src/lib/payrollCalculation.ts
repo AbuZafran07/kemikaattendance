@@ -172,6 +172,8 @@ export interface PayrollInput {
   totalPphJanNov?: number; // Sum of PPh21 paid Jan-Nov (for Dec reconciliation)
   // BPJS Kesehatan opt-out
   bpjsKesehatanEnabled?: boolean; // default true
+  // BPJS Ketenagakerjaan opt-out (JHT, JP, JKK, JKM)
+  bpjsKetenagakerjaanEnabled?: boolean; // default true
   // December reconciliation — actual yearly data from previous months
   prevMonthsBruto?: number;   // Sum of Jan-Nov bruto_income
   prevMonthsBpjsKt?: number;  // Sum of Jan-Nov bpjs_ketenagakerjaan (JHT+JP employee)
@@ -218,6 +220,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     loanDeduction = 0, otherDeduction = 0, deductionNotes = "",
     month, terRates, totalPphJanNov = 0,
     bpjsKesehatanEnabled = true,
+    bpjsKetenagakerjaanEnabled = true,
     prevMonthsBruto = 0, prevMonthsBpjsKt = 0,
     ptkpConfig,
     bpjsConfig,
@@ -245,16 +248,16 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const bpjsKesSalary = Math.min(basicSalary, kesMaxSalary);
   const bpjsJpSalary = Math.min(basicSalary, jpMaxSalary);
   const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * kesEmployeeRate) : 0;
-  const bpjsJhtEmployee = Math.round(basicSalary * jhtEmployeeRate);
-  const bpjsJpEmployee = Math.round(bpjsJpSalary * jpEmployeeRate);
+  const bpjsJhtEmployee = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jhtEmployeeRate) : 0;
+  const bpjsJpEmployee = bpjsKetenagakerjaanEnabled ? Math.round(bpjsJpSalary * jpEmployeeRate) : 0;
   const bpjsKetenagakerjaan = bpjsJhtEmployee + bpjsJpEmployee;
 
   // Employer BPJS - based on basic salary only
   const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * kesEmployerRate) : 0;
-  const bpjsJhtEmployer = Math.round(basicSalary * jhtEmployerRate);
-  const bpjsJpEmployer = Math.round(bpjsJpSalary * jpEmployerRate);
-  const bpjsJkkEmployer = Math.round(basicSalary * jkkEmployerRate);
-  const bpjsJkmEmployer = Math.round(basicSalary * jkmEmployerRate);
+  const bpjsJhtEmployer = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jhtEmployerRate) : 0;
+  const bpjsJpEmployer = bpjsKetenagakerjaanEnabled ? Math.round(bpjsJpSalary * jpEmployerRate) : 0;
+  const bpjsJkkEmployer = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jkkEmployerRate) : 0;
+  const bpjsJkmEmployer = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jkmEmployerRate) : 0;
 
   // Bruto = Gaji Pokok + Semua Tunjangan/Tambahan + BPJS Perusahaan
   const totalBpjsEmployer = bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer;

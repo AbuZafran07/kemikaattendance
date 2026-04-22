@@ -685,7 +685,7 @@ const Payroll = () => {
       }
 
       const { data: empsRaw } = await supabase
-        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled, join_date").eq("status", "Active");
+        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled, bpjs_ketenagakerjaan_enabled, join_date").eq("status", "Active");
 
       // Exclude admin users from payroll
       const { data: adminRoles } = await supabase
@@ -890,6 +890,7 @@ const Payroll = () => {
           terRates: terRatesForEmp,
           totalPphJanNov: pphJanNovMap.get(emp.id) || 0,
           bpjsKesehatanEnabled: emp.bpjs_kesehatan_enabled !== false,
+          bpjsKetenagakerjaanEnabled: emp.bpjs_ketenagakerjaan_enabled !== false,
           prevMonthsBruto: brutoJanNovMap.get(emp.id) || 0,
           prevMonthsBpjsKt: bpjsKtJanNovMap.get(emp.id) || 0,
           bpjsConfig,

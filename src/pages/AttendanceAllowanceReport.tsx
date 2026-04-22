@@ -430,9 +430,14 @@ export default function AttendanceAllowanceReport() {
         ? ratePerDay / (config?.work_hours_per_day || 8)
         : 0;
 
+      const totalMangkirAll = results.reduce(
+        (s, r) => s + (r.excluded ? 0 : Math.max(0, r.total_working_days - r.days_present)),
+        0,
+      );
+
       doc.setFontSize(9);
       doc.text(
-        `Tunjangan Maks: ${formatCurrency(config?.max_amount || 0)}  |  Hari Kerja: ${results[0]?.total_working_days}  |  Tarif/hari: ${formatCurrency(ratePerDay)}  |  Tarif potongan/jam: ${formatCurrency(ratePerHour)}`,
+        `Tunjangan Maks: ${formatCurrency(config?.max_amount || 0)}  |  Hari Kerja: ${results[0]?.total_working_days}  |  Tarif/hari: ${formatCurrency(ratePerDay)}  |  Tarif potongan/jam: ${formatCurrency(ratePerHour)}  |  Total Mangkir: ${totalMangkirAll}`,
         8,
         26,
       );

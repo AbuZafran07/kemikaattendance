@@ -1317,11 +1317,42 @@ const Employees = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>Daftar Karyawan</CardTitle>
-                <CardDescription>Total {employees.length} karyawan aktif</CardDescription>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>
+                    {viewMode === "active" ? "Daftar Karyawan Aktif" : "Arsip Karyawan"}
+                  </CardTitle>
+                  <CardDescription>
+                    {viewMode === "active"
+                      ? `Total ${activeCount} karyawan aktif`
+                      : `Total ${archiveCount} karyawan (Inactive / Resigned)`}
+                  </CardDescription>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari karyawan..."
+                    className="pl-10"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
+                </div>
               </div>
+              <Tabs value={viewMode} onValueChange={handleViewModeChange}>
+                <TabsList className="grid w-full sm:w-auto sm:inline-grid grid-cols-2">
+                  <TabsTrigger value="active" className="gap-2">
+                    <Users className="h-4 w-4" />
+                    Karyawan Aktif ({activeCount})
+                  </TabsTrigger>
+                  <TabsTrigger value="archive" className="gap-2">
+                    <Archive className="h-4 w-4" />
+                    Arsip ({archiveCount})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </CardHeader>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

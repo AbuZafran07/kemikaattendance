@@ -975,10 +975,30 @@ const Employees = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
+                      <SelectItem value="Inactive">Inactive (Non-aktif Sementara)</SelectItem>
+                      <SelectItem value="Resigned">Resigned (Sudah Keluar)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {editFormData.status === "Resigned" && (
+                    <p className="text-xs text-muted-foreground">
+                      Karyawan akan dikecualikan dari absensi, payroll, dan laporan aktif. Akun otomatis logout.
+                    </p>
+                  )}
                 </div>
+                {editFormData.status === "Resigned" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_resign_date">Tanggal Resign *</Label>
+                    <Input
+                      id="edit_resign_date"
+                      type="date"
+                      value={editFormData.resign_date}
+                      onChange={(e) => setEditFormData({ ...editFormData, resign_date: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Untuk arsip historis & laporan mantan karyawan.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="edit_work_type">Tipe Kerja *</Label>
                   <Select

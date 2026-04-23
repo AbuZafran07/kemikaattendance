@@ -14,3 +14,8 @@ export const filterAttendanceRequiredProfiles = <T extends { departemen: string;
     (p) => !isAttendanceExempt(p.departemen) && (p.status === "Active" || p.status === undefined)
   );
 };
+
+// Check if employee status is considered "historical" (no longer active in the company)
+export const isHistoricalStatus = (status?: string | null): boolean => {
+  return status === "Inactive" || status === "Resigned";
+};

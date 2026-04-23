@@ -808,6 +808,7 @@ export type Database = {
           photo_url: string | null
           ptkp_status: string | null
           remaining_leave: number | null
+          resign_date: string | null
           status: string | null
           tunjangan_jabatan: number | null
           tunjangan_komunikasi: number | null
@@ -838,6 +839,7 @@ export type Database = {
           photo_url?: string | null
           ptkp_status?: string | null
           remaining_leave?: number | null
+          resign_date?: string | null
           status?: string | null
           tunjangan_jabatan?: number | null
           tunjangan_komunikasi?: number | null
@@ -868,6 +870,7 @@ export type Database = {
           photo_url?: string | null
           ptkp_status?: string | null
           remaining_leave?: number | null
+          resign_date?: string | null
           status?: string | null
           tunjangan_jabatan?: number | null
           tunjangan_komunikasi?: number | null

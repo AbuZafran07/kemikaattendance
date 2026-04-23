@@ -107,6 +107,7 @@ const Employees = () => {
     bank_name: "",
     bank_account_number: "",
     join_date: "",
+    resign_date: "",
     leave_active: true,
     annual_leave_quota: "12",
     remaining_leave: "12",
@@ -371,6 +372,7 @@ const Employees = () => {
           bank_name: result.data.bank_name || null,
           bank_account_number: result.data.bank_account_number || null,
           join_date: editFormData.join_date || undefined,
+          resign_date: editFormData.status === "Resigned" ? (editFormData.resign_date || new Date().toISOString().split('T')[0]) : null,
         })
         .eq('id', editingEmployee.id);
 
@@ -420,6 +422,7 @@ const Employees = () => {
       bank_name: employee.bank_name || "",
       bank_account_number: employee.bank_account_number || "",
       join_date: employee.join_date || "",
+      resign_date: employee.resign_date || "",
       leave_active: (employee.annual_leave_quota ?? 12) > 0,
       annual_leave_quota: String(employee.annual_leave_quota ?? 12),
       remaining_leave: String(employee.remaining_leave ?? 12),
@@ -470,6 +473,7 @@ const Employees = () => {
       bank_name: "",
       bank_account_number: "",
       join_date: "",
+      resign_date: "",
       leave_active: true,
       annual_leave_quota: "12",
       remaining_leave: "12",
@@ -971,10 +975,30 @@ const Employees = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
+                      <SelectItem value="Inactive">Inactive (Non-aktif Sementara)</SelectItem>
+                      <SelectItem value="Resigned">Resigned (Sudah Keluar)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {editFormData.status === "Resigned" && (
+                    <p className="text-xs text-muted-foreground">
+                      Karyawan akan dikecualikan dari absensi, payroll, dan laporan aktif. Akun otomatis logout.
+                    </p>
+                  )}
                 </div>
+                {editFormData.status === "Resigned" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_resign_date">Tanggal Resign *</Label>
+                    <Input
+                      id="edit_resign_date"
+                      type="date"
+                      value={editFormData.resign_date}
+                      onChange={(e) => setEditFormData({ ...editFormData, resign_date: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Untuk arsip historis & laporan mantan karyawan.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="edit_work_type">Tipe Kerja *</Label>
                   <Select
@@ -1316,7 +1340,19 @@ const Employees = () => {
                         <TableCell>{employee.departemen}</TableCell>
                         <TableCell>{new Date(employee.join_date).toLocaleDateString('id-ID')}</TableCell>
                         <TableCell>
-                          <Badge variant="default">{employee.status}</Badge>
+                          <Badge
+                            variant={
+                              employee.status === "Active"
+                                ? "default"
+                                : employee.status === "Resigned"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {employee.status === "Resigned" && employee.resign_date
+                              ? `Resigned (${new Date(employee.resign_date).toLocaleDateString('id-ID')})`
+                              : employee.status}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

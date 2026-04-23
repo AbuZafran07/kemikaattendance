@@ -1005,11 +1005,24 @@ const Employees = () => {
                       id="edit_resign_date"
                       type="date"
                       value={editFormData.resign_date}
-                      onChange={(e) => setEditFormData({ ...editFormData, resign_date: e.target.value })}
+                      onChange={(e) => {
+                        setEditFormData({ ...editFormData, resign_date: e.target.value });
+                        if (e.target.value && editFormErrors.resign_date) {
+                          const { resign_date, ...rest } = editFormErrors;
+                          setEditFormErrors(rest);
+                        }
+                      }}
+                      required
+                      aria-invalid={!!editFormErrors.resign_date}
+                      className={editFormErrors.resign_date ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Untuk arsip historis & laporan mantan karyawan.
-                    </p>
+                    {editFormErrors.resign_date ? (
+                      <p className="text-sm text-destructive">{editFormErrors.resign_date}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Untuk arsip historis & laporan mantan karyawan.
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className="space-y-2">

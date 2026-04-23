@@ -473,6 +473,7 @@ const Employees = () => {
       bank_name: "",
       bank_account_number: "",
       join_date: "",
+      resign_date: "",
       leave_active: true,
       annual_leave_quota: "12",
       remaining_leave: "12",

@@ -98,7 +98,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 
@@ -220,7 +220,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 
@@ -244,6 +244,8 @@ export default function Reports() {
           NIK: record.profiles?.nik || "-",
           Name: record.profiles?.full_name || "-",
           Department: record.profiles?.departemen || "-",
+          "Employee Status": record.profiles?.status || "-",
+          "Resign Date": record.profiles?.status === "Resigned" && record.profiles?.resign_date ? record.profiles.resign_date : "-",
           "Leave Type": formatLeaveType(record.leave_type),
           "Start Date": record.start_date,
           "End Date": record.end_date,
@@ -263,7 +265,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 
@@ -287,6 +289,8 @@ export default function Reports() {
           NIK: record.profiles?.nik || "-",
           Name: record.profiles?.full_name || "-",
           Department: record.profiles?.departemen || "-",
+          "Employee Status": record.profiles?.status || "-",
+          "Resign Date": record.profiles?.status === "Resigned" && record.profiles?.resign_date ? record.profiles.resign_date : "-",
           "Overtime Date": record.overtime_date,
           Hours: record.hours,
           Status: formatAttendanceStatus(record.status),
@@ -304,7 +308,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 
@@ -328,6 +332,8 @@ export default function Reports() {
           NIK: record.profiles?.nik || "-",
           Name: record.profiles?.full_name || "-",
           Department: record.profiles?.departemen || "-",
+          "Employee Status": record.profiles?.status || "-",
+          "Resign Date": record.profiles?.status === "Resigned" && record.profiles?.resign_date ? record.profiles.resign_date : "-",
           Destination: record.destination,
           Purpose: record.purpose,
           "Start Date": record.start_date,
@@ -489,6 +495,7 @@ export default function Reports() {
           "Annual Leave Quota": emp.annual_leave_quota,
           "Remaining Leave": emp.remaining_leave,
           Status: emp.status,
+          "Resign Date": emp.status === "Resigned" && emp.resign_date ? emp.resign_date : "-",
         }));
         filename = `Employee_Database_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
       }

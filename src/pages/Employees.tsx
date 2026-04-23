@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, Archive, Users } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
 import {
@@ -61,6 +62,7 @@ const Employees = () => {
   const [isSettingAdmin, setIsSettingAdmin] = useState(false);
   const [employeeRoles, setEmployeeRoles] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"active" | "archive">("active");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -325,6 +327,17 @@ const Employees = () => {
       return;
     }
 
+    // Extra validation: resign_date wajib jika status Resigned
+    if (editFormData.status === "Resigned" && !editFormData.resign_date) {
+      setEditFormErrors({ resign_date: "Tanggal resign wajib diisi untuk status Resigned" });
+      toast({
+        title: "Tanggal Resign Diperlukan",
+        description: "Mohon isi tanggal resign untuk karyawan dengan status Resigned",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -372,7 +385,7 @@ const Employees = () => {
           bank_name: result.data.bank_name || null,
           bank_account_number: result.data.bank_account_number || null,
           join_date: editFormData.join_date || undefined,
-          resign_date: editFormData.status === "Resigned" ? (editFormData.resign_date || new Date().toISOString().split('T')[0]) : null,
+          resign_date: editFormData.status === "Resigned" ? editFormData.resign_date : null,
         })
         .eq('id', editingEmployee.id);
 
@@ -606,11 +619,21 @@ const Employees = () => {
     }
   };
 
-  const searchFilteredEmployees = employees.filter(emp =>
+  // Filter by view mode (Aktif vs Arsip) first
+  const viewFilteredEmployees = employees.filter((emp) => {
+    const status = emp.status || "Active";
+    if (viewMode === "active") return status === "Active";
+    return status === "Inactive" || status === "Resigned";
+  });
+
+  const searchFilteredEmployees = viewFilteredEmployees.filter(emp =>
     emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.nik.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const activeCount = employees.filter((e) => (e.status || "Active") === "Active").length;
+  const archiveCount = employees.filter((e) => e.status === "Inactive" || e.status === "Resigned").length;
 
   // Reset to page 1 when search changes
   const totalPages = Math.ceil(searchFilteredEmployees.length / itemsPerPage);
@@ -621,6 +644,12 @@ const Employees = () => {
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     setCurrentPage(1);
+  };
+
+  const handleViewModeChange = (mode: string) => {
+    setViewMode(mode as "active" | "archive");
+    setCurrentPage(1);
+    setSearchQuery("");
   };
 
   const getInitials = (name: string) => {
@@ -992,11 +1021,24 @@ const Employees = () => {
                       id="edit_resign_date"
                       type="date"
                       value={editFormData.resign_date}
-                      onChange={(e) => setEditFormData({ ...editFormData, resign_date: e.target.value })}
+                      onChange={(e) => {
+                        setEditFormData({ ...editFormData, resign_date: e.target.value });
+                        if (e.target.value && editFormErrors.resign_date) {
+                          const { resign_date, ...rest } = editFormErrors;
+                          setEditFormErrors(rest);
+                        }
+                      }}
+                      required
+                      aria-invalid={!!editFormErrors.resign_date}
+                      className={editFormErrors.resign_date ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Untuk arsip historis & laporan mantan karyawan.
-                    </p>
+                    {editFormErrors.resign_date ? (
+                      <p className="text-sm text-destructive">{editFormErrors.resign_date}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Untuk arsip historis & laporan mantan karyawan.
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className="space-y-2">
@@ -1275,20 +1317,40 @@ const Employees = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>Daftar Karyawan</CardTitle>
-                <CardDescription>Total {employees.length} karyawan aktif</CardDescription>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>
+                    {viewMode === "active" ? "Daftar Karyawan Aktif" : "Arsip Karyawan"}
+                  </CardTitle>
+                  <CardDescription>
+                    {viewMode === "active"
+                      ? `Total ${activeCount} karyawan aktif`
+                      : `Total ${archiveCount} karyawan (Inactive / Resigned)`}
+                  </CardDescription>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari karyawan..."
+                    className="pl-10"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari karyawan..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </div>
+              <Tabs value={viewMode} onValueChange={handleViewModeChange}>
+                <TabsList className="grid w-full sm:w-auto sm:inline-grid grid-cols-2">
+                  <TabsTrigger value="active" className="gap-2">
+                    <Users className="h-4 w-4" />
+                    Karyawan Aktif ({activeCount})
+                  </TabsTrigger>
+                  <TabsTrigger value="archive" className="gap-2">
+                    <Archive className="h-4 w-4" />
+                    Arsip ({archiveCount})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
           </CardHeader>
           <CardContent>
@@ -1401,7 +1463,11 @@ const Employees = () => {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        {searchQuery ? 'Tidak ada karyawan yang sesuai dengan pencarian' : 'Belum ada karyawan'}
+                        {searchQuery
+                          ? 'Tidak ada karyawan yang sesuai dengan pencarian'
+                          : viewMode === "active"
+                          ? 'Belum ada karyawan aktif'
+                          : 'Belum ada karyawan di arsip (Inactive / Resigned)'}
                       </TableCell>
                     </TableRow>
                   )}

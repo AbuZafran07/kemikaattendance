@@ -159,6 +159,13 @@ export const EmployeeDetailDialog = ({
                 <InfoItem icon={Mail} label="Email" value={employee.email} />
                 <InfoItem icon={Phone} label="Telepon" value={employee.phone || "-"} />
                 <InfoItem icon={Calendar} label="Tanggal Bergabung" value={new Date(employee.join_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} />
+                {employee.status === "Resigned" && employee.resign_date && (
+                  <InfoItem
+                    icon={Calendar}
+                    label="Tanggal Resign"
+                    value={new Date(employee.resign_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                  />
+                )}
                 <div className="sm:col-span-2">
                   <InfoItem icon={MapPin} label="Alamat" value={employee.address || "-"} />
                 </div>

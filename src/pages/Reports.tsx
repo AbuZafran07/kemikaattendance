@@ -98,7 +98,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 
@@ -220,7 +220,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 
@@ -263,7 +263,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 
@@ -304,7 +304,7 @@ export default function Reports() {
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, full_name, departemen, nik, status");
+          .select("id, full_name, departemen, nik, status, resign_date");
 
         if (profilesError) throw profilesError;
 

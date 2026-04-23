@@ -1340,7 +1340,19 @@ const Employees = () => {
                         <TableCell>{employee.departemen}</TableCell>
                         <TableCell>{new Date(employee.join_date).toLocaleDateString('id-ID')}</TableCell>
                         <TableCell>
-                          <Badge variant="default">{employee.status}</Badge>
+                          <Badge
+                            variant={
+                              employee.status === "Active"
+                                ? "default"
+                                : employee.status === "Resigned"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {employee.status === "Resigned" && employee.resign_date
+                              ? `Resigned (${new Date(employee.resign_date).toLocaleDateString('id-ID')})`
+                              : employee.status}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

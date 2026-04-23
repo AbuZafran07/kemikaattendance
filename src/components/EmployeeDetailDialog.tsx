@@ -119,8 +119,18 @@ export const EmployeeDetailDialog = ({
             <h3 className="text-xl font-bold">{employee.full_name}</h3>
             <p className="text-sm text-muted-foreground">{employee.jabatan}</p>
             <div className="flex items-center gap-2 mt-2 justify-center sm:justify-start flex-wrap">
-              <Badge variant={employee.status === "Active" ? "default" : "secondary"}>
-                {employee.status}
+              <Badge
+                variant={
+                  employee.status === "Active"
+                    ? "default"
+                    : employee.status === "Resigned"
+                    ? "destructive"
+                    : "secondary"
+                }
+              >
+                {employee.status === "Resigned" && employee.resign_date
+                  ? `Resigned (${new Date(employee.resign_date).toLocaleDateString("id-ID")})`
+                  : employee.status}
               </Badge>
               {employeeRoles[employee.id] === "admin" && <Badge variant="destructive">Admin</Badge>}
               {employee.work_type === "wfa" ? (

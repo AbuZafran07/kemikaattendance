@@ -70,8 +70,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', userId)
         .single();
 
-      // Auto-logout if profile is Inactive
-      if (profileData?.status === 'Inactive') {
+      // Auto-logout if profile is Inactive or Resigned
+      if (profileData?.status === 'Inactive' || profileData?.status === 'Resigned') {
         await supabase.auth.signOut();
         setUser(null);
         setSession(null);
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', data.user.id)
         .single();
 
-      if (profileData?.status === 'Inactive') {
+      if (profileData?.status === 'Inactive' || profileData?.status === 'Resigned') {
         await supabase.auth.signOut();
         setUser(null);
         setSession(null);

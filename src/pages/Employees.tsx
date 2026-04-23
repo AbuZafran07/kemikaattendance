@@ -327,6 +327,17 @@ const Employees = () => {
       return;
     }
 
+    // Extra validation: resign_date wajib jika status Resigned
+    if (editFormData.status === "Resigned" && !editFormData.resign_date) {
+      setEditFormErrors({ resign_date: "Tanggal resign wajib diisi untuk status Resigned" });
+      toast({
+        title: "Tanggal Resign Diperlukan",
+        description: "Mohon isi tanggal resign untuk karyawan dengan status Resigned",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
 
     try {

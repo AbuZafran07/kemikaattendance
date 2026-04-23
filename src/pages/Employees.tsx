@@ -619,11 +619,21 @@ const Employees = () => {
     }
   };
 
-  const searchFilteredEmployees = employees.filter(emp =>
+  // Filter by view mode (Aktif vs Arsip) first
+  const viewFilteredEmployees = employees.filter((emp) => {
+    const status = emp.status || "Active";
+    if (viewMode === "active") return status === "Active";
+    return status === "Inactive" || status === "Resigned";
+  });
+
+  const searchFilteredEmployees = viewFilteredEmployees.filter(emp =>
     emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.nik.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const activeCount = employees.filter((e) => (e.status || "Active") === "Active").length;
+  const archiveCount = employees.filter((e) => e.status === "Inactive" || e.status === "Resigned").length;
 
   // Reset to page 1 when search changes
   const totalPages = Math.ceil(searchFilteredEmployees.length / itemsPerPage);
@@ -634,6 +644,12 @@ const Employees = () => {
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     setCurrentPage(1);
+  };
+
+  const handleViewModeChange = (mode: string) => {
+    setViewMode(mode as "active" | "archive");
+    setCurrentPage(1);
+    setSearchQuery("");
   };
 
   const getInitials = (name: string) => {

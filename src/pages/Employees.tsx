@@ -385,7 +385,7 @@ const Employees = () => {
           bank_name: result.data.bank_name || null,
           bank_account_number: result.data.bank_account_number || null,
           join_date: editFormData.join_date || undefined,
-          resign_date: editFormData.status === "Resigned" ? (editFormData.resign_date || new Date().toISOString().split('T')[0]) : null,
+          resign_date: editFormData.status === "Resigned" ? editFormData.resign_date : null,
         })
         .eq('id', editingEmployee.id);
 

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, Archive, Users } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
 import {
@@ -61,6 +62,7 @@ const Employees = () => {
   const [isSettingAdmin, setIsSettingAdmin] = useState(false);
   const [employeeRoles, setEmployeeRoles] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"active" | "archive">("active");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [photoFile, setPhotoFile] = useState<File | null>(null);

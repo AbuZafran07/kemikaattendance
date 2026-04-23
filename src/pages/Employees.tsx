@@ -1463,7 +1463,11 @@ const Employees = () => {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        {searchQuery ? 'Tidak ada karyawan yang sesuai dengan pencarian' : 'Belum ada karyawan'}
+                        {searchQuery
+                          ? 'Tidak ada karyawan yang sesuai dengan pencarian'
+                          : viewMode === "active"
+                          ? 'Belum ada karyawan aktif'
+                          : 'Belum ada karyawan di arsip (Inactive / Resigned)'}
                       </TableCell>
                     </TableRow>
                   )}

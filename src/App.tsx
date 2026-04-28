@@ -59,6 +59,8 @@ import PPh21BracketsSettings from "./pages/PPh21BracketsSettings";
 import BackupRestore from "./pages/BackupRestore";
 import DepartmentJabatanSettings from "./pages/DepartmentJabatanSettings";
 import HolidayEventSettings from "./pages/HolidayEventSettings";
+import KPI from "./pages/KPI";
+import EmployeeKPI from "./pages/EmployeeKPI";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -121,6 +123,8 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/backup" element={<ProtectedRoute requireAdmin><BackupRestore /></ProtectedRoute>} />
             <Route path="/dashboard/settings/department-jabatan" element={<ProtectedRoute requireAdmin><DepartmentJabatanSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/holidays" element={<ProtectedRoute requireAdmin><HolidayEventSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/kpi" element={<ProtectedRoute requireAdmin><KPI /></ProtectedRoute>} />
+            <Route path="/employee/kpi" element={<ProtectedRoute><EmployeeKPI /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

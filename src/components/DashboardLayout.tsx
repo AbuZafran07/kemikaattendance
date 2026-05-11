@@ -21,7 +21,8 @@ import {
   FileCheck,
   Megaphone,
   ShieldCheck,
-  Target
+  Target,
+  MessageCircleMore
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -244,9 +245,54 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </div>
           </div>
 
-          {/* Right: Bell + User dropdown */}
+          {/* Right: HR Assistant + Bell + User dropdown */}
           {profile && (
             <div className="flex items-center gap-4">
+              <style>{`
+                @keyframes hrDotPulse {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.4; }
+                }
+                .hr-dot-pulse {
+                  animation: hrDotPulse 2s infinite;
+                }
+              `}</style>
+              <div className="relative group">
+                <button
+                  onClick={() => console.log("HR Assistant clicked")}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 9,
+                    background: "#0F6E56",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "none",
+                    cursor: "pointer",
+                    position: "relative",
+                    flexShrink: 0,
+                  }}
+                >
+                  <MessageCircleMore style={{ width: 18, height: 18, color: "white" }} />
+                  <span
+                    className="hr-dot-pulse"
+                    style={{
+                      position: "absolute",
+                      top: -3,
+                      right: -3,
+                      width: 9,
+                      height: 9,
+                      borderRadius: "50%",
+                      background: "#5DCAA5",
+                      border: "2px solid white",
+                    }}
+                  />
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                  HR Assistant
+                </div>
+              </div>
               <NotificationDropdown pendingCount={pendingCount} />
               <UserDropdown />
             </div>

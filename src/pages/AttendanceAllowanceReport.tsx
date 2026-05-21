@@ -170,11 +170,11 @@ export default function AttendanceAllowanceReport() {
       const whParsed = whData as Record<string, any> | null;
       setWorkHours(whParsed);
       const checkInEnd = whParsed?.check_in_end || "08:00";
-      const lateTolerance = whParsed?.late_tolerance_minutes || 0;
 
-      // Parse check-in deadline + tolerance
+      // Tunjangan kehadiran: TIDAK menggunakan toleransi keterlambatan.
+      // Aturan: telat 1 menit = potong 1 jam.
       const [deadlineH, deadlineM] = checkInEnd.split(":").map(Number);
-      const deadlineTotalMinutes = deadlineH * 60 + deadlineM + lateTolerance;
+      const deadlineTotalMinutes = deadlineH * 60 + deadlineM;
 
       // Fetch admin user IDs to exclude
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");

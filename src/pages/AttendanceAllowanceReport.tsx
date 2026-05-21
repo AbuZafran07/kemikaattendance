@@ -170,11 +170,11 @@ export default function AttendanceAllowanceReport() {
       const whParsed = whData as Record<string, any> | null;
       setWorkHours(whParsed);
       const checkInEnd = whParsed?.check_in_end || "08:00";
+      const lateTolerance = whParsed?.late_tolerance_minutes || 0;
 
-      // Tunjangan kehadiran: TIDAK menggunakan toleransi keterlambatan.
-      // Aturan: telat 1 menit = potong 1 jam.
+      // Parse check-in deadline + tolerance
       const [deadlineH, deadlineM] = checkInEnd.split(":").map(Number);
-      const deadlineTotalMinutes = deadlineH * 60 + deadlineM;
+      const deadlineTotalMinutes = deadlineH * 60 + deadlineM + lateTolerance;
 
       // Fetch admin user IDs to exclude
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
@@ -186,10 +186,11 @@ export default function AttendanceAllowanceReport() {
         .select("id, full_name, jabatan, departemen, nik")
         .order("full_name");
 
-      // Tunjangan kehadiran: TIDAK pakai toleransi pulang cepat juga.
+      // Get checkout boundary for early departure calculation
       const checkOutStart = whParsed?.check_out_start || "17:00";
+      const earlyLeaveTolerance = whParsed?.early_leave_tolerance_minutes || 0;
       const [checkOutH, checkOutM] = checkOutStart.split(":").map(Number);
-      const checkOutTotalMinutes = checkOutH * 60 + checkOutM;
+      const checkOutTotalMinutes = checkOutH * 60 + checkOutM - earlyLeaveTolerance;
 
       // Check for special work hours that may override for specific dates
       const { data: specialWhData } = await supabase
@@ -203,25 +204,30 @@ export default function AttendanceAllowanceReport() {
       const fridayEnabled = whParsed?.friday_enabled || false;
       const fridayCheckOutStart = whParsed?.friday_check_out_start || "16:00";
       const [fridayOutH, fridayOutM] = fridayCheckOutStart.split(":").map(Number);
-      const fridayCheckOutMinutes = fridayOutH * 60 + fridayOutM;
+      const fridayCheckOutMinutes = fridayOutH * 60 + fridayOutM - earlyLeaveTolerance;
 
       // Dynamic check-in deadline per day (handles special periods like Ramadan)
       const getCheckInDeadlineForDate = (dateStr: string): number => {
+        // First check special periods (e.g., Ramadan 08:30-15:00)
         for (const sp of specialPeriods) {
           if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
             const spCheckInEnd = sp.check_in_end || checkInEnd;
             const [h, m] = spCheckInEnd.split(":").map(Number);
-            return h * 60 + m;
+            const tol = sp.late_tolerance_minutes || 0;
+            return h * 60 + m + tol;
           }
         }
+        // Normal work hours with tolerance
         return deadlineTotalMinutes;
       };
 
       const getCheckOutMinutesForDate = (dateStr: string): number => {
+        // First check special periods (e.g., Ramadan)
         for (const sp of specialPeriods) {
           if (sp.is_active && dateStr >= sp.start_date && dateStr <= sp.end_date) {
             const [h, m] = (sp.check_out_start || "17:00").split(":").map(Number);
-            return h * 60 + m;
+            const tol = sp.early_leave_tolerance_minutes || 0;
+            return h * 60 + m - tol;
           }
         }
         // Then check if it's Friday with special Friday hours

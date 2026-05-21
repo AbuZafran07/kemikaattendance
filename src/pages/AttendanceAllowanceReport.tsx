@@ -180,10 +180,12 @@ export default function AttendanceAllowanceReport() {
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
       const adminIds = new Set((adminRoles || []).map((r) => r.user_id));
 
-      // Fetch all employees
+      // Fetch all employees (exclude inactive/resigned and BOD/Komisaris)
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, jabatan, departemen, nik")
+        .select("id, full_name, jabatan, departemen, nik, status, resign_date")
+        .eq("status", "Active")
+        .not("departemen", "in", "(BOD,Komisaris)")
         .order("full_name");
 
       // Get checkout boundary for early departure calculation

@@ -186,11 +186,10 @@ export default function AttendanceAllowanceReport() {
         .select("id, full_name, jabatan, departemen, nik")
         .order("full_name");
 
-      // Get checkout boundary for early departure calculation
+      // Tunjangan kehadiran: TIDAK pakai toleransi pulang cepat juga.
       const checkOutStart = whParsed?.check_out_start || "17:00";
-      const earlyLeaveTolerance = whParsed?.early_leave_tolerance_minutes || 0;
       const [checkOutH, checkOutM] = checkOutStart.split(":").map(Number);
-      const checkOutTotalMinutes = checkOutH * 60 + checkOutM - earlyLeaveTolerance;
+      const checkOutTotalMinutes = checkOutH * 60 + checkOutM;
 
       // Check for special work hours that may override for specific dates
       const { data: specialWhData } = await supabase
@@ -204,7 +203,7 @@ export default function AttendanceAllowanceReport() {
       const fridayEnabled = whParsed?.friday_enabled || false;
       const fridayCheckOutStart = whParsed?.friday_check_out_start || "16:00";
       const [fridayOutH, fridayOutM] = fridayCheckOutStart.split(":").map(Number);
-      const fridayCheckOutMinutes = fridayOutH * 60 + fridayOutM - earlyLeaveTolerance;
+      const fridayCheckOutMinutes = fridayOutH * 60 + fridayOutM;
 
       // Dynamic check-in deadline per day (handles special periods like Ramadan)
       const getCheckInDeadlineForDate = (dateStr: string): number => {

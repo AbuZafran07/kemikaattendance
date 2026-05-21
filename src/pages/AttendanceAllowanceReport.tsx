@@ -274,20 +274,23 @@ export default function AttendanceAllowanceReport() {
           userAtt.present += 1;
         }
 
-        // Calculate lateness using dynamic deadline per day
-        if (record.status === "terlambat" && record.check_in_time) {
+        // Calculate lateness independently of status (status only tracks dominant flag)
+        // A single day can be BOTH late and early — both must be deducted.
+        if (isValidAttendance && record.check_in_time) {
           const checkInDate = new Date(record.check_in_time);
           const dateStr = format(checkInDate, "yyyy-MM-dd");
           const checkInMinutes = checkInDate.getHours() * 60 + checkInDate.getMinutes();
           const dailyDeadline = getCheckInDeadlineForDate(dateStr);
           const lateMinutes = Math.max(0, checkInMinutes - dailyDeadline);
-          const lateHours = Math.ceil(lateMinutes / 60); // pembulatan ke atas per jam
-          userAtt.late += 1;
-          userAtt.totalLateHours += lateHours;
+          if (lateMinutes > 0) {
+            const lateHours = Math.ceil(lateMinutes / 60); // pembulatan ke atas per jam
+            userAtt.late += 1;
+            userAtt.totalLateHours += lateHours;
+          }
         }
 
-        // Calculate early departure
-        if (record.status === "pulang_cepat" && record.check_out_time) {
+        // Calculate early departure independently of status
+        if (isValidAttendance && record.check_out_time) {
           const checkOutDate = new Date(record.check_out_time);
           const checkOutMinutes = checkOutDate.getHours() * 60 + checkOutDate.getMinutes();
           const dateStr = format(checkOutDate, "yyyy-MM-dd");

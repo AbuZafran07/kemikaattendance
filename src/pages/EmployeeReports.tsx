@@ -515,13 +515,15 @@ export default function EmployeeReports() {
           Keterangan: r.keterangan,
         }));
 
+        const workingDaysInPeriodXlsx = countWorkingDaysInRange(startDate, endDate, holidayDates);
         const headerRows = [
           [`Laporan Kehadiran: ${emp.full_name}`],
           [`NIK: ${emp.nik}`],
           [`Departemen: ${emp.departemen}`],
           [`Periode: ${startDate} s/d ${endDate}`],
-          [`Hadir: ${empData.summary.hadir} | Terlambat: ${empData.summary.terlambat} | Pulang Cepat: ${empData.summary.pulangCepat}`],
-          [`Cuti Tahunan: ${empData.summary.cutiTahunan} | Sakit: ${empData.summary.sakit} | Izin: ${empData.summary.izin} | Lupa Absen: ${empData.summary.lupaAbsen} | Dinas: ${empData.summary.dinas}`],
+          [`Total Hari Kerja: ${workingDaysInPeriodXlsx} hari | Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${empData.summary.dinas} hari`],
+          [`Hadir Tepat Waktu: ${empData.summary.hadir} | Terlambat: ${empData.summary.terlambat} | Pulang Cepat: ${empData.summary.pulangCepat}`],
+          [`Cuti Tahunan: ${empData.summary.cutiTahunan} | Sakit: ${empData.summary.sakit} | Izin: ${empData.summary.izin} | Lupa Absen: ${empData.summary.lupaAbsen}`],
         ];
 
         if (enableAI) {
@@ -595,7 +597,8 @@ export default function EmployeeReports() {
         doc.text(`Departemen: ${emp.departemen}`, 14, 40);
         doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 45);
 
-        doc.text(`Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${s.dinas} hari`, 14, 55);
+        const workingDaysInPeriodPdf = countWorkingDaysInRange(startDate, endDate, holidayDates);
+        doc.text(`Total Hari Kerja: ${workingDaysInPeriodPdf} hari | Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${s.dinas} hari`, 14, 55);
         doc.text(`Hadir Tepat Waktu: ${s.hadir} | Terlambat: ${s.terlambat} | Pulang Cepat: ${s.pulangCepat}`, 14, 60);
         doc.text(`Cuti Tahunan: ${s.cutiTahunan} hari | Sakit: ${s.sakit} hari | Izin: ${s.izin} hari | Lupa Absen: ${s.lupaAbsen} hari`, 14, 65);
         doc.text(`Total Jam Kerja: ${Math.floor(s.totalDuration / 60)} jam ${s.totalDuration % 60} menit`, 14, 70);

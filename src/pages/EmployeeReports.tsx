@@ -515,13 +515,15 @@ export default function EmployeeReports() {
           Keterangan: r.keterangan,
         }));
 
+        const workingDaysInPeriodXlsx = countWorkingDaysInRange(startDate, endDate, holidayDates);
         const headerRows = [
           [`Laporan Kehadiran: ${emp.full_name}`],
           [`NIK: ${emp.nik}`],
           [`Departemen: ${emp.departemen}`],
           [`Periode: ${startDate} s/d ${endDate}`],
-          [`Hadir: ${empData.summary.hadir} | Terlambat: ${empData.summary.terlambat} | Pulang Cepat: ${empData.summary.pulangCepat}`],
-          [`Cuti Tahunan: ${empData.summary.cutiTahunan} | Sakit: ${empData.summary.sakit} | Izin: ${empData.summary.izin} | Lupa Absen: ${empData.summary.lupaAbsen} | Dinas: ${empData.summary.dinas}`],
+          [`Total Hari Kerja: ${workingDaysInPeriodXlsx} hari | Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${empData.summary.dinas} hari`],
+          [`Hadir Tepat Waktu: ${empData.summary.hadir} | Terlambat: ${empData.summary.terlambat} | Pulang Cepat: ${empData.summary.pulangCepat}`],
+          [`Cuti Tahunan: ${empData.summary.cutiTahunan} | Sakit: ${empData.summary.sakit} | Izin: ${empData.summary.izin} | Lupa Absen: ${empData.summary.lupaAbsen}`],
         ];
 
         if (enableAI) {

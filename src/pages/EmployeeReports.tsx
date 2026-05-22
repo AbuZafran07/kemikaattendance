@@ -326,12 +326,21 @@ export default function EmployeeReports() {
   const EXCLUDED_DEPARTMENTS = ["BOD", "Komisaris"];
 
   const fetchEmployees = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name, nik, departemen, status, work_type")
-      .order("full_name");
+    const [{ data }, { data: adminRoles }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, nik, departemen, status, work_type")
+        .order("full_name"),
+      supabase.from("user_roles").select("user_id").eq("role", "admin"),
+    ]);
     if (data) {
-      const filtered = data.filter((e: any) => !EXCLUDED_DEPARTMENTS.includes(e.departemen) && e.status === "Active");
+      const adminIds = new Set((adminRoles || []).map((r: any) => r.user_id));
+      const filtered = data.filter(
+        (e: any) =>
+          !EXCLUDED_DEPARTMENTS.includes(e.departemen) &&
+          e.status === "Active" &&
+          !adminIds.has(e.id),
+      );
       setEmployees(filtered);
     }
   };

@@ -485,22 +485,78 @@ export default function Reports() {
         if (error) throw error;
 
         // Exclude admin users from employee database report
-        const filteredEmployees = employeeData?.filter((emp) => !adminUserIds.has(emp.id)) || [];
+        let filteredEmployees = employeeData?.filter((emp) => !adminUserIds.has(emp.id)) || [];
 
-        data = filteredEmployees.map((emp: any) => ({
-          NIK: emp.nik,
-          "Full Name": emp.full_name,
-          Email: emp.email,
-          Department: emp.departemen,
-          Position: emp.jabatan,
-          Phone: emp.phone || "-",
-          "Join Date": emp.join_date,
-          "Annual Leave Quota": emp.annual_leave_quota,
-          "Remaining Leave": emp.remaining_leave,
-          Status: emp.status,
-          "Resign Date": emp.status === "Resigned" && emp.resign_date ? emp.resign_date : "-",
-        }));
-        filename = `Employee_Database_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+        // Apply status filter — active vs inactive/resigned should not be mixed
+        if (employeeStatusFilter === "active") {
+          filteredEmployees = filteredEmployees.filter((e) => e.status === "Active");
+        } else if (employeeStatusFilter === "inactive") {
+          filteredEmployees = filteredEmployees.filter((e) => e.status === "Inactive" || e.status === "Resigned");
+        }
+
+        const formatCurrencyVal = (v: any) =>
+          v == null || v === "" ? 0 : Number(v);
+
+        const mapEmployee = (emp: any) => ({
+          NIK: emp.nik || "-",
+          "Nama Lengkap": emp.full_name || "-",
+          Email: emp.email || "-",
+          "No. HP": emp.phone || "-",
+          Alamat: emp.address || "-",
+          Departemen: emp.departemen || "-",
+          Jabatan: emp.jabatan || "-",
+          Status: emp.status || "-",
+          "Tipe Kontrak": emp.contract_type || "-",
+          "Tipe Kerja": emp.work_type || "-",
+          "Tanggal Bergabung": emp.join_date || "-",
+          "Tanggal Resign": emp.status === "Resigned" && emp.resign_date ? emp.resign_date : "-",
+          "Kuota Cuti Tahunan": emp.annual_leave_quota ?? 0,
+          "Sisa Cuti": emp.remaining_leave ?? 0,
+          NPWP: emp.npwp || "-",
+          "Status PTKP": emp.ptkp_status || "-",
+          "Gaji Pokok": formatCurrencyVal(emp.basic_salary),
+          "Tunjangan Jabatan": formatCurrencyVal(emp.tunjangan_jabatan),
+          "Tunjangan Komunikasi": formatCurrencyVal(emp.tunjangan_komunikasi),
+          "Tunjangan Operasional": formatCurrencyVal(emp.tunjangan_operasional),
+          "BPJS Kesehatan": emp.bpjs_kesehatan_enabled ? "Aktif" : "Tidak",
+          "BPJS Ketenagakerjaan": emp.bpjs_ketenagakerjaan_enabled ? "Aktif" : "Tidak",
+          "Nama Bank": emp.bank_name || "-",
+          "No. Rekening": emp.bank_account_number || "-",
+        });
+
+        // Sort active first, then inactive/resigned, alphabetical by name within group
+        const sortByName = (a: any, b: any) =>
+          (a.full_name || "").localeCompare(b.full_name || "");
+        const activeList = filteredEmployees.filter((e) => e.status === "Active").sort(sortByName);
+        const inactiveList = filteredEmployees
+          .filter((e) => e.status === "Inactive" || e.status === "Resigned")
+          .sort(sortByName);
+
+        if (employeeStatusFilter === "all" && activeList.length > 0 && inactiveList.length > 0) {
+          // Mix in same sheet with a visual section separator row
+          const blankSeparator: any = {};
+          const sectionRow = (label: string): any => {
+            const r: any = { NIK: `=== ${label} ===` };
+            return r;
+          };
+          data = [
+            sectionRow("KARYAWAN AKTIF"),
+            ...activeList.map(mapEmployee),
+            blankSeparator,
+            sectionRow("KARYAWAN INACTIVE / RESIGN"),
+            ...inactiveList.map(mapEmployee),
+          ];
+        } else {
+          data = [...activeList, ...inactiveList].map(mapEmployee);
+        }
+
+        const statusSuffix =
+          employeeStatusFilter === "active"
+            ? "Aktif"
+            : employeeStatusFilter === "inactive"
+              ? "Inactive-Resign"
+              : "Semua";
+        filename = `Database_Karyawan_${statusSuffix}_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
       }
 
       await exportToExcelFile(data, "Report", filename);

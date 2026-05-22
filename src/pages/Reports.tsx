@@ -50,6 +50,7 @@ export default function Reports() {
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [department, setDepartment] = useState<string>("all");
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState<"active" | "inactive" | "all">("active");
 
   // Helper function to fetch admin user IDs
   const fetchAdminUserIds = async (): Promise<Set<string>> => {

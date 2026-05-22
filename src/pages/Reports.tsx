@@ -1106,6 +1106,24 @@ export default function Reports() {
               </div>
             </div>
 
+            {reportType === "employees" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="employeeStatus">Status Karyawan</Label>
+                  <Select value={employeeStatusFilter} onValueChange={(v: any) => setEmployeeStatusFilter(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Hanya Aktif</SelectItem>
+                      <SelectItem value="inactive">Hanya Inactive / Resign</SelectItem>
+                      <SelectItem value="all">Semua (dipisah per grup)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {reportType !== "employees" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

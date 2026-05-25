@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileSpreadsheet, FileText, Loader2, User, Coins, Calculator } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { exportToExcelFile } from "@/lib/excelExport";
+import { exportToExcelFile, exportMultiSheetExcelFile } from "@/lib/excelExport";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, eachDayOfInterval, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
@@ -532,24 +532,6 @@ export default function Reports() {
           .filter((e) => e.status === "Inactive" || e.status === "Resigned")
           .sort(sortByName);
 
-        if (employeeStatusFilter === "all" && activeList.length > 0 && inactiveList.length > 0) {
-          // Mix in same sheet with a visual section separator row
-          const blankSeparator: any = {};
-          const sectionRow = (label: string): any => {
-            const r: any = { NIK: `=== ${label} ===` };
-            return r;
-          };
-          data = [
-            sectionRow("KARYAWAN AKTIF"),
-            ...activeList.map(mapEmployee),
-            blankSeparator,
-            sectionRow("KARYAWAN INACTIVE / RESIGN"),
-            ...inactiveList.map(mapEmployee),
-          ];
-        } else {
-          data = [...activeList, ...inactiveList].map(mapEmployee);
-        }
-
         const statusSuffix =
           employeeStatusFilter === "active"
             ? "Aktif"
@@ -557,6 +539,22 @@ export default function Reports() {
               ? "Inactive-Resign"
               : "Semua";
         filename = `Database_Karyawan_${statusSuffix}_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+
+        if (employeeStatusFilter === "all") {
+          // Always export two separate sheets when "Semua" is selected
+          await exportMultiSheetExcelFile(
+            [
+              { sheetName: "Aktif", data: activeList.map(mapEmployee) },
+              { sheetName: "Inactive-Resign", data: inactiveList.map(mapEmployee) },
+            ],
+            filename,
+          );
+          toast({ title: t("common.success"), description: t("reportsPage.toast.excelOk") });
+          setLoading(false);
+          return;
+        }
+
+        data = [...activeList, ...inactiveList].map(mapEmployee);
       }
 
       await exportToExcelFile(data, "Report", filename);

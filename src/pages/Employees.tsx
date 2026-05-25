@@ -1489,6 +1489,13 @@ const Employees = () => {
           onEdit={(emp) => openEditDialog(emp)}
         />
 
+        <BulkUpdateEmployeesDialog
+          open={isBulkUpdateOpen}
+          onOpenChange={setIsBulkUpdateOpen}
+          employees={employees}
+          onSuccess={fetchEmployees}
+        />
+
         {/* Dialog konfirmasi: Riwayat perubahan gaji & tunjangan */}
         <Dialog open={salaryHistoryDialogOpen} onOpenChange={setSalaryHistoryDialogOpen}>
           <DialogContent className="max-w-lg">

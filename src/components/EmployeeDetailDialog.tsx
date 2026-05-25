@@ -170,10 +170,11 @@ export const EmployeeDetailDialog = ({
         </div>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="info">📋 Info</TabsTrigger>
             <TabsTrigger value="attendance">🕐 Kehadiran</TabsTrigger>
             <TabsTrigger value="payroll">💰 Payroll</TabsTrigger>
+            <TabsTrigger value="salary-history">💵 Riwayat Gaji</TabsTrigger>
           </TabsList>
 
           {/* INFO TAB */}

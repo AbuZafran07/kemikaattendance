@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileSpreadsheet, FileText, Loader2, User, Coins, Calculator } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { exportToExcelFile } from "@/lib/excelExport";
+import { exportToExcelFile, exportMultiSheetExcelFile } from "@/lib/excelExport";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, eachDayOfInterval, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";

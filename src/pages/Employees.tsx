@@ -119,6 +119,55 @@ const Employees = () => {
     remaining_leave: "12",
   });
 
+  // === Riwayat perubahan gaji & tunjangan ===
+  const [salaryHistoryDialogOpen, setSalaryHistoryDialogOpen] = useState(false);
+  const [salaryHistoryReason, setSalaryHistoryReason] = useState("");
+  const [salaryHistoryEffectiveDate, setSalaryHistoryEffectiveDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+  const [pendingFinanceDiff, setPendingFinanceDiff] = useState<{
+    changed: string[];
+    oldValues: Record<string, any>;
+    newValues: Record<string, any>;
+  } | null>(null);
+
+  const FINANCIAL_FIELDS: { key: string; label: string; type: 'number' | 'text' | 'bool' }[] = [
+    { key: 'basic_salary', label: 'Gaji Pokok', type: 'number' },
+    { key: 'tunjangan_jabatan', label: 'Tunjangan Jabatan', type: 'number' },
+    { key: 'tunjangan_komunikasi', label: 'Tunjangan Komunikasi', type: 'number' },
+    { key: 'tunjangan_operasional', label: 'Tunjangan Operasional', type: 'number' },
+    { key: 'ptkp_status', label: 'Status PTKP', type: 'text' },
+    { key: 'bpjs_kesehatan_enabled', label: 'BPJS Kesehatan', type: 'bool' },
+    { key: 'bpjs_ketenagakerjaan_enabled', label: 'BPJS Ketenagakerjaan', type: 'bool' },
+    { key: 'npwp', label: 'NPWP', type: 'text' },
+    { key: 'bank_name', label: 'Nama Bank', type: 'text' },
+    { key: 'bank_account_number', label: 'No. Rekening', type: 'text' },
+  ];
+
+  const buildFinancialDiff = (oldEmp: any, formData: any, parsed: any) => {
+    const oldValues: Record<string, any> = {};
+    const newValues: Record<string, any> = {};
+    const changed: string[] = [];
+    for (const f of FINANCIAL_FIELDS) {
+      let oldVal: any = oldEmp?.[f.key];
+      let newVal: any = parsed?.[f.key] ?? formData[f.key];
+      if (f.type === 'number') {
+        oldVal = Number(oldVal || 0);
+        newVal = Number(newVal || 0);
+      } else if (f.type === 'bool') {
+        oldVal = !!oldVal;
+        newVal = !!newVal;
+      } else {
+        oldVal = oldVal ?? '';
+        newVal = newVal ?? '';
+      }
+      oldValues[f.key] = oldVal;
+      newValues[f.key] = newVal;
+      if (oldVal !== newVal) changed.push(f.key);
+    }
+    return { changed, oldValues, newValues };
+  };
+
   useEffect(() => {
     fetchEmployees();
     fetchEmployeeRoles();

@@ -394,4 +394,73 @@ const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; valu
   </div>
 );
 
+const FIELD_LABELS: Record<string, { label: string; type: 'number' | 'text' | 'bool' }> = {
+  basic_salary: { label: 'Gaji Pokok', type: 'number' },
+  tunjangan_jabatan: { label: 'Tunjangan Jabatan', type: 'number' },
+  tunjangan_komunikasi: { label: 'Tunjangan Komunikasi', type: 'number' },
+  tunjangan_operasional: { label: 'Tunjangan Operasional', type: 'number' },
+  ptkp_status: { label: 'Status PTKP', type: 'text' },
+  bpjs_kesehatan_enabled: { label: 'BPJS Kesehatan', type: 'bool' },
+  bpjs_ketenagakerjaan_enabled: { label: 'BPJS Ketenagakerjaan', type: 'bool' },
+  npwp: { label: 'NPWP', type: 'text' },
+  bank_name: { label: 'Nama Bank', type: 'text' },
+  bank_account_number: { label: 'No. Rekening', type: 'text' },
+};
+
+const formatFieldValue = (key: string, value: any) => {
+  const meta = FIELD_LABELS[key];
+  if (!meta) return String(value ?? '-');
+  if (meta.type === 'number') return `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+  if (meta.type === 'bool') return value ? 'Aktif' : 'Nonaktif';
+  return value ? String(value) : '-';
+};
+
+const SalaryHistoryItem = ({ record, changerName }: { record: any; changerName: string }) => {
+  const changed: string[] = record.changed_fields || [];
+  return (
+    <div className="rounded-lg border border-border p-3 bg-card">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <p className="text-sm font-semibold flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" />
+            Efektif: {new Date(record.effective_date).toLocaleDateString('id-ID', {
+              day: 'numeric', month: 'long', year: 'numeric',
+            })}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Diubah oleh <span className="font-medium">{changerName}</span> ·{' '}
+            {new Date(record.created_at).toLocaleString('id-ID', {
+              day: 'numeric', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+            })}
+          </p>
+        </div>
+        <Badge variant="secondary" className="text-xs">{changed.length} field</Badge>
+      </div>
+
+      <div className="rounded-md bg-muted/50 p-2 mb-2">
+        <p className="text-xs font-semibold text-muted-foreground mb-0.5">Alasan</p>
+        <p className="text-xs whitespace-pre-wrap break-words">{record.reason}</p>
+      </div>
+
+      <div className="space-y-1">
+        {changed.map((key) => {
+          const oldV = record.old_values?.[key];
+          const newV = record.new_values?.[key];
+          return (
+            <div key={key} className="text-xs flex items-center justify-between gap-2 py-0.5">
+              <span className="font-medium">{FIELD_LABELS[key]?.label || key}</span>
+              <span className="text-muted-foreground text-right">
+                <span className="line-through">{formatFieldValue(key, oldV)}</span>
+                <span className="mx-1.5 text-foreground">→</span>
+                <span className="text-primary font-semibold">{formatFieldValue(key, newV)}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export default EmployeeDetailDialog;

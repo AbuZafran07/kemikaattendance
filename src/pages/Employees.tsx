@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
+import { BulkUpdateEmployeesDialog } from "@/components/BulkUpdateEmployeesDialog";
 import {
   Table,
   TableBody,
@@ -74,6 +75,7 @@ const Employees = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [viewingEmployee, setViewingEmployee] = useState<any>(null);
+  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -810,6 +812,10 @@ const Employees = () => {
               <Download className="h-4 w-4 mr-2" />
               {t("employeesPage.header.export")}
             </Button>
+            <Button variant="outline" onClick={() => setIsBulkUpdateOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Update
+            </Button>
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) resetForm();
@@ -1481,6 +1487,13 @@ const Employees = () => {
           employee={viewingEmployee}
           employeeRoles={employeeRoles}
           onEdit={(emp) => openEditDialog(emp)}
+        />
+
+        <BulkUpdateEmployeesDialog
+          open={isBulkUpdateOpen}
+          onOpenChange={setIsBulkUpdateOpen}
+          employees={employees}
+          onSuccess={fetchEmployees}
         />
 
         {/* Dialog konfirmasi: Riwayat perubahan gaji & tunjangan */}

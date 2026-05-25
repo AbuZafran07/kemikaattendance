@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.auto_insert_attendance_on_lupa_absen() FROM PUBLIC, anon;

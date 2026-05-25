@@ -812,6 +812,10 @@ const Employees = () => {
               <Download className="h-4 w-4 mr-2" />
               {t("employeesPage.header.export")}
             </Button>
+            <Button variant="outline" onClick={() => setIsBulkUpdateOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Update
+            </Button>
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) resetForm();

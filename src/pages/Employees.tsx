@@ -406,11 +406,27 @@ const Employees = () => {
     }
 
 
-    setIsUploading(true);
+    // Deteksi perubahan komponen finansial → minta alasan & tanggal efektif
+    const diff = buildFinancialDiff(editingEmployee, editFormData, result.data);
+    if (diff.changed.length > 0) {
+      setPendingFinanceDiff(diff);
+      setSalaryHistoryReason("");
+      setSalaryHistoryEffectiveDate(new Date().toISOString().split('T')[0]);
+      setSalaryHistoryDialogOpen(true);
+      return;
+    }
 
+    await executeProfileUpdate(result, null);
+  };
+
+  const executeProfileUpdate = async (
+    result: any,
+    historyMeta: { reason: string; effective_date: string; diff: any } | null
+  ) => {
+    setIsUploading(true);
     try {
       let photoUrl = editingEmployee.photo_url;
-      
+
       if (photoFile) {
         photoUrl = await uploadPhoto(editingEmployee.id);
       }
@@ -459,6 +475,26 @@ const Employees = () => {
 
       if (error) throw error;
 
+      // Simpan riwayat perubahan gaji & tunjangan
+      if (historyMeta) {
+        const { data: authData } = await supabase.auth.getUser();
+        const uid = authData?.user?.id;
+        if (uid) {
+          const { error: histErr } = await supabase
+            .from('salary_change_history')
+            .insert({
+              user_id: editingEmployee.id,
+              changed_by: uid,
+              effective_date: historyMeta.effective_date,
+              reason: historyMeta.reason,
+              old_values: historyMeta.diff.oldValues,
+              new_values: historyMeta.diff.newValues,
+              changed_fields: historyMeta.diff.changed,
+            });
+          if (histErr) logger.error('Gagal menyimpan riwayat gaji', histErr);
+        }
+      }
+
       toast({
         title: t("employeesPage.toast.successTitle"),
         description: t("employeesPage.toast.updatedDesc"),
@@ -466,6 +502,8 @@ const Employees = () => {
 
       setIsEditDialogOpen(false);
       setEditingEmployee(null);
+      setSalaryHistoryDialogOpen(false);
+      setPendingFinanceDiff(null);
       resetForm();
       fetchEmployees();
     } catch (error: any) {
@@ -477,6 +515,33 @@ const Employees = () => {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const confirmSalaryHistorySave = async () => {
+    if (!pendingFinanceDiff) return;
+    if (!salaryHistoryReason.trim() || salaryHistoryReason.trim().length < 5) {
+      toast({
+        title: "Alasan wajib diisi",
+        description: "Mohon jelaskan alasan perubahan (min. 5 karakter).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!salaryHistoryEffectiveDate) {
+      toast({ title: "Tanggal efektif wajib diisi", variant: "destructive" });
+      return;
+    }
+    // Re-validate form data to get parsed result
+    const result = employeeEditSchema.safeParse(editFormData);
+    if (!result.success) {
+      toast({ title: "Data tidak valid", variant: "destructive" });
+      return;
+    }
+    await executeProfileUpdate(result, {
+      reason: salaryHistoryReason.trim(),
+      effective_date: salaryHistoryEffectiveDate,
+      diff: pendingFinanceDiff,
+    });
   };
 
   const openEditDialog = (employee: any) => {

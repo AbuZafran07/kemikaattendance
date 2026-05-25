@@ -101,6 +101,29 @@ export const EmployeeDetailDialog = ({
     setLoadingPayroll(false);
   };
 
+  const fetchSalaryHistory = async () => {
+    if (!employee) return;
+    setLoadingSalary(true);
+    const { data } = await supabase
+      .from("salary_change_history")
+      .select("*")
+      .eq("user_id", employee.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setSalaryHistory(data || []);
+    const changerIds = [...new Set((data || []).map((r: any) => r.changed_by).filter(Boolean))];
+    if (changerIds.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", changerIds);
+      const map: Record<string, string> = {};
+      (profs || []).forEach((p: any) => { map[p.id] = p.full_name; });
+      setSalaryChangerNames(map);
+    }
+    setLoadingSalary(false);
+  };
+
   if (!employee) return null;
 
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];

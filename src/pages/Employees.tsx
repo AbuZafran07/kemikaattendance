@@ -119,6 +119,55 @@ const Employees = () => {
     remaining_leave: "12",
   });
 
+  // === Riwayat perubahan gaji & tunjangan ===
+  const [salaryHistoryDialogOpen, setSalaryHistoryDialogOpen] = useState(false);
+  const [salaryHistoryReason, setSalaryHistoryReason] = useState("");
+  const [salaryHistoryEffectiveDate, setSalaryHistoryEffectiveDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+  const [pendingFinanceDiff, setPendingFinanceDiff] = useState<{
+    changed: string[];
+    oldValues: Record<string, any>;
+    newValues: Record<string, any>;
+  } | null>(null);
+
+  const FINANCIAL_FIELDS: { key: string; label: string; type: 'number' | 'text' | 'bool' }[] = [
+    { key: 'basic_salary', label: 'Gaji Pokok', type: 'number' },
+    { key: 'tunjangan_jabatan', label: 'Tunjangan Jabatan', type: 'number' },
+    { key: 'tunjangan_komunikasi', label: 'Tunjangan Komunikasi', type: 'number' },
+    { key: 'tunjangan_operasional', label: 'Tunjangan Operasional', type: 'number' },
+    { key: 'ptkp_status', label: 'Status PTKP', type: 'text' },
+    { key: 'bpjs_kesehatan_enabled', label: 'BPJS Kesehatan', type: 'bool' },
+    { key: 'bpjs_ketenagakerjaan_enabled', label: 'BPJS Ketenagakerjaan', type: 'bool' },
+    { key: 'npwp', label: 'NPWP', type: 'text' },
+    { key: 'bank_name', label: 'Nama Bank', type: 'text' },
+    { key: 'bank_account_number', label: 'No. Rekening', type: 'text' },
+  ];
+
+  const buildFinancialDiff = (oldEmp: any, formData: any, parsed: any) => {
+    const oldValues: Record<string, any> = {};
+    const newValues: Record<string, any> = {};
+    const changed: string[] = [];
+    for (const f of FINANCIAL_FIELDS) {
+      let oldVal: any = oldEmp?.[f.key];
+      let newVal: any = parsed?.[f.key] ?? formData[f.key];
+      if (f.type === 'number') {
+        oldVal = Number(oldVal || 0);
+        newVal = Number(newVal || 0);
+      } else if (f.type === 'bool') {
+        oldVal = !!oldVal;
+        newVal = !!newVal;
+      } else {
+        oldVal = oldVal ?? '';
+        newVal = newVal ?? '';
+      }
+      oldValues[f.key] = oldVal;
+      newValues[f.key] = newVal;
+      if (oldVal !== newVal) changed.push(f.key);
+    }
+    return { changed, oldValues, newValues };
+  };
+
   useEffect(() => {
     fetchEmployees();
     fetchEmployeeRoles();
@@ -357,11 +406,27 @@ const Employees = () => {
     }
 
 
-    setIsUploading(true);
+    // Deteksi perubahan komponen finansial → minta alasan & tanggal efektif
+    const diff = buildFinancialDiff(editingEmployee, editFormData, result.data);
+    if (diff.changed.length > 0) {
+      setPendingFinanceDiff(diff);
+      setSalaryHistoryReason("");
+      setSalaryHistoryEffectiveDate(new Date().toISOString().split('T')[0]);
+      setSalaryHistoryDialogOpen(true);
+      return;
+    }
 
+    await executeProfileUpdate(result, null);
+  };
+
+  const executeProfileUpdate = async (
+    result: any,
+    historyMeta: { reason: string; effective_date: string; diff: any } | null
+  ) => {
+    setIsUploading(true);
     try {
       let photoUrl = editingEmployee.photo_url;
-      
+
       if (photoFile) {
         photoUrl = await uploadPhoto(editingEmployee.id);
       }
@@ -410,6 +475,26 @@ const Employees = () => {
 
       if (error) throw error;
 
+      // Simpan riwayat perubahan gaji & tunjangan
+      if (historyMeta) {
+        const { data: authData } = await supabase.auth.getUser();
+        const uid = authData?.user?.id;
+        if (uid) {
+          const { error: histErr } = await supabase
+            .from('salary_change_history')
+            .insert({
+              user_id: editingEmployee.id,
+              changed_by: uid,
+              effective_date: historyMeta.effective_date,
+              reason: historyMeta.reason,
+              old_values: historyMeta.diff.oldValues,
+              new_values: historyMeta.diff.newValues,
+              changed_fields: historyMeta.diff.changed,
+            });
+          if (histErr) logger.error('Gagal menyimpan riwayat gaji', histErr);
+        }
+      }
+
       toast({
         title: t("employeesPage.toast.successTitle"),
         description: t("employeesPage.toast.updatedDesc"),
@@ -417,6 +502,8 @@ const Employees = () => {
 
       setIsEditDialogOpen(false);
       setEditingEmployee(null);
+      setSalaryHistoryDialogOpen(false);
+      setPendingFinanceDiff(null);
       resetForm();
       fetchEmployees();
     } catch (error: any) {
@@ -428,6 +515,33 @@ const Employees = () => {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const confirmSalaryHistorySave = async () => {
+    if (!pendingFinanceDiff) return;
+    if (!salaryHistoryReason.trim() || salaryHistoryReason.trim().length < 5) {
+      toast({
+        title: "Alasan wajib diisi",
+        description: "Mohon jelaskan alasan perubahan (min. 5 karakter).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!salaryHistoryEffectiveDate) {
+      toast({ title: "Tanggal efektif wajib diisi", variant: "destructive" });
+      return;
+    }
+    // Re-validate form data to get parsed result
+    const result = employeeEditSchema.safeParse(editFormData);
+    if (!result.success) {
+      toast({ title: "Data tidak valid", variant: "destructive" });
+      return;
+    }
+    await executeProfileUpdate(result, {
+      reason: salaryHistoryReason.trim(),
+      effective_date: salaryHistoryEffectiveDate,
+      diff: pendingFinanceDiff,
+    });
   };
 
   const openEditDialog = (employee: any) => {
@@ -1368,6 +1482,89 @@ const Employees = () => {
           employeeRoles={employeeRoles}
           onEdit={(emp) => openEditDialog(emp)}
         />
+
+        {/* Dialog konfirmasi: Riwayat perubahan gaji & tunjangan */}
+        <Dialog open={salaryHistoryDialogOpen} onOpenChange={setSalaryHistoryDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Catat Riwayat Perubahan Gaji</DialogTitle>
+              <DialogDescription>
+                Perubahan komponen finansial akan dicatat ke riwayat karyawan. Mohon isi alasan & tanggal efektif.
+              </DialogDescription>
+            </DialogHeader>
+
+            {pendingFinanceDiff && (
+              <div className="rounded-md border border-border p-3 max-h-56 overflow-y-auto space-y-1.5 bg-muted/30">
+                <p className="text-xs font-semibold text-muted-foreground mb-1">
+                  {pendingFinanceDiff.changed.length} field berubah:
+                </p>
+                {pendingFinanceDiff.changed.map((k) => {
+                  const meta = FINANCIAL_FIELDS.find((f) => f.key === k);
+                  const oldV = pendingFinanceDiff.oldValues[k];
+                  const newV = pendingFinanceDiff.newValues[k];
+                  const fmt = (v: any) =>
+                    meta?.type === 'number'
+                      ? `Rp ${Number(v || 0).toLocaleString('id-ID')}`
+                      : meta?.type === 'bool'
+                      ? (v ? 'Aktif' : 'Nonaktif')
+                      : (v || '-');
+                  return (
+                    <div key={k} className="text-xs flex items-center justify-between gap-2">
+                      <span className="font-medium">{meta?.label || k}</span>
+                      <span className="text-muted-foreground">
+                        <span className="line-through">{fmt(oldV)}</span>
+                        <span className="mx-1.5">→</span>
+                        <span className="text-primary font-semibold">{fmt(newV)}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="salary_history_effective">Tanggal Efektif <span className="text-destructive">*</span></Label>
+                <Input
+                  id="salary_history_effective"
+                  type="date"
+                  value={salaryHistoryEffectiveDate}
+                  onChange={(e) => setSalaryHistoryEffectiveDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Bisa diisi tanggal mundur atau ke depan (mis. berlaku 1 bulan depan).</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="salary_history_reason">Alasan Perubahan <span className="text-destructive">*</span></Label>
+                <textarea
+                  id="salary_history_reason"
+                  className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Contoh: Kenaikan tahunan 2026, Promosi jabatan ke Supervisor, dll."
+                  value={salaryHistoryReason}
+                  onChange={(e) => setSalaryHistoryReason(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSalaryHistoryDialogOpen(false);
+                  setPendingFinanceDiff(null);
+                }}
+                disabled={isUploading}
+              >
+                Batal
+              </Button>
+              <Button onClick={confirmSalaryHistorySave} disabled={isUploading}>
+                {isUploading ? "Menyimpan..." : "Simpan & Catat Riwayat"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+
 
         <Card>
           <CardHeader>

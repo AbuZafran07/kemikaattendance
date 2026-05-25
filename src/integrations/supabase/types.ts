@@ -1132,6 +1132,42 @@ export type Database = {
         }
         Relationships: []
       }
+      salary_change_history: {
+        Row: {
+          changed_by: string
+          changed_fields: string[]
+          created_at: string
+          effective_date: string
+          id: string
+          new_values: Json
+          old_values: Json
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          changed_by: string
+          changed_fields?: string[]
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          reason: string
+          user_id: string
+        }
+        Update: {
+          changed_by?: string
+          changed_fields?: string[]
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           created_at: string

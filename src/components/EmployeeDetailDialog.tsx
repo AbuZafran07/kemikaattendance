@@ -48,13 +48,17 @@ export const EmployeeDetailDialog = ({
 }: EmployeeDetailDialogProps) => {
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
+  const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
+  const [salaryChangerNames, setSalaryChangerNames] = useState<Record<string, string>>({});
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
+  const [loadingSalary, setLoadingSalary] = useState(false);
 
   useEffect(() => {
     if (open && employee) {
       fetchAttendanceHistory();
       fetchPayrollHistory();
+      fetchSalaryHistory();
     }
   }, [open, employee?.id]);
 
@@ -95,6 +99,29 @@ export const EmployeeDetailDialog = ({
       setPayrollHistory([]);
     }
     setLoadingPayroll(false);
+  };
+
+  const fetchSalaryHistory = async () => {
+    if (!employee) return;
+    setLoadingSalary(true);
+    const { data } = await supabase
+      .from("salary_change_history")
+      .select("*")
+      .eq("user_id", employee.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setSalaryHistory(data || []);
+    const changerIds = [...new Set((data || []).map((r: any) => r.changed_by).filter(Boolean))];
+    if (changerIds.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", changerIds);
+      const map: Record<string, string> = {};
+      (profs || []).forEach((p: any) => { map[p.id] = p.full_name; });
+      setSalaryChangerNames(map);
+    }
+    setLoadingSalary(false);
   };
 
   if (!employee) return null;
@@ -143,10 +170,11 @@ export const EmployeeDetailDialog = ({
         </div>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="info">📋 Info</TabsTrigger>
             <TabsTrigger value="attendance">🕐 Kehadiran</TabsTrigger>
             <TabsTrigger value="payroll">💰 Payroll</TabsTrigger>
+            <TabsTrigger value="salary-history">💵 Riwayat Gaji</TabsTrigger>
           </TabsList>
 
           {/* INFO TAB */}
@@ -318,6 +346,27 @@ export const EmployeeDetailDialog = ({
               </div>
             )}
           </TabsContent>
+
+          {/* SALARY HISTORY TAB */}
+          <TabsContent value="salary-history" className="mt-4">
+            {loadingSalary ? (
+              <p className="text-center text-muted-foreground py-8">Memuat riwayat gaji...</p>
+            ) : salaryHistory.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Belum ada perubahan gaji/tunjangan tercatat.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-[420px] overflow-y-auto">
+                {salaryHistory.map((h) => (
+                  <SalaryHistoryItem
+                    key={h.id}
+                    record={h}
+                    changerName={salaryChangerNames[h.changed_by] || "—"}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Actions */}
@@ -344,5 +393,74 @@ const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; valu
     </div>
   </div>
 );
+
+const FIELD_LABELS: Record<string, { label: string; type: 'number' | 'text' | 'bool' }> = {
+  basic_salary: { label: 'Gaji Pokok', type: 'number' },
+  tunjangan_jabatan: { label: 'Tunjangan Jabatan', type: 'number' },
+  tunjangan_komunikasi: { label: 'Tunjangan Komunikasi', type: 'number' },
+  tunjangan_operasional: { label: 'Tunjangan Operasional', type: 'number' },
+  ptkp_status: { label: 'Status PTKP', type: 'text' },
+  bpjs_kesehatan_enabled: { label: 'BPJS Kesehatan', type: 'bool' },
+  bpjs_ketenagakerjaan_enabled: { label: 'BPJS Ketenagakerjaan', type: 'bool' },
+  npwp: { label: 'NPWP', type: 'text' },
+  bank_name: { label: 'Nama Bank', type: 'text' },
+  bank_account_number: { label: 'No. Rekening', type: 'text' },
+};
+
+const formatFieldValue = (key: string, value: any) => {
+  const meta = FIELD_LABELS[key];
+  if (!meta) return String(value ?? '-');
+  if (meta.type === 'number') return `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+  if (meta.type === 'bool') return value ? 'Aktif' : 'Nonaktif';
+  return value ? String(value) : '-';
+};
+
+const SalaryHistoryItem = ({ record, changerName }: { record: any; changerName: string }) => {
+  const changed: string[] = record.changed_fields || [];
+  return (
+    <div className="rounded-lg border border-border p-3 bg-card">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <p className="text-sm font-semibold flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" />
+            Efektif: {new Date(record.effective_date).toLocaleDateString('id-ID', {
+              day: 'numeric', month: 'long', year: 'numeric',
+            })}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Diubah oleh <span className="font-medium">{changerName}</span> ·{' '}
+            {new Date(record.created_at).toLocaleString('id-ID', {
+              day: 'numeric', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+            })}
+          </p>
+        </div>
+        <Badge variant="secondary" className="text-xs">{changed.length} field</Badge>
+      </div>
+
+      <div className="rounded-md bg-muted/50 p-2 mb-2">
+        <p className="text-xs font-semibold text-muted-foreground mb-0.5">Alasan</p>
+        <p className="text-xs whitespace-pre-wrap break-words">{record.reason}</p>
+      </div>
+
+      <div className="space-y-1">
+        {changed.map((key) => {
+          const oldV = record.old_values?.[key];
+          const newV = record.new_values?.[key];
+          return (
+            <div key={key} className="text-xs flex items-center justify-between gap-2 py-0.5">
+              <span className="font-medium">{FIELD_LABELS[key]?.label || key}</span>
+              <span className="text-muted-foreground text-right">
+                <span className="line-through">{formatFieldValue(key, oldV)}</span>
+                <span className="mx-1.5 text-foreground">→</span>
+                <span className="text-primary font-semibold">{formatFieldValue(key, newV)}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export default EmployeeDetailDialog;

@@ -346,6 +346,27 @@ export const EmployeeDetailDialog = ({
               </div>
             )}
           </TabsContent>
+
+          {/* SALARY HISTORY TAB */}
+          <TabsContent value="salary-history" className="mt-4">
+            {loadingSalary ? (
+              <p className="text-center text-muted-foreground py-8">Memuat riwayat gaji...</p>
+            ) : salaryHistory.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Belum ada perubahan gaji/tunjangan tercatat.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-[420px] overflow-y-auto">
+                {salaryHistory.map((h) => (
+                  <SalaryHistoryItem
+                    key={h.id}
+                    record={h}
+                    changerName={salaryChangerNames[h.changed_by] || "—"}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Actions */}

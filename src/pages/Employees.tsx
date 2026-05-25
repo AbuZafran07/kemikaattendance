@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
+import { BulkUpdateEmployeesDialog } from "@/components/BulkUpdateEmployeesDialog";
 import {
   Table,
   TableBody,

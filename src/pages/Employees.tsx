@@ -1483,6 +1483,89 @@ const Employees = () => {
           onEdit={(emp) => openEditDialog(emp)}
         />
 
+        {/* Dialog konfirmasi: Riwayat perubahan gaji & tunjangan */}
+        <Dialog open={salaryHistoryDialogOpen} onOpenChange={setSalaryHistoryDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Catat Riwayat Perubahan Gaji</DialogTitle>
+              <DialogDescription>
+                Perubahan komponen finansial akan dicatat ke riwayat karyawan. Mohon isi alasan & tanggal efektif.
+              </DialogDescription>
+            </DialogHeader>
+
+            {pendingFinanceDiff && (
+              <div className="rounded-md border border-border p-3 max-h-56 overflow-y-auto space-y-1.5 bg-muted/30">
+                <p className="text-xs font-semibold text-muted-foreground mb-1">
+                  {pendingFinanceDiff.changed.length} field berubah:
+                </p>
+                {pendingFinanceDiff.changed.map((k) => {
+                  const meta = FINANCIAL_FIELDS.find((f) => f.key === k);
+                  const oldV = pendingFinanceDiff.oldValues[k];
+                  const newV = pendingFinanceDiff.newValues[k];
+                  const fmt = (v: any) =>
+                    meta?.type === 'number'
+                      ? `Rp ${Number(v || 0).toLocaleString('id-ID')}`
+                      : meta?.type === 'bool'
+                      ? (v ? 'Aktif' : 'Nonaktif')
+                      : (v || '-');
+                  return (
+                    <div key={k} className="text-xs flex items-center justify-between gap-2">
+                      <span className="font-medium">{meta?.label || k}</span>
+                      <span className="text-muted-foreground">
+                        <span className="line-through">{fmt(oldV)}</span>
+                        <span className="mx-1.5">→</span>
+                        <span className="text-primary font-semibold">{fmt(newV)}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="salary_history_effective">Tanggal Efektif <span className="text-destructive">*</span></Label>
+                <Input
+                  id="salary_history_effective"
+                  type="date"
+                  value={salaryHistoryEffectiveDate}
+                  onChange={(e) => setSalaryHistoryEffectiveDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Bisa diisi tanggal mundur atau ke depan (mis. berlaku 1 bulan depan).</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="salary_history_reason">Alasan Perubahan <span className="text-destructive">*</span></Label>
+                <textarea
+                  id="salary_history_reason"
+                  className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Contoh: Kenaikan tahunan 2026, Promosi jabatan ke Supervisor, dll."
+                  value={salaryHistoryReason}
+                  onChange={(e) => setSalaryHistoryReason(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSalaryHistoryDialogOpen(false);
+                  setPendingFinanceDiff(null);
+                }}
+                disabled={isUploading}
+              >
+                Batal
+              </Button>
+              <Button onClick={confirmSalaryHistorySave} disabled={isUploading}>
+                {isUploading ? "Menyimpan..." : "Simpan & Catat Riwayat"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+
+
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4">

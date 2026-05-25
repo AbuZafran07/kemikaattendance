@@ -75,6 +75,7 @@ const Employees = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [viewingEmployee, setViewingEmployee] = useState<any>(null);
+  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();

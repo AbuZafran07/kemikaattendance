@@ -1312,14 +1312,48 @@ const Employees = () => {
                   </>
                 )}
               </div>
+              {(() => {
+                const bs = Number(editFormData.basic_salary) || 0;
+                const tt = (Number(editFormData.tunjangan_jabatan) || 0)
+                  + (Number(editFormData.tunjangan_komunikasi) || 0)
+                  + (Number(editFormData.tunjangan_operasional) || 0);
+                const total = bs + tt;
+                if (bs <= 0 || tt <= 0) return null;
+                const basicPct = (bs / total) * 100;
+                const maxTt = Math.floor(bs / 3); // tunjangan tetap max = 1/3 gapok agar gapok ≥ 75%
+                const violated = basicPct < 75;
+                return (
+                  <Alert variant={violated ? "destructive" : "default"} className={violated ? "" : "border-primary/30"}>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>
+                      {violated ? "Komposisi Upah Tidak Sesuai Aturan" : "Komposisi Upah Sesuai"}
+                    </AlertTitle>
+                    <AlertDescription className="text-xs space-y-1 mt-1">
+                      <div>Gaji Pokok: <b>{basicPct.toFixed(1)}%</b> dari total upah tetap (min. 75% per UU 13/2003 Ps. 94 & PP 36/2021).</div>
+                      <div>Total Tunjangan Tetap saat ini: <b>Rp {tt.toLocaleString("id-ID")}</b> · Maksimal disarankan: <b>Rp {maxTt.toLocaleString("id-ID")}</b>.</div>
+                      {violated && <div className="font-medium">Kurangi tunjangan sebesar Rp {(tt - maxTt).toLocaleString("id-ID")} atau naikkan gaji pokok.</div>}
+                    </AlertDescription>
+                  </Alert>
+                );
+              })()}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   {t("employeesPage.editDialog.cancel")}
                 </Button>
-                <Button type="submit" disabled={isUploading}>
+                <Button
+                  type="submit"
+                  disabled={isUploading || (() => {
+                    const bs = Number(editFormData.basic_salary) || 0;
+                    const tt = (Number(editFormData.tunjangan_jabatan) || 0)
+                      + (Number(editFormData.tunjangan_komunikasi) || 0)
+                      + (Number(editFormData.tunjangan_operasional) || 0);
+                    return bs > 0 && tt > 0 && bs < 0.75 * (bs + tt);
+                  })()}
+                >
                   {isUploading ? t("employeesPage.editDialog.saving") : t("employeesPage.editDialog.saveChanges")}
                 </Button>
               </div>
+
             </form>
           </DialogContent>
         </Dialog>

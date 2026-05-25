@@ -48,13 +48,17 @@ export const EmployeeDetailDialog = ({
 }: EmployeeDetailDialogProps) => {
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
+  const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
+  const [salaryChangerNames, setSalaryChangerNames] = useState<Record<string, string>>({});
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
+  const [loadingSalary, setLoadingSalary] = useState(false);
 
   useEffect(() => {
     if (open && employee) {
       fetchAttendanceHistory();
       fetchPayrollHistory();
+      fetchSalaryHistory();
     }
   }, [open, employee?.id]);
 

@@ -37,6 +37,8 @@ export interface BPJSConfig {
 
   // Dasar perhitungan BPJS
   base_calculation: BPJSBaseCalculation; // default "basic"
+  // Tanggal efektif perubahan dasar perhitungan (YYYY-MM-DD), diisi otomatis saat base_calculation berubah.
+  base_calculation_effective_date?: string;
 }
 
 export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
@@ -51,6 +53,7 @@ export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
   jkk_employer_rate: 0.24,
   jkm_employer_rate: 0.3,
   base_calculation: "basic",
+  base_calculation_effective_date: undefined,
 };
 
 const formatCurrency = (v: number) =>
@@ -85,11 +88,20 @@ export default function BPJSSettings() {
     try {
       const { data: existing } = await supabase
         .from("system_settings")
-        .select("id")
+        .select("id, value")
         .eq("key", "bpjs_config")
         .maybeSingle();
 
-      const payload = { key: "bpjs_config", value: config as any, description: "Konfigurasi tarif BPJS Ketenagakerjaan & Kesehatan", updated_at: new Date().toISOString() };
+      // Auto-stamp tanggal efektif jika base_calculation berubah
+      const prevConfig = (existing?.value as any) || {};
+      const baseChanged = (prevConfig.base_calculation ?? "basic") !== config.base_calculation;
+      const today = new Date().toISOString().slice(0, 10);
+      const finalConfig: BPJSConfig = {
+        ...config,
+        base_calculation_effective_date: baseChanged ? today : (config.base_calculation_effective_date || prevConfig.base_calculation_effective_date),
+      };
+
+      const payload = { key: "bpjs_config", value: finalConfig as any, description: "Konfigurasi tarif BPJS Ketenagakerjaan & Kesehatan", updated_at: new Date().toISOString() };
 
       if (existing) {
         const { error } = await supabase.from("system_settings").update(payload).eq("key", "bpjs_config");
@@ -98,7 +110,10 @@ export default function BPJSSettings() {
         const { error } = await supabase.from("system_settings").insert(payload);
         if (error) throw error;
       }
-      toast.success("Pengaturan BPJS berhasil disimpan");
+      setConfig(finalConfig);
+      toast.success(baseChanged
+        ? `Pengaturan BPJS disimpan. Dasar perhitungan berlaku efektif: ${today}`
+        : "Pengaturan BPJS berhasil disimpan");
     } catch (e: any) {
       toast.error("Gagal menyimpan: " + e.message);
     } finally {
@@ -175,8 +190,14 @@ export default function BPJSSettings() {
             <p className="text-xs text-muted-foreground mt-3">
               Perubahan berlaku saat <strong>Generate Payroll</strong> berikutnya. Tetap menghormati batas maksimal gaji per program.
             </p>
+            {config.base_calculation_effective_date && (
+              <p className="text-xs text-primary mt-2">
+                <strong>Berlaku efektif sejak:</strong> {new Date(config.base_calculation_effective_date).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}
+              </p>
+            )}
           </CardContent>
         </Card>
+
 
         {/* BPJS Kesehatan */}
         <Card>

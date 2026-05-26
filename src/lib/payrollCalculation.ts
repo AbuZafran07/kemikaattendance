@@ -163,6 +163,8 @@ export function calculatePPh21Reconciliation(
 export interface PayrollInput {
   basicSalary: number;
   allowance: number;
+  // Tunjangan tetap (jabatan + komunikasi + operasional) — dipakai jika base_calculation = basic_plus_fixed
+  fixedAllowance?: number;
   overtimeTotal: number;
   ptkpStatus: string;
   overtimeHours: number;

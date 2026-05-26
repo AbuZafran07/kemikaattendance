@@ -141,6 +141,43 @@ export default function BPJSSettings() {
           </AlertDescription>
         </Alert>
 
+        {/* Dasar Perhitungan BPJS */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Calculator className="h-5 w-5 text-primary" /> Dasar Perhitungan BPJS
+            </CardTitle>
+            <CardDescription>
+              Pilih komponen gaji yang dipakai sebagai dasar (DPP) perhitungan iuran BPJS Kesehatan & Ketenagakerjaan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup
+              value={config.base_calculation}
+              onValueChange={(v) => setConfig(prev => ({ ...prev, base_calculation: v as BPJSBaseCalculation }))}
+              className="space-y-3"
+            >
+              <label htmlFor="base-basic" className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:border-primary/40">
+                <RadioGroupItem id="base-basic" value="basic" className="mt-1" />
+                <div className="space-y-0.5">
+                  <p className="font-medium text-sm">Gaji Pokok saja</p>
+                  <p className="text-xs text-muted-foreground">DPP BPJS = Gaji Pokok (rekomendasi standar saat ini).</p>
+                </div>
+              </label>
+              <label htmlFor="base-plus" className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:border-primary/40">
+                <RadioGroupItem id="base-plus" value="basic_plus_fixed" className="mt-1" />
+                <div className="space-y-0.5">
+                  <p className="font-medium text-sm">Gaji Pokok + Tunjangan Tetap</p>
+                  <p className="text-xs text-muted-foreground">DPP BPJS = Gapok + Tunjangan Jabatan + Tunjangan Komunikasi + Tunjangan Operasional.</p>
+                </div>
+              </label>
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground mt-3">
+              Perubahan berlaku saat <strong>Generate Payroll</strong> berikutnya. Tetap menghormati batas maksimal gaji per program.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* BPJS Kesehatan */}
         <Card>
           <CardHeader>

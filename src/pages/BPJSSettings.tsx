@@ -11,6 +11,8 @@ import { ArrowLeft, Loader2, Info, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+export type BPJSBaseCalculation = "basic" | "basic_plus_fixed";
+
 export interface BPJSConfig {
   // Kesehatan
   kes_employee_rate: number;   // default 1%
@@ -31,6 +33,9 @@ export interface BPJSConfig {
 
   // JKM
   jkm_employer_rate: number;   // default 0.3%
+
+  // Dasar perhitungan BPJS
+  base_calculation: BPJSBaseCalculation; // default "basic"
 }
 
 export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
@@ -44,6 +49,7 @@ export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
   jp_max_salary: 10547400,
   jkk_employer_rate: 0.24,
   jkm_employer_rate: 0.3,
+  base_calculation: "basic",
 };
 
 const formatCurrency = (v: number) =>

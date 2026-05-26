@@ -102,6 +102,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/ter-management" element={<ProtectedRoute requireAdmin><TERManagement /></ProtectedRoute>} />
             <Route path="/dashboard/bukti-potong" element={<ProtectedRoute requireAdmin><BuktiPotong1721A1 /></ProtectedRoute>} />
             <Route path="/dashboard/reports/pph21" element={<ProtectedRoute requireAdmin><PPh21Report /></ProtectedRoute>} />
+            <Route path="/dashboard/reports/bpjs" element={<ProtectedRoute requireAdmin><BPJSReport /></ProtectedRoute>} />
             <Route path="/dashboard/payroll-analytics" element={<ProtectedRoute requireAdmin><PayrollAnalytics /></ProtectedRoute>} />
             <Route path="/dashboard/payroll-audit-log" element={<ProtectedRoute requireAdmin><PayrollAuditLog /></ProtectedRoute>} />
             <Route path="/dashboard/announcements" element={<ProtectedRoute requireAdmin><AnnouncementManagement /></ProtectedRoute>} />

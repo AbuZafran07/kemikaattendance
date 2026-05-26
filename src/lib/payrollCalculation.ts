@@ -52,6 +52,7 @@ const BPJS_KES_MAX_SALARY = 12000000;
 const BPJS_JP_MAX_SALARY = 10547400;
 
 // Dynamic BPJS config interface (rates stored as percentages in DB)
+export type BPJSBaseCalculation = "basic" | "basic_plus_fixed";
 export interface BPJSRatesConfig {
   kes_employee_rate: number;
   kes_employer_rate: number;
@@ -63,6 +64,8 @@ export interface BPJSRatesConfig {
   jp_max_salary: number;
   jkk_employer_rate: number;
   jkm_employer_rate: number;
+  // Dasar perhitungan BPJS: "basic" = hanya gaji pokok, "basic_plus_fixed" = gapok + tunjangan tetap
+  base_calculation?: BPJSBaseCalculation;
 }
 
 // Biaya Jabatan (5% of bruto, max 6,000,000/year or 500,000/month)

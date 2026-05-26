@@ -71,7 +71,7 @@ function determineTransferType(
     return name;
   };
 
-  return normalize(empKey) === normalize(compKey) ? 'OBU' : 'IBU';
+  return normalize(empKey) === normalize(compKey) ? 'IBU' : 'OBU';
 }
 
 export function generateBankPayrollCSV(

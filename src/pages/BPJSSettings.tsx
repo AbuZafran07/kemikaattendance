@@ -37,6 +37,8 @@ export interface BPJSConfig {
 
   // Dasar perhitungan BPJS
   base_calculation: BPJSBaseCalculation; // default "basic"
+  // Tanggal efektif perubahan dasar perhitungan (YYYY-MM-DD), diisi otomatis saat base_calculation berubah.
+  base_calculation_effective_date?: string;
 }
 
 export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
@@ -51,6 +53,7 @@ export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
   jkk_employer_rate: 0.24,
   jkm_employer_rate: 0.3,
   base_calculation: "basic",
+  base_calculation_effective_date: undefined,
 };
 
 const formatCurrency = (v: number) =>

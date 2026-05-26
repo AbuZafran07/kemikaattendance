@@ -88,11 +88,20 @@ export default function BPJSSettings() {
     try {
       const { data: existing } = await supabase
         .from("system_settings")
-        .select("id")
+        .select("id, value")
         .eq("key", "bpjs_config")
         .maybeSingle();
 
-      const payload = { key: "bpjs_config", value: config as any, description: "Konfigurasi tarif BPJS Ketenagakerjaan & Kesehatan", updated_at: new Date().toISOString() };
+      // Auto-stamp tanggal efektif jika base_calculation berubah
+      const prevConfig = (existing?.value as any) || {};
+      const baseChanged = (prevConfig.base_calculation ?? "basic") !== config.base_calculation;
+      const today = new Date().toISOString().slice(0, 10);
+      const finalConfig: BPJSConfig = {
+        ...config,
+        base_calculation_effective_date: baseChanged ? today : (config.base_calculation_effective_date || prevConfig.base_calculation_effective_date),
+      };
+
+      const payload = { key: "bpjs_config", value: finalConfig as any, description: "Konfigurasi tarif BPJS Ketenagakerjaan & Kesehatan", updated_at: new Date().toISOString() };
 
       if (existing) {
         const { error } = await supabase.from("system_settings").update(payload).eq("key", "bpjs_config");
@@ -101,7 +110,10 @@ export default function BPJSSettings() {
         const { error } = await supabase.from("system_settings").insert(payload);
         if (error) throw error;
       }
-      toast.success("Pengaturan BPJS berhasil disimpan");
+      setConfig(finalConfig);
+      toast.success(baseChanged
+        ? `Pengaturan BPJS disimpan. Dasar perhitungan berlaku efektif: ${today}`
+        : "Pengaturan BPJS berhasil disimpan");
     } catch (e: any) {
       toast.error("Gagal menyimpan: " + e.message);
     } finally {

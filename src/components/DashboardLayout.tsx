@@ -80,6 +80,7 @@ const buildNavigationGroups = (t: (k: string) => string) => [
       { name: t("nav.items.terManagement"), href: "/dashboard/ter-management", icon: FileText },
       { name: t("nav.items.buktiPotong"), href: "/dashboard/bukti-potong", icon: FileCheck },
       { name: t("nav.items.pph21Report"), href: "/dashboard/reports/pph21", icon: FileText },
+      { name: "Laporan BPJS", href: "/dashboard/reports/bpjs", icon: FileText },
     ],
   },
   {

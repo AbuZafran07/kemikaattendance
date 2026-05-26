@@ -53,6 +53,7 @@ import EmployeeLoanHistory from "./pages/EmployeeLoanHistory";
 import TERManagement from "./pages/TERManagement";
 import BuktiPotong1721A1 from "./pages/BuktiPotong1721A1";
 import PPh21Report from "./pages/PPh21Report";
+import BPJSReport from "./pages/BPJSReport";
 import PayrollAnalytics from "./pages/PayrollAnalytics";
 import PayrollAuditLog from "./pages/PayrollAuditLog";
 import AnnouncementManagement from "./pages/AnnouncementManagement";

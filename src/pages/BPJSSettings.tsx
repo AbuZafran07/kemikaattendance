@@ -190,8 +190,14 @@ export default function BPJSSettings() {
             <p className="text-xs text-muted-foreground mt-3">
               Perubahan berlaku saat <strong>Generate Payroll</strong> berikutnya. Tetap menghormati batas maksimal gaji per program.
             </p>
+            {config.base_calculation_effective_date && (
+              <p className="text-xs text-primary mt-2">
+                <strong>Berlaku efektif sejak:</strong> {new Date(config.base_calculation_effective_date).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}
+              </p>
+            )}
           </CardContent>
         </Card>
+
 
         {/* BPJS Kesehatan */}
         <Card>

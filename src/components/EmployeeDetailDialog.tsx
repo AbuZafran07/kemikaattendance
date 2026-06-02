@@ -248,17 +248,14 @@ export const EmployeeDetailDialog = ({
               const tetap = items.filter(i => facFlags[i.key]);
               const tidakTetap = items.filter(i => !facFlags[i.key]);
               const renderCard = (label: string, value: number) => (
-                <div key={label} className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="font-semibold text-sm">{formatRupiah(value)}</p>
-                </div>
+                <InfoItem key={label} icon={Briefcase} label={label} value={formatRupiah(value)} />
               );
               return (
                 <>
                   {tetap.length > 0 && (
                     <div>
                       <p className="text-sm font-semibold text-muted-foreground mb-2">📋 Tunjangan Tetap</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {tetap.map(i => renderCard(i.label, i.value))}
                       </div>
                     </div>
@@ -267,13 +264,14 @@ export const EmployeeDetailDialog = ({
                     <div>
                       <p className="text-sm font-semibold text-muted-foreground mb-2">✨ Tambahan Penghasilan (Tidak Tetap)</p>
                       <p className="text-xs text-muted-foreground mb-2">Tidak dihitung sebagai DPP BPJS.</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {tidakTetap.map(i => renderCard(i.label, i.value))}
                       </div>
                     </div>
                   )}
                 </>
               );
+
             })()}
 
             {/* Cuti */}

@@ -81,6 +81,13 @@ const Employees = () => {
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const [facFlags, setFacFlags] = useState<FixedAllowanceComponents>(DEFAULT_FIXED_ALLOWANCE_COMPONENTS);
+  useEffect(() => {
+    getFixedAllowanceComponents().then(setFacFlags).catch(() => {});
+  }, [isEditDialogOpen]);
+
+
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",

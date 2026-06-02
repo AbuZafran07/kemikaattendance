@@ -2466,11 +2466,20 @@ const Payroll = () => {
                               <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis</span>
                             </div>
                             <div>
-                              <Label className="text-xs">Tunj. Komunikasi</Label>
+                              <div className="flex items-center justify-between gap-2">
+                                <Label className="text-xs">Tunj. Komunikasi</Label>
+                                {(emp.tunjangan_komunikasi || 0) > 0 ? (
+                                  <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                    Maks {formatRupiah(emp.tunjangan_komunikasi || 0)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground">Plafon belum diset</span>
+                                )}
+                              </div>
                               <Input
                                 type="number"
                                 value={inc.tunjangan_komunikasi || ""}
-                                placeholder="0"
+                                placeholder={(emp.tunjangan_komunikasi || 0) > 0 ? `Maks ${formatRupiah(emp.tunjangan_komunikasi || 0)}` : "0"}
                                 max={(emp.tunjangan_komunikasi || 0) > 0 ? emp.tunjangan_komunikasi : undefined}
                                 onChange={(e) => {
                                   const raw = Number(e.target.value) || 0;
@@ -2486,11 +2495,7 @@ const Payroll = () => {
                                   updateIncome(emp.id, "tunjangan_komunikasi", String(capped));
                                 }}
                               />
-                              {(emp.tunjangan_komunikasi || 0) > 0 ? (
-                                <span className="text-[10px] text-muted-foreground">Maks: {formatRupiah(emp.tunjangan_komunikasi || 0)} (otomatis dibatasi)</span>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground">Batas belum diset di profil karyawan</span>
-                              )}
+                              <span className="text-[10px] text-muted-foreground">Otomatis dibatasi plafon profil karyawan</span>
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>

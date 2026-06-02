@@ -66,6 +66,13 @@ export interface BPJSRatesConfig {
   jkm_employer_rate: number;
   // Dasar perhitungan BPJS: "basic" = hanya gaji pokok, "basic_plus_fixed" = gapok + tunjangan tetap
   base_calculation?: BPJSBaseCalculation;
+  // Komponen tunjangan tetap yang dipakai sebagai dasar BPJS (hanya berlaku bila base_calculation = basic_plus_fixed).
+  // Default: semua true demi kompatibilitas. Atur false untuk menjadikan tunjangan tsb "tidak tetap".
+  fixed_allowance_components?: {
+    jabatan?: boolean;
+    komunikasi?: boolean;
+    operasional?: boolean;
+  };
 }
 
 // Biaya Jabatan (5% of bruto, max 6,000,000/year or 500,000/month)

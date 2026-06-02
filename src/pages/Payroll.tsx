@@ -292,6 +292,7 @@ const Payroll = () => {
               pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
             };
             const updatePayload: Record<string, number> = {
+              tunjangan_komunikasi: Number(inc.tunjangan_komunikasi) || 0,
               tunjangan_kesehatan: Number(inc.tunjangan_kesehatan) || 0,
               bonus_tahunan: Number(inc.bonus_tahunan) || 0,
               thr: Number(inc.thr) || 0,
@@ -300,10 +301,6 @@ const Payroll = () => {
               pengembalian_employee: Number(inc.pengembalian_employee) || 0,
               insentif_penjualan: Number(inc.insentif_penjualan) || 0,
             };
-            // Override Tunj. Komunikasi pada record payroll jika diisi manual di dialog
-            if ((Number(inc.tunjangan_komunikasi) || 0) > 0) {
-              updatePayload.tunjangan_komunikasi = Number(inc.tunjangan_komunikasi);
-            }
             await supabase
               .from("payroll")
               .update(updatePayload)

@@ -54,6 +54,11 @@ export const EmployeeDetailDialog = ({
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
   const [loadingSalary, setLoadingSalary] = useState(false);
+  const [facFlags, setFacFlags] = useState<FixedAllowanceComponents>(DEFAULT_FIXED_ALLOWANCE_COMPONENTS);
+
+  useEffect(() => {
+    getFixedAllowanceComponents().then(setFacFlags).catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     if (open && employee) {

@@ -2148,23 +2148,41 @@ const Payroll = () => {
                   <span className="text-muted-foreground">{t("payrollPage.detail.overtimeWithHours", { hours: detailItem.overtime_hours })}</span>
                   <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>
                 </div>
-                {((detailItem.tunjangan_komunikasi || 0) + (detailItem.tunjangan_jabatan || 0) + (detailItem.tunjangan_operasional || 0)) > 0 && (
-                  <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
-                    <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.fixedAllowances")}</span>
-                    {(detailItem.tunjangan_komunikasi || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.tunjKomunikasi")}</span>
-                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_komunikasi!)}</span>
-                    </>}
-                    {(detailItem.tunjangan_jabatan || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.tunjJabatan")}</span>
-                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_jabatan!)}</span>
-                    </>}
-                    {(detailItem.tunjangan_operasional || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.tunjOperasional")}</span>
-                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_operasional!)}</span>
-                    </>}
-                  </div>
-                )}
+                {(() => {
+                  const tunjItems = [
+                    { key: "komunikasi" as const, labelKey: "payrollPage.detail.tunjKomunikasi", val: detailItem.tunjangan_komunikasi || 0 },
+                    { key: "jabatan" as const, labelKey: "payrollPage.detail.tunjJabatan", val: detailItem.tunjangan_jabatan || 0 },
+                    { key: "operasional" as const, labelKey: "payrollPage.detail.tunjOperasional", val: detailItem.tunjangan_operasional || 0 },
+                  ];
+                  const tetap = tunjItems.filter(i => facFlags[i.key] && i.val > 0);
+                  const tidakTetap = tunjItems.filter(i => !facFlags[i.key] && i.val > 0);
+                  return (
+                    <>
+                      {tetap.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
+                          <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.fixedAllowances")}</span>
+                          {tetap.map(i => (
+                            <div key={i.key} className="contents">
+                              <span className="text-muted-foreground text-xs">{t(i.labelKey)}</span>
+                              <span className="text-right text-xs">{formatRupiah(i.val)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {tidakTetap.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-accent/40 rounded p-2">
+                          <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">Tunjangan Tidak Tetap (Tambahan Penghasilan)</span>
+                          {tidakTetap.map(i => (
+                            <div key={i.key} className="contents">
+                              <span className="text-muted-foreground text-xs">{t(i.labelKey)}</span>
+                              <span className="text-right text-xs">{formatRupiah(i.val)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0)) > 0 && (
                   <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-primary/5 rounded p-2">
                     <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.incidentalIncome")}</span>

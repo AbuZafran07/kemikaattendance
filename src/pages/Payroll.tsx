@@ -166,6 +166,9 @@ const Payroll = () => {
   const payrollPerPage = 10;
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [preGenerateSnapshot, setPreGenerateSnapshot] = useState<Map<string, any> | null>(null);
+  const [facFlags, setFacFlags] = useState<FixedAllowanceComponents>(DEFAULT_FIXED_ALLOWANCE_COMPONENTS);
+
+  useEffect(() => { getFixedAllowanceComponents().then(setFacFlags).catch(() => {}); }, []);
   const { toast } = useToast();
   const { user } = useAuth();
 

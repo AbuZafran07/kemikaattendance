@@ -1145,7 +1145,7 @@ const Payroll = () => {
 
         const result = calculatePayroll({
           basicSalary, allowance: totalAllowance, overtimeTotal, ptkpStatus, overtimeHours,
-          fixedAllowance: fixedAllowances,
+          fixedAllowance: bpjsFixedAllowance,
           loanDeduction: finalLoanDeduction,
           otherDeduction: finalOtherDeduction,
           deductionNotes: mergedNotes,

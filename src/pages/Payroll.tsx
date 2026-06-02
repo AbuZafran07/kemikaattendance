@@ -361,7 +361,9 @@ const Payroll = () => {
         departemen: profileMap.get(p.user_id)?.dept || "-",
         jabatan: profileMap.get(p.user_id)?.jabatan || "-",
         nik: profileMap.get(p.user_id)?.nik || "-",
-        tunjangan_komunikasi: profileMap.get(p.user_id)?.tunjangan_komunikasi || 0,
+        // Tunj. Komunikasi: pakai nilai manual yang TERSIMPAN di payroll (bukan plafon profil),
+        // sehingga Detail Slip & Tunj. Kehadiran (hasil pengurangan) konsisten dengan input manual.
+        tunjangan_komunikasi: Number((p as any).tunjangan_komunikasi) || 0,
         tunjangan_jabatan: profileMap.get(p.user_id)?.tunjangan_jabatan || 0,
         tunjangan_operasional: profileMap.get(p.user_id)?.tunjangan_operasional || 0,
       }));

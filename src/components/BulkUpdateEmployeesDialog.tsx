@@ -126,6 +126,11 @@ export const BulkUpdateEmployeesDialog: React.FC<Props> = ({
   const [diffs, setDiffs] = useState<DiffRow[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [facFlags, setFacFlags] = useState<FixedAllowanceComponents>(DEFAULT_FIXED_ALLOWANCE_COMPONENTS);
+
+  useEffect(() => {
+    if (open) getFixedAllowanceComponents().then(setFacFlags).catch(() => {});
+  }, [open]);
 
   const reset = () => {
     setStep("intro");

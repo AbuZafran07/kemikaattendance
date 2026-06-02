@@ -238,23 +238,42 @@ export const EmployeeDetailDialog = ({
             </div>
 
             {/* Tunjangan */}
-            <div>
-              <p className="text-sm font-semibold text-muted-foreground mb-2">📋 Tunjangan Tetap</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground">Komunikasi</p>
-                  <p className="font-semibold text-sm">{formatRupiah(employee.tunjangan_komunikasi)}</p>
+            {(() => {
+              const items = [
+                { key: "komunikasi" as const, label: "Komunikasi", value: employee.tunjangan_komunikasi },
+                { key: "jabatan" as const, label: "Jabatan", value: employee.tunjangan_jabatan },
+                { key: "operasional" as const, label: "Operasional", value: employee.tunjangan_operasional },
+              ];
+              const tetap = items.filter(i => facFlags[i.key]);
+              const tidakTetap = items.filter(i => !facFlags[i.key]);
+              const renderCard = (label: string, value: number) => (
+                <div key={label} className="text-center p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  <p className="font-semibold text-sm">{formatRupiah(value)}</p>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground">Jabatan</p>
-                  <p className="font-semibold text-sm">{formatRupiah(employee.tunjangan_jabatan)}</p>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground">Operasional</p>
-                  <p className="font-semibold text-sm">{formatRupiah(employee.tunjangan_operasional)}</p>
-                </div>
-              </div>
-            </div>
+              );
+              return (
+                <>
+                  {tetap.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground mb-2">📋 Tunjangan Tetap</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {tetap.map(i => renderCard(i.label, i.value))}
+                      </div>
+                    </div>
+                  )}
+                  {tidakTetap.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground mb-2">✨ Tambahan Penghasilan (Tidak Tetap)</p>
+                      <p className="text-xs text-muted-foreground mb-2">Tidak dihitung sebagai DPP BPJS.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {tidakTetap.map(i => renderCard(i.label, i.value))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Cuti */}
             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">

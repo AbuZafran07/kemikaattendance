@@ -2499,6 +2499,27 @@ const Payroll = () => {
                               <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis PP 35</span>
                             </div>
                           </div>
+                          {(() => {
+                            const nonFixedItems = [
+                              { key: "komunikasi" as const, label: "Tunj. Komunikasi", value: emp.tunjangan_komunikasi || 0 },
+                              { key: "jabatan" as const, label: "Tunj. Jabatan", value: emp.tunjangan_jabatan || 0 },
+                              { key: "operasional" as const, label: "Tunj. Operasional", value: emp.tunjangan_operasional || 0 },
+                            ].filter(i => !facFlags[i.key] && i.value > 0);
+                            if (nonFixedItems.length === 0) return null;
+                            return (
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <p className="text-[11px] font-semibold text-muted-foreground mb-2">✨ Tambahan Penghasilan Otomatis (dari profil karyawan, di luar DPP BPJS)</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                  {nonFixedItems.map(i => (
+                                    <div key={i.key} className="text-xs p-2 rounded bg-muted/40">
+                                      <p className="text-muted-foreground">{i.label}</p>
+                                      <p className="font-semibold">{formatRupiah(i.value)}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

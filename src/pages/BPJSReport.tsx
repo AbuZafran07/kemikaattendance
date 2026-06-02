@@ -241,7 +241,12 @@ const BPJSReport = () => {
   const isYearView = selectedMonth === "all";
   const showMonthlyView = isYearView && showMonthly;
 
-  const baseLabel = bpjsBase === "basic_plus_fixed" ? "Gaji Pokok + Tunjangan Tetap" : "Gaji Pokok";
+  const fixedComponentNames = (["jabatan", "komunikasi", "operasional"] as const)
+    .filter((k) => bpjsFixedComponents[k])
+    .map((k) => k.charAt(0).toUpperCase() + k.slice(1));
+  const baseLabel = bpjsBase === "basic_plus_fixed"
+    ? `Gaji Pokok + Tunjangan Tetap (${fixedComponentNames.length > 0 ? fixedComponentNames.join(", ") : "tidak ada komponen tetap"})`
+    : "Gaji Pokok";
   const baseDateLabel = baseEffectiveDate
     ? new Date(baseEffectiveDate).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
     : "—";

@@ -292,6 +292,7 @@ const Payroll = () => {
               pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
             };
             const updatePayload: Record<string, number> = {
+              tunjangan_komunikasi: Number(inc.tunjangan_komunikasi) || 0,
               tunjangan_kesehatan: Number(inc.tunjangan_kesehatan) || 0,
               bonus_tahunan: Number(inc.bonus_tahunan) || 0,
               thr: Number(inc.thr) || 0,
@@ -300,10 +301,6 @@ const Payroll = () => {
               pengembalian_employee: Number(inc.pengembalian_employee) || 0,
               insentif_penjualan: Number(inc.insentif_penjualan) || 0,
             };
-            // Override Tunj. Komunikasi pada record payroll jika diisi manual di dialog
-            if ((Number(inc.tunjangan_komunikasi) || 0) > 0) {
-              updatePayload.tunjangan_komunikasi = Number(inc.tunjangan_komunikasi);
-            }
             await supabase
               .from("payroll")
               .update(updatePayload)
@@ -1114,12 +1111,8 @@ const Payroll = () => {
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;
 
         // Fixed allowances from profile (prorated)
-        // Tunj. Komunikasi: gunakan override manual dari dialog Tambahan Penghasilan jika diisi (> 0),
-        // jika tidak, fallback ke nilai profil karyawan (prorated).
-        const komunikasiOverride = Number(inc?.tunjangan_komunikasi) || 0;
-        const tunjanganKomunikasi = komunikasiOverride > 0
-          ? komunikasiOverride
-          : Math.round((Number(emp.tunjangan_komunikasi) || 0) * prorateFactor);
+        // Tunj. Komunikasi: murni dari input manual dialog Tambahan Penghasilan (tidak tetap).
+        const tunjanganKomunikasi = Number(inc?.tunjangan_komunikasi) || 0;
         const tunjanganJabatan = Math.round((Number(emp.tunjangan_jabatan) || 0) * prorateFactor);
         const tunjanganOperasional = Math.round((Number(emp.tunjangan_operasional) || 0) * prorateFactor);
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
@@ -2471,9 +2464,8 @@ const Payroll = () => {
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Komunikasi</Label>
-                              <Input type="number" value={inc.tunjangan_komunikasi || ""} placeholder="0 (dari profil)"
+                              <Input type="number" value={inc.tunjangan_komunikasi || ""} placeholder="0"
                                 onChange={(e) => updateIncome(emp.id, "tunjangan_komunikasi", e.target.value)} />
-                              <span className="text-[10px] text-muted-foreground">Kosongkan untuk pakai nilai profil</span>
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>
@@ -2519,7 +2511,6 @@ const Payroll = () => {
                           </div>
                           {(() => {
                             const nonFixedItems = [
-                              { key: "komunikasi" as const, label: "Tunj. Komunikasi", value: emp.tunjangan_komunikasi || 0 },
                               { key: "jabatan" as const, label: "Tunj. Jabatan", value: emp.tunjangan_jabatan || 0 },
                               { key: "operasional" as const, label: "Tunj. Operasional", value: emp.tunjangan_operasional || 0 },
                             ].filter(i => !facFlags[i.key] && i.value > 0);

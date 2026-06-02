@@ -1114,7 +1114,12 @@ const Payroll = () => {
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;
 
         // Fixed allowances from profile (prorated)
-        const tunjanganKomunikasi = Math.round((Number(emp.tunjangan_komunikasi) || 0) * prorateFactor);
+        // Tunj. Komunikasi: gunakan override manual dari dialog Tambahan Penghasilan jika diisi (> 0),
+        // jika tidak, fallback ke nilai profil karyawan (prorated).
+        const komunikasiOverride = Number(inc?.tunjangan_komunikasi) || 0;
+        const tunjanganKomunikasi = komunikasiOverride > 0
+          ? komunikasiOverride
+          : Math.round((Number(emp.tunjangan_komunikasi) || 0) * prorateFactor);
         const tunjanganJabatan = Math.round((Number(emp.tunjangan_jabatan) || 0) * prorateFactor);
         const tunjanganOperasional = Math.round((Number(emp.tunjangan_operasional) || 0) * prorateFactor);
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;

@@ -1112,7 +1112,10 @@ const Payroll = () => {
 
         // Fixed allowances from profile (prorated)
         // Tunj. Komunikasi: murni dari input manual dialog Tambahan Penghasilan (tidak tetap).
-        const tunjanganKomunikasi = Number(inc?.tunjangan_komunikasi) || 0;
+        // Dibatasi (cap) oleh nilai maks pada profil karyawan (profiles.tunjangan_komunikasi) bila > 0.
+        const komunikasiInput = Number(inc?.tunjangan_komunikasi) || 0;
+        const komunikasiMax = Number(emp.tunjangan_komunikasi) || 0;
+        const tunjanganKomunikasi = komunikasiMax > 0 ? Math.min(komunikasiInput, komunikasiMax) : komunikasiInput;
         const tunjanganJabatan = Math.round((Number(emp.tunjangan_jabatan) || 0) * prorateFactor);
         const tunjanganOperasional = Math.round((Number(emp.tunjangan_operasional) || 0) * prorateFactor);
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;

@@ -8,7 +8,8 @@ export type FixedAllowanceComponents = {
 
 export const DEFAULT_FIXED_ALLOWANCE_COMPONENTS: FixedAllowanceComponents = {
   jabatan: true,
-  komunikasi: true,
+  // Tunjangan Komunikasi default = tidak tetap (Tambahan Penghasilan), tidak masuk DPP BPJS.
+  komunikasi: false,
   operasional: true,
 };
 

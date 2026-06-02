@@ -69,6 +69,11 @@ const FIELDS: FieldDef[] = [
   { key: "bank_account_number", label: "No Rekening", type: "string", financial: true },
 ];
 
+// Kolom legacy dari template lama yang harus diabaikan tanpa memunculkan error validasi.
+// `tunjangan_komunikasi` sekarang dikelola di Payroll → Tambahan Penghasilan, bukan lagi
+// Tunjangan Tetap di Detail Karyawan.
+const IGNORED_LEGACY_KEYS = new Set<string>(["tunjangan_komunikasi"]);
+
 const FINANCIAL_KEYS = FIELDS.filter((f) => f.financial).map((f) => f.key);
 
 interface DiffRow {
@@ -265,6 +270,8 @@ export const BulkUpdateEmployeesDialog: React.FC<Props> = ({
         for (const f of FIELDS) {
           const idx = headerKeys.indexOf(f.key);
           if (idx === -1) continue;
+          // Defensive: lewati kolom legacy meskipun masih ada di file lama.
+          if (IGNORED_LEGACY_KEYS.has(f.key)) continue;
           const rawNew = rowVals[idx];
           const newVal = normalizeValue(rawNew, f.type);
           const oldVal =

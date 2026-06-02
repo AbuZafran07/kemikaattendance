@@ -1445,9 +1445,10 @@ const Employees = () => {
               </div>
               {(() => {
                 const bs = Number(editFormData.basic_salary) || 0;
-                const tt = (Number(editFormData.tunjangan_jabatan) || 0)
-                  + (Number(editFormData.tunjangan_komunikasi) || 0)
-                  + (Number(editFormData.tunjangan_operasional) || 0);
+                const tt = (facFlags.jabatan ? (Number(editFormData.tunjangan_jabatan) || 0) : 0)
+                  + (facFlags.komunikasi ? (Number(editFormData.tunjangan_komunikasi) || 0) : 0)
+                  + (facFlags.operasional ? (Number(editFormData.tunjangan_operasional) || 0) : 0);
+
                 const total = bs + tt;
                 if (bs <= 0 || tt <= 0) return null;
                 const basicPct = (bs / total) * 100;

@@ -108,6 +108,7 @@ interface DeductionOverride {
 // Income additions per employee before generating
 interface IncomeAddition {
   tunjangan_kehadiran: number;
+  tunjangan_komunikasi: number;
   tunjangan_kesehatan: number;
   bonus_tahunan: number;
   thr: number;

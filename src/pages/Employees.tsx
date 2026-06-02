@@ -49,6 +49,7 @@ import { useDepartmentJabatan } from "@/hooks/useDepartmentJabatan";
 import { employeeSchema, employeeEditSchema } from "@/lib/validationSchemas";
 import { compressEmployeePhoto, blobToFile } from "@/lib/imageCompression";
 import logger from "@/lib/logger";
+import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
 
 const Employees = () => {
   const { t, i18n } = useTranslation();

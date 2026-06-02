@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
 import ExcelJS from "exceljs";
 import {
   Dialog,
@@ -125,6 +126,11 @@ export const BulkUpdateEmployeesDialog: React.FC<Props> = ({
   const [diffs, setDiffs] = useState<DiffRow[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [facFlags, setFacFlags] = useState<FixedAllowanceComponents>(DEFAULT_FIXED_ALLOWANCE_COMPONENTS);
+
+  useEffect(() => {
+    if (open) getFixedAllowanceComponents().then(setFacFlags).catch(() => {});
+  }, [open]);
 
   const reset = () => {
     setStep("intro");
@@ -279,14 +285,15 @@ export const BulkUpdateEmployeesDialog: React.FC<Props> = ({
           }
         }
 
-        // Validasi komposisi 75/25
+        // Validasi komposisi 75/25 — hanya komponen yang ditandai sebagai "tunjangan tetap"
+        // pada Pengaturan BPJS (fixed_allowance_components) yang dihitung.
         const bs = Number(finNew.basic_salary ?? oldEmp.basic_salary ?? 0);
         const tt =
-          Number(finNew.tunjangan_jabatan ?? oldEmp.tunjangan_jabatan ?? 0) +
-          Number(finNew.tunjangan_komunikasi ?? oldEmp.tunjangan_komunikasi ?? 0) +
-          Number(finNew.tunjangan_operasional ?? oldEmp.tunjangan_operasional ?? 0);
+          (facFlags.jabatan ? Number(finNew.tunjangan_jabatan ?? oldEmp.tunjangan_jabatan ?? 0) : 0) +
+          (facFlags.komunikasi ? Number(finNew.tunjangan_komunikasi ?? oldEmp.tunjangan_komunikasi ?? 0) : 0) +
+          (facFlags.operasional ? Number(finNew.tunjangan_operasional ?? oldEmp.tunjangan_operasional ?? 0) : 0);
         if (bs > 0 && tt > 0 && bs < 0.75 * (bs + tt)) {
-          rowError = `Komposisi gaji melanggar UU 13/2003: Gapok harus ≥ 75% dari (Gapok+Tunjangan). Saat ini ${(
+          rowError = `Komposisi gaji melanggar UU 13/2003: Gapok harus ≥ 75% dari (Gapok+Tunjangan Tetap). Saat ini ${(
             (bs / (bs + tt)) *
             100
           ).toFixed(1)}%`;

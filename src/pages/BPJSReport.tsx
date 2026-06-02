@@ -84,6 +84,7 @@ const BPJSReport = () => {
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [bpjsBase, setBpjsBase] = useState<"basic" | "basic_plus_fixed">("basic");
   const [baseEffectiveDate, setBaseEffectiveDate] = useState<string | null>(null);
+  const [bpjsFixedComponents, setBpjsFixedComponents] = useState<{ jabatan: boolean; komunikasi: boolean; operasional: boolean }>({ jabatan: true, komunikasi: true, operasional: true });
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
@@ -98,6 +99,12 @@ const BPJSReport = () => {
     const cfg = (data as any) || {};
     setBpjsBase(cfg.base_calculation ?? "basic");
     setBaseEffectiveDate(cfg.base_calculation_effective_date ?? null);
+    const fac = cfg.fixed_allowance_components || {};
+    setBpjsFixedComponents({
+      jabatan: fac.jabatan !== false,
+      komunikasi: fac.komunikasi !== false,
+      operasional: fac.operasional !== false,
+    });
   };
 
   const fetchData = async () => {
@@ -234,7 +241,12 @@ const BPJSReport = () => {
   const isYearView = selectedMonth === "all";
   const showMonthlyView = isYearView && showMonthly;
 
-  const baseLabel = bpjsBase === "basic_plus_fixed" ? "Gaji Pokok + Tunjangan Tetap" : "Gaji Pokok";
+  const fixedComponentNames = (["jabatan", "komunikasi", "operasional"] as const)
+    .filter((k) => bpjsFixedComponents[k])
+    .map((k) => k.charAt(0).toUpperCase() + k.slice(1));
+  const baseLabel = bpjsBase === "basic_plus_fixed"
+    ? `Gaji Pokok + Tunjangan Tetap (${fixedComponentNames.length > 0 ? fixedComponentNames.join(", ") : "tidak ada komponen tetap"})`
+    : "Gaji Pokok";
   const baseDateLabel = baseEffectiveDate
     ? new Date(baseEffectiveDate).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
     : "—";

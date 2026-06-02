@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2, Info, Shield, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearFixedAllowanceComponentsCache } from "@/lib/bpjsFixedComponents";
 
 export type BPJSBaseCalculation = "basic" | "basic_plus_fixed";
 
@@ -129,6 +130,7 @@ export default function BPJSSettings() {
         if (error) throw error;
       }
       setConfig(finalConfig);
+      clearFixedAllowanceComponentsCache();
       toast.success(baseChanged
         ? `Pengaturan BPJS disimpan. Dasar perhitungan berlaku efektif: ${today}`
         : "Pengaturan BPJS berhasil disimpan");

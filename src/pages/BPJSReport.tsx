@@ -84,6 +84,7 @@ const BPJSReport = () => {
   const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
   const [bpjsBase, setBpjsBase] = useState<"basic" | "basic_plus_fixed">("basic");
   const [baseEffectiveDate, setBaseEffectiveDate] = useState<string | null>(null);
+  const [bpjsFixedComponents, setBpjsFixedComponents] = useState<{ jabatan: boolean; komunikasi: boolean; operasional: boolean }>({ jabatan: true, komunikasi: true, operasional: true });
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
@@ -98,6 +99,12 @@ const BPJSReport = () => {
     const cfg = (data as any) || {};
     setBpjsBase(cfg.base_calculation ?? "basic");
     setBaseEffectiveDate(cfg.base_calculation_effective_date ?? null);
+    const fac = cfg.fixed_allowance_components || {};
+    setBpjsFixedComponents({
+      jabatan: fac.jabatan !== false,
+      komunikasi: fac.komunikasi !== false,
+      operasional: fac.operasional !== false,
+    });
   };
 
   const fetchData = async () => {

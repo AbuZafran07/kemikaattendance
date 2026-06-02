@@ -1107,12 +1107,15 @@ const Payroll = () => {
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
 
         // Komponen tunjangan tetap untuk DPP BPJS (hormati flag fixed_allowance_components dari BPJS Settings).
-        // Default: semua dianggap tetap (true) demi kompatibilitas.
+        // Default: Jabatan & Operasional = tetap; Komunikasi = tidak tetap (Tambahan Penghasilan).
         const fac = (bpjsConfig as any)?.fixed_allowance_components || {};
+        const facJabatan = fac.jabatan === undefined ? true : !!fac.jabatan;
+        const facKomunikasi = fac.komunikasi === undefined ? false : !!fac.komunikasi;
+        const facOperasional = fac.operasional === undefined ? true : !!fac.operasional;
         const bpjsFixedAllowance =
-          (fac.jabatan === false ? 0 : tunjanganJabatan) +
-          (fac.komunikasi === false ? 0 : tunjanganKomunikasi) +
-          (fac.operasional === false ? 0 : tunjanganOperasional);
+          (facJabatan ? tunjanganJabatan : 0) +
+          (facKomunikasi ? tunjanganKomunikasi : 0) +
+          (facOperasional ? tunjanganOperasional : 0);
 
         // Incidental income from dialog (exclude tunjangan_kehadiran as it's handled separately)
         const tunjanganKesehatan = inc?.tunjangan_kesehatan || 0;

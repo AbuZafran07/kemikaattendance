@@ -58,7 +58,8 @@ const FIELDS: FieldDef[] = [
   { key: "remaining_leave", label: "Sisa Cuti", type: "number" },
   { key: "basic_salary", label: "Gaji Pokok", type: "number", financial: true },
   { key: "tunjangan_jabatan", label: "Tunjangan Jabatan", type: "number", financial: true },
-  { key: "tunjangan_komunikasi", label: "Tunjangan Komunikasi", type: "number", financial: true },
+  // Tunjangan Komunikasi dipindah ke modul Payroll → Tambahan Penghasilan,
+  // tidak lagi diekspor/diimpor sebagai Tunjangan Tetap di Detail Karyawan.
   { key: "tunjangan_operasional", label: "Tunjangan Operasional", type: "number", financial: true },
   { key: "ptkp_status", label: "Status PTKP", type: "string", financial: true },
   { key: "bpjs_kesehatan_enabled", label: "BPJS Kesehatan (true/false)", type: "boolean", financial: true },
@@ -290,7 +291,6 @@ export const BulkUpdateEmployeesDialog: React.FC<Props> = ({
         const bs = Number(finNew.basic_salary ?? oldEmp.basic_salary ?? 0);
         const tt =
           (facFlags.jabatan ? Number(finNew.tunjangan_jabatan ?? oldEmp.tunjangan_jabatan ?? 0) : 0) +
-          (facFlags.komunikasi ? Number(finNew.tunjangan_komunikasi ?? oldEmp.tunjangan_komunikasi ?? 0) : 0) +
           (facFlags.operasional ? Number(finNew.tunjangan_operasional ?? oldEmp.tunjangan_operasional ?? 0) : 0);
         if (bs > 0 && tt > 0 && bs < 0.75 * (bs + tt)) {
           rowError = `Komposisi gaji melanggar UU 13/2003: Gapok harus ≥ 75% dari (Gapok+Tunjangan Tetap). Saat ini ${(

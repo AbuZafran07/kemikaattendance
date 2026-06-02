@@ -1112,7 +1112,10 @@ const Payroll = () => {
 
         // Fixed allowances from profile (prorated)
         // Tunj. Komunikasi: murni dari input manual dialog Tambahan Penghasilan (tidak tetap).
-        const tunjanganKomunikasi = Number(inc?.tunjangan_komunikasi) || 0;
+        // Dibatasi (cap) oleh nilai maks pada profil karyawan (profiles.tunjangan_komunikasi) bila > 0.
+        const komunikasiInput = Number(inc?.tunjangan_komunikasi) || 0;
+        const komunikasiMax = Number(emp.tunjangan_komunikasi) || 0;
+        const tunjanganKomunikasi = komunikasiMax > 0 ? Math.min(komunikasiInput, komunikasiMax) : komunikasiInput;
         const tunjanganJabatan = Math.round((Number(emp.tunjangan_jabatan) || 0) * prorateFactor);
         const tunjanganOperasional = Math.round((Number(emp.tunjangan_operasional) || 0) * prorateFactor);
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
@@ -2464,8 +2467,23 @@ const Payroll = () => {
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Komunikasi</Label>
-                              <Input type="number" value={inc.tunjangan_komunikasi || ""} placeholder="0"
-                                onChange={(e) => updateIncome(emp.id, "tunjangan_komunikasi", e.target.value)} />
+                              <Input
+                                type="number"
+                                value={inc.tunjangan_komunikasi || ""}
+                                placeholder="0"
+                                max={(emp.tunjangan_komunikasi || 0) > 0 ? emp.tunjangan_komunikasi : undefined}
+                                onChange={(e) => {
+                                  const raw = Number(e.target.value) || 0;
+                                  const cap = Number(emp.tunjangan_komunikasi) || 0;
+                                  const capped = cap > 0 ? Math.min(raw, cap) : raw;
+                                  updateIncome(emp.id, "tunjangan_komunikasi", String(capped));
+                                }}
+                              />
+                              {(emp.tunjangan_komunikasi || 0) > 0 ? (
+                                <span className="text-[10px] text-muted-foreground">Maks: {formatRupiah(emp.tunjangan_komunikasi || 0)} (otomatis dibatasi)</span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground">Batas belum diset di profil karyawan</span>
+                              )}
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>

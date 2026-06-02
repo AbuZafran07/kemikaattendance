@@ -144,7 +144,7 @@ const Employees = () => {
   const FINANCIAL_FIELDS: { key: string; label: string; type: 'number' | 'text' | 'bool' }[] = [
     { key: 'basic_salary', label: 'Gaji Pokok', type: 'number' },
     { key: 'tunjangan_jabatan', label: 'Tunjangan Jabatan', type: 'number' },
-    { key: 'tunjangan_komunikasi', label: 'Tunjangan Komunikasi', type: 'number' },
+    { key: 'tunjangan_komunikasi', label: 'Batas Maks Tunj. Komunikasi', type: 'number' },
     { key: 'tunjangan_operasional', label: 'Tunjangan Operasional', type: 'number' },
     { key: 'ptkp_status', label: 'Status PTKP', type: 'text' },
     { key: 'bpjs_kesehatan_enabled', label: 'BPJS Kesehatan', type: 'bool' },

@@ -29,9 +29,9 @@ export async function getFixedAllowanceComponents(forceRefresh = false): Promise
       const { data } = await supabase.rpc("get_bpjs_config");
       const fac = (data as any)?.fixed_allowance_components || {};
       const result: FixedAllowanceComponents = {
-        jabatan: fac.jabatan !== false,
-        komunikasi: fac.komunikasi !== false,
-        operasional: fac.operasional !== false,
+        jabatan: fac.jabatan === undefined ? DEFAULT_FIXED_ALLOWANCE_COMPONENTS.jabatan : !!fac.jabatan,
+        komunikasi: fac.komunikasi === undefined ? DEFAULT_FIXED_ALLOWANCE_COMPONENTS.komunikasi : !!fac.komunikasi,
+        operasional: fac.operasional === undefined ? DEFAULT_FIXED_ALLOWANCE_COMPONENTS.operasional : !!fac.operasional,
       };
       _cache = result;
       return result;

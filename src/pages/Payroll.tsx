@@ -560,11 +560,17 @@ const Payroll = () => {
 
   const openIncomeDialog = async () => {
     const [{ data: empsRaw }, { data: adminRoles }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name").eq("status", "Active").order("full_name"),
+      supabase.from("profiles").select("id, full_name, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").eq("status", "Active").order("full_name"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
     ]);
     const adminIds = new Set((adminRoles || []).map(r => r.user_id));
-    const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
+    const emps = (empsRaw || []).filter((e: any) => !adminIds.has(e.id)).map((e: any) => ({
+      id: e.id,
+      full_name: e.full_name,
+      tunjangan_komunikasi: Number(e.tunjangan_komunikasi) || 0,
+      tunjangan_jabatan: Number(e.tunjangan_jabatan) || 0,
+      tunjangan_operasional: Number(e.tunjangan_operasional) || 0,
+    }));
     setEmployees(emps);
 
     const additions = new Map<string, IncomeAddition>(incomeAdditions);

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2, Info, Shield, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -39,6 +40,12 @@ export interface BPJSConfig {
   base_calculation: BPJSBaseCalculation; // default "basic"
   // Tanggal efektif perubahan dasar perhitungan (YYYY-MM-DD), diisi otomatis saat base_calculation berubah.
   base_calculation_effective_date?: string;
+  // Komponen tunjangan tetap yang dipakai sebagai dasar BPJS (hanya aktif saat base_calculation = basic_plus_fixed)
+  fixed_allowance_components: {
+    jabatan: boolean;
+    komunikasi: boolean;
+    operasional: boolean;
+  };
 }
 
 export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
@@ -54,6 +61,7 @@ export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
   jkm_employer_rate: 0.3,
   base_calculation: "basic",
   base_calculation_effective_date: undefined,
+  fixed_allowance_components: { jabatan: true, komunikasi: true, operasional: true },
 };
 
 const formatCurrency = (v: number) =>
@@ -75,7 +83,17 @@ export default function BPJSSettings() {
         .eq("key", "bpjs_config")
         .maybeSingle();
       if (error) throw error;
-      if (data?.value) setConfig({ ...DEFAULT_BPJS_CONFIG, ...(data.value as any) });
+      if (data?.value) {
+        const loaded = data.value as any;
+        setConfig({
+          ...DEFAULT_BPJS_CONFIG,
+          ...loaded,
+          fixed_allowance_components: {
+            ...DEFAULT_BPJS_CONFIG.fixed_allowance_components,
+            ...(loaded.fixed_allowance_components || {}),
+          },
+        });
+      }
     } catch (e: any) {
       console.error("Error fetching BPJS config:", e);
     } finally {
@@ -187,6 +205,35 @@ export default function BPJSSettings() {
                 </div>
               </label>
             </RadioGroup>
+
+            {config.base_calculation === "basic_plus_fixed" && (
+              <div className="mt-4 p-3 border rounded-lg bg-muted/30 space-y-3">
+                <div>
+                  <p className="font-medium text-sm">Komponen Tunjangan Tetap</p>
+                  <p className="text-xs text-muted-foreground">
+                    Centang tunjangan yang dianggap <strong>tetap</strong> dan dimasukkan ke DPP BPJS. Hilangkan centang untuk menjadikannya <strong>tidak tetap</strong> (tidak menambah dasar iuran BPJS, namun tetap masuk komponen gaji bruto).
+                  </p>
+                </div>
+                {(["jabatan", "komunikasi", "operasional"] as const).map((key) => (
+                  <label key={key} htmlFor={`fac-${key}`} className="flex items-center gap-3 cursor-pointer">
+                    <Checkbox
+                      id={`fac-${key}`}
+                      checked={config.fixed_allowance_components[key]}
+                      onCheckedChange={(checked) =>
+                        setConfig(prev => ({
+                          ...prev,
+                          fixed_allowance_components: {
+                            ...prev.fixed_allowance_components,
+                            [key]: checked === true,
+                          },
+                        }))
+                      }
+                    />
+                    <span className="text-sm capitalize">Tunjangan {key}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-3">
               Perubahan berlaku saat <strong>Generate Payroll</strong> berikutnya. Tetap menghormati batas maksimal gaji per program.
             </p>

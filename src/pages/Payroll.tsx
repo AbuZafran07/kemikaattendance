@@ -144,7 +144,7 @@ const Payroll = () => {
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
   const [deductionOverrides, setDeductionOverrides] = useState<Map<string, DeductionOverride>>(new Map());
   const [incomeAdditions, setIncomeAdditions] = useState<Map<string, IncomeAddition>>(new Map());
-  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; full_name: string; tunjangan_komunikasi?: number; tunjangan_jabatan?: number; tunjangan_operasional?: number }[]>([]);
   const [deductionSearch, setDeductionSearch] = useState("");
   const [incomeSearch, setIncomeSearch] = useState("");
   const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);

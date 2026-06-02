@@ -82,7 +82,17 @@ export default function BPJSSettings() {
         .eq("key", "bpjs_config")
         .maybeSingle();
       if (error) throw error;
-      if (data?.value) setConfig({ ...DEFAULT_BPJS_CONFIG, ...(data.value as any) });
+      if (data?.value) {
+        const loaded = data.value as any;
+        setConfig({
+          ...DEFAULT_BPJS_CONFIG,
+          ...loaded,
+          fixed_allowance_components: {
+            ...DEFAULT_BPJS_CONFIG.fixed_allowance_components,
+            ...(loaded.fixed_allowance_components || {}),
+          },
+        });
+      }
     } catch (e: any) {
       console.error("Error fetching BPJS config:", e);
     } finally {

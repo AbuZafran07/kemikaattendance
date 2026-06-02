@@ -62,7 +62,7 @@ export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
   jkm_employer_rate: 0.3,
   base_calculation: "basic",
   base_calculation_effective_date: undefined,
-  fixed_allowance_components: { jabatan: true, komunikasi: true, operasional: true },
+  fixed_allowance_components: { jabatan: true, komunikasi: false, operasional: true },
 };
 
 const formatCurrency = (v: number) =>

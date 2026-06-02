@@ -144,7 +144,7 @@ const Payroll = () => {
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
   const [deductionOverrides, setDeductionOverrides] = useState<Map<string, DeductionOverride>>(new Map());
   const [incomeAdditions, setIncomeAdditions] = useState<Map<string, IncomeAddition>>(new Map());
-  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; full_name: string; tunjangan_komunikasi?: number; tunjangan_jabatan?: number; tunjangan_operasional?: number }[]>([]);
   const [deductionSearch, setDeductionSearch] = useState("");
   const [incomeSearch, setIncomeSearch] = useState("");
   const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);
@@ -560,11 +560,17 @@ const Payroll = () => {
 
   const openIncomeDialog = async () => {
     const [{ data: empsRaw }, { data: adminRoles }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name").eq("status", "Active").order("full_name"),
+      supabase.from("profiles").select("id, full_name, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").eq("status", "Active").order("full_name"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
     ]);
     const adminIds = new Set((adminRoles || []).map(r => r.user_id));
-    const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
+    const emps = (empsRaw || []).filter((e: any) => !adminIds.has(e.id)).map((e: any) => ({
+      id: e.id,
+      full_name: e.full_name,
+      tunjangan_komunikasi: Number(e.tunjangan_komunikasi) || 0,
+      tunjangan_jabatan: Number(e.tunjangan_jabatan) || 0,
+      tunjangan_operasional: Number(e.tunjangan_operasional) || 0,
+    }));
     setEmployees(emps);
 
     const additions = new Map<string, IncomeAddition>(incomeAdditions);
@@ -1107,12 +1113,15 @@ const Payroll = () => {
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
 
         // Komponen tunjangan tetap untuk DPP BPJS (hormati flag fixed_allowance_components dari BPJS Settings).
-        // Default: semua dianggap tetap (true) demi kompatibilitas.
+        // Default: Jabatan & Operasional = tetap; Komunikasi = tidak tetap (Tambahan Penghasilan).
         const fac = (bpjsConfig as any)?.fixed_allowance_components || {};
+        const facJabatan = fac.jabatan === undefined ? true : !!fac.jabatan;
+        const facKomunikasi = fac.komunikasi === undefined ? false : !!fac.komunikasi;
+        const facOperasional = fac.operasional === undefined ? true : !!fac.operasional;
         const bpjsFixedAllowance =
-          (fac.jabatan === false ? 0 : tunjanganJabatan) +
-          (fac.komunikasi === false ? 0 : tunjanganKomunikasi) +
-          (fac.operasional === false ? 0 : tunjanganOperasional);
+          (facJabatan ? tunjanganJabatan : 0) +
+          (facKomunikasi ? tunjanganKomunikasi : 0) +
+          (facOperasional ? tunjanganOperasional : 0);
 
         // Incidental income from dialog (exclude tunjangan_kehadiran as it's handled separately)
         const tunjanganKesehatan = inc?.tunjangan_kesehatan || 0;
@@ -2490,6 +2499,27 @@ const Payroll = () => {
                               <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis PP 35</span>
                             </div>
                           </div>
+                          {(() => {
+                            const nonFixedItems = [
+                              { key: "komunikasi" as const, label: "Tunj. Komunikasi", value: emp.tunjangan_komunikasi || 0 },
+                              { key: "jabatan" as const, label: "Tunj. Jabatan", value: emp.tunjangan_jabatan || 0 },
+                              { key: "operasional" as const, label: "Tunj. Operasional", value: emp.tunjangan_operasional || 0 },
+                            ].filter(i => !facFlags[i.key] && i.value > 0);
+                            if (nonFixedItems.length === 0) return null;
+                            return (
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <p className="text-[11px] font-semibold text-muted-foreground mb-2">✨ Tambahan Penghasilan Otomatis (dari profil karyawan, di luar DPP BPJS)</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                  {nonFixedItems.map(i => (
+                                    <div key={i.key} className="text-xs p-2 rounded bg-muted/40">
+                                      <p className="text-muted-foreground">{i.label}</p>
+                                      <p className="font-semibold">{formatRupiah(i.value)}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

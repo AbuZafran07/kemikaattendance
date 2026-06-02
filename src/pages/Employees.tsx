@@ -1284,7 +1284,6 @@ const Employees = () => {
                   )}
                 </div>
 
-                {/* Tunj. Komunikasi dikelola sepenuhnya di Payroll → Tambahan Penghasilan, tidak lagi di Detail Karyawan. */}
                 {(() => {
                   const allowanceItems = [
                     { key: "jabatan" as const, id: "edit_tunjangan_jabatan", label: t("employeesPage.editDialog.tunjanganJabatan"), value: editFormData.tunjangan_jabatan, setValue: (v: string) => setEditFormData({ ...editFormData, tunjangan_jabatan: v }) },
@@ -1305,6 +1304,20 @@ const Employees = () => {
                           />
                         </div>
                       ))}
+                      <div className="space-y-2 col-span-2">
+                        <Label htmlFor="edit_tunjangan_komunikasi">Batas Maks Tunj. Komunikasi</Label>
+                        <Input
+                          id="edit_tunjangan_komunikasi"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={editFormData.tunjangan_komunikasi}
+                          onChange={(e) => setEditFormData({ ...editFormData, tunjangan_komunikasi: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Plafon maksimum Tunj. Komunikasi. Saat input di Payroll → Tambahan Penghasilan melebihi nilai ini, akan otomatis dibatasi sesuai plafon. Kosongkan/0 berarti tanpa plafon.
+                        </p>
+                      </div>
                     </>
                   );
                 })()}

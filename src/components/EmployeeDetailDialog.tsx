@@ -239,8 +239,6 @@ export const EmployeeDetailDialog = ({
 
             {/* Tunjangan */}
             {(() => {
-              // Tunj. Komunikasi dipindah penuh ke modul Payroll → Tambahan Penghasilan,
-              // jadi tidak ditampilkan di Detail Karyawan agar tidak duplikat.
               const items = [
                 { key: "jabatan" as const, label: "Jabatan", value: employee.tunjangan_jabatan },
                 { key: "operasional" as const, label: "Operasional", value: employee.tunjangan_operasional },
@@ -269,6 +267,13 @@ export const EmployeeDetailDialog = ({
                       </div>
                     </div>
                   )}
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-2">📞 Plafon Tunj. Komunikasi</p>
+                    <p className="text-xs text-muted-foreground mb-2">Batas maksimum saat input di Payroll → Tambahan Penghasilan.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <InfoItem icon={Briefcase} label="Batas Maks" value={employee.tunjangan_komunikasi ? formatRupiah(employee.tunjangan_komunikasi) : "Tanpa plafon"} />
+                    </div>
+                  </div>
                 </>
               );
 

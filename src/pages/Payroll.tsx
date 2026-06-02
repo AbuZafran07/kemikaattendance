@@ -211,6 +211,7 @@ const Payroll = () => {
       for (const row of data || []) {
         newIncome.set(row.user_id, {
           tunjangan_kehadiran: Number(row.tunjangan_kehadiran) || 0,
+          tunjangan_komunikasi: Number((row as any).tunjangan_komunikasi) || 0,
           tunjangan_kesehatan: Number(row.tunjangan_kesehatan) || 0,
           bonus_tahunan: Number(row.bonus_tahunan) || 0,
           thr: Number(row.thr) || 0,

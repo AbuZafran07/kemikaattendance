@@ -205,6 +205,35 @@ export default function BPJSSettings() {
                 </div>
               </label>
             </RadioGroup>
+
+            {config.base_calculation === "basic_plus_fixed" && (
+              <div className="mt-4 p-3 border rounded-lg bg-muted/30 space-y-3">
+                <div>
+                  <p className="font-medium text-sm">Komponen Tunjangan Tetap</p>
+                  <p className="text-xs text-muted-foreground">
+                    Centang tunjangan yang dianggap <strong>tetap</strong> dan dimasukkan ke DPP BPJS. Hilangkan centang untuk menjadikannya <strong>tidak tetap</strong> (tidak menambah dasar iuran BPJS, namun tetap masuk komponen gaji bruto).
+                  </p>
+                </div>
+                {(["jabatan", "komunikasi", "operasional"] as const).map((key) => (
+                  <label key={key} htmlFor={`fac-${key}`} className="flex items-center gap-3 cursor-pointer">
+                    <Checkbox
+                      id={`fac-${key}`}
+                      checked={config.fixed_allowance_components[key]}
+                      onCheckedChange={(checked) =>
+                        setConfig(prev => ({
+                          ...prev,
+                          fixed_allowance_components: {
+                            ...prev.fixed_allowance_components,
+                            [key]: checked === true,
+                          },
+                        }))
+                      }
+                    />
+                    <span className="text-sm capitalize">Tunjangan {key}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-3">
               Perubahan berlaku saat <strong>Generate Payroll</strong> berikutnya. Tetap menghormati batas maksimal gaji per program.
             </p>

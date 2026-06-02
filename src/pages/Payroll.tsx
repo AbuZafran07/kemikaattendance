@@ -2467,8 +2467,23 @@ const Payroll = () => {
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Komunikasi</Label>
-                              <Input type="number" value={inc.tunjangan_komunikasi || ""} placeholder="0"
-                                onChange={(e) => updateIncome(emp.id, "tunjangan_komunikasi", e.target.value)} />
+                              <Input
+                                type="number"
+                                value={inc.tunjangan_komunikasi || ""}
+                                placeholder="0"
+                                max={(emp.tunjangan_komunikasi || 0) > 0 ? emp.tunjangan_komunikasi : undefined}
+                                onChange={(e) => {
+                                  const raw = Number(e.target.value) || 0;
+                                  const cap = Number(emp.tunjangan_komunikasi) || 0;
+                                  const capped = cap > 0 ? Math.min(raw, cap) : raw;
+                                  updateIncome(emp.id, "tunjangan_komunikasi", String(capped));
+                                }}
+                              />
+                              {(emp.tunjangan_komunikasi || 0) > 0 ? (
+                                <span className="text-[10px] text-muted-foreground">Maks: {formatRupiah(emp.tunjangan_komunikasi || 0)} (otomatis dibatasi)</span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground">Batas belum diset di profil karyawan</span>
+                              )}
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>

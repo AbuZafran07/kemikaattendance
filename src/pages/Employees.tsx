@@ -1284,39 +1284,27 @@ const Employees = () => {
                   )}
                 </div>
 
+                {/* Tunj. Komunikasi dikelola sepenuhnya di Payroll → Tambahan Penghasilan, tidak lagi di Detail Karyawan. */}
                 {(() => {
                   const allowanceItems = [
-                    { key: "komunikasi" as const, id: "edit_tunjangan_komunikasi", label: t("employeesPage.editDialog.tunjanganKomunikasi"), value: editFormData.tunjangan_komunikasi, setValue: (v: string) => setEditFormData({ ...editFormData, tunjangan_komunikasi: v }) },
                     { key: "jabatan" as const, id: "edit_tunjangan_jabatan", label: t("employeesPage.editDialog.tunjanganJabatan"), value: editFormData.tunjangan_jabatan, setValue: (v: string) => setEditFormData({ ...editFormData, tunjangan_jabatan: v }) },
                     { key: "operasional" as const, id: "edit_tunjangan_operasional", label: t("employeesPage.editDialog.tunjanganOperasional"), value: editFormData.tunjangan_operasional, setValue: (v: string) => setEditFormData({ ...editFormData, tunjangan_operasional: v }) },
                   ];
-                  const tetap = allowanceItems.filter(i => facFlags[i.key]);
-                  const tidakTetap = allowanceItems.filter(i => !facFlags[i.key]);
-                  const renderField = (i: typeof allowanceItems[number]) => (
-                    <div key={i.id} className="space-y-2">
-                      <Label htmlFor={i.id}>{i.label}</Label>
-                      <Input
-                        id={i.id}
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={i.value}
-                        onChange={(e) => i.setValue(e.target.value)}
-                      />
-                    </div>
-                  );
                   return (
                     <>
-                      {tetap.map(renderField)}
-                      {tidakTetap.length > 0 && (
-                        <>
-                          <div className="col-span-2 border-t border-border pt-3 mt-2">
-                            <p className="text-sm font-semibold text-muted-foreground mb-1">✨ Tambahan Penghasilan (Tidak Tetap)</p>
-                            <p className="text-xs text-muted-foreground mb-3">Tidak dihitung sebagai DPP BPJS maupun komposisi 75/25.</p>
-                          </div>
-                          {tidakTetap.map(renderField)}
-                        </>
-                      )}
+                      {allowanceItems.map(i => (
+                        <div key={i.id} className="space-y-2">
+                          <Label htmlFor={i.id}>{i.label}</Label>
+                          <Input
+                            id={i.id}
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={i.value}
+                            onChange={(e) => i.setValue(e.target.value)}
+                          />
+                        </div>
+                      ))}
                     </>
                   );
                 })()}

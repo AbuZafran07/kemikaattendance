@@ -239,8 +239,9 @@ export const EmployeeDetailDialog = ({
 
             {/* Tunjangan */}
             {(() => {
+              // Tunj. Komunikasi dipindah penuh ke modul Payroll → Tambahan Penghasilan,
+              // jadi tidak ditampilkan di Detail Karyawan agar tidak duplikat.
               const items = [
-                { key: "komunikasi" as const, label: "Komunikasi", value: employee.tunjangan_komunikasi },
                 { key: "jabatan" as const, label: "Jabatan", value: employee.tunjangan_jabatan },
                 { key: "operasional" as const, label: "Operasional", value: employee.tunjangan_operasional },
               ];

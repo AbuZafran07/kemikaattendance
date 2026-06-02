@@ -1476,9 +1476,10 @@ const Employees = () => {
                   type="submit"
                   disabled={isUploading || (() => {
                     const bs = Number(editFormData.basic_salary) || 0;
-                    const tt = (Number(editFormData.tunjangan_jabatan) || 0)
-                      + (Number(editFormData.tunjangan_komunikasi) || 0)
-                      + (Number(editFormData.tunjangan_operasional) || 0);
+                    const tt = (facFlags.jabatan ? (Number(editFormData.tunjangan_jabatan) || 0) : 0)
+                      + (facFlags.komunikasi ? (Number(editFormData.tunjangan_komunikasi) || 0) : 0)
+                      + (facFlags.operasional ? (Number(editFormData.tunjangan_operasional) || 0) : 0);
+
                     return bs > 0 && tt > 0 && bs < 0.75 * (bs + tt);
                   })()}
                 >

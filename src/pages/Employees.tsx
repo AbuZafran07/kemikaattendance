@@ -49,6 +49,7 @@ import { useDepartmentJabatan } from "@/hooks/useDepartmentJabatan";
 import { employeeSchema, employeeEditSchema } from "@/lib/validationSchemas";
 import { compressEmployeePhoto, blobToFile } from "@/lib/imageCompression";
 import logger from "@/lib/logger";
+import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
 
 const Employees = () => {
   const { t, i18n } = useTranslation();
@@ -79,6 +80,13 @@ const Employees = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const [facFlags, setFacFlags] = useState<FixedAllowanceComponents>(DEFAULT_FIXED_ALLOWANCE_COMPONENTS);
+  useEffect(() => {
+    getFixedAllowanceComponents().then(setFacFlags).catch(() => {});
+  }, [isEditDialogOpen]);
+
+
 
   const [formData, setFormData] = useState({
     email: "",
@@ -395,9 +403,10 @@ const Employees = () => {
 
     // Validasi komposisi gaji pokok minimal 75% (UU 13/2003 Pasal 94, PP 36/2021)
     const _bs = Number(editFormData.basic_salary) || 0;
-    const _tt = (Number(editFormData.tunjangan_jabatan) || 0)
-      + (Number(editFormData.tunjangan_komunikasi) || 0)
-      + (Number(editFormData.tunjangan_operasional) || 0);
+    const _tt = (facFlags.jabatan ? (Number(editFormData.tunjangan_jabatan) || 0) : 0)
+      + (facFlags.komunikasi ? (Number(editFormData.tunjangan_komunikasi) || 0) : 0)
+      + (facFlags.operasional ? (Number(editFormData.tunjangan_operasional) || 0) : 0);
+
     if (_bs > 0 && _tt > 0 && _bs < 0.75 * (_bs + _tt)) {
       toast({
         title: "Komposisi Upah Tidak Sesuai",
@@ -1275,41 +1284,43 @@ const Employees = () => {
                   )}
                 </div>
 
+                {(() => {
+                  const allowanceItems = [
+                    { key: "komunikasi" as const, id: "edit_tunjangan_komunikasi", label: t("employeesPage.editDialog.tunjanganKomunikasi"), value: editFormData.tunjangan_komunikasi, setValue: (v: string) => setEditFormData({ ...editFormData, tunjangan_komunikasi: v }) },
+                    { key: "jabatan" as const, id: "edit_tunjangan_jabatan", label: t("employeesPage.editDialog.tunjanganJabatan"), value: editFormData.tunjangan_jabatan, setValue: (v: string) => setEditFormData({ ...editFormData, tunjangan_jabatan: v }) },
+                    { key: "operasional" as const, id: "edit_tunjangan_operasional", label: t("employeesPage.editDialog.tunjanganOperasional"), value: editFormData.tunjangan_operasional, setValue: (v: string) => setEditFormData({ ...editFormData, tunjangan_operasional: v }) },
+                  ];
+                  const tetap = allowanceItems.filter(i => facFlags[i.key]);
+                  const tidakTetap = allowanceItems.filter(i => !facFlags[i.key]);
+                  const renderField = (i: typeof allowanceItems[number]) => (
+                    <div key={i.id} className="space-y-2">
+                      <Label htmlFor={i.id}>{i.label}</Label>
+                      <Input
+                        id={i.id}
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={i.value}
+                        onChange={(e) => i.setValue(e.target.value)}
+                      />
+                    </div>
+                  );
+                  return (
+                    <>
+                      {tetap.map(renderField)}
+                      {tidakTetap.length > 0 && (
+                        <>
+                          <div className="col-span-2 border-t border-border pt-3 mt-2">
+                            <p className="text-sm font-semibold text-muted-foreground mb-1">✨ Tambahan Penghasilan (Tidak Tetap)</p>
+                            <p className="text-xs text-muted-foreground mb-3">Tidak dihitung sebagai DPP BPJS maupun komposisi 75/25.</p>
+                          </div>
+                          {tidakTetap.map(renderField)}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
 
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit_tunjangan_komunikasi">{t("employeesPage.editDialog.tunjanganKomunikasi")}</Label>
-                  <Input
-                    id="edit_tunjangan_komunikasi"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={editFormData.tunjangan_komunikasi}
-                    onChange={(e) => setEditFormData({ ...editFormData, tunjangan_komunikasi: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_tunjangan_jabatan">{t("employeesPage.editDialog.tunjanganJabatan")}</Label>
-                  <Input
-                    id="edit_tunjangan_jabatan"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={editFormData.tunjangan_jabatan}
-                    onChange={(e) => setEditFormData({ ...editFormData, tunjangan_jabatan: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_tunjangan_operasional">{t("employeesPage.editDialog.tunjanganOperasional")}</Label>
-                  <Input
-                    id="edit_tunjangan_operasional"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={editFormData.tunjangan_operasional}
-                    onChange={(e) => setEditFormData({ ...editFormData, tunjangan_operasional: e.target.value })}
-                  />
-                </div>
 
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="edit_address">{t("employeesPage.addDialog.address")}</Label>
@@ -1434,9 +1445,10 @@ const Employees = () => {
               </div>
               {(() => {
                 const bs = Number(editFormData.basic_salary) || 0;
-                const tt = (Number(editFormData.tunjangan_jabatan) || 0)
-                  + (Number(editFormData.tunjangan_komunikasi) || 0)
-                  + (Number(editFormData.tunjangan_operasional) || 0);
+                const tt = (facFlags.jabatan ? (Number(editFormData.tunjangan_jabatan) || 0) : 0)
+                  + (facFlags.komunikasi ? (Number(editFormData.tunjangan_komunikasi) || 0) : 0)
+                  + (facFlags.operasional ? (Number(editFormData.tunjangan_operasional) || 0) : 0);
+
                 const total = bs + tt;
                 if (bs <= 0 || tt <= 0) return null;
                 const basicPct = (bs / total) * 100;
@@ -1464,9 +1476,10 @@ const Employees = () => {
                   type="submit"
                   disabled={isUploading || (() => {
                     const bs = Number(editFormData.basic_salary) || 0;
-                    const tt = (Number(editFormData.tunjangan_jabatan) || 0)
-                      + (Number(editFormData.tunjangan_komunikasi) || 0)
-                      + (Number(editFormData.tunjangan_operasional) || 0);
+                    const tt = (facFlags.jabatan ? (Number(editFormData.tunjangan_jabatan) || 0) : 0)
+                      + (facFlags.komunikasi ? (Number(editFormData.tunjangan_komunikasi) || 0) : 0)
+                      + (facFlags.operasional ? (Number(editFormData.tunjangan_operasional) || 0) : 0);
+
                     return bs > 0 && tt > 0 && bs < 0.75 * (bs + tt);
                   })()}
                 >

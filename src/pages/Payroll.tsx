@@ -2476,9 +2476,11 @@ const Payroll = () => {
                                   const raw = Number(e.target.value) || 0;
                                   const cap = Number(emp.tunjangan_komunikasi) || 0;
                                   if (cap > 0 && raw > cap) {
-                                    toast.warning(
-                                      `Tunj. Komunikasi ${emp.full_name} dibatasi ke ${formatRupiah(cap)} (plafon dari profil karyawan).`
-                                    );
+                                    toast({
+                                      title: "Melebihi plafon",
+                                      description: `Tunj. Komunikasi ${emp.full_name} dibatasi ke ${formatRupiah(cap)} (plafon dari profil karyawan).`,
+                                      variant: "destructive",
+                                    });
                                   }
                                   const capped = cap > 0 ? Math.min(raw, cap) : raw;
                                   updateIncome(emp.id, "tunjangan_komunikasi", String(capped));

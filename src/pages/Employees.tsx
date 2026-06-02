@@ -403,9 +403,10 @@ const Employees = () => {
 
     // Validasi komposisi gaji pokok minimal 75% (UU 13/2003 Pasal 94, PP 36/2021)
     const _bs = Number(editFormData.basic_salary) || 0;
-    const _tt = (Number(editFormData.tunjangan_jabatan) || 0)
-      + (Number(editFormData.tunjangan_komunikasi) || 0)
-      + (Number(editFormData.tunjangan_operasional) || 0);
+    const _tt = (facFlags.jabatan ? (Number(editFormData.tunjangan_jabatan) || 0) : 0)
+      + (facFlags.komunikasi ? (Number(editFormData.tunjangan_komunikasi) || 0) : 0)
+      + (facFlags.operasional ? (Number(editFormData.tunjangan_operasional) || 0) : 0);
+
     if (_bs > 0 && _tt > 0 && _bs < 0.75 * (_bs + _tt)) {
       toast({
         title: "Komposisi Upah Tidak Sesuai",

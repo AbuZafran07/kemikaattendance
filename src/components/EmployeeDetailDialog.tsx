@@ -421,7 +421,7 @@ const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; valu
 const FIELD_LABELS: Record<string, { label: string; type: 'number' | 'text' | 'bool' }> = {
   basic_salary: { label: 'Gaji Pokok', type: 'number' },
   tunjangan_jabatan: { label: 'Tunjangan Jabatan', type: 'number' },
-  tunjangan_komunikasi: { label: 'Tunjangan Komunikasi', type: 'number' },
+  tunjangan_komunikasi: { label: 'Batas Maks Tunj. Komunikasi', type: 'number' },
   tunjangan_operasional: { label: 'Tunjangan Operasional', type: 'number' },
   ptkp_status: { label: 'Status PTKP', type: 'text' },
   bpjs_kesehatan_enabled: { label: 'BPJS Kesehatan', type: 'bool' },

@@ -108,6 +108,7 @@ interface DeductionOverride {
 // Income additions per employee before generating
 interface IncomeAddition {
   tunjangan_kehadiran: number;
+  tunjangan_komunikasi: number;
   tunjangan_kesehatan: number;
   bonus_tahunan: number;
   thr: number;
@@ -210,6 +211,7 @@ const Payroll = () => {
       for (const row of data || []) {
         newIncome.set(row.user_id, {
           tunjangan_kehadiran: Number(row.tunjangan_kehadiran) || 0,
+          tunjangan_komunikasi: Number((row as any).tunjangan_komunikasi) || 0,
           tunjangan_kesehatan: Number(row.tunjangan_kesehatan) || 0,
           bonus_tahunan: Number(row.bonus_tahunan) || 0,
           thr: Number(row.thr) || 0,
@@ -245,7 +247,7 @@ const Payroll = () => {
       }
 
       const records = Array.from(allUserIds).map(userId => {
-        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
         const ded = deductionOverrides.get(userId) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
         // Only save if there's any non-zero value
         const hasData = Object.values(inc).some(v => Number(v) > 0) || ded.loan_deduction > 0 || ded.other_deduction > 0 || ded.deduction_notes.trim().length > 0;
@@ -285,21 +287,26 @@ const Payroll = () => {
         if (existingPeriod?.id) {
           for (const userId of allUserIds) {
             const inc = incomeAdditions.get(userId) || {
-              tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+              tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
               thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
               pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
             };
+            const updatePayload: Record<string, number> = {
+              tunjangan_kesehatan: Number(inc.tunjangan_kesehatan) || 0,
+              bonus_tahunan: Number(inc.bonus_tahunan) || 0,
+              thr: Number(inc.thr) || 0,
+              insentif_kinerja: Number(inc.insentif_kinerja) || 0,
+              bonus_lainnya: Number(inc.bonus_lainnya) || 0,
+              pengembalian_employee: Number(inc.pengembalian_employee) || 0,
+              insentif_penjualan: Number(inc.insentif_penjualan) || 0,
+            };
+            // Override Tunj. Komunikasi pada record payroll jika diisi manual di dialog
+            if ((Number(inc.tunjangan_komunikasi) || 0) > 0) {
+              updatePayload.tunjangan_komunikasi = Number(inc.tunjangan_komunikasi);
+            }
             await supabase
               .from("payroll")
-              .update({
-                tunjangan_kesehatan: Number(inc.tunjangan_kesehatan) || 0,
-                bonus_tahunan: Number(inc.bonus_tahunan) || 0,
-                thr: Number(inc.thr) || 0,
-                insentif_kinerja: Number(inc.insentif_kinerja) || 0,
-                bonus_lainnya: Number(inc.bonus_lainnya) || 0,
-                pengembalian_employee: Number(inc.pengembalian_employee) || 0,
-                insentif_penjualan: Number(inc.insentif_penjualan) || 0,
-              })
+              .update(updatePayload)
               .eq("user_id", userId)
               .eq("period_id", existingPeriod.id);
           }
@@ -576,7 +583,7 @@ const Payroll = () => {
     const additions = new Map<string, IncomeAddition>(incomeAdditions);
     for (const emp of emps || []) {
       if (!additions.has(emp.id)) {
-        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 });
+        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 });
       }
     }
     setIncomeAdditions(additions);
@@ -586,7 +593,7 @@ const Payroll = () => {
   const updateIncome = (userId: string, field: keyof IncomeAddition, value: string) => {
     setIncomeAdditions(prev => {
       const next = new Map(prev);
-      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
       next.set(userId, { ...current, [field]: Number(value) || 0 });
       return next;
     });
@@ -699,7 +706,7 @@ const Payroll = () => {
 
         if (thrAmount > 0) {
           const current = next.get(profile.id) || {
-            tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+            tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
             thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
             pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
           };
@@ -918,7 +925,7 @@ const Payroll = () => {
               const next = new Map(prev);
               for (const [uid, info] of medicalMap.entries()) {
                 const cur = next.get(uid) || {
-                  tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+                  tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
                   thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
                   pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
                 };
@@ -933,7 +940,7 @@ const Payroll = () => {
             // segera melihat nilai terbaru tanpa menunggu re-render.
             for (const [uid, info] of medicalMap.entries()) {
               const cur = incomeAdditions.get(uid) || {
-                tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+                tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
                 thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
                 pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
               };
@@ -1107,7 +1114,12 @@ const Payroll = () => {
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;
 
         // Fixed allowances from profile (prorated)
-        const tunjanganKomunikasi = Math.round((Number(emp.tunjangan_komunikasi) || 0) * prorateFactor);
+        // Tunj. Komunikasi: gunakan override manual dari dialog Tambahan Penghasilan jika diisi (> 0),
+        // jika tidak, fallback ke nilai profil karyawan (prorated).
+        const komunikasiOverride = Number(inc?.tunjangan_komunikasi) || 0;
+        const tunjanganKomunikasi = komunikasiOverride > 0
+          ? komunikasiOverride
+          : Math.round((Number(emp.tunjangan_komunikasi) || 0) * prorateFactor);
         const tunjanganJabatan = Math.round((Number(emp.tunjangan_jabatan) || 0) * prorateFactor);
         const tunjanganOperasional = Math.round((Number(emp.tunjangan_operasional) || 0) * prorateFactor);
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
@@ -2426,7 +2438,7 @@ const Payroll = () => {
               {employees
                 .filter(emp => emp.full_name.toLowerCase().includes(incomeSearch.toLowerCase()))
                 .map((emp) => {
-                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
                   const totalInc = Object.values(inc).reduce((s, v) => s + (Number(v) || 0), 0);
                   const hasValue = totalInc > 0;
                   const isExpanded = selectedIncomeEmp === emp.id;
@@ -2456,6 +2468,12 @@ const Payroll = () => {
                               <Input type="number" value={inc.tunjangan_kehadiran || ""} placeholder="0 (otomatis)"
                                 onChange={(e) => updateIncome(emp.id, "tunjangan_kehadiran", e.target.value)} />
                               <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis</span>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tunj. Komunikasi</Label>
+                              <Input type="number" value={inc.tunjangan_komunikasi || ""} placeholder="0 (dari profil)"
+                                onChange={(e) => updateIncome(emp.id, "tunjangan_komunikasi", e.target.value)} />
+                              <span className="text-[10px] text-muted-foreground">Kosongkan untuk pakai nilai profil</span>
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>

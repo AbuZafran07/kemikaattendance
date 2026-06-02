@@ -937,6 +937,7 @@ export type Database = {
           thr: number
           tunjangan_kehadiran: number
           tunjangan_kesehatan: number
+          tunjangan_komunikasi: number
           updated_at: string
           user_id: string
         }
@@ -957,6 +958,7 @@ export type Database = {
           thr?: number
           tunjangan_kehadiran?: number
           tunjangan_kesehatan?: number
+          tunjangan_komunikasi?: number
           updated_at?: string
           user_id: string
         }
@@ -977,6 +979,7 @@ export type Database = {
           thr?: number
           tunjangan_kehadiran?: number
           tunjangan_kesehatan?: number
+          tunjangan_komunikasi?: number
           updated_at?: string
           user_id?: string
         }

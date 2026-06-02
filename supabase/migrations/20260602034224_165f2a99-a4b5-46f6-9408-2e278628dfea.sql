@@ -1,0 +1,1 @@
+ALTER TABLE public.payroll_overrides ADD COLUMN IF NOT EXISTS tunjangan_komunikasi numeric NOT NULL DEFAULT 0;

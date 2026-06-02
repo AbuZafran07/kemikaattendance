@@ -130,6 +130,7 @@ export default function BPJSSettings() {
         if (error) throw error;
       }
       setConfig(finalConfig);
+      clearFixedAllowanceComponentsCache();
       toast.success(baseChanged
         ? `Pengaturan BPJS disimpan. Dasar perhitungan berlaku efektif: ${today}`
         : "Pengaturan BPJS berhasil disimpan");

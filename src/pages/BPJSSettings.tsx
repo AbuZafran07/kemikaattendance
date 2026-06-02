@@ -39,6 +39,12 @@ export interface BPJSConfig {
   base_calculation: BPJSBaseCalculation; // default "basic"
   // Tanggal efektif perubahan dasar perhitungan (YYYY-MM-DD), diisi otomatis saat base_calculation berubah.
   base_calculation_effective_date?: string;
+  // Komponen tunjangan tetap yang dipakai sebagai dasar BPJS (hanya aktif saat base_calculation = basic_plus_fixed)
+  fixed_allowance_components: {
+    jabatan: boolean;
+    komunikasi: boolean;
+    operasional: boolean;
+  };
 }
 
 export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
@@ -54,6 +60,7 @@ export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
   jkm_employer_rate: 0.3,
   base_calculation: "basic",
   base_calculation_effective_date: undefined,
+  fixed_allowance_components: { jabatan: true, komunikasi: true, operasional: true },
 };
 
 const formatCurrency = (v: number) =>

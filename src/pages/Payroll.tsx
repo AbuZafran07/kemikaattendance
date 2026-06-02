@@ -2464,9 +2464,8 @@ const Payroll = () => {
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Komunikasi</Label>
-                              <Input type="number" value={inc.tunjangan_komunikasi || ""} placeholder="0 (dari profil)"
+                              <Input type="number" value={inc.tunjangan_komunikasi || ""} placeholder="0"
                                 onChange={(e) => updateIncome(emp.id, "tunjangan_komunikasi", e.target.value)} />
-                              <span className="text-[10px] text-muted-foreground">Kosongkan untuk pakai nilai profil</span>
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>

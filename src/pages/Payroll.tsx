@@ -2511,7 +2511,6 @@ const Payroll = () => {
                           </div>
                           {(() => {
                             const nonFixedItems = [
-                              { key: "komunikasi" as const, label: "Tunj. Komunikasi", value: emp.tunjangan_komunikasi || 0 },
                               { key: "jabatan" as const, label: "Tunj. Jabatan", value: emp.tunjangan_jabatan || 0 },
                               { key: "operasional" as const, label: "Tunj. Operasional", value: emp.tunjangan_operasional || 0 },
                             ].filter(i => !facFlags[i.key] && i.value > 0);

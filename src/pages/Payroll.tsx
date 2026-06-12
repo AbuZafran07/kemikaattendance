@@ -89,6 +89,7 @@ interface PayrollData {
   bonus_lainnya?: number;
   pengembalian_employee?: number;
   insentif_penjualan?: number;
+  tunjangan_perjalanan_dinas?: number;
 }
 
 interface PayrollPeriod {
@@ -117,6 +118,7 @@ interface IncomeAddition {
   pengembalian_employee: number;
   insentif_penjualan: number;
   overtime_override: number;
+  tunjangan_perjalanan_dinas: number;
 }
 
 const MONTHS = [
@@ -220,6 +222,7 @@ const Payroll = () => {
           pengembalian_employee: Number(row.pengembalian_employee) || 0,
           insentif_penjualan: Number(row.insentif_penjualan) || 0,
           overtime_override: Number((row as any).overtime_override) || 0,
+          tunjangan_perjalanan_dinas: Number((row as any).tunjangan_perjalanan_dinas) || 0,
         });
         newDeductions.set(row.user_id, {
           loan_deduction: Number(row.loan_deduction) || 0,
@@ -300,6 +303,7 @@ const Payroll = () => {
               bonus_lainnya: Number(inc.bonus_lainnya) || 0,
               pengembalian_employee: Number(inc.pengembalian_employee) || 0,
               insentif_penjualan: Number(inc.insentif_penjualan) || 0,
+              tunjangan_perjalanan_dinas: Number((inc as any).tunjangan_perjalanan_dinas) || 0,
             };
             await supabase
               .from("payroll")
@@ -366,6 +370,7 @@ const Payroll = () => {
         tunjangan_komunikasi: Number((p as any).tunjangan_komunikasi) || 0,
         tunjangan_jabatan: profileMap.get(p.user_id)?.tunjangan_jabatan || 0,
         tunjangan_operasional: profileMap.get(p.user_id)?.tunjangan_operasional || 0,
+        tunjangan_perjalanan_dinas: Number((p as any).tunjangan_perjalanan_dinas) || 0,
       }));
 
       enriched.sort((a, b) => (a.employee_name || "").localeCompare(b.employee_name || ""));
@@ -1141,7 +1146,8 @@ const Payroll = () => {
         const bonusLainnya = inc?.bonus_lainnya || 0;
         const pengembalianEmployee = inc?.pengembalian_employee || 0;
         const insentifPenjualan = inc?.insentif_penjualan || 0;
-        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya + pengembalianEmployee + insentifPenjualan;
+        const tunjanganPerjalananDinas = (inc as any)?.tunjangan_perjalanan_dinas || 0;
+        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya + pengembalianEmployee + insentifPenjualan + tunjanganPerjalananDinas;
 
         // Total allowance = attendance + fixed + incidental
         const totalAllowance = attendanceAllowance + fixedAllowances + incidentalIncome;
@@ -1198,6 +1204,7 @@ const Payroll = () => {
           bonus_lainnya: bonusLainnya,
           pengembalian_employee: pengembalianEmployee,
           insentif_penjualan: insentifPenjualan,
+          tunjangan_perjalanan_dinas: tunjanganPerjalananDinas,
         };
       });
 

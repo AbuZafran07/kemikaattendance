@@ -94,7 +94,27 @@ const AdminCreateBusinessTravelDialog = ({ open, onOpenChange, onCreated }: Admi
         });
       }
 
-      toast({ title: "Berhasil", description: "Perjalanan dinas karyawan berhasil dibuat" });
+      // Auto-inject travel allowance to payroll_overrides (admin-create is auto-approved)
+      let travelNote = "";
+      try {
+        const { applyBusinessTravelAllowance } = await import("@/lib/businessTravelAllowance");
+        const res = await applyBusinessTravelAllowance({
+          userId: selectedUserId,
+          startDate,
+          endDate,
+        });
+        if (!res.ok && res.reason) {
+          toast({ title: "Tunjangan dinas tidak diproses", description: res.reason, variant: "destructive" });
+        } else if (res.ok && res.amount > 0) {
+          const monthName = new Date(res.period_year, res.period_month - 1, 1).toLocaleString("id-ID", { month: "long" });
+          const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(res.amount);
+          travelNote = ` Tunj. dinas ${fmt} → payroll ${monthName} ${res.period_year}.`;
+        }
+      } catch (err) {
+        console.error("applyBusinessTravelAllowance failed:", err);
+      }
+
+      toast({ title: "Berhasil", description: `Perjalanan dinas karyawan berhasil dibuat.${travelNote}` });
       onCreated();
       onOpenChange(false);
     } catch (error: any) {

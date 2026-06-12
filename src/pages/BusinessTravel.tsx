@@ -222,11 +222,31 @@ const BusinessTravel = () => {
 
       if (error) throw error;
 
+      // Auto-calc & inject business travel allowance into payroll_overrides
+      let travelAllowanceNote = "";
+      try {
+        const { applyBusinessTravelAllowance } = await import("@/lib/businessTravelAllowance");
+        const res = await applyBusinessTravelAllowance({
+          userId: selectedRequest.user_id,
+          startDate: selectedRequest.start_date,
+          endDate: selectedRequest.end_date,
+        });
+        if (!res.ok && res.reason) {
+          toast({ title: "Tunjangan dinas tidak diproses", description: res.reason, variant: "destructive" });
+        } else if (res.ok && res.amount > 0) {
+          const monthName = new Date(res.period_year, res.period_month - 1, 1).toLocaleString("id-ID", { month: "long" });
+          const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(res.amount);
+          travelAllowanceNote = ` • Tunj. dinas ${fmt} ditambahkan ke payroll ${monthName} ${res.period_year}.`;
+        }
+      } catch (err) {
+        console.error("applyBusinessTravelAllowance failed:", err);
+      }
+
       toast({
         title: t("travelAdmin.toastOk"),
-        description: documentUrl 
+        description: (documentUrl 
           ? t("travelAdmin.toastApproveOkDoc")
-          : t("travelAdmin.toastApproveOk"),
+          : t("travelAdmin.toastApproveOk")) + travelAllowanceNote,
       });
 
       const currentUser = (await supabase.auth.getUser()).data.user;

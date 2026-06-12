@@ -89,6 +89,7 @@ interface PayrollData {
   bonus_lainnya?: number;
   pengembalian_employee?: number;
   insentif_penjualan?: number;
+  tunjangan_perjalanan_dinas?: number;
 }
 
 interface PayrollPeriod {
@@ -117,6 +118,7 @@ interface IncomeAddition {
   pengembalian_employee: number;
   insentif_penjualan: number;
   overtime_override: number;
+  tunjangan_perjalanan_dinas: number;
 }
 
 const MONTHS = [
@@ -220,6 +222,7 @@ const Payroll = () => {
           pengembalian_employee: Number(row.pengembalian_employee) || 0,
           insentif_penjualan: Number(row.insentif_penjualan) || 0,
           overtime_override: Number((row as any).overtime_override) || 0,
+          tunjangan_perjalanan_dinas: Number((row as any).tunjangan_perjalanan_dinas) || 0,
         });
         newDeductions.set(row.user_id, {
           loan_deduction: Number(row.loan_deduction) || 0,
@@ -247,7 +250,7 @@ const Payroll = () => {
       }
 
       const records = Array.from(allUserIds).map(userId => {
-        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 };
         const ded = deductionOverrides.get(userId) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
         // Only save if there's any non-zero value
         const hasData = Object.values(inc).some(v => Number(v) > 0) || ded.loan_deduction > 0 || ded.other_deduction > 0 || ded.deduction_notes.trim().length > 0;
@@ -289,7 +292,7 @@ const Payroll = () => {
             const inc = incomeAdditions.get(userId) || {
               tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
               thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-              pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+              pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
             };
             const updatePayload: Record<string, number> = {
               tunjangan_komunikasi: Number(inc.tunjangan_komunikasi) || 0,
@@ -300,6 +303,7 @@ const Payroll = () => {
               bonus_lainnya: Number(inc.bonus_lainnya) || 0,
               pengembalian_employee: Number(inc.pengembalian_employee) || 0,
               insentif_penjualan: Number(inc.insentif_penjualan) || 0,
+              tunjangan_perjalanan_dinas: Number((inc as any).tunjangan_perjalanan_dinas) || 0,
             };
             await supabase
               .from("payroll")
@@ -366,6 +370,7 @@ const Payroll = () => {
         tunjangan_komunikasi: Number((p as any).tunjangan_komunikasi) || 0,
         tunjangan_jabatan: profileMap.get(p.user_id)?.tunjangan_jabatan || 0,
         tunjangan_operasional: profileMap.get(p.user_id)?.tunjangan_operasional || 0,
+        tunjangan_perjalanan_dinas: Number((p as any).tunjangan_perjalanan_dinas) || 0,
       }));
 
       enriched.sort((a, b) => (a.employee_name || "").localeCompare(b.employee_name || ""));
@@ -582,7 +587,7 @@ const Payroll = () => {
     const additions = new Map<string, IncomeAddition>(incomeAdditions);
     for (const emp of emps || []) {
       if (!additions.has(emp.id)) {
-        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 });
+        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 });
       }
     }
     setIncomeAdditions(additions);
@@ -592,7 +597,7 @@ const Payroll = () => {
   const updateIncome = (userId: string, field: keyof IncomeAddition, value: string) => {
     setIncomeAdditions(prev => {
       const next = new Map(prev);
-      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 };
       next.set(userId, { ...current, [field]: Number(value) || 0 });
       return next;
     });
@@ -707,7 +712,7 @@ const Payroll = () => {
           const current = next.get(profile.id) || {
             tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
             thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
           };
           next.set(profile.id, { ...current, thr: thrAmount });
           updatedCount++;
@@ -926,7 +931,7 @@ const Payroll = () => {
                 const cur = next.get(uid) || {
                   tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
                   thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-                  pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+                  pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
                 };
                 // REPLACE: nilai sync = single source of truth untuk periode ini
                 cur.tunjangan_kesehatan = info.total;
@@ -941,7 +946,7 @@ const Payroll = () => {
               const cur = incomeAdditions.get(uid) || {
                 tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
                 thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-                pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+                pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
               };
               cur.tunjangan_kesehatan = info.total;
               incomeAdditions.set(uid, cur);
@@ -1141,7 +1146,8 @@ const Payroll = () => {
         const bonusLainnya = inc?.bonus_lainnya || 0;
         const pengembalianEmployee = inc?.pengembalian_employee || 0;
         const insentifPenjualan = inc?.insentif_penjualan || 0;
-        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya + pengembalianEmployee + insentifPenjualan;
+        const tunjanganPerjalananDinas = (inc as any)?.tunjangan_perjalanan_dinas || 0;
+        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya + pengembalianEmployee + insentifPenjualan + tunjanganPerjalananDinas;
 
         // Total allowance = attendance + fixed + incidental
         const totalAllowance = attendanceAllowance + fixedAllowances + incidentalIncome;
@@ -1198,6 +1204,7 @@ const Payroll = () => {
           bonus_lainnya: bonusLainnya,
           pengembalian_employee: pengembalianEmployee,
           insentif_penjualan: insentifPenjualan,
+          tunjangan_perjalanan_dinas: tunjanganPerjalananDinas,
         };
       });
 
@@ -1503,6 +1510,7 @@ const Payroll = () => {
       bonus_tahunan: item.bonus_tahunan || 0,
       bonus_lainnya: item.bonus_lainnya || 0,
       pengembalian_employee: item.pengembalian_employee || 0,
+      tunjangan_perjalanan_dinas: item.tunjangan_perjalanan_dinas || 0,
       bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
       bpjs_kesehatan: item.bpjs_kesehatan,
       loan_deduction: item.loan_deduction,
@@ -2163,7 +2171,7 @@ const Payroll = () => {
                   <span className="text-muted-foreground">{t("payrollPage.detail.basicSalary")}</span>
                   <span className="text-right font-medium">{formatRupiah(detailItem.basic_salary)}</span>
                   <span className="text-muted-foreground">{t("payrollPage.detail.attendanceAllowance")}</span>
-                  <span className="text-right">{formatRupiah(detailItem.allowance - (detailItem.tunjangan_komunikasi || 0) - (detailItem.tunjangan_jabatan || 0) - (detailItem.tunjangan_operasional || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.thr || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - (detailItem.insentif_penjualan || 0))}</span>
+                  <span className="text-right">{formatRupiah(detailItem.allowance - (detailItem.tunjangan_komunikasi || 0) - (detailItem.tunjangan_jabatan || 0) - (detailItem.tunjangan_operasional || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.thr || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - (detailItem.insentif_penjualan || 0) - (detailItem.tunjangan_perjalanan_dinas || 0))}</span>
                   <span className="text-muted-foreground">{t("payrollPage.detail.overtimeWithHours", { hours: detailItem.overtime_hours })}</span>
                   <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>
                 </div>
@@ -2202,7 +2210,7 @@ const Payroll = () => {
                     </>
                   );
                 })()}
-                {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0)) > 0 && (
+                {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0) + (detailItem.tunjangan_perjalanan_dinas || 0)) > 0 && (
                   <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-primary/5 rounded p-2">
                     <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.incidentalIncome")}</span>
                     {(detailItem.tunjangan_kesehatan || 0) > 0 && <>
@@ -2232,6 +2240,10 @@ const Payroll = () => {
                     {(detailItem.insentif_penjualan || 0) > 0 && <>
                       <span className="text-muted-foreground text-xs">{t("payrollPage.detail.insentifPenjualan")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.insentif_penjualan!)}</span>
+                    </>}
+                    {(detailItem.tunjangan_perjalanan_dinas || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Tunj. Perjalanan Dinas</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_perjalanan_dinas!)}</span>
                     </>}
                   </div>
                 )}
@@ -2436,7 +2448,7 @@ const Payroll = () => {
               {employees
                 .filter(emp => emp.full_name.toLowerCase().includes(incomeSearch.toLowerCase()))
                 .map((emp) => {
-                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 };
                   const totalInc = Object.values(inc).reduce((s, v) => s + (Number(v) || 0), 0);
                   const hasValue = totalInc > 0;
                   const isExpanded = selectedIncomeEmp === emp.id;
@@ -2533,6 +2545,12 @@ const Payroll = () => {
                               <Label className="text-xs">Insentif Penjualan</Label>
                               <Input type="number" value={inc.insentif_penjualan || ""} placeholder="0"
                                 onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tunj. Perjalanan Dinas</Label>
+                              <Input type="number" value={(inc as any).tunjangan_perjalanan_dinas || ""} placeholder="0 (otomatis dari approval dinas)"
+                                onChange={(e) => updateIncome(emp.id, "tunjangan_perjalanan_dinas" as any, e.target.value)} />
+                              <span className="text-[10px] text-muted-foreground">Terisi otomatis saat approve perjalanan dinas</span>
                             </div>
                             <div>
                               <Label className="text-xs">Override Lembur</Label>

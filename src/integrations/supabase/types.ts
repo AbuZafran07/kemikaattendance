@@ -787,6 +787,7 @@ export type Database = {
           tunjangan_kesehatan: number
           tunjangan_komunikasi: number
           tunjangan_operasional: number
+          tunjangan_perjalanan_dinas: number
           user_id: string
         }
         Insert: {
@@ -826,6 +827,7 @@ export type Database = {
           tunjangan_kesehatan?: number
           tunjangan_komunikasi?: number
           tunjangan_operasional?: number
+          tunjangan_perjalanan_dinas?: number
           user_id: string
         }
         Update: {
@@ -865,6 +867,7 @@ export type Database = {
           tunjangan_kesehatan?: number
           tunjangan_komunikasi?: number
           tunjangan_operasional?: number
+          tunjangan_perjalanan_dinas?: number
           user_id?: string
         }
         Relationships: [
@@ -938,6 +941,7 @@ export type Database = {
           tunjangan_kehadiran: number
           tunjangan_kesehatan: number
           tunjangan_komunikasi: number
+          tunjangan_perjalanan_dinas: number
           updated_at: string
           user_id: string
         }
@@ -959,6 +963,7 @@ export type Database = {
           tunjangan_kehadiran?: number
           tunjangan_kesehatan?: number
           tunjangan_komunikasi?: number
+          tunjangan_perjalanan_dinas?: number
           updated_at?: string
           user_id: string
         }
@@ -980,6 +985,7 @@ export type Database = {
           tunjangan_kehadiran?: number
           tunjangan_kesehatan?: number
           tunjangan_komunikasi?: number
+          tunjangan_perjalanan_dinas?: number
           updated_at?: string
           user_id?: string
         }
@@ -1238,6 +1244,7 @@ export type Database = {
       }
       get_biaya_jabatan_config: { Args: never; Returns: Json }
       get_bpjs_config: { Args: never; Returns: Json }
+      get_business_travel_allowance_config: { Args: never; Returns: Json }
       get_delegation_colleagues: {
         Args: never
         Returns: {

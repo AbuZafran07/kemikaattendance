@@ -289,7 +289,7 @@ const Payroll = () => {
             const inc = incomeAdditions.get(userId) || {
               tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
               thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-              pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+              pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
             };
             const updatePayload: Record<string, number> = {
               tunjangan_komunikasi: Number(inc.tunjangan_komunikasi) || 0,
@@ -707,7 +707,7 @@ const Payroll = () => {
           const current = next.get(profile.id) || {
             tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
             thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
           };
           next.set(profile.id, { ...current, thr: thrAmount });
           updatedCount++;
@@ -926,7 +926,7 @@ const Payroll = () => {
                 const cur = next.get(uid) || {
                   tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
                   thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-                  pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+                  pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
                 };
                 // REPLACE: nilai sync = single source of truth untuk periode ini
                 cur.tunjangan_kesehatan = info.total;
@@ -941,7 +941,7 @@ const Payroll = () => {
               const cur = incomeAdditions.get(uid) || {
                 tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
                 thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-                pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+                pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
               };
               cur.tunjangan_kesehatan = info.total;
               incomeAdditions.set(uid, cur);

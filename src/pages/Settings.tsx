@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree, Plane } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ export default function Settings() {
     { key: "overtime", icon: FileText, path: "/dashboard/settings/overtime" },
     { key: "holidays", icon: Palmtree, path: "/dashboard/settings/holidays" },
     { key: "allowance", icon: Coins, path: "/dashboard/settings/attendance-allowance" },
+    { key: "travelAllowance", icon: Plane, path: "/dashboard/settings/business-travel-allowance" },
     { key: "bank", icon: Landmark, path: "/dashboard/settings/company-bank" },
     { key: "bpjs", icon: Shield, path: "/dashboard/settings/bpjs" },
     { key: "ptkp", icon: Receipt, path: "/dashboard/settings/ptkp" },

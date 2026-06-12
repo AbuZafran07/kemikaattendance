@@ -354,6 +354,10 @@
         "title": "Tunjangan Kehadiran",
         "desc": "Konfigurasi perhitungan tunjangan kehadiran"
       },
+      "travelAllowance": {
+        "title": "Tunjangan Perjalanan Dinas",
+        "desc": "Nilai tunjangan per hari saat karyawan dinas luar"
+      },
       "bank": {
         "title": "Bank Perusahaan",
         "desc": "Atur rekening perusahaan untuk e-Payroll bank"

@@ -1510,6 +1510,7 @@ const Payroll = () => {
       bonus_tahunan: item.bonus_tahunan || 0,
       bonus_lainnya: item.bonus_lainnya || 0,
       pengembalian_employee: item.pengembalian_employee || 0,
+      tunjangan_perjalanan_dinas: item.tunjangan_perjalanan_dinas || 0,
       bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
       bpjs_kesehatan: item.bpjs_kesehatan,
       loan_deduction: item.loan_deduction,
@@ -2170,7 +2171,7 @@ const Payroll = () => {
                   <span className="text-muted-foreground">{t("payrollPage.detail.basicSalary")}</span>
                   <span className="text-right font-medium">{formatRupiah(detailItem.basic_salary)}</span>
                   <span className="text-muted-foreground">{t("payrollPage.detail.attendanceAllowance")}</span>
-                  <span className="text-right">{formatRupiah(detailItem.allowance - (detailItem.tunjangan_komunikasi || 0) - (detailItem.tunjangan_jabatan || 0) - (detailItem.tunjangan_operasional || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.thr || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - (detailItem.insentif_penjualan || 0))}</span>
+                  <span className="text-right">{formatRupiah(detailItem.allowance - (detailItem.tunjangan_komunikasi || 0) - (detailItem.tunjangan_jabatan || 0) - (detailItem.tunjangan_operasional || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.thr || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - (detailItem.insentif_penjualan || 0) - (detailItem.tunjangan_perjalanan_dinas || 0))}</span>
                   <span className="text-muted-foreground">{t("payrollPage.detail.overtimeWithHours", { hours: detailItem.overtime_hours })}</span>
                   <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>
                 </div>
@@ -2209,7 +2210,7 @@ const Payroll = () => {
                     </>
                   );
                 })()}
-                {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0)) > 0 && (
+                {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0) + (detailItem.tunjangan_perjalanan_dinas || 0)) > 0 && (
                   <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-primary/5 rounded p-2">
                     <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.incidentalIncome")}</span>
                     {(detailItem.tunjangan_kesehatan || 0) > 0 && <>
@@ -2239,6 +2240,10 @@ const Payroll = () => {
                     {(detailItem.insentif_penjualan || 0) > 0 && <>
                       <span className="text-muted-foreground text-xs">{t("payrollPage.detail.insentifPenjualan")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.insentif_penjualan!)}</span>
+                    </>}
+                    {(detailItem.tunjangan_perjalanan_dinas || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Tunj. Perjalanan Dinas</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_perjalanan_dinas!)}</span>
                     </>}
                   </div>
                 )}
@@ -2540,6 +2545,12 @@ const Payroll = () => {
                               <Label className="text-xs">Insentif Penjualan</Label>
                               <Input type="number" value={inc.insentif_penjualan || ""} placeholder="0"
                                 onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tunj. Perjalanan Dinas</Label>
+                              <Input type="number" value={(inc as any).tunjangan_perjalanan_dinas || ""} placeholder="0 (otomatis dari approval dinas)"
+                                onChange={(e) => updateIncome(emp.id, "tunjangan_perjalanan_dinas" as any, e.target.value)} />
+                              <span className="text-[10px] text-muted-foreground">Terisi otomatis saat approve perjalanan dinas</span>
                             </div>
                             <div>
                               <Label className="text-xs">Override Lembur</Label>

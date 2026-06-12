@@ -354,6 +354,10 @@
         "title": "Attendance Allowance",
         "desc": "Configure attendance allowance calculation"
       },
+      "travelAllowance": {
+        "title": "Business Travel Allowance",
+        "desc": "Per-day allowance value for business travel"
+      },
       "bank": {
         "title": "Company Bank",
         "desc": "Set up company account for e-Payroll bank"

@@ -1663,7 +1663,7 @@ const Payroll = () => {
         return {
           bankAccountNumber: profile?.bank_account_number || "",
           fullName: profile?.full_name || item.employee_name || "-",
-          amount: item.take_home_pay - (item.thr || 0),
+          amount: item.take_home_pay - (item.thr || 0) - (item.tunjangan_perjalanan_dinas || 0),
           nik: profile?.nik || item.nik || "",
           email: profile?.email || "",
           bankName: profile?.bank_name || "",

@@ -1705,6 +1705,95 @@ const Payroll = () => {
     }
   };
 
+  // ── e-Payroll Final Settlement (resigned employees, separate from monthly payroll) ──
+  const [showFinalSettlementBank, setShowFinalSettlementBank] = useState(false);
+  const [finalSettlementBankData, setFinalSettlementBankData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number; settlementId: string }[]>([]);
+  const [finalSettlementCompanyConfig, setFinalSettlementCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
+  const [loadingFinalSettlementBank, setLoadingFinalSettlementBank] = useState(false);
+  const [exportingFinalSettlementBank, setExportingFinalSettlementBank] = useState(false);
+
+  const handleOpenFinalSettlementBankPreview = async () => {
+    setLoadingFinalSettlementBank(true);
+    try {
+      const { data: settingsData } = await supabase
+        .from("system_settings").select("value").eq("key", "company_bank_config").single();
+      const companyConfig = settingsData?.value as any;
+      if (!companyConfig?.account_number) {
+        toast({ title: "Konfigurasi bank belum lengkap", description: "Atur rekening perusahaan di Settings → Company Bank.", variant: "destructive" });
+        return;
+      }
+      setFinalSettlementCompanyConfig(companyConfig);
+
+      const { data: settlements, error } = await (supabase as any)
+        .from("final_settlements")
+        .select("id, user_id, net_amount, status, pesangon_amount, loan_payoff")
+        .eq("status", "pending")
+        .gt("net_amount", 0);
+      if (error) throw error;
+      if (!settlements || settlements.length === 0) {
+        toast({ title: "Tidak ada Final Settlement", description: "Belum ada karyawan resign dengan settlement pending." });
+        return;
+      }
+
+      const userIds = settlements.map((s: any) => s.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles").select("id, bank_account_number, bank_name, full_name, nik, email").in("id", userIds);
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const employees = settlements.map((s: any, idx: number) => {
+        const profile = profileMap.get(s.user_id);
+        return {
+          bankAccountNumber: profile?.bank_account_number || "",
+          fullName: profile?.full_name || "-",
+          amount: Number(s.net_amount) || 0,
+          nik: profile?.nik || "",
+          email: profile?.email || "",
+          bankName: profile?.bank_name || "",
+          seqNumber: idx + 1,
+          settlementId: s.id,
+        };
+      });
+
+      setFinalSettlementBankData(employees);
+      setShowFinalSettlementBank(true);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingFinalSettlementBank(false);
+    }
+  };
+
+  const finalSettlementIncomplete = finalSettlementBankData.filter(e => !e.bankAccountNumber || !e.bankName);
+
+  const handleConfirmFinalSettlementBankExport = async () => {
+    if (!finalSettlementCompanyConfig) return;
+    setExportingFinalSettlementBank(true);
+    try {
+      const { generateBankPayrollCSV, downloadBankPayrollFile } = await import("@/lib/bankPayrollExport");
+      const csvContent = generateBankPayrollCSV(
+        { companyAccountNumber: finalSettlementCompanyConfig.account_number, companyBankName: finalSettlementCompanyConfig.bank_name },
+        finalSettlementBankData,
+        selectedMonth,
+        selectedYear,
+        'FINAL SETTLEMENT'
+      );
+      downloadBankPayrollFile(csvContent, selectedMonth, selectedYear, 'e-payroll-FinalSettlement');
+
+      // Mark as paid
+      const ids = finalSettlementBankData.map(e => e.settlementId);
+      await (supabase as any).from("final_settlements")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .in("id", ids);
+
+      toast({ title: "Export berhasil", description: "Final Settlement telah ditandai sebagai paid." });
+      setShowFinalSettlementBank(false);
+    } catch (e: any) {
+      toast({ title: "Gagal export", description: e.message, variant: "destructive" });
+    } finally {
+      setExportingFinalSettlementBank(false);
+    }
+  };
+
   // ── e-Payroll THR Bank Preview ──
   const [showThrBankPreview, setShowThrBankPreview] = useState(false);
   const [thrBankPreviewData, setThrBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number }[]>([]);

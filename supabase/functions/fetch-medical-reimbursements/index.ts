@@ -338,12 +338,6 @@ Deno.serve(async (req) => {
         if (r.matched_by === "none" && approvedCount > 0) unmatched++;
         continue;
       }
-
-      totalClaims += approvedCount;
-      if (approvedTotal <= 0 || r.matched_by === "none") {
-        if (r.matched_by === "none" && approvedCount > 0) unmatched++;
-        continue;
-      }
       const emailKey = norm(r.email);
       const nameKey = norm(r.full_name);
       let match: { id: string; full_name: string } | undefined;

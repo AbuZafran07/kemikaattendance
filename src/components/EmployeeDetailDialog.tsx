@@ -20,10 +20,11 @@ import {
 } from "@/components/ui/table";
 import {
   User, Mail, Phone, MapPin, Calendar, Briefcase, Building2,
-  Pencil, Wallet, CreditCard, Laptop, Shield, Clock, DollarSign,
+  Pencil, Wallet, CreditCard, Laptop, Shield, Clock, DollarSign, FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatAttendanceStatus } from "@/lib/statusUtils";
+import { cn } from "@/lib/utils";
 import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
 
 interface EmployeeDetailDialogProps {
@@ -203,6 +204,19 @@ export const EmployeeDetailDialog = ({
                 <div className="sm:col-span-2">
                   <InfoItem icon={MapPin} label="Alamat" value={employee.address || "-"} />
                 </div>
+                {(employee.notes || (employee.status === "Resigned" && employee.resign_notes)) && (
+                  <div className="sm:col-span-2 space-y-2 mt-1">
+                    <p className="text-xs font-semibold text-muted-foreground">📝 Catatan</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {employee.status === "Resigned" && employee.resign_notes && (
+                        <InfoItem icon={FileText} label="Keterangan Resign" value={employee.resign_notes} truncate={false} />
+                      )}
+                      {employee.notes && (
+                        <InfoItem icon={FileText} label="Keterangan Lainnya" value={employee.notes} truncate={false} />
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -411,14 +425,14 @@ export const EmployeeDetailDialog = ({
   );
 };
 
-const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; value: string }) => (
-  <div className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/50">
+const InfoItem = ({ icon: Icon, label, value, truncate = true }: { icon: any; label: string; value: string; truncate?: boolean }) => (
+  <div className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/50">
     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
       <Icon className="h-4 w-4 text-primary" />
     </div>
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium text-sm truncate capitalize">{value}</p>
+      <p className={cn("font-medium text-sm", truncate ? "truncate capitalize" : "whitespace-pre-wrap break-words")}>{value}</p>
     </div>
   </div>
 );

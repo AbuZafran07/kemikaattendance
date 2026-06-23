@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, Archive, Users, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -124,6 +125,8 @@ const Employees = () => {
     bank_account_number: "",
     join_date: "",
     resign_date: "",
+    resign_notes: "",
+    notes: "",
     leave_active: true,
     annual_leave_quota: "12",
     remaining_leave: "12",
@@ -481,6 +484,8 @@ const Employees = () => {
           bank_account_number: result.data.bank_account_number || null,
           join_date: editFormData.join_date || undefined,
           resign_date: editFormData.status === "Resigned" ? editFormData.resign_date : null,
+          resign_notes: editFormData.resign_notes || null,
+          notes: editFormData.notes || null,
         })
         .eq('id', editingEmployee.id);
 
@@ -580,6 +585,8 @@ const Employees = () => {
       bank_account_number: employee.bank_account_number || "",
       join_date: employee.join_date || "",
       resign_date: employee.resign_date || "",
+      resign_notes: employee.resign_notes || "",
+      notes: employee.notes || "",
       leave_active: (employee.annual_leave_quota ?? 12) > 0,
       annual_leave_quota: String(employee.annual_leave_quota ?? 12),
       remaining_leave: String(employee.remaining_leave ?? 12),
@@ -631,6 +638,8 @@ const Employees = () => {
       bank_account_number: "",
       join_date: "",
       resign_date: "",
+      resign_notes: "",
+      notes: "",
       leave_active: true,
       annual_leave_quota: "12",
       remaining_leave: "12",
@@ -1188,6 +1197,15 @@ const Employees = () => {
                         {t("employeesPage.editDialog.resignDateHint")}
                       </p>
                     )}
+                    <Label htmlFor="edit_resign_notes" className="pt-1">Keterangan Resign</Label>
+                    <Textarea
+                      id="edit_resign_notes"
+                      value={editFormData.resign_notes}
+                      onChange={(e) => setEditFormData({ ...editFormData, resign_notes: e.target.value })}
+                      placeholder="Contoh: Mengundurkan diri, habis kontrak, PHK, pensiun, dll."
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground">Opsional. Catatan akan tampil di detail karyawan.</p>
                   </div>
                 )}
                 <div className="space-y-2">
@@ -1330,6 +1348,17 @@ const Employees = () => {
                     value={editFormData.address}
                     onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="edit_notes">Keterangan Lainnya</Label>
+                  <Textarea
+                    id="edit_notes"
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                    placeholder="Catatan tambahan tentang karyawan..."
+                    rows={2}
+                  />
+                  <p className="text-xs text-muted-foreground">Opsional. Informasi umum yang ingin dicatat di profil.</p>
                 </div>
 
                 {/* Contract & Bank Info Section */}

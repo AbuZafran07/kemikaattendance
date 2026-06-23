@@ -271,18 +271,38 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               {group.label}
             </p>
             <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavLink
-                  key={item.name}
-                  to={item.href}
-                  end={item.href === "/dashboard"}
-                  className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/60 hover:bg-white/8 hover:text-white transition-all duration-200 ease-out text-[13px] hover:translate-x-0.5"
-                  activeClassName="!bg-primary !text-white font-semibold shadow-lg shadow-primary/20 hover:!bg-primary hover:!text-white hover:!translate-x-0"
-                >
-                  <item.icon className="h-[18px] w-[18px] flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                  <span className="transition-all duration-200">{item.name}</span>
-                </NavLink>
-              ))}
+              {group.items.map((item) => {
+                const linkContent = (
+                  <NavLink
+                    to={item.href}
+                    end={item.href === "/dashboard"}
+                    className={cn(
+                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/60 hover:bg-white/8 hover:text-white transition-all duration-200 ease-out text-[13px] hover:translate-x-0.5",
+                      isSidebarCollapsed && "justify-center px-2"
+                    )}
+                    activeClassName="!bg-primary !text-white font-semibold shadow-lg shadow-primary/20 hover:!bg-primary hover:!text-white hover:!translate-x-0"
+                  >
+                    <item.icon className="h-[18px] w-[18px] flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                    <span className={cn(
+                      "transition-all duration-300 whitespace-nowrap",
+                      isSidebarCollapsed && "opacity-0 w-0 overflow-hidden"
+                    )}>
+                      {item.name}
+                    </span>
+                  </NavLink>
+                );
+
+                return isSidebarCollapsed ? (
+                  <Tooltip key={item.name} delayDuration={0}>
+                    <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                    <TooltipContent side="right" className="bg-foreground text-background border-foreground">
+                      {item.name}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <div key={item.name}>{linkContent}</div>
+                );
+              })}
             </div>
           </div>
         ))}

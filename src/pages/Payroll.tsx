@@ -2898,7 +2898,12 @@ const Payroll = () => {
                     return (
                       <TableRow key={idx} className={isIncomplete ? "bg-destructive/5" : ""}>
                         <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{emp.fullName}</TableCell>
+                        <TableCell className="font-medium">
+                          {emp.fullName}
+                          {emp.includesResignMonth && (
+                            <Badge variant="secondary" className="ml-2 text-[10px]">+ THP {monthLabel(emp.includesResignMonth.month)} {emp.includesResignMonth.year}</Badge>
+                          )}
+                        </TableCell>
                         <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
                           {emp.bankAccountNumber || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>

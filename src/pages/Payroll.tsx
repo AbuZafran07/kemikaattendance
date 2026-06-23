@@ -2982,7 +2982,7 @@ const Payroll = () => {
                         <TableCell className="text-center">
                           {bankCompanyConfig && (
                             <Badge variant={emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "secondary" : "outline"} className="text-[10px]">
-                              {emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "OBU" : "IBU"}
+                              {emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "IBU" : "OBU"}
                             </Badge>
                           )}
                         </TableCell>

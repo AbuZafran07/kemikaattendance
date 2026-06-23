@@ -30,6 +30,7 @@ import {
   Trash2,
   ArrowLeft,
   Settings2,
+  PanelLeft,
 } from "lucide-react";
 import HRDocumentModal from "@/components/HRDocumentModal";
 import HRReferenceChips from "@/components/HRReferenceChips";
@@ -46,9 +47,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { useHRAssistant } from "@/hooks/useHRAssistant";
+import { cn } from "@/lib/utils";
+
+
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -118,8 +128,23 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [isHRPanelOpen, setIsHRPanelOpen] = useState(false);
   const [isHRMobileOpen, setIsHRMobileOpen] = useState(false);
   const [isHRDocsOpen, setIsHRDocsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("kemika:sidebarCollapsed") === "true";
+  });
   const { hrMessages, hrInput, setHrInput, hrLoading, hrMessagesEndRef, sendHRMessage, clearMessages } = useHRAssistant();
   const navigationGroups = buildNavigationGroups(t);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("kemika:sidebarCollapsed", String(next));
+      }
+      return next;
+    });
+  };
+
 
   // Fetch signed photo URL
   useEffect(() => {
@@ -217,40 +242,85 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="flex flex-col h-full bg-[hsl(161,80%,14%)] text-white">
-      {/* Navigation - no header */}
+      {/* Collapse toggle (desktop only) */}
+      {!mobile && (
+        <div className={cn(
+          "flex items-center transition-all duration-300",
+          isSidebarCollapsed ? "justify-center py-3 px-2" : "justify-end py-2 px-3"
+        )}>
+          <button
+            onClick={toggleSidebar}
+            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex items-center justify-center rounded-md hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+            style={{ width: 28, height: 28 }}
+          >
+            <PanelLeft className={cn("h-4 w-4 transition-transform duration-300", isSidebarCollapsed && "rotate-180")} />
+          </button>
+        </div>
+      )}
+
+      {/* Navigation */}
+
       <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
         {navigationGroups.map((group) => (
           <div key={group.label}>
-            <p className="px-3 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/35 uppercase select-none">
+            <p className={cn(
+              "px-3 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/35 uppercase select-none transition-opacity duration-300",
+              isSidebarCollapsed && "opacity-0 h-0 mb-0 overflow-hidden"
+            )}>
               {group.label}
             </p>
             <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavLink
-                  key={item.name}
-                  to={item.href}
-                  end={item.href === "/dashboard"}
-                  className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/60 hover:bg-white/8 hover:text-white transition-all duration-200 ease-out text-[13px] hover:translate-x-0.5"
-                  activeClassName="!bg-primary !text-white font-semibold shadow-lg shadow-primary/20 hover:!bg-primary hover:!text-white hover:!translate-x-0"
-                >
-                  <item.icon className="h-[18px] w-[18px] flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                  <span className="transition-all duration-200">{item.name}</span>
-                </NavLink>
-              ))}
+              {group.items.map((item) => {
+                const linkContent = (
+                  <NavLink
+                    to={item.href}
+                    end={item.href === "/dashboard"}
+                    className={cn(
+                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/60 hover:bg-white/8 hover:text-white transition-all duration-200 ease-out text-[13px] hover:translate-x-0.5",
+                      isSidebarCollapsed && "justify-center px-2"
+                    )}
+                    activeClassName="!bg-primary !text-white font-semibold shadow-lg shadow-primary/20 hover:!bg-primary hover:!text-white hover:!translate-x-0"
+                  >
+                    <item.icon className="h-[18px] w-[18px] flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                    <span className={cn(
+                      "transition-all duration-300 whitespace-nowrap",
+                      isSidebarCollapsed && "opacity-0 w-0 overflow-hidden"
+                    )}>
+                      {item.name}
+                    </span>
+                  </NavLink>
+                );
+
+                return isSidebarCollapsed ? (
+                  <Tooltip key={item.name} delayDuration={0}>
+                    <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                    <TooltipContent side="right" className="bg-foreground text-background border-foreground">
+                      {item.name}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <div key={item.name}>{linkContent}</div>
+                );
+              })}
             </div>
           </div>
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-white/8">
+      <div className={cn(
+        "p-3 border-t border-white/8 transition-opacity duration-300",
+        isSidebarCollapsed && "opacity-0 h-0 p-0 overflow-hidden"
+      )}>
         <p className="text-[9px] text-white/25 text-center tracking-wide">© 2026 PT. Kemika Karya Pratama</p>
       </div>
     </div>
   );
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <TooltipProvider delayDuration={0}>
+      <div className="flex flex-col h-screen bg-background">
       {/* Marquee Banner */}
       <MarqueeBanner />
       {/* Full-width Top Header (desktop) */}
@@ -358,7 +428,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Body: Sidebar + Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:block w-[250px] flex-shrink-0">
+        <aside
+          className={cn(
+            "hidden lg:block flex-shrink-0 transition-all duration-300",
+            isSidebarCollapsed ? "w-[72px]" : "w-[250px]"
+          )}
+        >
           <Sidebar />
         </aside>
 
@@ -680,6 +755,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       <HRDocumentModal isOpen={isHRDocsOpen} onClose={() => setIsHRDocsOpen(false)} />
     </div>
+    </TooltipProvider>
   );
 };
 

@@ -311,11 +311,12 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (err) {
-    console.error("Scheduled backup failed:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Scheduled backup failed:", message);
 
-    await notifyAdmins(supabase, false, err.message || "Unknown error");
+    await notifyAdmins(supabase, false, message || "Unknown error");
 
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });

@@ -309,7 +309,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-white/8">
+      <div className={cn(
+        "p-3 border-t border-white/8 transition-opacity duration-300",
+        isSidebarCollapsed && "opacity-0 h-0 p-0 overflow-hidden"
+      )}>
         <p className="text-[9px] text-white/25 text-center tracking-wide">© 2026 PT. Kemika Karya Pratama</p>
       </div>
     </div>

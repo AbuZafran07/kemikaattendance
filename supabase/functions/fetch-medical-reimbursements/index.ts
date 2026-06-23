@@ -214,6 +214,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Widen upstream window ±30 days agar klaim yang DIAJUKAN dalam periode tapi
+    // baru DI-APPROVE setelah cut-off tetap terambil. Filter periode tepat
+    // (berdasarkan submitted_at) dilakukan lokal di bawah.
+    const widenMs = 30 * 86400000;
+    const upstreamStart = new Date(startMs - widenMs).toISOString().slice(0, 10);
+    const upstreamEnd = new Date(endMs + widenMs).toISOString().slice(0, 10);
+
     // Call Budget Expense (chunk by 500 — upstream limit)
     const chunks: { email: string; full_name: string }[][] = [];
     for (let i = 0; i < empPayload.length; i += 500) {
@@ -246,8 +253,8 @@ Deno.serve(async (req) => {
           "Origin": "https://kemikaattendance.lovable.app",
         },
         body: JSON.stringify({
-          start_date,
-          end_date,
+          start_date: upstreamStart,
+          end_date: upstreamEnd,
           employees: chunk,
         }),
       }).catch((error) => {
@@ -306,10 +313,20 @@ Deno.serve(async (req) => {
     let unmatched = 0;
 
     for (const r of allResults) {
-      // FILTER: hanya hitung klaim ber-status 'approved'.
+      // FILTER: status 'approved' DAN submitted_at berada di periode payroll (start..end).
       // Klaim 'paid' sudah dibayarkan terpisah (jangan double-bayar lewat payroll).
-      // Klaim 'review_finance' belum final.
-      const approvedClaims = (r.claims || []).filter((c) => c.status === "approved");
+      // Klaim 'review_finance' belum final. Filter submitted_at memastikan klaim
+      // yang DIAJUKAN di periode ini tetap masuk meski approval-nya setelah cut-off.
+      const periodStartMs = startMs;
+      const periodEndMs = endMs + 86400000 - 1; // inclusive end-of-day
+      const approvedClaims = (r.claims || []).filter((c) => {
+        if (c.status !== "approved") return false;
+        const subRaw = c.submitted_at || c.approved_at;
+        if (!subRaw) return false;
+        const subMs = Date.parse(subRaw);
+        if (!Number.isFinite(subMs)) return false;
+        return subMs >= periodStartMs && subMs <= periodEndMs;
+      });
       const approvedTotal = approvedClaims.reduce(
         (s, c) => s + (Number(c.amount) || 0),
         0,

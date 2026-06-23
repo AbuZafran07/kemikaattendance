@@ -2890,6 +2890,55 @@ const Payroll = () => {
               </div>
             )}
 
+            {bankPreviewData.some(e => e.includesResignMonth) && (() => {
+              const merged = bankPreviewData.filter(e => e.includesResignMonth);
+              const totalBase = merged.reduce((s, e) => s + Math.round(e.baseAmount), 0);
+              const totalResign = merged.reduce((s, e) => s + Math.round(e.includesResignMonth!.amount), 0);
+              return (
+                <div className="text-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-amber-900 dark:text-amber-200">
+                        Rekonsiliasi THP Gabungan ({monthLabel(selectedMonth)} {selectedYear} + {monthLabel(merged[0].includesResignMonth!.month)} {merged[0].includesResignMonth!.year})
+                      </p>
+                      <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                        THP karyawan resign untuk bulan berikutnya digabung ke transfer bulan ini agar sekali kirim.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-amber-200 dark:border-amber-900 bg-background/60 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Karyawan</TableHead>
+                          <TableHead className="text-right">THP {monthLabel(selectedMonth)}</TableHead>
+                          <TableHead className="text-right">THP {monthLabel(merged[0].includesResignMonth!.month)} (prorata)</TableHead>
+                          <TableHead className="text-right">Total Transfer</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {merged.map((e) => (
+                          <TableRow key={`recon-${e.nik}`}>
+                            <TableCell className="font-medium">{e.fullName}</TableCell>
+                            <TableCell className="text-right">{formatRupiah(Math.round(e.baseAmount))}</TableCell>
+                            <TableCell className="text-right text-amber-700 dark:text-amber-300">+ {formatRupiah(Math.round(e.includesResignMonth!.amount))}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatRupiah(Math.round(e.amount))}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-amber-100/60 dark:bg-amber-950/50">
+                          <TableCell className="font-semibold">Subtotal</TableCell>
+                          <TableCell className="text-right font-semibold">{formatRupiah(totalBase)}</TableCell>
+                          <TableCell className="text-right font-semibold text-amber-700 dark:text-amber-300">+ {formatRupiah(totalResign)}</TableCell>
+                          <TableCell className="text-right font-bold">{formatRupiah(totalBase + totalResign)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="flex-1 overflow-auto min-h-0">
               <Table>
                 <TableHeader>

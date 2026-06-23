@@ -1979,6 +1979,9 @@ const Payroll = () => {
                   <DropdownMenuItem onClick={handleOpenBankPreview} disabled={loadingBankPreview} className="gap-2">
                     <Landmark className="h-4 w-4" /> {t("payrollPage.actions.ePayrollBank")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleOpenFinalSettlementBankPreview} disabled={loadingFinalSettlementBank} className="gap-2">
+                    <Landmark className="h-4 w-4" /> e-Payroll Final Settlement
+                  </DropdownMenuItem>
                   {hasIdulFitriInPeriod && (
                     <>
                       <DropdownMenuSeparator />

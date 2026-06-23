@@ -1197,6 +1197,15 @@ const Employees = () => {
                         {t("employeesPage.editDialog.resignDateHint")}
                       </p>
                     )}
+                    <Label htmlFor="edit_resign_notes" className="pt-1">Keterangan Resign</Label>
+                    <Textarea
+                      id="edit_resign_notes"
+                      value={editFormData.resign_notes}
+                      onChange={(e) => setEditFormData({ ...editFormData, resign_notes: e.target.value })}
+                      placeholder="Contoh: Mengundurkan diri, habis kontrak, PHK, pensiun, dll."
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground">Opsional. Catatan akan tampil di detail karyawan.</p>
                   </div>
                 )}
                 <div className="space-y-2">

@@ -56,6 +56,8 @@ import {
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { useHRAssistant } from "@/hooks/useHRAssistant";
+import { cn } from "@/lib/utils";
+
 
 
 interface DashboardLayoutProps {

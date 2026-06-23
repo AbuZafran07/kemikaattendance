@@ -1624,7 +1624,7 @@ const Payroll = () => {
 
   // ── e-Payroll Bank Preview ──
   const [showBankPreview, setShowBankPreview] = useState(false);
-  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number; includesResignMonth?: { month: number; year: number; amount: number } | null }[]>([]);
+  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; baseAmount: number; nik: string; email: string; bankName: string; seqNumber: number; includesResignMonth?: { month: number; year: number; amount: number } | null }[]>([]);
   const [bankCompanyConfig, setBankCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
   const [exportingBankPayroll, setExportingBankPayroll] = useState(false);
   const [loadingBankPreview, setLoadingBankPreview] = useState(false);
@@ -1662,10 +1662,12 @@ const Payroll = () => {
 
       const employees = payrollData.map((item, idx) => {
         const profile = profileMap.get(item.user_id);
+        const baseAmt = item.take_home_pay - (item.thr || 0) - (item.tunjangan_perjalanan_dinas || 0);
         return {
           bankAccountNumber: profile?.bank_account_number || "",
           fullName: profile?.full_name || item.employee_name || "-",
-          amount: item.take_home_pay - (item.thr || 0) - (item.tunjangan_perjalanan_dinas || 0),
+          amount: baseAmt,
+          baseAmount: baseAmt,
           nik: profile?.nik || item.nik || "",
           email: profile?.email || "",
           bankName: profile?.bank_name || "",
@@ -1726,6 +1728,7 @@ const Payroll = () => {
                 bankAccountNumber: profile.bank_account_number || "",
                 fullName: profile.full_name || "-",
                 amount: extraAmt,
+                baseAmount: 0,
                 nik: profile.nik || "",
                 email: profile.email || "",
                 bankName: profile.bank_name || "",
@@ -2887,6 +2890,55 @@ const Payroll = () => {
               </div>
             )}
 
+            {bankPreviewData.some(e => e.includesResignMonth) && (() => {
+              const merged = bankPreviewData.filter(e => e.includesResignMonth);
+              const totalBase = merged.reduce((s, e) => s + Math.round(e.baseAmount), 0);
+              const totalResign = merged.reduce((s, e) => s + Math.round(e.includesResignMonth!.amount), 0);
+              return (
+                <div className="text-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-amber-900 dark:text-amber-200">
+                        Rekonsiliasi THP Gabungan ({monthLabel(selectedMonth)} {selectedYear} + {monthLabel(merged[0].includesResignMonth!.month)} {merged[0].includesResignMonth!.year})
+                      </p>
+                      <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                        THP karyawan resign untuk bulan berikutnya digabung ke transfer bulan ini agar sekali kirim.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-amber-200 dark:border-amber-900 bg-background/60 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Karyawan</TableHead>
+                          <TableHead className="text-right">THP {monthLabel(selectedMonth)}</TableHead>
+                          <TableHead className="text-right">THP {monthLabel(merged[0].includesResignMonth!.month)} (prorata)</TableHead>
+                          <TableHead className="text-right">Total Transfer</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {merged.map((e) => (
+                          <TableRow key={`recon-${e.nik}`}>
+                            <TableCell className="font-medium">{e.fullName}</TableCell>
+                            <TableCell className="text-right">{formatRupiah(Math.round(e.baseAmount))}</TableCell>
+                            <TableCell className="text-right text-amber-700 dark:text-amber-300">+ {formatRupiah(Math.round(e.includesResignMonth!.amount))}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatRupiah(Math.round(e.amount))}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-amber-100/60 dark:bg-amber-950/50">
+                          <TableCell className="font-semibold">Subtotal</TableCell>
+                          <TableCell className="text-right font-semibold">{formatRupiah(totalBase)}</TableCell>
+                          <TableCell className="text-right font-semibold text-amber-700 dark:text-amber-300">+ {formatRupiah(totalResign)}</TableCell>
+                          <TableCell className="text-right font-bold">{formatRupiah(totalBase + totalResign)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="flex-1 overflow-auto min-h-0">
               <Table>
                 <TableHeader>
@@ -2919,7 +2971,14 @@ const Payroll = () => {
                           {emp.bankName || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
-                        <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatRupiah(Math.round(emp.amount))}
+                          {emp.includesResignMonth && (
+                            <div className="text-[10px] text-muted-foreground font-normal mt-0.5">
+                              {formatRupiah(Math.round(emp.baseAmount))} + {formatRupiah(Math.round(emp.includesResignMonth.amount))}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-center">
                           {bankCompanyConfig && (
                             <Badge variant={emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "secondary" : "outline"} className="text-[10px]">

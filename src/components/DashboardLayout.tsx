@@ -264,7 +264,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
         {navigationGroups.map((group) => (
           <div key={group.label}>
-            <p className="px-3 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/35 uppercase select-none">
+            <p className={cn(
+              "px-3 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/35 uppercase select-none transition-opacity duration-300",
+              isSidebarCollapsed && "opacity-0 h-0 mb-0 overflow-hidden"
+            )}>
               {group.label}
             </p>
             <div className="space-y-0.5">

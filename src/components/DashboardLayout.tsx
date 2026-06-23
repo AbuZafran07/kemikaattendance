@@ -319,7 +319,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <TooltipProvider delayDuration={0}>
+      <div className="flex flex-col h-screen bg-background">
       {/* Marquee Banner */}
       <MarqueeBanner />
       {/* Full-width Top Header (desktop) */}

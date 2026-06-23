@@ -2865,6 +2865,89 @@ const Payroll = () => {
           </DialogContent>
         </Dialog>
 
+        {/* Final Settlement Bank Preview Dialog */}
+        <Dialog open={showFinalSettlementBank} onOpenChange={setShowFinalSettlementBank}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Landmark className="h-5 w-5" /> e-Payroll Final Settlement
+              </DialogTitle>
+              <DialogDescription>
+                Transfer pesangon/uang pisah & pelunasan pinjaman untuk karyawan resign. Slip & e-Payroll bulanan tidak terpengaruh.
+              </DialogDescription>
+            </DialogHeader>
+
+            {finalSettlementIncomplete.length > 0 && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm text-destructive">
+                    {finalSettlementIncomplete.length} karyawan belum memiliki rekening bank
+                  </p>
+                  <ul className="text-xs text-destructive/80 mt-1 list-disc list-inside">
+                    {finalSettlementIncomplete.map((e) => (
+                      <li key={e.settlementId}>{e.fullName}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {finalSettlementCompanyConfig && (
+              <div className="flex items-center gap-4 text-sm bg-muted/50 rounded-lg p-3">
+                <div><span className="text-muted-foreground">Rekening Pengirim:</span> <span className="font-medium">{finalSettlementCompanyConfig.account_number}</span></div>
+                <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{finalSettlementCompanyConfig.bank_name}</span></div>
+                <div><span className="text-muted-foreground">Total:</span> <span className="font-bold">{formatRupiah(finalSettlementBankData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-auto min-h-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">No</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Rekening</TableHead>
+                    <TableHead>Bank</TableHead>
+                    <TableHead>NIK</TableHead>
+                    <TableHead className="text-right">Net Settlement</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {finalSettlementBankData.map((emp, idx) => {
+                    const isIncomplete = !emp.bankAccountNumber || !emp.bankName;
+                    return (
+                      <TableRow key={emp.settlementId} className={isIncomplete ? "bg-destructive/5" : ""}>
+                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{emp.fullName}</TableCell>
+                        <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
+                          {emp.bankAccountNumber || "—"}
+                        </TableCell>
+                        <TableCell className={!emp.bankName ? "text-destructive font-medium" : ""}>
+                          {emp.bankName || "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
+                        <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t">
+              <p className="text-xs text-muted-foreground">{finalSettlementBankData.length} karyawan · setelah export, status → paid</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowFinalSettlementBank(false)}>Batal</Button>
+                <Button onClick={handleConfirmFinalSettlementBankExport} disabled={exportingFinalSettlementBank || finalSettlementIncomplete.length > 0} className="gap-2">
+                  {exportingFinalSettlementBank ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Download CSV
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* THR Bank Preview Dialog */}
         <Dialog open={showThrBankPreview} onOpenChange={setShowThrBankPreview}>
           <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">

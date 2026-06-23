@@ -1542,6 +1542,15 @@ const Employees = () => {
           onSuccess={fetchEmployees}
         />
 
+        <FinalSettlementDialog
+          open={isFinalSettlementOpen}
+          onOpenChange={(open) => {
+            setIsFinalSettlementOpen(open);
+            if (!open) setFinalSettlementEmployee(null);
+          }}
+          employee={finalSettlementEmployee}
+        />
+
         {/* Dialog konfirmasi: Riwayat perubahan gaji & tunjangan */}
         <Dialog open={salaryHistoryDialogOpen} onOpenChange={setSalaryHistoryDialogOpen}>
           <DialogContent className="max-w-lg">

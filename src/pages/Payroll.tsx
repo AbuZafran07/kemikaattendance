@@ -1728,6 +1728,7 @@ const Payroll = () => {
                 bankAccountNumber: profile.bank_account_number || "",
                 fullName: profile.full_name || "-",
                 amount: extraAmt,
+                baseAmount: 0,
                 nik: profile.nik || "",
                 email: profile.email || "",
                 bankName: profile.bank_name || "",

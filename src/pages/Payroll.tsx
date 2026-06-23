@@ -1624,7 +1624,7 @@ const Payroll = () => {
 
   // ── e-Payroll Bank Preview ──
   const [showBankPreview, setShowBankPreview] = useState(false);
-  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number }[]>([]);
+  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number; includesResignMonth?: { month: number; year: number; amount: number } | null }[]>([]);
   const [bankCompanyConfig, setBankCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
   const [exportingBankPayroll, setExportingBankPayroll] = useState(false);
   const [loadingBankPreview, setLoadingBankPreview] = useState(false);

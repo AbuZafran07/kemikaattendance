@@ -10,7 +10,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Wallet, Info, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { parseLocalDate } from "@/lib/dateUtils";
+const parseLocalDate = (s: string): Date => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
 import { getCutoffPeriodBounds } from "@/lib/tenureCalculation";
 import { format } from "date-fns";
 

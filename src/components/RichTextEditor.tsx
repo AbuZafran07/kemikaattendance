@@ -202,7 +202,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         ref={(el) => {
           (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
           if (el && !el.innerHTML && value) {
-            el.innerHTML = value;
+            el.innerHTML = DOMPurify.sanitize(value);
             lastHtmlRef.current = value;
           }
         }}

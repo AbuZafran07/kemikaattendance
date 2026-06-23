@@ -209,10 +209,10 @@ export const EmployeeDetailDialog = ({
                     <p className="text-xs font-semibold text-muted-foreground">📝 Catatan</p>
                     <div className="grid grid-cols-1 gap-2">
                       {employee.status === "Resigned" && employee.resign_notes && (
-                        <InfoItem icon={FileText} label="Keterangan Resign" value={employee.resign_notes} />
+                        <InfoItem icon={FileText} label="Keterangan Resign" value={employee.resign_notes} truncate={false} />
                       )}
                       {employee.notes && (
-                        <InfoItem icon={FileText} label="Keterangan Lainnya" value={employee.notes} />
+                        <InfoItem icon={FileText} label="Keterangan Lainnya" value={employee.notes} truncate={false} />
                       )}
                     </div>
                   </div>

@@ -1705,6 +1705,95 @@ const Payroll = () => {
     }
   };
 
+  // ── e-Payroll Final Settlement (resigned employees, separate from monthly payroll) ──
+  const [showFinalSettlementBank, setShowFinalSettlementBank] = useState(false);
+  const [finalSettlementBankData, setFinalSettlementBankData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number; settlementId: string }[]>([]);
+  const [finalSettlementCompanyConfig, setFinalSettlementCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
+  const [loadingFinalSettlementBank, setLoadingFinalSettlementBank] = useState(false);
+  const [exportingFinalSettlementBank, setExportingFinalSettlementBank] = useState(false);
+
+  const handleOpenFinalSettlementBankPreview = async () => {
+    setLoadingFinalSettlementBank(true);
+    try {
+      const { data: settingsData } = await supabase
+        .from("system_settings").select("value").eq("key", "company_bank_config").single();
+      const companyConfig = settingsData?.value as any;
+      if (!companyConfig?.account_number) {
+        toast({ title: "Konfigurasi bank belum lengkap", description: "Atur rekening perusahaan di Settings → Company Bank.", variant: "destructive" });
+        return;
+      }
+      setFinalSettlementCompanyConfig(companyConfig);
+
+      const { data: settlements, error } = await (supabase as any)
+        .from("final_settlements")
+        .select("id, user_id, net_amount, status, pesangon_amount, loan_payoff")
+        .eq("status", "pending")
+        .gt("net_amount", 0);
+      if (error) throw error;
+      if (!settlements || settlements.length === 0) {
+        toast({ title: "Tidak ada Final Settlement", description: "Belum ada karyawan resign dengan settlement pending." });
+        return;
+      }
+
+      const userIds = settlements.map((s: any) => s.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles").select("id, bank_account_number, bank_name, full_name, nik, email").in("id", userIds);
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const employees = settlements.map((s: any, idx: number) => {
+        const profile = profileMap.get(s.user_id);
+        return {
+          bankAccountNumber: profile?.bank_account_number || "",
+          fullName: profile?.full_name || "-",
+          amount: Number(s.net_amount) || 0,
+          nik: profile?.nik || "",
+          email: profile?.email || "",
+          bankName: profile?.bank_name || "",
+          seqNumber: idx + 1,
+          settlementId: s.id,
+        };
+      });
+
+      setFinalSettlementBankData(employees);
+      setShowFinalSettlementBank(true);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingFinalSettlementBank(false);
+    }
+  };
+
+  const finalSettlementIncomplete = finalSettlementBankData.filter(e => !e.bankAccountNumber || !e.bankName);
+
+  const handleConfirmFinalSettlementBankExport = async () => {
+    if (!finalSettlementCompanyConfig) return;
+    setExportingFinalSettlementBank(true);
+    try {
+      const { generateBankPayrollCSV, downloadBankPayrollFile } = await import("@/lib/bankPayrollExport");
+      const csvContent = generateBankPayrollCSV(
+        { companyAccountNumber: finalSettlementCompanyConfig.account_number, companyBankName: finalSettlementCompanyConfig.bank_name },
+        finalSettlementBankData,
+        selectedMonth,
+        selectedYear,
+        'FINAL SETTLEMENT'
+      );
+      downloadBankPayrollFile(csvContent, selectedMonth, selectedYear, 'e-payroll-FinalSettlement');
+
+      // Mark as paid
+      const ids = finalSettlementBankData.map(e => e.settlementId);
+      await (supabase as any).from("final_settlements")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .in("id", ids);
+
+      toast({ title: "Export berhasil", description: "Final Settlement telah ditandai sebagai paid." });
+      setShowFinalSettlementBank(false);
+    } catch (e: any) {
+      toast({ title: "Gagal export", description: e.message, variant: "destructive" });
+    } finally {
+      setExportingFinalSettlementBank(false);
+    }
+  };
+
   // ── e-Payroll THR Bank Preview ──
   const [showThrBankPreview, setShowThrBankPreview] = useState(false);
   const [thrBankPreviewData, setThrBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number }[]>([]);
@@ -1978,6 +2067,9 @@ const Payroll = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleOpenBankPreview} disabled={loadingBankPreview} className="gap-2">
                     <Landmark className="h-4 w-4" /> {t("payrollPage.actions.ePayrollBank")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleOpenFinalSettlementBankPreview} disabled={loadingFinalSettlementBank} className="gap-2">
+                    <Landmark className="h-4 w-4" /> e-Payroll Final Settlement
                   </DropdownMenuItem>
                   {hasIdulFitriInPeriod && (
                     <>
@@ -2767,6 +2859,89 @@ const Payroll = () => {
                 <Button onClick={handleConfirmBankExport} disabled={exportingBankPayroll || bankIncompleteEmployees.length > 0} className="gap-2">
                   {exportingBankPayroll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   {t("payrollPage.bankPreview.download")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Final Settlement Bank Preview Dialog */}
+        <Dialog open={showFinalSettlementBank} onOpenChange={setShowFinalSettlementBank}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Landmark className="h-5 w-5" /> e-Payroll Final Settlement
+              </DialogTitle>
+              <DialogDescription>
+                Transfer pesangon/uang pisah & pelunasan pinjaman untuk karyawan resign. Slip & e-Payroll bulanan tidak terpengaruh.
+              </DialogDescription>
+            </DialogHeader>
+
+            {finalSettlementIncomplete.length > 0 && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm text-destructive">
+                    {finalSettlementIncomplete.length} karyawan belum memiliki rekening bank
+                  </p>
+                  <ul className="text-xs text-destructive/80 mt-1 list-disc list-inside">
+                    {finalSettlementIncomplete.map((e) => (
+                      <li key={e.settlementId}>{e.fullName}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {finalSettlementCompanyConfig && (
+              <div className="flex items-center gap-4 text-sm bg-muted/50 rounded-lg p-3">
+                <div><span className="text-muted-foreground">Rekening Pengirim:</span> <span className="font-medium">{finalSettlementCompanyConfig.account_number}</span></div>
+                <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{finalSettlementCompanyConfig.bank_name}</span></div>
+                <div><span className="text-muted-foreground">Total:</span> <span className="font-bold">{formatRupiah(finalSettlementBankData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-auto min-h-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">No</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Rekening</TableHead>
+                    <TableHead>Bank</TableHead>
+                    <TableHead>NIK</TableHead>
+                    <TableHead className="text-right">Net Settlement</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {finalSettlementBankData.map((emp, idx) => {
+                    const isIncomplete = !emp.bankAccountNumber || !emp.bankName;
+                    return (
+                      <TableRow key={emp.settlementId} className={isIncomplete ? "bg-destructive/5" : ""}>
+                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{emp.fullName}</TableCell>
+                        <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
+                          {emp.bankAccountNumber || "—"}
+                        </TableCell>
+                        <TableCell className={!emp.bankName ? "text-destructive font-medium" : ""}>
+                          {emp.bankName || "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
+                        <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t">
+              <p className="text-xs text-muted-foreground">{finalSettlementBankData.length} karyawan · setelah export, status → paid</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowFinalSettlementBank(false)}>Batal</Button>
+                <Button onClick={handleConfirmFinalSettlementBankExport} disabled={exportingFinalSettlementBank || finalSettlementIncomplete.length > 0} className="gap-2">
+                  {exportingFinalSettlementBank ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Download CSV
                 </Button>
               </div>
             </div>

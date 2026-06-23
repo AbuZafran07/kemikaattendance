@@ -110,33 +110,38 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
       const mergedNotes = breakdown.join(" | ");
 
       const { data: existing } = await supabase
-        .from("payroll_overrides")
-        .select("*")
+        .from("final_settlements" as any)
+        .select("id")
         .eq("user_id", employee.id)
-        .eq("period_month", month)
-        .eq("period_year", year)
         .maybeSingle();
+
+      const { data: { user } } = await supabase.auth.getUser();
 
       const payload: any = {
         user_id: employee.id,
+        resign_date: employee.resign_date,
         period_month: month,
         period_year: year,
-        bonus_lainnya: totalBonus,
-        loan_deduction: totalDeduction,
-        deduction_notes: mergedNotes,
+        pesangon_amount: totalBonus,
+        loan_payoff: totalDeduction,
+        remaining_leave_days: remainingLeaveDays,
+        net_amount: netSettlement,
+        notes: mergedNotes,
+        status: "pending",
+        created_by: user?.id ?? null,
       };
 
-      if (existing?.id) {
-        const { error } = await supabase.from("payroll_overrides").update(payload).eq("id", existing.id);
+      if ((existing as any)?.id) {
+        const { error } = await supabase.from("final_settlements" as any).update(payload).eq("id", (existing as any).id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("payroll_overrides").insert(payload);
+        const { error } = await supabase.from("final_settlements" as any).insert(payload);
         if (error) throw error;
       }
 
       toast({
         title: "Final Settlement tersimpan",
-        description: `Override payroll periode ${MONTHS[month - 1]} ${year} berhasil disimpan. Generate ulang payroll periode tsb untuk menerapkannya.`,
+        description: `Tersimpan terpisah dari payroll bulanan. Buka Payroll → menu export → "e-Payroll Final Settlement" untuk transfer ke bank.`,
       });
       onOpenChange(false);
     } catch (e: any) {
@@ -158,9 +163,10 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
             <Wallet className="h-5 w-5" /> Final Settlement — {employee.full_name}
           </DialogTitle>
           <DialogDescription>
-            Hitung & simpan otomatis ke <b>Payroll Override</b> untuk periode yang dipilih
-            (pesangon/uang pisah dan pelunasan pinjaman). Sisa cuti <b>tidak diuangkan</b> —
-            dipakai sebagai hari kerja s/d tanggal resign.
+            Catatan Final Settlement (pesangon/uang pisah & pelunasan pinjaman) disimpan
+            <b> terpisah dari payroll bulanan</b>. Slip Juni/Juli tetap berisi gaji prorata saja,
+            sementara nilai settlement diekspor lewat <b>e-Payroll Final Settlement</b> di halaman Payroll.
+            Sisa cuti <b>tidak diuangkan</b> — dipakai sebagai hari kerja s/d tanggal resign.
           </DialogDescription>
         </DialogHeader>
 
@@ -262,8 +268,9 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                Setelah disimpan, buka halaman <b>Payroll → {MONTHS[month - 1]} {year}</b> lalu <b>Generate Payroll</b>
-                agar override ini diterapkan ke slip & bank export.
+                Setelah disimpan, buka halaman <b>Payroll</b> → menu <b>Export</b> →
+                <b> e-Payroll Final Settlement</b> untuk men-transfer nilai net ke bank.
+                Slip & e-Payroll bulanan tidak terpengaruh.
               </AlertDescription>
             </Alert>
           </div>

@@ -356,6 +356,60 @@ export type Database = {
         }
         Relationships: []
       }
+      final_settlements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          loan_payoff: number
+          net_amount: number
+          notes: string | null
+          paid_at: string | null
+          period_month: number
+          period_year: number
+          pesangon_amount: number
+          remaining_leave_days: number
+          resign_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          loan_payoff?: number
+          net_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          period_month: number
+          period_year: number
+          pesangon_amount?: number
+          remaining_leave_days?: number
+          resign_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          loan_payoff?: number
+          net_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          period_month?: number
+          period_year?: number
+          pesangon_amount?: number
+          remaining_leave_days?: number
+          resign_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       geocoding_cache: {
         Row: {
           address: string

@@ -1349,6 +1349,17 @@ const Employees = () => {
                     onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="edit_notes">Keterangan Lainnya</Label>
+                  <Textarea
+                    id="edit_notes"
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                    placeholder="Catatan tambahan tentang karyawan..."
+                    rows={2}
+                  />
+                  <p className="text-xs text-muted-foreground">Opsional. Informasi umum yang ingin dicatat di profil.</p>
+                </div>
 
                 {/* Contract & Bank Info Section */}
                 <div className="col-span-2 border-t border-border pt-3 mt-2">

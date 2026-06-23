@@ -203,6 +203,19 @@ export const EmployeeDetailDialog = ({
                 <div className="sm:col-span-2">
                   <InfoItem icon={MapPin} label="Alamat" value={employee.address || "-"} />
                 </div>
+                {(employee.notes || (employee.status === "Resigned" && employee.resign_notes)) && (
+                  <div className="sm:col-span-2 space-y-2 mt-1">
+                    <p className="text-xs font-semibold text-muted-foreground">📝 Catatan</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {employee.status === "Resigned" && employee.resign_notes && (
+                        <InfoItem icon={FileText} label="Keterangan Resign" value={employee.resign_notes} />
+                      )}
+                      {employee.notes && (
+                        <InfoItem icon={FileText} label="Keterangan Lainnya" value={employee.notes} />
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

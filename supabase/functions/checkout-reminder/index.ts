@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     if (profErr) throw profErr;
 
     let sent = 0;
-    const results: Array<{ user_id: string; name: string; sent: boolean }> = [];
+    let failed = 0;
 
     for (const profile of profiles || []) {
       if (!profile.fcm_token) continue;
@@ -173,8 +173,7 @@ Deno.serve(async (req) => {
         `Halo ${profile.full_name}, Anda belum melakukan check-out hari ini. Jangan lupa absen pulang agar tunjangan kehadiran Anda tetap dihitung.`
       );
       const ok = result && (result.success === 1 || result.message_id);
-      if (ok) sent++;
-      results.push({ user_id: profile.id, name: profile.full_name, sent: !!ok });
+      if (ok) sent++; else failed++;
     }
 
     return new Response(
@@ -185,7 +184,7 @@ Deno.serve(async (req) => {
         current_hour_wib: currentHourWib,
         total_pending: attendances.length,
         notifications_sent: sent,
-        results,
+        notifications_failed: failed,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

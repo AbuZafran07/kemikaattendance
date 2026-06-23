@@ -484,7 +484,7 @@ const Employees = () => {
           bank_account_number: result.data.bank_account_number || null,
           join_date: editFormData.join_date || undefined,
           resign_date: editFormData.status === "Resigned" ? editFormData.resign_date : null,
-          resign_notes: editFormData.status === "Resigned" ? (editFormData.resign_notes || null) : null,
+          resign_notes: editFormData.resign_notes || null,
           notes: editFormData.notes || null,
         })
         .eq('id', editingEmployee.id);

@@ -821,11 +821,13 @@ const Payroll = () => {
       const periodStartStr = format(periodStartDate, "yyyy-MM-dd");
       const periodEndStr = format(periodEndDate, "yyyy-MM-dd");
 
-      // Active employees + Resigned employees whose resign_date falls within this cutoff period
+      // Active employees + Resigned employees whose resign_date >= period start
+      // (still worked at least part of this cutoff period — payroll wajib tetap muncul,
+      //  prorate dihitung di calculateProrateFactorWithResign)
       const { data: empsRaw } = await supabase
         .from("profiles")
         .select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled, bpjs_ketenagakerjaan_enabled, join_date, resign_date")
-        .or(`status.eq.Active,and(status.eq.Resigned,resign_date.gte.${periodStartStr},resign_date.lte.${periodEndStr})`);
+        .or(`status.eq.Active,and(status.eq.Resigned,resign_date.gte.${periodStartStr})`);
 
       // Exclude admin users from payroll
       const { data: adminRoles } = await supabase

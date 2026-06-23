@@ -1624,7 +1624,7 @@ const Payroll = () => {
 
   // ── e-Payroll Bank Preview ──
   const [showBankPreview, setShowBankPreview] = useState(false);
-  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number }[]>([]);
+  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number; includesResignMonth?: { month: number; year: number; amount: number } | null }[]>([]);
   const [bankCompanyConfig, setBankCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
   const [exportingBankPayroll, setExportingBankPayroll] = useState(false);
   const [loadingBankPreview, setLoadingBankPreview] = useState(false);
@@ -1670,8 +1670,77 @@ const Payroll = () => {
           email: profile?.email || "",
           bankName: profile?.bank_name || "",
           seqNumber: idx + 1,
+          includesResignMonth: null as { month: number; year: number; amount: number } | null,
         };
       });
+
+      // ── Merge prorated THP of resign-month (next period) for employees with pending Final Settlement ──
+      // Use case: Karyawan resign awal bulan berikutnya → THP prorata bulan resign digabung ke transfer bulan ini.
+      const nextMonth = selectedMonth === 12 ? 1 : selectedMonth + 1;
+      const nextYear = selectedMonth === 12 ? selectedYear + 1 : selectedYear;
+      try {
+        const { data: pendingSettlements } = await (supabase as any)
+          .from("final_settlements")
+          .select("user_id, period_month, period_year")
+          .eq("status", "pending")
+          .eq("period_month", nextMonth)
+          .eq("period_year", nextYear);
+
+        if (pendingSettlements && pendingSettlements.length > 0) {
+          const resignUserIds = pendingSettlements.map((s: any) => s.user_id);
+          const { data: nextPayrolls } = await (supabase as any)
+            .from("payroll")
+            .select("user_id, take_home_pay, thr, tunjangan_perjalanan_dinas")
+            .eq("period_month", nextMonth)
+            .eq("period_year", nextYear)
+            .in("user_id", resignUserIds);
+
+          const missingPayroll: string[] = [];
+          for (const settle of pendingSettlements) {
+            const np = nextPayrolls?.find((p: any) => p.user_id === settle.user_id);
+            const profile = profileMap.get(settle.user_id);
+            const profileName = profile?.full_name || "-";
+            if (!np) {
+              missingPayroll.push(profileName);
+              continue;
+            }
+            const extraAmt = (Number(np.take_home_pay) || 0) - (Number(np.thr) || 0) - (Number(np.tunjangan_perjalanan_dinas) || 0);
+            if (extraAmt <= 0) continue;
+
+            const existingIdx = employees.findIndex(e => e.nik === (profile?.nik || ""));
+            if (existingIdx >= 0) {
+              employees[existingIdx].amount += extraAmt;
+              employees[existingIdx].includesResignMonth = { month: nextMonth, year: nextYear, amount: extraAmt };
+            } else {
+              // Karyawan tidak ada di payroll bulan ini (mis. resign tanpa kerja bulan ini) → tambahkan baris baru
+              if (!profile) continue;
+              employees.push({
+                bankAccountNumber: profile.bank_account_number || "",
+                fullName: profile.full_name || "-",
+                amount: extraAmt,
+                nik: profile.nik || "",
+                email: profile.email || "",
+                bankName: profile.bank_name || "",
+                seqNumber: employees.length + 1,
+                includesResignMonth: { month: nextMonth, year: nextYear, amount: extraAmt },
+              });
+            }
+          }
+
+          if (missingPayroll.length > 0) {
+            toast({
+              title: "Payroll bulan resign belum dibuat",
+              description: `THP bulan ${monthLabel(nextMonth)} ${nextYear} belum di-generate untuk: ${missingPayroll.join(", ")}. Generate payroll periode tsb agar bisa digabung ke transfer ini.`,
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (mergeErr) {
+        console.warn("Failed to merge resign-month THP:", mergeErr);
+      }
+
+      // Re-number sequence
+      employees.forEach((e, i) => { e.seqNumber = i + 1; });
 
       setBankPreviewData(employees);
       setShowBankPreview(true);
@@ -2829,7 +2898,12 @@ const Payroll = () => {
                     return (
                       <TableRow key={idx} className={isIncomplete ? "bg-destructive/5" : ""}>
                         <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{emp.fullName}</TableCell>
+                        <TableCell className="font-medium">
+                          {emp.fullName}
+                          {emp.includesResignMonth && (
+                            <Badge variant="secondary" className="ml-2 text-[10px]">+ THP {monthLabel(emp.includesResignMonth.month)} {emp.includesResignMonth.year}</Badge>
+                          )}
+                        </TableCell>
                         <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
                           {emp.bankAccountNumber || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>

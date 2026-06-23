@@ -755,6 +755,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       <HRDocumentModal isOpen={isHRDocsOpen} onClose={() => setIsHRDocsOpen(false)} />
     </div>
+    </TooltipProvider>
   );
 };
 

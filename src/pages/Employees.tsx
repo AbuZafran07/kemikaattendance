@@ -582,6 +582,8 @@ const Employees = () => {
       bank_account_number: employee.bank_account_number || "",
       join_date: employee.join_date || "",
       resign_date: employee.resign_date || "",
+      resign_notes: employee.resign_notes || "",
+      notes: employee.notes || "",
       leave_active: (employee.annual_leave_quota ?? 12) > 0,
       annual_leave_quota: String(employee.annual_leave_quota ?? 12),
       remaining_leave: String(employee.remaining_leave ?? 12),

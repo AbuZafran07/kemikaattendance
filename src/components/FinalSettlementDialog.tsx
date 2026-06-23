@@ -268,8 +268,9 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                Setelah disimpan, buka halaman <b>Payroll → {MONTHS[month - 1]} {year}</b> lalu <b>Generate Payroll</b>
-                agar override ini diterapkan ke slip & bank export.
+                Setelah disimpan, buka halaman <b>Payroll</b> → menu <b>Export</b> →
+                <b> e-Payroll Final Settlement</b> untuk men-transfer nilai net ke bank.
+                Slip & e-Payroll bulanan tidak terpengaruh.
               </AlertDescription>
             </Alert>
           </div>

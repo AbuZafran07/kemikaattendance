@@ -44,6 +44,7 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
   const [pesangonAmount, setPesangonAmount] = useState<number>(0);
   const [loanPayoff, setLoanPayoff] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
+  const [proratedTHP, setProratedTHP] = useState<number | null>(null);
 
   // Period bounds (informational)
   const bounds = useMemo(() => getCutoffPeriodBounds(month, year, cutoffDay), [month, year, cutoffDay]);
@@ -86,6 +87,22 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
       }
     })();
   }, [open, employee?.id]);
+
+  // Fetch prorated THP for the selected resign-month payroll (informational)
+  useEffect(() => {
+    if (!open || !employee?.id) { setProratedTHP(null); return; }
+    (async () => {
+      const { data: period } = await supabase
+        .from("payroll_periods").select("id").eq("month", month).eq("year", year).maybeSingle();
+      if (!period?.id) { setProratedTHP(null); return; }
+      const { data: pr } = await supabase
+        .from("payroll").select("take_home_pay, thr, tunjangan_perjalanan_dinas")
+        .eq("period_id", period.id).eq("user_id", employee.id).maybeSingle();
+      if (!pr) { setProratedTHP(null); return; }
+      const extra = (Number(pr.take_home_pay) || 0) - (Number(pr.thr) || 0) - (Number((pr as any).tunjangan_perjalanan_dinas) || 0);
+      setProratedTHP(Math.max(0, extra));
+    })();
+  }, [open, employee?.id, month, year]);
 
   const totalBonus = Math.max(0, pesangonAmount || 0);
   const totalDeduction = Math.max(0, loanPayoff || 0);
@@ -260,8 +277,15 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
               <div className="flex justify-between text-destructive"><span>Pelunasan pinjaman</span><span>− {formatRp(totalDeduction)}</span></div>
               <Separator className="my-1" />
               <div className="flex justify-between font-semibold text-base"><span>Net Final Settlement</span><span>{formatRp(netSettlement)}</span></div>
+              <Separator className="my-1" />
+              <div className="flex justify-between text-sm">
+                <span>THP prorata {MONTHS[month - 1]} {year} (otomatis dari payroll)</span>
+                <span className={proratedTHP === null ? "text-muted-foreground italic" : "font-medium"}>
+                  {proratedTHP === null ? "belum di-generate" : formatRp(proratedTHP)}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground pt-1">
-                * Belum termasuk gaji prorata <b>{format(bounds.start, "dd MMM")} – {resignDate ? format(resignDate, "dd MMM") : "-"}</b> yang otomatis muncul saat generate payroll.
+                * Gaji prorata <b>{format(bounds.start, "dd MMM")} – {resignDate ? format(resignDate, "dd MMM") : "-"}</b> akan otomatis digabung ke <b>e-Payroll Bank bulan sebelumnya</b> (kolom THP merge resign-month).
               </p>
             </div>
 

@@ -1688,12 +1688,20 @@ const Payroll = () => {
 
         if (pendingSettlements && pendingSettlements.length > 0) {
           const resignUserIds = pendingSettlements.map((s: any) => s.user_id);
-          const { data: nextPayrolls } = await (supabase as any)
-            .from("payroll")
-            .select("user_id, take_home_pay, thr, tunjangan_perjalanan_dinas")
-            .eq("period_month", nextMonth)
-            .eq("period_year", nextYear)
-            .in("user_id", resignUserIds);
+          // payroll table uses period_id (FK → payroll_periods); resolve it first
+          const { data: nextPeriod } = await supabase
+            .from("payroll_periods")
+            .select("id")
+            .eq("month", nextMonth)
+            .eq("year", nextYear)
+            .maybeSingle();
+          const { data: nextPayrolls } = nextPeriod?.id
+            ? await (supabase as any)
+                .from("payroll")
+                .select("user_id, take_home_pay, thr, tunjangan_perjalanan_dinas")
+                .eq("period_id", nextPeriod.id)
+                .in("user_id", resignUserIds)
+            : { data: [] as any[] };
 
           const missingPayroll: string[] = [];
           for (const settle of pendingSettlements) {

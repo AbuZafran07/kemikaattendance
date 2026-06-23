@@ -1688,7 +1688,7 @@ const Payroll = () => {
 
         if (pendingSettlements && pendingSettlements.length > 0) {
           const resignUserIds = pendingSettlements.map((s: any) => s.user_id);
-          const { data: nextPayrolls } = await supabase
+          const { data: nextPayrolls } = await (supabase as any)
             .from("payroll")
             .select("user_id, take_home_pay, thr, tunjangan_perjalanan_dinas")
             .eq("period_month", nextMonth)

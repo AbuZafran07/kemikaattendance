@@ -1064,12 +1064,14 @@ export type Database = {
           jabatan: string
           join_date: string
           nik: string
+          notes: string | null
           npwp: string | null
           phone: string | null
           photo_url: string | null
           ptkp_status: string | null
           remaining_leave: number | null
           resign_date: string | null
+          resign_notes: string | null
           status: string | null
           tunjangan_jabatan: number | null
           tunjangan_komunikasi: number | null
@@ -1095,12 +1097,14 @@ export type Database = {
           jabatan: string
           join_date?: string
           nik: string
+          notes?: string | null
           npwp?: string | null
           phone?: string | null
           photo_url?: string | null
           ptkp_status?: string | null
           remaining_leave?: number | null
           resign_date?: string | null
+          resign_notes?: string | null
           status?: string | null
           tunjangan_jabatan?: number | null
           tunjangan_komunikasi?: number | null
@@ -1126,12 +1130,14 @@ export type Database = {
           jabatan?: string
           join_date?: string
           nik?: string
+          notes?: string | null
           npwp?: string | null
           phone?: string | null
           photo_url?: string | null
           ptkp_status?: string | null
           remaining_leave?: number | null
           resign_date?: string | null
+          resign_notes?: string | null
           status?: string | null
           tunjangan_jabatan?: number | null
           tunjangan_komunikasi?: number | null

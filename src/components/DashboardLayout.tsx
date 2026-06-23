@@ -30,6 +30,7 @@ import {
   Trash2,
   ArrowLeft,
   Settings2,
+  PanelLeft,
 } from "lucide-react";
 import HRDocumentModal from "@/components/HRDocumentModal";
 import HRReferenceChips from "@/components/HRReferenceChips";
@@ -46,9 +47,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { useHRAssistant } from "@/hooks/useHRAssistant";
+
 
 interface DashboardLayoutProps {
   children: ReactNode;

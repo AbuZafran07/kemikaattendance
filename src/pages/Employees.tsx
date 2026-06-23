@@ -1759,7 +1759,18 @@ const Employees = () => {
                                   </>
                                 )}
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              {employee.status === "Resigned" && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setFinalSettlementEmployee(employee);
+                                    setIsFinalSettlementOpen(true);
+                                  }}
+                                >
+                                  <Wallet className="h-4 w-4 mr-2" />
+                                  Final Settlement
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => handleDelete(employee.id)}
                               >

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import {
   User, Mail, Phone, MapPin, Calendar, Briefcase, Building2,
-  Pencil, Wallet, CreditCard, Laptop, Shield, Clock, DollarSign,
+  Pencil, Wallet, CreditCard, Laptop, Shield, Clock, DollarSign, FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatAttendanceStatus } from "@/lib/statusUtils";

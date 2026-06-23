@@ -214,6 +214,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Widen upstream window ±30 days agar klaim yang DIAJUKAN dalam periode tapi
+    // baru DI-APPROVE setelah cut-off tetap terambil. Filter periode tepat
+    // (berdasarkan submitted_at) dilakukan lokal di bawah.
+    const widenMs = 30 * 86400000;
+    const upstreamStart = new Date(startMs - widenMs).toISOString().slice(0, 10);
+    const upstreamEnd = new Date(endMs + widenMs).toISOString().slice(0, 10);
+
     // Call Budget Expense (chunk by 500 — upstream limit)
     const chunks: { email: string; full_name: string }[][] = [];
     for (let i = 0; i < empPayload.length; i += 500) {
@@ -246,8 +253,8 @@ Deno.serve(async (req) => {
           "Origin": "https://kemikaattendance.lovable.app",
         },
         body: JSON.stringify({
-          start_date,
-          end_date,
+          start_date: upstreamStart,
+          end_date: upstreamEnd,
           employees: chunk,
         }),
       }).catch((error) => {

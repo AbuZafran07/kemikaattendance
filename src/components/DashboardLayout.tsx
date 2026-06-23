@@ -427,7 +427,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Body: Sidebar + Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:block w-[250px] flex-shrink-0">
+        <aside
+          className={cn(
+            "hidden lg:block flex-shrink-0 transition-all duration-300",
+            isSidebarCollapsed ? "w-[72px]" : "w-[250px]"
+          )}
+        >
           <Sidebar />
         </aside>
 

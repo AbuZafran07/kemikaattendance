@@ -88,6 +88,22 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
     })();
   }, [open, employee?.id]);
 
+  // Fetch prorated THP for the selected resign-month payroll (informational)
+  useEffect(() => {
+    if (!open || !employee?.id) { setProratedTHP(null); return; }
+    (async () => {
+      const { data: period } = await supabase
+        .from("payroll_periods").select("id").eq("month", month).eq("year", year).maybeSingle();
+      if (!period?.id) { setProratedTHP(null); return; }
+      const { data: pr } = await supabase
+        .from("payroll").select("take_home_pay, thr, tunjangan_perjalanan_dinas")
+        .eq("period_id", period.id).eq("user_id", employee.id).maybeSingle();
+      if (!pr) { setProratedTHP(null); return; }
+      const extra = (Number(pr.take_home_pay) || 0) - (Number(pr.thr) || 0) - (Number((pr as any).tunjangan_perjalanan_dinas) || 0);
+      setProratedTHP(Math.max(0, extra));
+    })();
+  }, [open, employee?.id, month, year]);
+
   const totalBonus = Math.max(0, pesangonAmount || 0);
   const totalDeduction = Math.max(0, loanPayoff || 0);
   const netSettlement = totalBonus - totalDeduction;

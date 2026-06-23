@@ -2971,7 +2971,14 @@ const Payroll = () => {
                           {emp.bankName || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
-                        <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatRupiah(Math.round(emp.amount))}
+                          {emp.includesResignMonth && (
+                            <div className="text-[10px] text-muted-foreground font-normal mt-0.5">
+                              {formatRupiah(Math.round(emp.baseAmount))} + {formatRupiah(Math.round(emp.includesResignMonth.amount))}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-center">
                           {bankCompanyConfig && (
                             <Badge variant={emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "secondary" : "outline"} className="text-[10px]">

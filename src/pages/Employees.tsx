@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, Archive, Users, AlertTriangle } from "lucide-react";
+import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, Phone, MapPin, Calendar, Briefcase, Building2, KeyRound, Shield, ShieldCheck, Archive, Users, AlertTriangle, Wallet } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
 import { BulkUpdateEmployeesDialog } from "@/components/BulkUpdateEmployeesDialog";
+import { FinalSettlementDialog } from "@/components/FinalSettlementDialog";
 import {
   Table,
   TableBody,
@@ -78,6 +79,8 @@ const Employees = () => {
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [viewingEmployee, setViewingEmployee] = useState<any>(null);
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+  const [finalSettlementEmployee, setFinalSettlementEmployee] = useState<any>(null);
+  const [isFinalSettlementOpen, setIsFinalSettlementOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -1539,6 +1542,15 @@ const Employees = () => {
           onSuccess={fetchEmployees}
         />
 
+        <FinalSettlementDialog
+          open={isFinalSettlementOpen}
+          onOpenChange={(open) => {
+            setIsFinalSettlementOpen(open);
+            if (!open) setFinalSettlementEmployee(null);
+          }}
+          employee={finalSettlementEmployee}
+        />
+
         {/* Dialog konfirmasi: Riwayat perubahan gaji & tunjangan */}
         <Dialog open={salaryHistoryDialogOpen} onOpenChange={setSalaryHistoryDialogOpen}>
           <DialogContent className="max-w-lg">
@@ -1756,7 +1768,18 @@ const Employees = () => {
                                   </>
                                 )}
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              {employee.status === "Resigned" && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setFinalSettlementEmployee(employee);
+                                    setIsFinalSettlementOpen(true);
+                                  }}
+                                >
+                                  <Wallet className="h-4 w-4 mr-2" />
+                                  Final Settlement
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => handleDelete(employee.id)}
                               >

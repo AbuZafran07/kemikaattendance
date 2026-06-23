@@ -40,36 +40,21 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
   const [year, setYear] = useState<number>(new Date().getFullYear());
 
   // amounts (rupiah)
-  const [sisaPeriodeAmount, setSisaPeriodeAmount] = useState<number>(0);
-  const [sisaCutiDays, setSisaCutiDays] = useState<number>(0);
-  const [sisaCutiAmount, setSisaCutiAmount] = useState<number>(0);
+  const [remainingLeaveDays, setRemainingLeaveDays] = useState<number>(0);
   const [pesangonAmount, setPesangonAmount] = useState<number>(0);
   const [loanPayoff, setLoanPayoff] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
 
-  // Period bounds
+  // Period bounds (informational)
   const bounds = useMemo(() => getCutoffPeriodBounds(month, year, cutoffDay), [month, year, cutoffDay]);
   const basicSalary = Number(employee?.basic_salary) || 0;
-  // Working days per month for daily-rate calc (consistent with system: 21)
-  const dailyRate = basicSalary / 21;
-
-  // Compute remaining cut-off days (resign+1 → period end)
-  const remainingDays = useMemo(() => {
-    if (!resignDate) return 0;
-    const nextDay = new Date(resignDate.getTime() + 86400000);
-    const start = nextDay > bounds.start ? nextDay : bounds.start;
-    if (start > bounds.end) return 0;
-    return Math.round((bounds.end.getTime() - start.getTime()) / 86400000) + 1;
-  }, [resignDate, bounds]);
 
   // Default month/year from resign_date when dialog opens
   useEffect(() => {
     if (open && resignDate) {
-      // Payroll period containing the resign date (using cutoff)
       const d = resignDate.getDate();
       const m = resignDate.getMonth() + 1;
       const y = resignDate.getFullYear();
-      // If date >= cutoffDay → period is next month
       const periodMonth = d >= cutoffDay ? m + 1 : m;
       const periodYear = periodMonth > 12 ? y + 1 : y;
       setMonth(((periodMonth - 1) % 12) + 1);
@@ -77,7 +62,7 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
     }
   }, [open, employee?.id, cutoffDay]);
 
-  // Load cutoff_day, profile.remaining_leave defaults & outstanding loans
+  // Load cutoff_day, profile.remaining_leave (info only) & outstanding loans
   useEffect(() => {
     if (!open || !employee?.id) return;
     setLoading(true);
@@ -91,7 +76,7 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
         const cd = (cutoffSetting?.value as any)?.cutoff_day || 21;
         setCutoffDay(cd);
         const leaveLeft = profile?.remaining_leave ?? employee.remaining_leave ?? 0;
-        setSisaCutiDays(Number(leaveLeft) || 0);
+        setRemainingLeaveDays(Number(leaveLeft) || 0);
         const totalLoan = (loans || []).reduce((s: number, l: any) => s + (Number(l.remaining_amount) || 0), 0);
         setLoanPayoff(Math.round(totalLoan));
         setPesangonAmount(0);
@@ -102,16 +87,7 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
     })();
   }, [open, employee?.id]);
 
-  // Auto-recompute amounts when inputs change
-  useEffect(() => {
-    setSisaPeriodeAmount(Math.max(0, Math.round(remainingDays * dailyRate)));
-  }, [remainingDays, dailyRate]);
-
-  useEffect(() => {
-    setSisaCutiAmount(Math.max(0, Math.round((Number(sisaCutiDays) || 0) * dailyRate)));
-  }, [sisaCutiDays, dailyRate]);
-
-  const totalBonus = Math.max(0, (sisaPeriodeAmount || 0) + (sisaCutiAmount || 0) + (pesangonAmount || 0));
+  const totalBonus = Math.max(0, pesangonAmount || 0);
   const totalDeduction = Math.max(0, loanPayoff || 0);
   const netSettlement = totalBonus - totalDeduction;
 
@@ -123,19 +99,16 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
     }
     setSaving(true);
     try {
-      // Build deduction_notes breakdown
       const breakdown: string[] = [
         `[Final Settlement ${MONTHS[month - 1]} ${year}]`,
         `Resign: ${format(resignDate, "dd MMM yyyy")}`,
-        `Sisa periode ${remainingDays} hari: ${formatRp(sisaPeriodeAmount)}`,
-        `Sisa cuti ${sisaCutiDays} hari: ${formatRp(sisaCutiAmount)}`,
+        `Sisa cuti ${remainingLeaveDays} hari dipakai sbg hari kerja s/d tgl resign (tidak diuangkan)`,
         `Pesangon/uang pisah: ${formatRp(pesangonAmount)}`,
         `Pelunasan pinjaman: ${formatRp(loanPayoff)}`,
       ];
       if (notes.trim()) breakdown.push(`Catatan: ${notes.trim()}`);
       const mergedNotes = breakdown.join(" | ");
 
-      // Check existing override → merge into bonus_lainnya/loan_deduction
       const { data: existing } = await supabase
         .from("payroll_overrides")
         .select("*")
@@ -186,7 +159,8 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
           </DialogTitle>
           <DialogDescription>
             Hitung & simpan otomatis ke <b>Payroll Override</b> untuk periode yang dipilih
-            (sisa periode, sisa cuti, pesangon, dan pelunasan pinjaman).
+            (pesangon/uang pisah dan pelunasan pinjaman). Sisa cuti <b>tidak diuangkan</b> —
+            dipakai sebagai hari kerja s/d tanggal resign.
           </DialogDescription>
         </DialogHeader>
 
@@ -230,45 +204,13 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
               <Info className="h-4 w-4" />
               <AlertDescription className="text-xs">
                 Periode cut-off: <b>{format(bounds.start, "dd MMM yyyy")}</b> – <b>{format(bounds.end, "dd MMM yyyy")}</b><br />
-                Gapok: <b>{formatRp(basicSalary)}</b> · Tarif harian (÷21): <b>{formatRp(dailyRate)}</b><br />
-                Resign: <b>{resignDate ? format(resignDate, "dd MMM yyyy") : "-"}</b> · Sisa periode setelah resign: <b>{remainingDays} hari</b>
+                Gapok: <b>{formatRp(basicSalary)}</b><br />
+                Resign: <b>{resignDate ? format(resignDate, "dd MMM yyyy") : "-"}</b> · Sisa cuti: <b>{remainingLeaveDays} hari</b> (dipakai sbg hari kerja)<br />
+                Gaji prorata <b>{format(bounds.start, "dd MMM")} – {resignDate ? format(resignDate, "dd MMM yyyy") : "-"}</b> dihitung otomatis oleh sistem payroll.
               </AlertDescription>
             </Alert>
 
             <Separator />
-
-            {/* Sisa Periode */}
-            <div className="space-y-1">
-              <Label>Sisa periode cut-off (dibayar di muka)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Input value={`${remainingDays} hari`} readOnly className="bg-muted" />
-                <Input
-                  type="number" min={0}
-                  value={sisaPeriodeAmount}
-                  onChange={(e) => setSisaPeriodeAmount(Math.max(0, Number(e.target.value) || 0))}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Default: {remainingDays} × {formatRp(dailyRate)} = {formatRp(remainingDays * dailyRate)}</p>
-            </div>
-
-            {/* Sisa Cuti */}
-            <div className="space-y-1">
-              <Label>Sisa cuti tahunan (uang penggantian)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="number" min={0}
-                  value={sisaCutiDays}
-                  onChange={(e) => setSisaCutiDays(Math.max(0, Number(e.target.value) || 0))}
-                  placeholder="Hari"
-                />
-                <Input
-                  type="number" min={0}
-                  value={sisaCutiAmount}
-                  onChange={(e) => setSisaCutiAmount(Math.max(0, Number(e.target.value) || 0))}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Default: hari × tarif harian. Bisa diedit manual.</p>
-            </div>
 
             {/* Pesangon */}
             <div className="space-y-1">
@@ -278,6 +220,7 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
                 value={pesangonAmount}
                 onChange={(e) => setPesangonAmount(Math.max(0, Number(e.target.value) || 0))}
               />
+              <p className="text-xs text-muted-foreground">Isi sesuai perhitungan HR (kosongkan = 0 bila tidak ada).</p>
             </div>
 
             {/* Loan Payoff */}
@@ -306,20 +249,21 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
 
             {/* Summary */}
             <div className="rounded-md border p-3 bg-muted/40 text-sm space-y-1">
-              <div className="flex justify-between"><span>Sisa periode</span><span>{formatRp(sisaPeriodeAmount)}</span></div>
-              <div className="flex justify-between"><span>Sisa cuti</span><span>{formatRp(sisaCutiAmount)}</span></div>
-              <div className="flex justify-between"><span>Pesangon</span><span>{formatRp(pesangonAmount)}</span></div>
+              <div className="flex justify-between"><span>Pesangon / uang pisah</span><span>{formatRp(pesangonAmount)}</span></div>
               <div className="flex justify-between font-medium"><span>Total Bonus (bonus_lainnya)</span><span>{formatRp(totalBonus)}</span></div>
               <div className="flex justify-between text-destructive"><span>Pelunasan pinjaman</span><span>− {formatRp(totalDeduction)}</span></div>
               <Separator className="my-1" />
               <div className="flex justify-between font-semibold text-base"><span>Net Final Settlement</span><span>{formatRp(netSettlement)}</span></div>
+              <p className="text-xs text-muted-foreground pt-1">
+                * Belum termasuk gaji prorata <b>{format(bounds.start, "dd MMM")} – {resignDate ? format(resignDate, "dd MMM") : "-"}</b> yang otomatis muncul saat generate payroll.
+              </p>
             </div>
 
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription className="text-xs">
                 Setelah disimpan, buka halaman <b>Payroll → {MONTHS[month - 1]} {year}</b> lalu <b>Generate Payroll</b>
-                agar override ini diterapkan ke slip & bank export. Gaji prorata 21 {MONTHS[(month + 10) % 12]} – {resignDate ? format(resignDate, "dd MMM") : "-"} dihitung otomatis berdasarkan resign_date.
+                agar override ini diterapkan ke slip & bank export.
               </AlertDescription>
             </Alert>
           </div>

@@ -313,15 +313,31 @@ Deno.serve(async (req) => {
     let unmatched = 0;
 
     for (const r of allResults) {
-      // FILTER: hanya hitung klaim ber-status 'approved'.
+      // FILTER: status 'approved' DAN submitted_at berada di periode payroll (start..end).
       // Klaim 'paid' sudah dibayarkan terpisah (jangan double-bayar lewat payroll).
-      // Klaim 'review_finance' belum final.
-      const approvedClaims = (r.claims || []).filter((c) => c.status === "approved");
+      // Klaim 'review_finance' belum final. Filter submitted_at memastikan klaim
+      // yang DIAJUKAN di periode ini tetap masuk meski approval-nya setelah cut-off.
+      const periodStartMs = startMs;
+      const periodEndMs = endMs + 86400000 - 1; // inclusive end-of-day
+      const approvedClaims = (r.claims || []).filter((c) => {
+        if (c.status !== "approved") return false;
+        const subRaw = c.submitted_at || c.approved_at;
+        if (!subRaw) return false;
+        const subMs = Date.parse(subRaw);
+        if (!Number.isFinite(subMs)) return false;
+        return subMs >= periodStartMs && subMs <= periodEndMs;
+      });
       const approvedTotal = approvedClaims.reduce(
         (s, c) => s + (Number(c.amount) || 0),
         0,
       );
       const approvedCount = approvedClaims.length;
+
+      totalClaims += approvedCount;
+      if (approvedTotal <= 0 || r.matched_by === "none") {
+        if (r.matched_by === "none" && approvedCount > 0) unmatched++;
+        continue;
+      }
 
       totalClaims += approvedCount;
       if (approvedTotal <= 0 || r.matched_by === "none") {

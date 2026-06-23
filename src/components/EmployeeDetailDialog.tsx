@@ -424,14 +424,14 @@ export const EmployeeDetailDialog = ({
   );
 };
 
-const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; value: string }) => (
-  <div className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/50">
+const InfoItem = ({ icon: Icon, label, value, truncate = true }: { icon: any; label: string; value: string; truncate?: boolean }) => (
+  <div className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/50">
     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
       <Icon className="h-4 w-4 text-primary" />
     </div>
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium text-sm truncate capitalize">{value}</p>
+      <p className={cn("font-medium text-sm", truncate ? "truncate capitalize" : "whitespace-pre-wrap break-words")}>{value}</p>
     </div>
   </div>
 );

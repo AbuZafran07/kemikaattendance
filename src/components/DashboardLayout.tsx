@@ -242,7 +242,25 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="flex flex-col h-full bg-[hsl(161,80%,14%)] text-white">
-      {/* Navigation - no header */}
+      {/* Collapse toggle (desktop only) */}
+      {!mobile && (
+        <div className={cn(
+          "flex items-center transition-all duration-300",
+          isSidebarCollapsed ? "justify-center py-3 px-2" : "justify-end py-2 px-3"
+        )}>
+          <button
+            onClick={toggleSidebar}
+            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex items-center justify-center rounded-md hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+            style={{ width: 28, height: 28 }}
+          >
+            <PanelLeft className={cn("h-4 w-4 transition-transform duration-300", isSidebarCollapsed && "rotate-180")} />
+          </button>
+        </div>
+      )}
+
+      {/* Navigation */}
+
       <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
         {navigationGroups.map((group) => (
           <div key={group.label}>

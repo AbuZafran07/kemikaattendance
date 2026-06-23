@@ -277,8 +277,15 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
               <div className="flex justify-between text-destructive"><span>Pelunasan pinjaman</span><span>− {formatRp(totalDeduction)}</span></div>
               <Separator className="my-1" />
               <div className="flex justify-between font-semibold text-base"><span>Net Final Settlement</span><span>{formatRp(netSettlement)}</span></div>
+              <Separator className="my-1" />
+              <div className="flex justify-between text-sm">
+                <span>THP prorata {MONTHS[month - 1]} {year} (otomatis dari payroll)</span>
+                <span className={proratedTHP === null ? "text-muted-foreground italic" : "font-medium"}>
+                  {proratedTHP === null ? "belum di-generate" : formatRp(proratedTHP)}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground pt-1">
-                * Belum termasuk gaji prorata <b>{format(bounds.start, "dd MMM")} – {resignDate ? format(resignDate, "dd MMM") : "-"}</b> yang otomatis muncul saat generate payroll.
+                * Gaji prorata <b>{format(bounds.start, "dd MMM")} – {resignDate ? format(resignDate, "dd MMM") : "-"}</b> akan otomatis digabung ke <b>e-Payroll Bank bulan sebelumnya</b> (kolom THP merge resign-month).
               </p>
             </div>
 

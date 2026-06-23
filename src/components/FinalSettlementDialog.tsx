@@ -163,9 +163,10 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
             <Wallet className="h-5 w-5" /> Final Settlement — {employee.full_name}
           </DialogTitle>
           <DialogDescription>
-            Hitung & simpan otomatis ke <b>Payroll Override</b> untuk periode yang dipilih
-            (pesangon/uang pisah dan pelunasan pinjaman). Sisa cuti <b>tidak diuangkan</b> —
-            dipakai sebagai hari kerja s/d tanggal resign.
+            Catatan Final Settlement (pesangon/uang pisah & pelunasan pinjaman) disimpan
+            <b> terpisah dari payroll bulanan</b>. Slip Juni/Juli tetap berisi gaji prorata saja,
+            sementara nilai settlement diekspor lewat <b>e-Payroll Final Settlement</b> di halaman Payroll.
+            Sisa cuti <b>tidak diuangkan</b> — dipakai sebagai hari kerja s/d tanggal resign.
           </DialogDescription>
         </DialogHeader>
 

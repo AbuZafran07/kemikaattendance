@@ -44,6 +44,7 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
   const [pesangonAmount, setPesangonAmount] = useState<number>(0);
   const [loanPayoff, setLoanPayoff] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
+  const [proratedTHP, setProratedTHP] = useState<number | null>(null);
 
   // Period bounds (informational)
   const bounds = useMemo(() => getCutoffPeriodBounds(month, year, cutoffDay), [month, year, cutoffDay]);

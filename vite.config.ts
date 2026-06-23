@@ -65,4 +65,21 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules")) {
+            if (id.includes("exceljs")) return "exceljs";
+            if (id.includes("xlsx")) return "xlsx";
+            if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf";
+            if (id.includes("mapbox-gl")) return "mapbox";
+            if (id.includes("recharts")) return "charts";
+            if (id.includes("@radix-ui")) return "radix";
+            if (id.includes("firebase")) return "firebase";
+          }
+        },
+      },
+    },
+  },
 }));

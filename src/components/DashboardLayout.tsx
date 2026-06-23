@@ -128,8 +128,23 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [isHRPanelOpen, setIsHRPanelOpen] = useState(false);
   const [isHRMobileOpen, setIsHRMobileOpen] = useState(false);
   const [isHRDocsOpen, setIsHRDocsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("kemika:sidebarCollapsed") === "true";
+  });
   const { hrMessages, hrInput, setHrInput, hrLoading, hrMessagesEndRef, sendHRMessage, clearMessages } = useHRAssistant();
   const navigationGroups = buildNavigationGroups(t);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("kemika:sidebarCollapsed", String(next));
+      }
+      return next;
+    });
+  };
+
 
   // Fetch signed photo URL
   useEffect(() => {

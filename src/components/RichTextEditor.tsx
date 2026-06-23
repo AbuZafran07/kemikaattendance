@@ -58,7 +58,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   useEffect(() => {
     if (editorRef.current && value !== lastHtmlRef.current) {
       lastHtmlRef.current = value;
-      editorRef.current.innerHTML = value;
+      editorRef.current.innerHTML = DOMPurify.sanitize(value);
     }
   }, [value]);
 

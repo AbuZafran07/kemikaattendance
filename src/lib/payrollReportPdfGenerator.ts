@@ -241,7 +241,8 @@ export async function generatePayrollReportPDF(
   const incomeRows = items.map((item, idx) => {
     const fixedTotal = (item.tunjangan_komunikasi || 0) + (item.tunjangan_jabatan || 0) + (item.tunjangan_operasional || 0);
     const incidentalTotal = (item.tunjangan_kesehatan || 0) + (item.bonus_tahunan || 0) + (item.thr || 0)
-      + (item.insentif_kinerja || 0) + (item.bonus_lainnya || 0) + (item.pengembalian_employee || 0) + (item.insentif_penjualan || 0);
+      + (item.insentif_kinerja || 0) + (item.bonus_lainnya || 0) + (item.pengembalian_employee || 0) + (item.insentif_penjualan || 0)
+      + (item.tunjangan_perjalanan_dinas || 0);
     const tunjanganKehadiran = Math.max(0, item.allowance - fixedTotal - incidentalTotal);
 
     return [
@@ -255,6 +256,7 @@ export async function generatePayrollReportPDF(
       fmtRp(item.tunjangan_jabatan || 0),
       fmtRp(item.tunjangan_komunikasi || 0),
       fmtRp(item.tunjangan_kesehatan || 0),
+      fmtRp(item.tunjangan_perjalanan_dinas || 0),
       fmtRp(item.overtime_total || 0),
       fmtRp(item.thr || 0),
       fmtRp((item.insentif_kinerja || 0) + (item.insentif_penjualan || 0) + (item.bonus_tahunan || 0) + (item.bonus_lainnya || 0) + (item.pengembalian_employee || 0)),

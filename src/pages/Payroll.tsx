@@ -2047,6 +2047,7 @@ const Payroll = () => {
           bonus_tahunan: item.bonus_tahunan || 0,
           bonus_lainnya: item.bonus_lainnya || 0,
           pengembalian_employee: item.pengembalian_employee || 0,
+          tunjangan_perjalanan_dinas: item.tunjangan_perjalanan_dinas || 0,
           bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
           bpjs_kesehatan: item.bpjs_kesehatan,
           loan_deduction: item.loan_deduction,

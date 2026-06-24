@@ -270,13 +270,14 @@ export async function generatePayrollReportPDF(
     fmtRp(items.reduce((s, i) => s + i.basic_salary, 0)),
     fmtRp(items.reduce((s, i) => {
       const f = (i.tunjangan_komunikasi || 0) + (i.tunjangan_jabatan || 0) + (i.tunjangan_operasional || 0);
-      const inc = (i.tunjangan_kesehatan || 0) + (i.bonus_tahunan || 0) + (i.thr || 0) + (i.insentif_kinerja || 0) + (i.bonus_lainnya || 0) + (i.pengembalian_employee || 0) + (i.insentif_penjualan || 0);
+      const inc = (i.tunjangan_kesehatan || 0) + (i.bonus_tahunan || 0) + (i.thr || 0) + (i.insentif_kinerja || 0) + (i.bonus_lainnya || 0) + (i.pengembalian_employee || 0) + (i.insentif_penjualan || 0) + (i.tunjangan_perjalanan_dinas || 0);
       return s + Math.max(0, i.allowance - f - inc);
     }, 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_operasional || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_jabatan || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_komunikasi || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_kesehatan || 0), 0)),
+    fmtRp(items.reduce((s, i) => s + (i.tunjangan_perjalanan_dinas || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.overtime_total || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.thr || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.insentif_kinerja || 0) + (i.insentif_penjualan || 0) + (i.bonus_tahunan || 0) + (i.bonus_lainnya || 0) + (i.pengembalian_employee || 0), 0)),
@@ -285,7 +286,7 @@ export async function generatePayrollReportPDF(
 
   autoTable(doc, {
     startY: 24,
-    head: [["No", "NIK", "Nama", "Dept", "Gaji Pokok", "T. Kehadiran", "T. Operasional", "T. Jabatan", "T. Komunikasi", "T. Kesehatan", "Lembur", "THR", "Bonus & Insentif", "Total Bruto"]],
+    head: [["No", "NIK", "Nama", "Dept", "Gaji Pokok", "T. Kehadiran", "T. Operasional", "T. Jabatan", "T. Komunikasi", "T. Kesehatan", "T. Dinas", "Lembur", "THR", "Bonus & Insentif", "Total Bruto"]],
     body: [...incomeRows, incomeTotals],
     margin: { left: mx, right: mx },
     styles: { fontSize: 6.5, cellPadding: 1.8, lineWidth: 0.1, lineColor: [200, 200, 200] },

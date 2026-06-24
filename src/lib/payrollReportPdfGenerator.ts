@@ -64,6 +64,7 @@ export interface PayrollReportItem {
   bonus_tahunan: number;
   bonus_lainnya: number;
   pengembalian_employee: number;
+  tunjangan_perjalanan_dinas?: number;
   bpjs_ketenagakerjaan: number;
   bpjs_kesehatan: number;
   loan_deduction: number;

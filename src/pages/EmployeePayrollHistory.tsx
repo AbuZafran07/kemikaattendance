@@ -46,6 +46,7 @@ interface PayrollItem {
   bonus_tahunan: number;
   bonus_lainnya: number;
   pengembalian_employee: number;
+  tunjangan_perjalanan_dinas: number;
 }
 
 interface PeriodInfo {
@@ -129,7 +130,8 @@ const EmployeePayrollHistory = () => {
       tunjangan_komunikasi: tunjanganKomunikasi,
       tunjangan_jabatan: tunjanganJabatan,
       tunjangan_operasional: tunjanganOperasional,
-      tunjangan_kesehatan: detailItem.tunjangan_kesehatan || 0,
+      tunjangan_kesehatan: item.tunjangan_kesehatan || 0,
+      tunjangan_perjalanan_dinas: (item as any).tunjangan_perjalanan_dinas || 0,
       overtime_total: item.overtime_total,
       overtime_hours: item.overtime_hours,
       thr: item.thr || 0,

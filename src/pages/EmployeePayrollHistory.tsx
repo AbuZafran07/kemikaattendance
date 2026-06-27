@@ -235,7 +235,7 @@ const EmployeePayrollHistory = () => {
                 <span className="text-muted-foreground">{t("empPayroll.basicSalary")}</span>
                 <span className="text-right font-medium">{formatRupiah(detailItem.basic_salary)}</span>
                 <span className="text-muted-foreground">{t("empPayroll.attendanceAllowance")}</span>
-                <span className="text-right">{formatRupiah(Math.max(0, detailItem.allowance - (Number(profile?.tunjangan_komunikasi) || 0) - (Number(profile?.tunjangan_jabatan) || 0) - (Number(profile?.tunjangan_operasional) || 0) - (detailItem.thr || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.insentif_penjualan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0)))}</span>
+                <span className="text-right">{formatRupiah(Math.max(0, detailItem.allowance - (Number(profile?.tunjangan_komunikasi) || 0) - (Number(profile?.tunjangan_jabatan) || 0) - (Number(profile?.tunjangan_operasional) || 0) - (detailItem.thr || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.insentif_penjualan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - ((detailItem as any).tunjangan_perjalanan_dinas || 0)))}</span>
                 {(detailItem.thr || 0) > 0 && <>
                   <span className="text-muted-foreground">{t("empPayroll.thr")}</span>
                   <span className="text-right">{formatRupiah(detailItem.thr)}</span>
@@ -263,6 +263,10 @@ const EmployeePayrollHistory = () => {
                 {(detailItem.pengembalian_employee || 0) > 0 && <>
                   <span className="text-muted-foreground">{t("empPayroll.employeeReturn")}</span>
                   <span className="text-right">{formatRupiah(detailItem.pengembalian_employee)}</span>
+                </>}
+                {((detailItem as any).tunjangan_perjalanan_dinas || 0) > 0 && <>
+                  <span className="text-muted-foreground">Tunjangan Perjalanan Dinas</span>
+                  <span className="text-right">{formatRupiah((detailItem as any).tunjangan_perjalanan_dinas)}</span>
                 </>}
                 <span className="text-muted-foreground">{t("empPayroll.overtime", { n: detailItem.overtime_hours })}</span>
                 <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>

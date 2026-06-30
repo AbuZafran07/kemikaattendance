@@ -3201,6 +3201,12 @@ const Payroll = () => {
         onConfirm={handleUnlock}
         periodLabel={period ? `${MONTHS[selectedMonth - 1].label} ${selectedYear}` : ""}
       />
+      <BusinessTravelVoucherExportDialog
+        open={showTravelVoucherDialog}
+        onOpenChange={setShowTravelVoucherDialog}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+      />
     </DashboardLayout>
   );
 };

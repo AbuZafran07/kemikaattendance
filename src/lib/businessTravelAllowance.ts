@@ -66,7 +66,7 @@ function workingDaysOfPeriod(periodMonth: number, periodYear: number, cutoffDay:
  * efektifnya di masing-masing periode.
  */
 export async function applyBusinessTravelAllowance(input: CalcInput): Promise<BusinessTravelAllowanceResult> {
-  const { userId, startDate, endDate } = input;
+  const { userId, startDate, endDate, dryRun = false } = input;
   const start = parseISO(startDate);
   const end = parseISO(endDate);
 

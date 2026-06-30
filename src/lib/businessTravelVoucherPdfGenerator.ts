@@ -235,13 +235,152 @@ export async function generateBusinessTravelVoucherBatchPDF(
   fileName?: string,
 ) {
   if (items.length === 0) return;
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   let logoBase64: string | null = null;
   try { logoBase64 = await loadImageAsBase64(logoSrc); } catch {}
-  for (let i = 0; i < items.length; i++) {
-    if (i > 0) doc.addPage();
-    await renderVoucherPage(doc, items[i], logoBase64);
+
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const mx = 10;
+  const rightEnd = pw - mx;
+  const issued = new Date();
+
+  const drawHeader = () => {
+    if (logoBase64) {
+      try { doc.addImage(logoBase64, "PNG", mx, 8, 34, 15); } catch {}
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(GREEN[0], GREEN[1], GREEN[2]);
+    doc.text("DAFTAR TRANSFER TUNJANGAN PERJALANAN DINAS", rightEnd, 14, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(80, 80, 80);
+    doc.text(
+      `Tanggal Terbit: ${issued.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}`,
+      rightEnd, 20, { align: "right" }
+    );
+    doc.text(`Jumlah Karyawan: ${items.length}`, rightEnd, 24.5, { align: "right" });
+    doc.setDrawColor(GREEN[0], GREEN[1], GREEN[2]);
+    doc.setLineWidth(0.7);
+    doc.line(mx, 28, rightEnd, 28);
+  };
+
+  // Column layout (landscape A4 = 297mm wide, usable = 277mm)
+  const cols = [
+    { key: "no", label: "No", w: 8, align: "center" as const },
+    { key: "name", label: "Nama Karyawan", w: 42, align: "left" as const },
+    { key: "nik", label: "NIK", w: 22, align: "left" as const },
+    { key: "bank", label: "Bank", w: 20, align: "left" as const },
+    { key: "rek", label: "No. Rekening", w: 30, align: "left" as const },
+    { key: "dest", label: "Tujuan", w: 38, align: "left" as const },
+    { key: "period", label: "Tanggal Dinas", w: 40, align: "left" as const },
+    { key: "days", label: "Hari Efektif", w: 16, align: "center" as const },
+    { key: "rate", label: "Tarif/Hari", w: 28, align: "right" as const },
+    { key: "amount", label: "Nominal Transfer", w: 33, align: "right" as const },
+  ];
+
+  const drawTableHeader = (y: number) => {
+    doc.setFillColor(HEADER_BG[0], HEADER_BG[1], HEADER_BG[2]);
+    doc.rect(mx, y, rightEnd - mx, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    let x = mx;
+    for (const c of cols) {
+      const tx = c.align === "right" ? x + c.w - 1.5 : c.align === "center" ? x + c.w / 2 : x + 1.5;
+      doc.text(c.label, tx, y + 5, { align: c.align });
+      x += c.w;
+    }
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.2);
+    doc.line(mx, y + 8, rightEnd, y + 8);
+    return y + 8;
+  };
+
+  drawHeader();
+  let y = 32;
+  y = drawTableHeader(y);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  let total = 0;
+  let no = 1;
+  const rowH = 7;
+
+  for (const it of items) {
+    // Page break
+    if (y + rowH > ph - 25) {
+      doc.addPage();
+      drawHeader();
+      y = 32;
+      y = drawTableHeader(y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+    }
+
+    const perDayNet = Math.max(0, it.per_day_travel - it.per_day_attendance_deduction);
+    const period = `${fmtDateID(it.start_date)} - ${fmtDateID(it.end_date)}`;
+    const values: Record<string, string> = {
+      no: String(no),
+      name: it.employee_name,
+      nik: it.nik,
+      bank: it.bank_name || "-",
+      rek: it.bank_account_number || "-",
+      dest: it.destination,
+      period,
+      days: `${it.effective_days}`,
+      rate: fmtIDR(perDayNet),
+      amount: fmtIDR(it.total_amount),
+    };
+
+    let x = mx;
+    for (const c of cols) {
+      const raw = values[c.key] || "";
+      const maxW = c.w - 3;
+      const txt = doc.splitTextToSize(raw, maxW)[0]; // single line clip
+      const tx = c.align === "right" ? x + c.w - 1.5 : c.align === "center" ? x + c.w / 2 : x + 1.5;
+      doc.text(txt, tx, y + 5, { align: c.align });
+      x += c.w;
+    }
+    doc.setDrawColor(230, 230, 230);
+    doc.line(mx, y + rowH, rightEnd, y + rowH);
+    y += rowH;
+    total += it.total_amount;
+    no += 1;
   }
+
+  // Total row
+  if (y + 10 > ph - 25) {
+    doc.addPage();
+    drawHeader();
+    y = 32;
+  }
+  doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]);
+  doc.rect(mx, y, rightEnd - mx, 9, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(255, 255, 255);
+  doc.text("TOTAL TRANSFER", mx + 2, y + 6);
+  doc.text(fmtIDR(total), rightEnd - 2, y + 6, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+  y += 13;
+
+  // Footer note
+  doc.setFillColor(245, 250, 245);
+  doc.rect(mx, y, rightEnd - mx, 14, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(GREEN[0], GREEN[1], GREEN[2]);
+  doc.text("Catatan:", mx + 2, y + 4.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(60, 60, 60);
+  const footer =
+    "Dokumen ini diterbitkan secara digital melalui sistem dan dinyatakan SAH tanpa tanda tangan & cap basah. " +
+    "Daftar ini menjadi dasar pencairan dana perjalanan dinas yang telah disetujui untuk seluruh karyawan di atas.";
+  const fLines = doc.splitTextToSize(footer, rightEnd - mx - 4);
+  doc.text(fLines, mx + 2, y + 9);
+
   const stamp = new Date().toISOString().slice(0, 10);
-  doc.save(fileName || `Voucher_Perjadin_Gabungan_${items.length}_karyawan_${stamp}.pdf`);
+  doc.save(fileName || `Daftar_Transfer_Perjadin_${items.length}_karyawan_${stamp}.pdf`);
 }

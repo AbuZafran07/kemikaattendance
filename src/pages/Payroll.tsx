@@ -140,6 +140,7 @@ const Payroll = () => {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
+  const [showTravelVoucherDialog, setShowTravelVoucherDialog] = useState(false);
   const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);

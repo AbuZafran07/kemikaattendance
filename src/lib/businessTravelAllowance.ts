@@ -25,6 +25,7 @@ interface CalcInput {
   userId: string;
   startDate: string; // yyyy-MM-dd
   endDate: string;   // yyyy-MM-dd
+  dryRun?: boolean;  // jika true: hanya hitung, tidak menulis ke DB
 }
 
 /**
@@ -65,7 +66,7 @@ function workingDaysOfPeriod(periodMonth: number, periodYear: number, cutoffDay:
  * efektifnya di masing-masing periode.
  */
 export async function applyBusinessTravelAllowance(input: CalcInput): Promise<BusinessTravelAllowanceResult> {
-  const { userId, startDate, endDate } = input;
+  const { userId, startDate, endDate, dryRun = false } = input;
   const start = parseISO(startDate);
   const end = parseISO(endDate);
 
@@ -148,39 +149,41 @@ export async function applyBusinessTravelAllowance(input: CalcInput): Promise<Bu
       continue;
     }
 
-    // Upsert override (accumulate)
-    const { data: existingOverride } = await supabase
-      .from("payroll_overrides")
-      .select("id, tunjangan_perjalanan_dinas")
-      .eq("user_id", userId)
-      .eq("period_month", pm)
-      .eq("period_year", py)
-      .maybeSingle();
-
-    const prevValue = Number((existingOverride as any)?.tunjangan_perjalanan_dinas) || 0;
-    const newValue = prevValue + amount;
-
-    if (existingOverride?.id) {
-      await supabase
+    if (!dryRun) {
+      // Upsert override (accumulate)
+      const { data: existingOverride } = await supabase
         .from("payroll_overrides")
-        .update({ tunjangan_perjalanan_dinas: newValue, updated_at: new Date().toISOString() } as any)
-        .eq("id", existingOverride.id);
-    } else {
-      await supabase.from("payroll_overrides").insert({
-        user_id: userId,
-        period_month: pm,
-        period_year: py,
-        tunjangan_perjalanan_dinas: newValue,
-      } as any);
-    }
-
-    // Mirror ke payroll row bila sudah ada
-    if (existingPeriod?.id) {
-      await supabase
-        .from("payroll")
-        .update({ tunjangan_perjalanan_dinas: newValue } as any)
+        .select("id, tunjangan_perjalanan_dinas")
         .eq("user_id", userId)
-        .eq("period_id", existingPeriod.id);
+        .eq("period_month", pm)
+        .eq("period_year", py)
+        .maybeSingle();
+
+      const prevValue = Number((existingOverride as any)?.tunjangan_perjalanan_dinas) || 0;
+      const newValue = prevValue + amount;
+
+      if (existingOverride?.id) {
+        await supabase
+          .from("payroll_overrides")
+          .update({ tunjangan_perjalanan_dinas: newValue, updated_at: new Date().toISOString() } as any)
+          .eq("id", existingOverride.id);
+      } else {
+        await supabase.from("payroll_overrides").insert({
+          user_id: userId,
+          period_month: pm,
+          period_year: py,
+          tunjangan_perjalanan_dinas: newValue,
+        } as any);
+      }
+
+      // Mirror ke payroll row bila sudah ada
+      if (existingPeriod?.id) {
+        await supabase
+          .from("payroll")
+          .update({ tunjangan_perjalanan_dinas: newValue } as any)
+          .eq("user_id", userId)
+          .eq("period_id", existingPeriod.id);
+      }
     }
 
     grandTotal += amount;

@@ -1,0 +1,296 @@
+import { useEffect, useState, useMemo } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Receipt, FileText, Files } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { applyBusinessTravelAllowance } from "@/lib/businessTravelAllowance";
+import {
+  generateBusinessTravelVoucherPDF,
+  generateBusinessTravelVoucherBatchPDF,
+  type TravelVoucherData,
+} from "@/lib/businessTravelVoucherPdfGenerator";
+import logoSrc from "@/assets/logo.png";
+import { format, parseISO } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  selectedMonth: number; // 1-12
+  selectedYear: number;
+}
+
+interface Row {
+  id: string;
+  user_id: string;
+  destination: string;
+  purpose: string;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  full_name: string;
+  nik: string;
+  departemen: string | null;
+  jabatan: string | null;
+  bank_name: string | null;
+  bank_account_number: string | null;
+}
+
+const fmtIDR = (n: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
+
+const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, selectedYear }: Props) => {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [filterMode, setFilterMode] = useState<"period" | "all">("period");
+  const [generating, setGenerating] = useState<"single" | "batch" | "split" | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedIds(new Set());
+    loadRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, filterMode, selectedMonth, selectedYear]);
+
+  const loadRequests = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from("business_travel_requests")
+        .select("id, user_id, destination, purpose, start_date, end_date, total_days")
+        .eq("status", "approved")
+        .order("start_date", { ascending: false });
+
+      if (filterMode === "period") {
+        // Cut-off 21–20: tampilkan trip yang start_date dalam window
+        const start = `${selectedYear}-${String(selectedMonth - 1 || 12).padStart(2, "0")}-21`;
+        const startYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+        const startStr = `${startYear}-${String(selectedMonth === 1 ? 12 : selectedMonth - 1).padStart(2, "0")}-21`;
+        const endStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-20`;
+        query = query.gte("start_date", startStr).lte("start_date", endStr);
+        void start;
+      }
+
+      const { data: trips, error } = await query;
+      if (error) throw error;
+      const list = trips || [];
+      if (list.length === 0) {
+        setRows([]);
+        return;
+      }
+      const userIds = Array.from(new Set(list.map((t) => t.user_id)));
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, nik, departemen, jabatan, bank_name, bank_account_number")
+        .in("id", userIds);
+      const pmap = new Map((profs || []).map((p: any) => [p.id, p]));
+      const enriched: Row[] = list.map((t: any) => {
+        const p: any = pmap.get(t.user_id) || {};
+        return {
+          id: t.id,
+          user_id: t.user_id,
+          destination: t.destination,
+          purpose: t.purpose,
+          start_date: t.start_date,
+          end_date: t.end_date,
+          total_days: t.total_days,
+          full_name: p.full_name || "-",
+          nik: p.nik || "-",
+          departemen: p.departemen,
+          jabatan: p.jabatan,
+          bank_name: p.bank_name,
+          bank_account_number: p.bank_account_number,
+        };
+      });
+      setRows(enriched);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
+  const toggle = (id: string) => {
+    const n = new Set(selectedIds);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSelectedIds(n);
+  };
+  const toggleAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(rows.map((r) => r.id)));
+  };
+
+  const selectedRows = useMemo(() => rows.filter((r) => selectedIds.has(r.id)), [rows, selectedIds]);
+
+  const buildVoucherData = async (r: Row): Promise<TravelVoucherData | null> => {
+    const calc = await applyBusinessTravelAllowance({
+      userId: r.user_id,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      dryRun: true,
+    });
+    if (!calc.ok || calc.amount <= 0) return null;
+    return {
+      voucher_no: `PD-${r.id.slice(0, 8).toUpperCase()}`,
+      issued_at: new Date(),
+      employee_name: r.full_name,
+      nik: r.nik,
+      jabatan: r.jabatan || "-",
+      departemen: r.departemen || "-",
+      bank_name: r.bank_name || "-",
+      bank_account_number: r.bank_account_number || "-",
+      destination: r.destination,
+      purpose: r.purpose,
+      start_date: r.start_date,
+      end_date: r.end_date,
+      total_days: r.total_days,
+      effective_days: calc.travel_days_effective,
+      per_day_travel: calc.per_day_travel,
+      per_day_attendance_deduction: calc.per_day_attendance,
+      total_amount: calc.amount,
+      splits: (calc.splits || []).filter((s) => s.amount > 0).map((s) => ({
+        period_month: s.period_month,
+        period_year: s.period_year,
+        days: s.days,
+        amount: s.amount,
+      })),
+    };
+  };
+
+  const handleMerged = async () => {
+    if (selectedRows.length === 0) {
+      toast({ title: "Pilih minimal 1 karyawan", variant: "destructive" });
+      return;
+    }
+    setGenerating("batch");
+    try {
+      const items: TravelVoucherData[] = [];
+      const skipped: string[] = [];
+      for (const r of selectedRows) {
+        const v = await buildVoucherData(r);
+        if (v) items.push(v); else skipped.push(r.full_name);
+      }
+      if (items.length === 0) {
+        toast({ title: "Tidak ada nominal tunjangan", description: "Semua karyawan terpilih tidak menghasilkan nominal tunjangan.", variant: "destructive" });
+        return;
+      }
+      await generateBusinessTravelVoucherBatchPDF(items, logoSrc);
+      toast({
+        title: "Voucher gabungan diunduh",
+        description: `${items.length} karyawan${skipped.length ? `, ${skipped.length} dilewati (nominal 0)` : ""}.`,
+      });
+      onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: "Gagal", description: e.message, variant: "destructive" });
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const handleSplit = async () => {
+    if (selectedRows.length === 0) {
+      toast({ title: "Pilih minimal 1 karyawan", variant: "destructive" });
+      return;
+    }
+    setGenerating("split");
+    try {
+      let count = 0;
+      for (const r of selectedRows) {
+        const v = await buildVoucherData(r);
+        if (!v) continue;
+        await generateBusinessTravelVoucherPDF(v, logoSrc);
+        count += 1;
+      }
+      toast({ title: "Voucher per karyawan diunduh", description: `${count} file PDF.` });
+      onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: "Gagal", description: e.message, variant: "destructive" });
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> Voucher Transfer Perjalanan Dinas</DialogTitle>
+          <DialogDescription>
+            Pilih karyawan yang akan diterbitkan voucher transfer tunjangan perjalanan dinasnya. Bisa per karyawan atau digabung dalam 1 dokumen.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Filter:</span>
+          <Button size="sm" variant={filterMode === "period" ? "default" : "outline"} onClick={() => setFilterMode("period")}>
+            Periode Payroll Aktif
+          </Button>
+          <Button size="sm" variant={filterMode === "all" ? "default" : "outline"} onClick={() => setFilterMode("all")}>
+            Semua Approved
+          </Button>
+        </div>
+
+        <div className="border rounded-md max-h-[420px] overflow-auto">
+          {loading ? (
+            <div className="p-8 text-center text-muted-foreground"><Loader2 className="inline h-4 w-4 animate-spin mr-2" />Memuat...</div>
+          ) : rows.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">Tidak ada perjalanan dinas approved untuk filter ini.</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted sticky top-0">
+                <tr>
+                  <th className="p-2 w-10"><Checkbox checked={allSelected} onCheckedChange={toggleAll} /></th>
+                  <th className="p-2 text-left">Karyawan</th>
+                  <th className="p-2 text-left">Tujuan</th>
+                  <th className="p-2 text-left">Tanggal</th>
+                  <th className="p-2 text-right">Hari</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-t hover:bg-muted/40 cursor-pointer" onClick={() => toggle(r.id)}>
+                    <td className="p-2"><Checkbox checked={selectedIds.has(r.id)} onCheckedChange={() => toggle(r.id)} /></td>
+                    <td className="p-2">
+                      <div className="font-medium">{r.full_name}</div>
+                      <div className="text-xs text-muted-foreground">{r.nik} · {r.departemen || "-"}</div>
+                    </td>
+                    <td className="p-2">{r.destination}</td>
+                    <td className="p-2 text-xs">
+                      {format(parseISO(r.start_date), "dd MMM yyyy", { locale: idLocale })}<br />
+                      <span className="text-muted-foreground">s/d {format(parseISO(r.end_date), "dd MMM yyyy", { locale: idLocale })}</span>
+                    </td>
+                    <td className="p-2 text-right">{r.total_days}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <Badge variant="secondary">{selectedIds.size} dipilih dari {rows.length}</Badge>
+        </div>
+
+        <DialogFooter className="gap-2 flex-col sm:flex-row">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={!!generating}>Batal</Button>
+          <Button variant="outline" onClick={handleSplit} disabled={!!generating || selectedIds.size === 0} className="gap-2">
+            {generating === "split" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Files className="h-4 w-4" />}
+            PDF Per Karyawan ({selectedIds.size})
+          </Button>
+          <Button onClick={handleMerged} disabled={!!generating || selectedIds.size === 0} className="gap-2">
+            {generating === "batch" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Gabung 1 Dokumen ({selectedIds.size})
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default BusinessTravelVoucherExportDialog;

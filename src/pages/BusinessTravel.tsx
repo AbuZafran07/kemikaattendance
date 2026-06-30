@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye, Plus, Trash2, Receipt } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Clock, Upload, Download, FileText, Eye, Plus, Trash2 } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,8 +29,6 @@ import logger from "@/lib/logger";
 import { logApprovalAction } from "@/lib/approvalAuditLog";
 import AdminCreateBusinessTravelDialog from "@/components/AdminCreateBusinessTravelDialog";
 import { applyBusinessTravelAllowance } from "@/lib/businessTravelAllowance";
-import { generateBusinessTravelVoucherPDF } from "@/lib/businessTravelVoucherPdfGenerator";
-import logoSrc from "@/assets/logo.png";
 
 interface BusinessTravelRequest {
   id: string;
@@ -72,63 +70,6 @@ const BusinessTravel = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [voucherLoadingId, setVoucherLoadingId] = useState<string | null>(null);
-
-  const handleDownloadVoucher = async (request: BusinessTravelRequest) => {
-    setVoucherLoadingId(request.id);
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, nik, jabatan, departemen, bank_name, bank_account_number")
-        .eq("id", request.user_id)
-        .maybeSingle();
-
-      const calc = await applyBusinessTravelAllowance({
-        userId: request.user_id,
-        startDate: request.start_date,
-        endDate: request.end_date,
-        dryRun: true,
-      });
-
-      if (!calc.ok || calc.amount <= 0) {
-        toast({ title: "Tidak ada tunjangan", description: calc.reason || "Tidak ada nominal tunjangan untuk perjalanan ini.", variant: "destructive" });
-        return;
-      }
-
-      await generateBusinessTravelVoucherPDF({
-        voucher_no: `PD-${request.id.slice(0, 8).toUpperCase()}`,
-        issued_at: new Date(),
-        employee_name: profile?.full_name || request.profiles?.full_name || "-",
-        nik: profile?.nik || request.profiles?.nik || "-",
-        jabatan: (profile as any)?.jabatan || "-",
-        departemen: profile?.departemen || request.profiles?.departemen || "-",
-        bank_name: (profile as any)?.bank_name || "-",
-        bank_account_number: (profile as any)?.bank_account_number || "-",
-        destination: request.destination,
-        purpose: request.purpose,
-        start_date: request.start_date,
-        end_date: request.end_date,
-        total_days: request.total_days,
-        effective_days: calc.travel_days_effective,
-        per_day_travel: calc.per_day_travel,
-        per_day_attendance_deduction: calc.per_day_attendance,
-        total_amount: calc.amount,
-        splits: (calc.splits || []).filter((s) => s.amount > 0).map((s) => ({
-          period_month: s.period_month,
-          period_year: s.period_year,
-          days: s.days,
-          amount: s.amount,
-        })),
-      }, logoSrc);
-
-      toast({ title: "Voucher diunduh", description: "Dokumen voucher transfer berhasil dibuat." });
-    } catch (err: any) {
-      logger.error("Generate voucher failed:", err);
-      toast({ title: "Gagal", description: err?.message || "Tidak dapat membuat voucher.", variant: "destructive" });
-    } finally {
-      setVoucherLoadingId(null);
-    }
-  };
 
   // Pagination
   const totalPages = Math.ceil(requests.length / itemsPerPage);
@@ -601,20 +542,9 @@ const BusinessTravel = () => {
                                 </>
                               )}
                               {request.status === "approved" && (
-                                <>
-                                  <Button size="sm" variant="outline" onClick={() => handleUploadDocument(request)} title="Upload Surat Tugas">
-                                    <Upload className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDownloadVoucher(request)}
-                                    disabled={voucherLoadingId === request.id}
-                                    title="Download Voucher Transfer Tunjangan"
-                                  >
-                                    <Receipt className="h-4 w-4" />
-                                  </Button>
-                                </>
+                                <Button size="sm" variant="outline" onClick={() => handleUploadDocument(request)} title="Upload Surat Tugas">
+                                  <Upload className="h-4 w-4" />
+                                </Button>
                               )}
                               {request.status !== "pending" && (
                                 <Button size="sm" variant="destructive" onClick={() => { setDeleteTargetId(request.id); setDeleteConfirmOpen(true); }}>

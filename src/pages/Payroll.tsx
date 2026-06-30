@@ -13,8 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight, ChevronDown, Receipt } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
+import BusinessTravelVoucherExportDialog from "@/components/BusinessTravelVoucherExportDialog";
 import {
   calculatePayroll,
   calculateOvertimePay,
@@ -139,6 +140,7 @@ const Payroll = () => {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
+  const [showTravelVoucherDialog, setShowTravelVoucherDialog] = useState(false);
   const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -2153,6 +2155,10 @@ const Payroll = () => {
                   <DropdownMenuItem onClick={handleOpenFinalSettlementBankPreview} disabled={loadingFinalSettlementBank} className="gap-2">
                     <Landmark className="h-4 w-4" /> e-Payroll Final Settlement
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowTravelVoucherDialog(true)} className="gap-2">
+                    <Receipt className="h-4 w-4" /> Voucher Perjadin (Transfer)
+                  </DropdownMenuItem>
                   {hasIdulFitriInPeriod && (
                     <>
                       <DropdownMenuSeparator />
@@ -3194,6 +3200,12 @@ const Payroll = () => {
         onOpenChange={setShowUnlockDialog}
         onConfirm={handleUnlock}
         periodLabel={period ? `${MONTHS[selectedMonth - 1].label} ${selectedYear}` : ""}
+      />
+      <BusinessTravelVoucherExportDialog
+        open={showTravelVoucherDialog}
+        onOpenChange={setShowTravelVoucherDialog}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
       />
     </DashboardLayout>
   );

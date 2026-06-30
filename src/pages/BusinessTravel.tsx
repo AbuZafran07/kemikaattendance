@@ -28,6 +28,9 @@ import { notifyEmployee, NotificationTemplates, formatDateForNotification } from
 import logger from "@/lib/logger";
 import { logApprovalAction } from "@/lib/approvalAuditLog";
 import AdminCreateBusinessTravelDialog from "@/components/AdminCreateBusinessTravelDialog";
+import { applyBusinessTravelAllowance } from "@/lib/businessTravelAllowance";
+import { generateBusinessTravelVoucherPDF } from "@/lib/businessTravelVoucherPdfGenerator";
+import logoSrc from "@/assets/logo.png";
 
 interface BusinessTravelRequest {
   id: string;

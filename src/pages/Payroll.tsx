@@ -13,8 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight, ChevronDown, Receipt } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
+import BusinessTravelVoucherExportDialog from "@/components/BusinessTravelVoucherExportDialog";
 import {
   calculatePayroll,
   calculateOvertimePay,

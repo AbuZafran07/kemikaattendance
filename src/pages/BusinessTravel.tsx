@@ -601,20 +601,9 @@ const BusinessTravel = () => {
                                 </>
                               )}
                               {request.status === "approved" && (
-                                <>
-                                  <Button size="sm" variant="outline" onClick={() => handleUploadDocument(request)} title="Upload Surat Tugas">
-                                    <Upload className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDownloadVoucher(request)}
-                                    disabled={voucherLoadingId === request.id}
-                                    title="Download Voucher Transfer Tunjangan"
-                                  >
-                                    <Receipt className="h-4 w-4" />
-                                  </Button>
-                                </>
+                                <Button size="sm" variant="outline" onClick={() => handleUploadDocument(request)} title="Upload Surat Tugas">
+                                  <Upload className="h-4 w-4" />
+                                </Button>
                               )}
                               {request.status !== "pending" && (
                                 <Button size="sm" variant="destructive" onClick={() => { setDeleteTargetId(request.id); setDeleteConfirmOpen(true); }}>

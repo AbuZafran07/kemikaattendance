@@ -25,6 +25,7 @@ interface CalcInput {
   userId: string;
   startDate: string; // yyyy-MM-dd
   endDate: string;   // yyyy-MM-dd
+  dryRun?: boolean;  // jika true: hanya hitung, tidak menulis ke DB
 }
 
 /**

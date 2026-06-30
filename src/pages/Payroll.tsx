@@ -2154,6 +2154,10 @@ const Payroll = () => {
                   <DropdownMenuItem onClick={handleOpenFinalSettlementBankPreview} disabled={loadingFinalSettlementBank} className="gap-2">
                     <Landmark className="h-4 w-4" /> e-Payroll Final Settlement
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowTravelVoucherDialog(true)} className="gap-2">
+                    <Receipt className="h-4 w-4" /> Voucher Perjadin (Transfer)
+                  </DropdownMenuItem>
                   {hasIdulFitriInPeriod && (
                     <>
                       <DropdownMenuSeparator />

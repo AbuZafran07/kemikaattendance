@@ -366,7 +366,68 @@ export async function generateBusinessTravelVoucherBatchPDF(
   doc.setTextColor(0, 0, 0);
   y += 13;
 
+  // ===== FORMULA =====
+  const ensureSpace = (need: number) => {
+    if (y + need > ph - 12) {
+      doc.addPage();
+      drawHeader();
+      y = 32;
+    }
+  };
+
+  const avgTravel = items.reduce((a, b) => a + (b.per_day_travel || 0), 0) / items.length;
+  const avgAtt = items.reduce((a, b) => a + (b.per_day_attendance_deduction || 0), 0) / items.length;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(90, 90, 90);
+  const calcNote =
+    `Formula: max(0, Tarif Dinas/Hari - Tunj. Kehadiran/Hari) x Hari Kerja Efektif. ` +
+    `Tarif Dinas/Hari ${fmtIDR(Math.round(avgTravel))}, ` +
+    `Tunj. Kehadiran/Hari rata-rata ${fmtIDR(Math.round(avgAtt))}.`;
+  const cLines = doc.splitTextToSize(calcNote, rightEnd - mx);
+  ensureSpace(4.5 * (Array.isArray(cLines) ? cLines.length : 1) + 4);
+  doc.text(cLines, mx, y);
+  y += 4.5 * (Array.isArray(cLines) ? cLines.length : 1) + 3;
+
+  // ===== INSTRUKSI TRANSFER (per penerima) =====
+  ensureSpace(14);
+  doc.setDrawColor(GREEN[0], GREEN[1], GREEN[2]);
+  doc.setLineWidth(0.5);
+  doc.line(mx, y, rightEnd, y);
+  y += 5;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text("INSTRUKSI TRANSFER", mx, y);
+  y += 5;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  const intro =
+    "Mohon dilakukan transfer dana sebagai pembayaran di muka tunjangan perjalanan dinas ke masing-masing rekening karyawan berikut. " +
+    "Tunjangan ini telah disetujui dan akan dicatat otomatis pada periode payroll terkait.";
+  const introLines = doc.splitTextToSize(intro, rightEnd - mx);
+  ensureSpace(4.5 * (Array.isArray(introLines) ? introLines.length : 1) + 4);
+  doc.text(introLines, mx, y);
+  y += 4.5 * (Array.isArray(introLines) ? introLines.length : 1) + 2;
+
+  // Per-row recipient lines
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+  let rNo = 1;
+  for (const it of items) {
+    ensureSpace(5);
+    const line =
+      `${rNo}. ${it.employee_name} - ${it.bank_name || "-"} ${it.bank_account_number || "-"}  >>  ${fmtIDR(it.total_amount)}`;
+    const wrapped = doc.splitTextToSize(line, rightEnd - mx - 2);
+    doc.text(wrapped, mx + 2, y + 3.5);
+    y += 4.5 * (Array.isArray(wrapped) ? wrapped.length : 1) + 1;
+    rNo += 1;
+  }
+  y += 3;
+
   // Footer note
+  ensureSpace(16);
   doc.setFillColor(245, 250, 245);
   doc.rect(mx, y, rightEnd - mx, 14, "F");
   doc.setFont("helvetica", "bold");

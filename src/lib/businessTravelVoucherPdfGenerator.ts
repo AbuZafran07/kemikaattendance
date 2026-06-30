@@ -18,60 +18,66 @@ const fmtDateID = (d: string) => {
 };
 
 export interface TravelVoucherData {
-  // Voucher meta
   voucher_no: string;
   issued_at: Date;
-  // Employee
   employee_name: string;
   nik: string;
   jabatan?: string;
   departemen?: string;
   bank_name?: string;
   bank_account_number?: string;
-  // Trip
   destination: string;
   purpose: string;
-  start_date: string; // yyyy-MM-dd
-  end_date: string;   // yyyy-MM-dd
-  total_days: number;          // hari kalender
-  effective_days: number;      // hari kerja efektif
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  effective_days: number;
   per_day_travel: number;
-  per_day_attendance_deduction: number; // rata per-hari attendance allowance (dikurangkan)
+  per_day_attendance_deduction: number;
   total_amount: number;
   splits: Array<{ period_month: number; period_year: number; days: number; amount: number }>;
 }
 
-export async function generateBusinessTravelVoucherPDF(data: TravelVoucherData, logoSrc: string) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+async function renderVoucherPage(doc: jsPDF, data: TravelVoucherData, logoBase64: string | null) {
   const pw = doc.internal.pageSize.getWidth();
   const mx = 14;
   const rightEnd = pw - mx;
 
   // ===== HEADER =====
-  try {
-    const logoBase64 = await loadImageAsBase64(logoSrc);
-    doc.addImage(logoBase64, "PNG", mx, 10, 38, 17);
-  } catch {}
+  if (logoBase64) {
+    try { doc.addImage(logoBase64, "PNG", mx, 10, 38, 17); } catch {}
+  }
 
-  doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor(...GREEN);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(GREEN[0], GREEN[1], GREEN[2]);
   doc.text("VOUCHER TRANSFER TUNJANGAN", rightEnd, 14, { align: "right" });
   doc.text("PERJALANAN DINAS", rightEnd, 20, { align: "right" });
-  doc.setFontSize(8.5); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
-  doc.text(`No. Voucher: ${data.voucher_no}`, rightEnd, 25, { align: "right" });
-  doc.text(`Tanggal Terbit: ${data.issued_at.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}`, rightEnd, 29.5, { align: "right" });
 
-  // Garis pemisah
-  doc.setDrawColor(...GREEN); doc.setLineWidth(0.7);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(80, 80, 80);
+  doc.text(`No. Voucher: ${data.voucher_no}`, rightEnd, 25, { align: "right" });
+  doc.text(
+    `Tanggal Terbit: ${data.issued_at.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}`,
+    rightEnd, 29.5, { align: "right" }
+  );
+
+  doc.setDrawColor(GREEN[0], GREEN[1], GREEN[2]);
+  doc.setLineWidth(0.7);
   doc.line(mx, 34, rightEnd, 34);
 
   // ===== INFO KARYAWAN =====
   let y = 40;
-  doc.setFontSize(9.5); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 0, 0);
   doc.text("DATA KARYAWAN", mx, y);
-  y += 4;
-  doc.setDrawColor(180); doc.setLineWidth(0.2);
+  y += 3;
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.2);
   doc.line(mx, y, rightEnd, y);
-  y += 4;
+  y += 5;
 
   const labelX = mx;
   const colonX = mx + 38;
@@ -85,22 +91,23 @@ export async function generateBusinessTravelVoucherPDF(data: TravelVoucherData, 
     ["NIK", data.nik || "-", "Jabatan", data.jabatan || "-"],
     ["Bank", data.bank_name || "-", "No. Rekening", data.bank_account_number || "-"],
   ];
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
   for (const [l1, v1, l2, v2] of rows) {
     doc.setFont("helvetica", "bold"); doc.text(l1, labelX, y); doc.text(":", colonX, y);
-    doc.setFont("helvetica", "normal"); doc.text(v1, valX, y);
+    doc.setFont("helvetica", "normal"); doc.text(String(v1), valX, y);
     doc.setFont("helvetica", "bold"); doc.text(l2, rLabelX, y); doc.text(":", rColonX, y);
-    doc.setFont("helvetica", "normal"); doc.text(v2, rValX, y);
+    doc.setFont("helvetica", "normal"); doc.text(String(v2), rValX, y);
     y += 5.5;
   }
 
   // ===== DETAIL PERJALANAN =====
   y += 3;
-  doc.setFontSize(9.5); doc.setFont("helvetica", "bold");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
   doc.text("DETAIL PERJALANAN DINAS", mx, y);
-  y += 4;
+  y += 3;
   doc.line(mx, y, rightEnd, y);
-  y += 4;
+  y += 5;
 
   const trips: Array<[string, string]> = [
     ["Tujuan", data.destination || "-"],
@@ -110,34 +117,37 @@ export async function generateBusinessTravelVoucherPDF(data: TravelVoucherData, 
     ["Total Hari Kalender", `${data.total_days} hari`],
     ["Hari Kerja Efektif", `${data.effective_days} hari (di luar Sabtu/Minggu & libur nasional)`],
   ];
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
   for (const [l, v] of trips) {
     doc.setFont("helvetica", "bold"); doc.text(l, labelX, y); doc.text(":", colonX, y);
     doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(v, rightEnd - valX);
+    const lines = doc.splitTextToSize(String(v), rightEnd - valX);
     doc.text(lines, valX, y);
     y += 5.5 * (Array.isArray(lines) ? lines.length : 1);
   }
 
-  // ===== RINCIAN PERHITUNGAN =====
+  // ===== RINCIAN =====
   y += 3;
-  doc.setFontSize(9.5); doc.setFont("helvetica", "bold");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
   doc.text("RINCIAN PERHITUNGAN TUNJANGAN", mx, y);
-  y += 4;
+  y += 3;
   doc.line(mx, y, rightEnd, y);
   y += 2;
 
-  // Header tabel
-  doc.setFillColor(...HEADER_BG);
+  doc.setFillColor(HEADER_BG[0], HEADER_BG[1], HEADER_BG[2]);
   doc.rect(mx, y, rightEnd - mx, 6, "F");
-  doc.setFontSize(8.5); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
   doc.text("Periode Payroll", mx + 2, y + 4);
   doc.text("Hari Kerja Efektif", mx + 60, y + 4);
   doc.text("Tarif Bersih/Hari", mx + 105, y + 4);
   doc.text("Subtotal", rightEnd - 2, y + 4, { align: "right" });
   y += 6;
 
-  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
   const perDayNet = Math.max(0, data.per_day_travel - data.per_day_attendance_deduction);
   for (const s of data.splits) {
     const periodLabel = `${MONTHS_ID[s.period_month - 1]} ${s.period_year}`;
@@ -146,61 +156,92 @@ export async function generateBusinessTravelVoucherPDF(data: TravelVoucherData, 
     doc.text(fmtIDR(perDayNet), mx + 105, y + 4);
     doc.text(fmtIDR(s.amount), rightEnd - 2, y + 4, { align: "right" });
     y += 5.5;
-    doc.setDrawColor(220); doc.line(mx, y, rightEnd, y);
+    doc.setDrawColor(220, 220, 220);
+    doc.line(mx, y, rightEnd, y);
   }
 
   // Total
   y += 1;
-  doc.setFillColor(...GREEN);
+  doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]);
   doc.rect(mx, y, rightEnd - mx, 8, "F");
-  doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
   doc.text("TOTAL TRANSFER", mx + 2, y + 5.5);
   doc.text(fmtIDR(data.total_amount), rightEnd - 2, y + 5.5, { align: "right" });
-  doc.setTextColor(0);
+  doc.setTextColor(0, 0, 0);
   y += 12;
 
-  // ===== KETERANGAN PERHITUNGAN =====
-  doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(80);
+  // Keterangan formula — normal font, ASCII only
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(90, 90, 90);
   const calcNote =
-    `Formula: max(0, Tarif Dinas/Hari − Tunj. Kehadiran/Hari) × Hari Kerja Efektif. ` +
+    `Formula: max(0, Tarif Dinas/Hari - Tunj. Kehadiran/Hari) x Hari Kerja Efektif. ` +
     `Tarif Dinas/Hari ${fmtIDR(data.per_day_travel)}, ` +
-    `Tunj. Kehadiran/Hari rata-rata ${fmtIDR(data.per_day_attendance_deduction)}.`;
+    `Tunj. Kehadiran/Hari rata-rata ${fmtIDR(Math.round(data.per_day_attendance_deduction))}.`;
   const noteLines = doc.splitTextToSize(calcNote, rightEnd - mx);
   doc.text(noteLines, mx, y);
-  y += 5 * (Array.isArray(noteLines) ? noteLines.length : 1) + 3;
+  y += 4.5 * (Array.isArray(noteLines) ? noteLines.length : 1) + 3;
 
-  // ===== INSTRUKSI TRANSFER =====
-  doc.setDrawColor(...GREEN); doc.setLineWidth(0.4);
+  // Instruksi transfer
+  doc.setDrawColor(GREEN[0], GREEN[1], GREEN[2]);
+  doc.setLineWidth(0.4);
   doc.line(mx, y, rightEnd, y);
   y += 5;
-
-  doc.setFontSize(9.5); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 0, 0);
   doc.text("INSTRUKSI TRANSFER", mx, y);
   y += 5;
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
-  const instr = [
-    `Mohon dilakukan transfer dana sebesar ${fmtIDR(data.total_amount)} ke rekening karyawan di atas`,
-    `sebagai pembayaran di muka tunjangan perjalanan dinas. Tunjangan ini telah disetujui dan akan`,
-    `dicatat otomatis pada periode payroll terkait.`,
-  ];
-  for (const line of instr) {
-    doc.text(line, mx, y);
-    y += 5;
-  }
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  const instr =
+    `Mohon dilakukan transfer dana sebesar ${fmtIDR(data.total_amount)} ke rekening karyawan di atas ` +
+    `sebagai pembayaran di muka tunjangan perjalanan dinas. Tunjangan ini telah disetujui dan akan ` +
+    `dicatat otomatis pada periode payroll terkait.`;
+  const iLines = doc.splitTextToSize(instr, rightEnd - mx);
+  doc.text(iLines, mx, y);
+  y += 5 * (Array.isArray(iLines) ? iLines.length : 1) + 4;
 
-  // ===== FOOTER NOTE =====
-  y += 6;
+  // Footer note
   doc.setFillColor(245, 250, 245);
   doc.rect(mx, y, rightEnd - mx, 14, "F");
-  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...GREEN);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(GREEN[0], GREEN[1], GREEN[2]);
   doc.text("Catatan:", mx + 2, y + 4.5);
-  doc.setFont("helvetica", "normal"); doc.setTextColor(60);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(60, 60, 60);
   const footer =
     "Dokumen ini diterbitkan secara digital melalui sistem dan dinyatakan SAH tanpa tanda tangan & cap basah. " +
     "Voucher ini menjadi dasar pencairan dana perjalanan dinas yang telah disetujui.";
   const fLines = doc.splitTextToSize(footer, rightEnd - mx - 4);
   doc.text(fLines, mx + 2, y + 9);
+}
 
+export async function generateBusinessTravelVoucherPDF(data: TravelVoucherData, logoSrc: string) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  let logoBase64: string | null = null;
+  try { logoBase64 = await loadImageAsBase64(logoSrc); } catch {}
+  await renderVoucherPage(doc, data, logoBase64);
   const safeName = (data.employee_name || "Karyawan").replace(/\s+/g, "_");
   doc.save(`Voucher_Perjadin_${safeName}_${data.voucher_no}.pdf`);
+}
+
+export async function generateBusinessTravelVoucherBatchPDF(
+  items: TravelVoucherData[],
+  logoSrc: string,
+  fileName?: string,
+) {
+  if (items.length === 0) return;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  let logoBase64: string | null = null;
+  try { logoBase64 = await loadImageAsBase64(logoSrc); } catch {}
+  for (let i = 0; i < items.length; i++) {
+    if (i > 0) doc.addPage();
+    await renderVoucherPage(doc, items[i], logoBase64);
+  }
+  const stamp = new Date().toISOString().slice(0, 10);
+  doc.save(fileName || `Voucher_Perjadin_Gabungan_${items.length}_karyawan_${stamp}.pdf`);
 }

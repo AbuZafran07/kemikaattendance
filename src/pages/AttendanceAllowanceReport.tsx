@@ -531,6 +531,148 @@ export default function AttendanceAllowanceReport() {
   const totalEarlyDeduction = results.reduce((s, r) => s + (r.excluded ? 0 : r.early_leave_deduction), 0);
   const totalLateDeduction = results.reduce((s, r) => s + (r.excluded ? 0 : r.late_deduction), 0);
 
+  const openDetail = async (emp: EmployeeAllowance) => {
+    if (!periodRange || !config) return;
+    setDetailEmployee(emp);
+    setDetailRecords([]);
+    setDetailLoading(true);
+    try {
+      const { start, end } = periodRange;
+      const holidayDates = new Set(holidays.map((h) => h.date));
+
+      // Attendance for user in period
+      const { data: attData } = await supabase
+        .from("attendance")
+        .select("check_in_time, check_out_time, status, late_reason, notes")
+        .eq("user_id", emp.id)
+        .gte("check_in_time", format(start, "yyyy-MM-dd'T'00:00:00"))
+        .lte("check_in_time", format(end, "yyyy-MM-dd'T'23:59:59"))
+        .order("check_in_time", { ascending: true });
+
+      // Approved leave requests overlapping period
+      const { data: leaveData } = await supabase
+        .from("leave_requests")
+        .select("start_date, end_date, leave_type, reason")
+        .eq("user_id", emp.id)
+        .eq("status", "approved")
+        .lte("start_date", format(end, "yyyy-MM-dd"))
+        .gte("end_date", format(start, "yyyy-MM-dd"));
+
+      // Approved business travel overlapping period
+      const { data: travelData } = await supabase
+        .from("business_travel_requests")
+        .select("start_date, end_date, destination")
+        .eq("user_id", emp.id)
+        .eq("status", "approved")
+        .lte("start_date", format(end, "yyyy-MM-dd"))
+        .gte("end_date", format(start, "yyyy-MM-dd"));
+
+      // Index attendance by date
+      const attByDate = new Map<string, any>();
+      (attData || []).forEach((a) => {
+        if (a.check_in_time) {
+          const d = format(new Date(a.check_in_time), "yyyy-MM-dd");
+          attByDate.set(d, a);
+        }
+      });
+
+      const inRange = (d: string, s: string, e: string) => d >= s && d <= e;
+      const leaves = leaveData || [];
+      const travels = travelData || [];
+
+      const checkInEnd = workHours?.check_in_end || "08:00";
+      const lateTol = workHours?.late_tolerance_minutes || 0;
+      const [dh, dm] = checkInEnd.split(":").map(Number);
+      const deadlineMin = dh * 60 + dm + lateTol;
+      const checkOutStart = workHours?.check_out_start || "17:00";
+      const earlyTol = workHours?.early_leave_tolerance_minutes || 0;
+      const [oh, om] = checkOutStart.split(":").map(Number);
+      const checkOutMin = oh * 60 + om - earlyTol;
+      const fridayEnabled = workHours?.friday_enabled || false;
+      const fridayCheckOutStart = workHours?.friday_check_out_start || "16:00";
+      const [foh, fom] = fridayCheckOutStart.split(":").map(Number);
+      const fridayCheckOutMin = foh * 60 + fom - earlyTol;
+
+      const ratePerDay = emp.total_working_days > 0 ? (config.max_amount || 0) / emp.total_working_days : 0;
+      const ratePerHour = (config.work_hours_per_day || 8) > 0 ? ratePerDay / (config.work_hours_per_day || 8) : 0;
+
+      const days = eachDayOfInterval({ start, end }).map((d) => {
+        const dateStr = format(d, "yyyy-MM-dd");
+        const dow = d.getDay();
+        const isWknd = dow === 0 || dow === 6;
+        const holiday = holidays.find((h) => h.date === dateStr);
+        const leave = leaves.find((l) => inRange(dateStr, l.start_date, l.end_date));
+        const travel = travels.find((t) => inRange(dateStr, t.start_date, t.end_date));
+        const att = attByDate.get(dateStr);
+
+        let status = "-";
+        let statusVariant: "default" | "secondary" | "destructive" | "outline" = "outline";
+        let lateHours = 0;
+        let earlyHours = 0;
+        let checkIn = "-";
+        let checkOut = "-";
+        let allowance = 0;
+        let note = "";
+
+        if (isWknd) {
+          status = "Weekend";
+          statusVariant = "secondary";
+        } else if (holiday) {
+          status = "Libur";
+          statusVariant = "secondary";
+          note = holiday.name;
+        } else if (att) {
+          const ci = att.check_in_time ? new Date(att.check_in_time) : null;
+          const co = att.check_out_time ? new Date(att.check_out_time) : null;
+          checkIn = ci ? format(ci, "HH:mm") : "-";
+          checkOut = co ? format(co, "HH:mm") : "-";
+          const valid = !!ci && !!co;
+          if (valid) {
+            const ciMin = ci!.getHours() * 60 + ci!.getMinutes();
+            const late = Math.max(0, ciMin - deadlineMin);
+            if (late > 0) lateHours = Math.ceil(late / 60);
+            const coMin = co!.getHours() * 60 + co!.getMinutes();
+            const expOut = fridayEnabled && dow === 5 ? fridayCheckOutMin : checkOutMin;
+            const early = Math.max(0, expOut - coMin);
+            if (early > 0) earlyHours = Math.ceil(early / 60);
+
+            status = "Hadir";
+            statusVariant = "default";
+            if (lateHours > 0 && earlyHours > 0) { status = "Telat & P.Cepat"; statusVariant = "destructive"; }
+            else if (lateHours > 0) { status = "Terlambat"; statusVariant = "destructive"; }
+            else if (earlyHours > 0) { status = "Pulang Cepat"; statusVariant = "destructive"; }
+
+            allowance = Math.max(0, ratePerDay - lateHours * ratePerHour - earlyHours * ratePerHour);
+          } else {
+            status = ci && !co ? "Belum Checkout" : "Tidak Lengkap";
+            statusVariant = "destructive";
+            note = "Absen tidak lengkap, tidak dihitung";
+          }
+        } else if (leave) {
+          const map: Record<string, string> = { cuti_tahunan: "Cuti", izin: "Izin", sakit: "Sakit", lupa_absen: "Lupa Absen" };
+          status = map[leave.leave_type] || leave.leave_type;
+          statusVariant = "secondary";
+          note = leave.reason || "";
+        } else if (travel) {
+          status = "Dinas";
+          statusVariant = "secondary";
+          note = travel.destination || "";
+        } else {
+          status = "Mangkir";
+          statusVariant = "destructive";
+        }
+
+        return { date: d, dateStr, isWknd, isHoliday: !!holiday, status, statusVariant, checkIn, checkOut, lateHours, earlyHours, allowance, note };
+      });
+
+      setDetailRecords(days);
+    } catch (e) {
+      toast.error("Gagal memuat detail absensi");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fadeIn">

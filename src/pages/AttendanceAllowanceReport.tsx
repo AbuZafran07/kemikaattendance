@@ -904,7 +904,7 @@ export default function AttendanceAllowanceReport() {
             <DialogHeader>
               <DialogTitle>Rincian Absensi — {detailEmployee?.full_name}</DialogTitle>
               <DialogDescription>
-                Periode: {periodRange && format(periodRange.start, "d MMM yyyy", { locale: id })} - {periodRange && format(periodRange.end, "d MMM yyyy", { locale: id })}
+                Periode: {periodRange && format(periodRange.start, "d MMM yyyy", { locale: idLocale })} - {periodRange && format(periodRange.end, "d MMM yyyy", { locale: idLocale })}
                 {detailEmployee && !detailEmployee.excluded && (
                   <span className="ml-2">• Tarif/hari: {formatCurrency((config?.max_amount || 0) / (detailEmployee.total_working_days || 1))}</span>
                 )}
@@ -934,7 +934,7 @@ export default function AttendanceAllowanceReport() {
                     {detailRecords.map((d) => (
                       <TableRow key={d.dateStr} className={d.isWknd || d.isHoliday ? "bg-muted/30" : ""}>
                         <TableCell className="whitespace-nowrap text-xs">
-                          {format(d.date, "EEE, d MMM", { locale: id })}
+                          {format(d.date, "EEE, d MMM", { locale: idLocale })}
                         </TableCell>
                         <TableCell>
                           <Badge variant={d.statusVariant} className="text-xs">{d.status}</Badge>

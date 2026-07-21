@@ -897,6 +897,68 @@ export default function AttendanceAllowanceReport() {
             </Card>
           </>
         )}
+
+        {/* Detail Dialog */}
+        <Dialog open={!!detailEmployee} onOpenChange={(o) => !o && setDetailEmployee(null)}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Rincian Absensi — {detailEmployee?.full_name}</DialogTitle>
+              <DialogDescription>
+                Periode: {periodRange && format(periodRange.start, "d MMM yyyy", { locale: id })} - {periodRange && format(periodRange.end, "d MMM yyyy", { locale: id })}
+                {detailEmployee && !detailEmployee.excluded && (
+                  <span className="ml-2">• Tarif/hari: {formatCurrency((config?.max_amount || 0) / (detailEmployee.total_working_days || 1))}</span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {detailLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="overflow-auto flex-1">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-center">Check In</TableHead>
+                      <TableHead className="text-center">Check Out</TableHead>
+                      <TableHead className="text-center">Jam Telat</TableHead>
+                      <TableHead className="text-center">Jam P.Cepat</TableHead>
+                      <TableHead className="text-right">Tunjangan</TableHead>
+                      <TableHead>Catatan</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detailRecords.map((d) => (
+                      <TableRow key={d.dateStr} className={d.isWknd || d.isHoliday ? "bg-muted/30" : ""}>
+                        <TableCell className="whitespace-nowrap text-xs">
+                          {format(d.date, "EEE, d MMM", { locale: id })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={d.statusVariant} className="text-xs">{d.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center text-xs">{d.checkIn}</TableCell>
+                        <TableCell className="text-center text-xs">{d.checkOut}</TableCell>
+                        <TableCell className="text-center text-xs text-destructive">
+                          {d.lateHours > 0 ? `${d.lateHours}j` : "-"}
+                        </TableCell>
+                        <TableCell className="text-center text-xs text-destructive">
+                          {d.earlyHours > 0 ? `${d.earlyHours}j` : "-"}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-medium">
+                          {d.isWknd || d.isHoliday ? "-" : formatCurrency(d.allowance)}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{d.note}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

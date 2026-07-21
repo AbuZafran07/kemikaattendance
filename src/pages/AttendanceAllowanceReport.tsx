@@ -953,6 +953,31 @@ export default function AttendanceAllowanceReport() {
                         <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{d.note}</TableCell>
                       </TableRow>
                     ))}
+                    {(() => {
+                      const tot = detailRecords.reduce(
+                        (a, d) => ({
+                          late: a.late + (d.lateHours || 0),
+                          early: a.early + (d.earlyHours || 0),
+                          allowance: a.allowance + (d.isWknd || d.isHoliday ? 0 : d.allowance || 0),
+                          present: a.present + (d.status === "Hadir" || d.status === "Terlambat" || d.status === "Pulang Cepat" || d.status === "Telat & P.Cepat" ? 1 : 0),
+                          absent: a.absent + (d.status === "Mangkir" ? 1 : 0),
+                          working: a.working + (!d.isWknd && !d.isHoliday ? 1 : 0),
+                        }),
+                        { late: 0, early: 0, allowance: 0, present: 0, absent: 0, working: 0 },
+                      );
+                      return (
+                        <TableRow className="font-bold border-t-2 bg-muted/50">
+                          <TableCell colSpan={2}>
+                            TOTAL <span className="font-normal text-xs text-muted-foreground">({tot.working} hari kerja • {tot.present} hadir • {tot.absent} mangkir)</span>
+                          </TableCell>
+                          <TableCell colSpan={2} className="text-right text-xs text-muted-foreground">Total Potongan Jam:</TableCell>
+                          <TableCell className="text-center text-xs text-destructive">{tot.late}j</TableCell>
+                          <TableCell className="text-center text-xs text-destructive">{tot.early}j</TableCell>
+                          <TableCell className="text-right text-primary">{formatCurrency(tot.allowance)}</TableCell>
+                          <TableCell />
+                        </TableRow>
+                      );
+                    })()}
                   </TableBody>
                 </Table>
               </div>

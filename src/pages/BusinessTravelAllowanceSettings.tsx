@@ -91,9 +91,9 @@ export default function BusinessTravelAllowanceSettings() {
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            <strong>Formula:</strong> Tambahan = max(0, <em>Nilai Dinas/Hari</em> − <em>Tunj. Kehadiran/Hari</em>) × <em>Hari Dinas Efektif</em>.
-            <br />Hari dinas efektif mengabaikan akhir pekan dan hari libur nasional. Tunj. kehadiran per hari dihitung dari pengaturan "Tunjangan Kehadiran" dibagi jumlah hari kerja bulan tersebut.
-            <br />Nilai otomatis ditambahkan ke <strong>payroll bulan saat dinas dimulai</strong> ketika pengajuan dinas di-approve.
+            <strong>Formula:</strong> Tunj. Dinas = <em>Nilai Dinas/Hari</em> × <em>Hari Dinas Efektif</em>.
+            <br />Hari dinas efektif mengabaikan akhir pekan dan hari libur nasional. Hari saat karyawan berstatus "Dinas" otomatis dikecualikan dari perhitungan tunjangan kehadiran, sehingga tidak ada perhitungan ganda.
+            <br />Nilai otomatis ditambahkan ke <strong>payroll bulan saat dinas berlangsung</strong> (mengikuti cut-off tanggal 21) ketika pengajuan dinas di-approve.
           </AlertDescription>
         </Alert>
 

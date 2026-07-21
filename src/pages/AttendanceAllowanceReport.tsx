@@ -543,7 +543,7 @@ export default function AttendanceAllowanceReport() {
       // Attendance for user in period
       const { data: attData } = await supabase
         .from("attendance")
-        .select("check_in_time, check_out_time, status, late_reason, notes")
+        .select("check_in_time, check_out_time, status, notes")
         .eq("user_id", emp.id)
         .gte("check_in_time", format(start, "yyyy-MM-dd'T'00:00:00"))
         .lte("check_in_time", format(end, "yyyy-MM-dd'T'23:59:59"))

@@ -46,24 +46,14 @@ function payrollPeriodOf(d: Date, cutoffDay: number): { month: number; year: num
 }
 
 /**
- * Hitung jumlah hari kerja efektif untuk satu periode payroll (cut-off based):
- * mulai cutoffDay bulan sebelumnya s/d (cutoffDay - 1) bulan periode.
- */
-function workingDaysOfPeriod(periodMonth: number, periodYear: number, cutoffDay: number, holidaySet: Set<string>): number {
-  const periodStart = new Date(periodYear, periodMonth - 2, cutoffDay);
-  const periodEndDay = cutoffDay - 1 || 28;
-  const periodEnd = new Date(periodYear, periodMonth - 1, periodEndDay);
-  return eachDayOfInterval({ start: periodStart, end: periodEnd }).filter((d) => {
-    const ds = format(d, "yyyy-MM-dd");
-    return !isWeekend(ds) && !holidaySet.has(ds);
-  }).length;
-}
-
-/**
  * Hitung tunjangan perjalanan dinas dan tambahkan ke payroll_overrides
  * berdasarkan **cut-off attendance** (default 21–20). Trip yang menyeberang
  * cut-off otomatis dipecah ke 2 periode payroll sesuai jumlah hari kerja
  * efektifnya di masing-masing periode.
+ *
+ * FORMULA (disederhanakan): amount = per_day_amount × hari_dinas_efektif.
+ * Hari dinas tidak dobel dengan tunj. kehadiran karena hari berstatus "Dinas"
+ * sudah tidak dihitung sebagai hari hadir di Laporan Tunj. Kehadiran.
  */
 export async function applyBusinessTravelAllowance(input: CalcInput): Promise<BusinessTravelAllowanceResult> {
   const { userId, startDate, endDate, dryRun = false } = input;
@@ -86,11 +76,7 @@ export async function applyBusinessTravelAllowance(input: CalcInput): Promise<Bu
   const perDayTravel = Number(travelCfg.per_day_amount) || 0;
 
   const attCfg = (attCfgRes.data?.value as any) || {};
-  const maxAttendance = Number(attCfg.max_amount) || 0;
   const cutoffDay = Number(attCfg.cutoff_day) || 21;
-  const excludedIds: string[] = Array.isArray(attCfg.excluded_employee_ids) ? attCfg.excluded_employee_ids : [];
-  const attendanceEnabled = attCfg.enabled !== false;
-  const userExcludedFromAttendance = excludedIds.includes(userId);
 
   const holidays: { date: string }[] = (holidayRes.data?.value as any)?.holidays || [];
   const holidaySet = new Set(holidays.map((h) => h.date));
@@ -117,19 +103,9 @@ export async function applyBusinessTravelAllowance(input: CalcInput): Promise<Bu
 
   let grandTotal = 0;
   const splits: NonNullable<BusinessTravelAllowanceResult["splits"]> = [];
-  let lastPerDayAttendance = 0;
 
   for (const { month: pm, year: py, days } of grouped.values()) {
-    // Per-day attendance allowance untuk periode ini
-    const workingDays = workingDaysOfPeriod(pm, py, cutoffDay, holidaySet);
-    let perDayAttendance = 0;
-    if (attendanceEnabled && !userExcludedFromAttendance && workingDays > 0 && maxAttendance > 0) {
-      perDayAttendance = maxAttendance / workingDays;
-    }
-    lastPerDayAttendance = perDayAttendance;
-
-    const perDayDiff = Math.max(0, perDayTravel - perDayAttendance);
-    const amount = Math.round(perDayDiff * days);
+    const amount = Math.round(perDayTravel * days);
 
     if (amount <= 0) {
       splits.push({ period_month: pm, period_year: py, days, amount: 0 });

@@ -169,6 +169,7 @@ export default function AttendanceAllowanceReport() {
         holidayNames,
         workingDays: totalWorkingDays,
       });
+      setPeriodRange({ start: periodStart, end: periodEnd });
 
       // Fetch work hours for late calculation
       const { data: whData } = await supabase.rpc("get_work_hours");

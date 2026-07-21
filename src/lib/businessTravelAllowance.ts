@@ -175,7 +175,7 @@ export async function applyBusinessTravelAllowance(input: CalcInput): Promise<Bu
     period_month: primary?.period_month ?? fallbackPeriodMonth,
     period_year: primary?.period_year ?? fallbackPeriodYear,
     travel_days_effective: totalTravelDays,
-    per_day_attendance: lastPerDayAttendance,
+    per_day_attendance: 0,
     per_day_travel: perDayTravel,
     splits,
     reason: splits.find((s) => s.skipped_reason)?.skipped_reason,

@@ -825,9 +825,18 @@ export default function AttendanceAllowanceReport() {
                     </TableHeader>
                     <TableBody>
                       {results.map((r, idx) => (
-                        <TableRow key={r.id} className={r.excluded ? "opacity-50" : ""}>
+                        <TableRow
+                          key={r.id}
+                          className={`${r.excluded ? "opacity-50" : ""} cursor-pointer hover:bg-muted/50`}
+                          onClick={() => openDetail(r)}
+                        >
                           <TableCell>{idx + 1}</TableCell>
-                          <TableCell className="font-medium">{r.full_name}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="underline-offset-2 hover:underline">{r.full_name}</span>
+                            </div>
+                          </TableCell>
                           <TableCell>{r.jabatan}</TableCell>
                           <TableCell className="text-center">{r.total_working_days}</TableCell>
                           <TableCell className="text-center">{r.days_present}</TableCell>

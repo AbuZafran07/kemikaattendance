@@ -76,6 +76,10 @@ export default function AttendanceAllowanceReport() {
   const [results, setResults] = useState<EmployeeAllowance[]>([]);
   const [workHours, setWorkHours] = useState<any>(null);
   const [periodInfo, setPeriodInfo] = useState<{ totalDays: number; weekendDays: number; holidayDays: number; holidayNames: string[]; workingDays: number } | null>(null);
+  const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [detailEmployee, setDetailEmployee] = useState<EmployeeAllowance | null>(null);
+  const [detailRecords, setDetailRecords] = useState<any[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     fetchConfig();

@@ -68,6 +68,8 @@ import DepartmentJabatanSettings from "./pages/DepartmentJabatanSettings";
 import HolidayEventSettings from "./pages/HolidayEventSettings";
 import ContractNotifications from "./pages/ContractNotifications";
 import OrgChart from "./pages/OrgChart";
+import Training from "./pages/Training";
+import EmployeeTrainingPage from "./pages/EmployeeTraining";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -113,6 +115,8 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
             <Route path="/dashboard/contract-notifications" element={<ProtectedRoute requireAdmin><ContractNotifications /></ProtectedRoute>} />
             <Route path="/dashboard/org-chart" element={<ProtectedRoute requireAdmin><OrgChart /></ProtectedRoute>} />
+            <Route path="/dashboard/training" element={<ProtectedRoute requireAdmin><Training /></ProtectedRoute>} />
+            <Route path="/employee/training" element={<ProtectedRoute><EmployeeTrainingPage /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
             <Route path="/employee/leave-request" element={<ProtectedRoute><LeaveRequest /></ProtectedRoute>} />

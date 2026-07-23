@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, TrendingUp, ChevronRight, History, Plane, FileText, DollarSign, Wallet } from "lucide-react";
+import { Calendar, Clock, TrendingUp, ChevronRight, History, Plane, FileText, DollarSign, Wallet, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
@@ -26,6 +26,7 @@ const services: ServiceItem[] = [
   { labelKey: "selfService.items.performanceTitle", descKey: "selfService.items.performanceDesc", icon: TrendingUp, path: "/employee/performance", color: "bg-emerald-500/10 text-emerald-600" },
   { labelKey: "selfService.items.payslipTitle", descKey: "selfService.items.payslipDesc", icon: DollarSign, path: "/employee/payroll-history", color: "bg-yellow-500/10 text-yellow-600" },
   { labelKey: "selfService.items.loanTitle", descKey: "selfService.items.loanDesc", icon: Wallet, path: "/employee/loans", color: "bg-red-500/10 text-red-600" },
+  { labelKey: "selfService.items.trainingTitle", descKey: "selfService.items.trainingDesc", icon: GraduationCap, path: "/employee/training", color: "bg-indigo-500/10 text-indigo-600" },
 ];
 
 const EmployeeSelfService = () => {

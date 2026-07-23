@@ -503,6 +503,72 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_trainings: {
+        Row: {
+          certificate_url: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_date: string | null
+          expiry_date: string | null
+          id: string
+          notes: string | null
+          score: number | null
+          start_date: string | null
+          status: string
+          training_id: string | null
+          training_name: string
+          updated_at: string
+        }
+        Insert: {
+          certificate_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          end_date?: string | null
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          score?: number | null
+          start_date?: string | null
+          status?: string
+          training_id?: string | null
+          training_name: string
+          updated_at?: string
+        }
+        Update: {
+          certificate_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          end_date?: string | null
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          score?: number | null
+          start_date?: string | null
+          status?: string
+          training_id?: string | null
+          training_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_trainings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_trainings_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "training_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       final_settlements: {
         Row: {
           created_at: string
@@ -1428,6 +1494,48 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: Json
+        }
+        Relationships: []
+      }
+      training_programs: {
+        Row: {
+          category: string | null
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_hours: number | null
+          id: string
+          is_active: boolean
+          name: string
+          provider: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          provider?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          provider?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

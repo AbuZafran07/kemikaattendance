@@ -658,6 +658,7 @@ const Employees = () => {
       resign_date: "",
       resign_notes: "",
       notes: "",
+      reports_to: "",
       leave_active: true,
       annual_leave_quota: "12",
       remaining_leave: "12",

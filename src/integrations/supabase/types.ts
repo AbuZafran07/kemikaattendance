@@ -1274,6 +1274,7 @@ export type Database = {
           photo_url: string | null
           ptkp_status: string | null
           remaining_leave: number | null
+          reports_to: string | null
           resign_date: string | null
           resign_notes: string | null
           status: string | null
@@ -1310,6 +1311,7 @@ export type Database = {
           photo_url?: string | null
           ptkp_status?: string | null
           remaining_leave?: number | null
+          reports_to?: string | null
           resign_date?: string | null
           resign_notes?: string | null
           status?: string | null
@@ -1346,6 +1348,7 @@ export type Database = {
           photo_url?: string | null
           ptkp_status?: string | null
           remaining_leave?: number | null
+          reports_to?: string | null
           resign_date?: string | null
           resign_notes?: string | null
           status?: string | null
@@ -1355,7 +1358,15 @@ export type Database = {
           updated_at?: string
           work_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_reports_to_fkey"
+            columns: ["reports_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       salary_change_history: {
         Row: {

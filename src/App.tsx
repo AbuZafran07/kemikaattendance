@@ -118,6 +118,8 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/contract-notifications" element={<ProtectedRoute requireAdmin><ContractNotifications /></ProtectedRoute>} />
             <Route path="/dashboard/org-chart" element={<ProtectedRoute requireAdmin><OrgChart /></ProtectedRoute>} />
             <Route path="/dashboard/training" element={<ProtectedRoute requireAdmin><Training /></ProtectedRoute>} />
+            <Route path="/dashboard/assets" element={<ProtectedRoute requireAdmin><AssetManagement /></ProtectedRoute>} />
+            <Route path="/dashboard/exit-management" element={<ProtectedRoute requireAdmin><ExitManagement /></ProtectedRoute>} />
             <Route path="/employee/training" element={<ProtectedRoute><EmployeeTrainingPage /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />

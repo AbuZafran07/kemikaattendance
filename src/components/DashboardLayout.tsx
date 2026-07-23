@@ -33,6 +33,8 @@ import {
   PanelLeft,
   Network,
   GraduationCap,
+  Laptop,
+  DoorOpen,
 } from "lucide-react";
 import HRDocumentModal from "@/components/HRDocumentModal";
 import HRReferenceChips from "@/components/HRReferenceChips";
@@ -83,6 +85,8 @@ const buildNavigationGroups = (t: (k: string) => string) => [
       { name: t("nav.items.businessTravel"), href: "/dashboard/business-travel", icon: Plane },
       { name: "Struktur Organisasi", href: "/dashboard/org-chart", icon: Network },
       { name: "Training & Sertifikasi", href: "/dashboard/training", icon: GraduationCap },
+      { name: "Manajemen Aset", href: "/dashboard/assets", icon: Laptop },
+      { name: "Exit Management", href: "/dashboard/exit-management", icon: DoorOpen },
     ],
   },
   {

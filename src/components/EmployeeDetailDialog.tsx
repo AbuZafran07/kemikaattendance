@@ -428,6 +428,10 @@ export const EmployeeDetailDialog = ({
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="documents" className="mt-4">
+            <EmployeeDocuments employeeId={employee.id} />
+          </TabsContent>
         </Tabs>
 
         {/* Actions */}

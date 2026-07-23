@@ -32,6 +32,7 @@ import {
   Settings2,
   PanelLeft,
   Network,
+  GraduationCap,
 } from "lucide-react";
 import HRDocumentModal from "@/components/HRDocumentModal";
 import HRReferenceChips from "@/components/HRReferenceChips";

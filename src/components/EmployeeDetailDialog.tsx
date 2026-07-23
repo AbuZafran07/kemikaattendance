@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatAttendanceStatus } from "@/lib/statusUtils";
 import { cn } from "@/lib/utils";
 import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
+import { EmployeeDocuments } from "@/components/EmployeeDocuments";
 
 interface EmployeeDetailDialogProps {
   open: boolean;

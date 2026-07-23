@@ -1446,6 +1446,26 @@ const Employees = () => {
                   )}
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="edit_reports_to">Atasan Langsung</Label>
+                  <Select
+                    value={editFormData.reports_to || "none"}
+                    onValueChange={(v) => setEditFormData({ ...editFormData, reports_to: v === "none" ? "" : v })}
+                  >
+                    <SelectTrigger id="edit_reports_to">
+                      <SelectValue placeholder="Pilih atasan..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Tidak ada (Top level) —</SelectItem>
+                      {employees
+                        .filter((e) => e.id !== editingEmployee?.id && e.status === "Active")
+                        .map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.full_name} — {e.jabatan || "-"}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                <div className="space-y-2">
                   <Label htmlFor="edit_npwp">NPWP</Label>
                   <Input
                     id="edit_npwp"

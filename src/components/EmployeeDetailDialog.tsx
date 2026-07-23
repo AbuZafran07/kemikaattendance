@@ -29,6 +29,7 @@ import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type F
 import { EmployeeDocuments } from "@/components/EmployeeDocuments";
 import { ContractHistory } from "@/components/ContractHistory";
 import { EmployeeTrainings } from "@/components/EmployeeTrainings";
+import { EmployeeAssets } from "@/components/EmployeeAssets";
 
 interface EmployeeDetailDialogProps {
   open: boolean;

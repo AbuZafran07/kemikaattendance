@@ -31,6 +31,7 @@ import {
   ArrowLeft,
   Settings2,
   PanelLeft,
+  Network,
 } from "lucide-react";
 import HRDocumentModal from "@/components/HRDocumentModal";
 import HRReferenceChips from "@/components/HRReferenceChips";

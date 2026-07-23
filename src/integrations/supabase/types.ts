@@ -305,6 +305,62 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_documents: {
+        Row: {
+          category: string
+          created_at: string
+          expiry_date: string | null
+          file_path: string
+          file_size: number | null
+          id: string
+          issued_date: string | null
+          mime_type: string | null
+          notes: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          expiry_date?: string | null
+          file_path: string
+          file_size?: number | null
+          id?: string
+          issued_date?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          expiry_date?: string | null
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          issued_date?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_loans: {
         Row: {
           created_at: string
@@ -1108,6 +1164,9 @@ export type Database = {
           basic_salary: number | null
           bpjs_kesehatan_enabled: boolean
           bpjs_ketenagakerjaan_enabled: boolean
+          contract_end_date: string | null
+          contract_number: string | null
+          contract_start_date: string | null
           contract_type: string
           created_at: string
           departemen: string
@@ -1141,6 +1200,9 @@ export type Database = {
           basic_salary?: number | null
           bpjs_kesehatan_enabled?: boolean
           bpjs_ketenagakerjaan_enabled?: boolean
+          contract_end_date?: string | null
+          contract_number?: string | null
+          contract_start_date?: string | null
           contract_type?: string
           created_at?: string
           departemen: string
@@ -1174,6 +1236,9 @@ export type Database = {
           basic_salary?: number | null
           bpjs_kesehatan_enabled?: boolean
           bpjs_ketenagakerjaan_enabled?: boolean
+          contract_end_date?: string | null
+          contract_number?: string | null
+          contract_start_date?: string | null
           contract_type?: string
           created_at?: string
           departemen?: string

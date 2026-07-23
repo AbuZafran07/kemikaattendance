@@ -70,6 +70,8 @@ import ContractNotifications from "./pages/ContractNotifications";
 import OrgChart from "./pages/OrgChart";
 import Training from "./pages/Training";
 import EmployeeTrainingPage from "./pages/EmployeeTraining";
+import AssetManagement from "./pages/AssetManagement";
+import ExitManagement from "./pages/ExitManagement";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>

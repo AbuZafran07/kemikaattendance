@@ -305,6 +305,97 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_history: {
+        Row: {
+          changes: Json | null
+          contract_number: string | null
+          contract_type: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          start_date: string | null
+        }
+        Insert: {
+          changes?: Json | null
+          contract_number?: string | null
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+        }
+        Update: {
+          changes?: Json | null
+          contract_number?: string | null
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_reminders_log: {
+        Row: {
+          channels: Json | null
+          contract_end_date: string
+          employee_id: string
+          error_message: string | null
+          id: string
+          recipients: Json | null
+          reminder_type: string
+          sent_at: string
+          status: string | null
+        }
+        Insert: {
+          channels?: Json | null
+          contract_end_date: string
+          employee_id: string
+          error_message?: string | null
+          id?: string
+          recipients?: Json | null
+          reminder_type: string
+          sent_at?: string
+          status?: string | null
+        }
+        Update: {
+          channels?: Json | null
+          contract_end_date?: string
+          employee_id?: string
+          error_message?: string | null
+          id?: string
+          recipients?: Json | null
+          reminder_type?: string
+          sent_at?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_reminders_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_documents: {
         Row: {
           category: string

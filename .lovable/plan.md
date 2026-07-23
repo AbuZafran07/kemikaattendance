@@ -1,52 +1,103 @@
-## Ringkasan
-Menambahkan logika tunjangan perjalanan dinas ke modul **Perjalanan Dinas yang sudah ada** (tidak dirombak). Saat admin meng-approve pengajuan dinas, sistem otomatis menghitung tunjangan dinas dan menambahkannya ke `payroll_overrides` bulan berjalan. Slip & dialog payroll akan menampilkannya sebagai baris terpisah "Tunjangan Perjalanan Dinas".
 
-## Rumus (sudah dikonfirmasi)
-- Per-hari kehadiran = `attendance_allowance.max_amount ÷ jumlah hari kerja bulan ybs` (cut-off 21–20, hari kerja = exclude weekend & libur nasional/cuti bersama — sama persis dengan Laporan Tunj. Kehadiran).
-- Tambahan dinas = `max(0, nilai_dinas_per_hari − per_hari_kehadiran) × hari_dinas_efektif` (hari dinas exclude weekend & libur).
-- Periode payroll = bulan dari `start_date` pengajuan dinas.
+# Roadmap Implementasi (4 Batch)
 
-## Perubahan yang akan dibuat
+Scope besar, saya pecah jadi 4 batch supaya bisa diuji per modul. Setiap batch = 1 sesi eksekusi. Setelah Anda approve plan ini, saya mulai **Batch A** dulu.
 
-### 1. Database (migrasi)
-- Tambah row baru di `system_settings` dengan key `business_travel_allowance_config` = `{ per_day_amount: 100000, enabled: true }`.
-- RPC baru `get_business_travel_allowance_config()` (SECURITY DEFINER, `SET search_path = ''`).
-- **Tambah kolom baru** `tunjangan_perjalanan_dinas numeric NOT NULL DEFAULT 0` pada:
-  - `payroll_overrides`
-  - `payroll`
-- Tidak mengubah tabel/policy lain, tidak menyentuh `approve_business_travel_request` RPC (logic upsert payroll_overrides dikerjakan di client setelah approve sukses, agar tidak menyentuh RPC yang sudah dipakai luas).
+---
 
-### 2. Halaman Pengaturan baru
-- File: `src/pages/BusinessTravelAllowanceSettings.tsx` — input nilai per-hari + toggle aktif.
-- Daftarkan di `src/pages/Settings.tsx` (grid menu) + route di `src/App.tsx`.
-- i18n key di `id.json` & `en.json`.
+## Batch A — Kontrak & Notifikasi Kontrak
 
-### 3. Helper kalkulasi
-- File baru: `src/lib/businessTravelAllowanceCalc.ts`
-  - Fungsi `calculateBusinessTravelAllowance({ userId, startDate, endDate })` → `{ amount, period_month, period_year, breakdown }`.
-  - Re-use logika hari kerja dari `AttendanceAllowanceReport` (akan diekstrak ke util kecil agar tidak duplikasi).
+**Database**
+- Tabel `contract_history`: `id`, `employee_id`, `contract_number`, `contract_type`, `start_date`, `end_date`, `changes` (jsonb: before/after), `notes`, `created_by`, `created_at`.
+- Tabel `contract_reminders_log`: `id`, `employee_id`, `contract_end_date`, `reminder_type` (H30/H7/EXPIRED), `sent_at`, `channels` (jsonb: fcm/email status), `recipients` (jsonb).
+- RLS: admin/HR full; karyawan lihat miliknya sendiri (contract_history only).
+- Trigger: saat `profiles.contract_end_date` / `contract_number` / `contract_type` diubah → auto-insert row `contract_history` dengan diff.
 
-### 4. Integrasi approval (tanpa merusak alur existing)
-- `src/pages/BusinessTravel.tsx` — di `handleApprove` (dan path approve massal jika ada): setelah RPC `approve_business_travel_request` sukses, panggil helper di atas → upsert `payroll_overrides` (tambahkan ke kolom baru `tunjangan_perjalanan_dinas`, akumulasi jika sudah ada untuk periode yang sama).
-- `src/components/AdminCreateBusinessTravelDialog.tsx` — karena admin-create otomatis approved, jalankan helper yang sama setelah insert sukses.
-- Toast info: "Tunjangan dinas Rp X ditambahkan ke payroll bulan MM/YYYY".
+**UI**
+- `src/components/EmployeeDetailDialog.tsx`: tab baru **Riwayat Kontrak** — timeline perpanjangan (nomor, periode, tipe, perubahan, dibuat oleh).
+- Halaman baru `/dashboard/contract-notifications` (sidebar MANAJEMEN):
+  - Tab **Kontrak Aktif**: daftar karyawan kontrak + sisa hari + status reminder terakhir.
+  - Tab **Riwayat Reminder**: log H-30/H-7/EXPIRED per karyawan, kanal & status pengiriman.
 
-### 5. Tampilkan di Payroll
-- `src/pages/Payroll.tsx`:
-  - Tambah kolom `tunjangan_perjalanan_dinas` saat fetch + simpan/generate payroll.
-  - Tambah field di dialog Tambahan Penghasilan (read-only-ish, bisa diedit admin) — di-init dari override.
-  - Masukkan ke total penghasilan bruto.
-- `src/lib/payrollCalculation.ts` — tambahkan ke akumulator penghasilan kena pajak.
-- `src/lib/payslipPdfGenerator.ts` & `src/lib/payrollReportPdfGenerator.ts` — tampilkan baris "Tunjangan Perjalanan Dinas" terpisah (sesuai rule memori payroll-slip-itemization).
-- `src/lib/bankPayrollExport.ts` — pastikan masuk THP.
+**Edge function**
+- `contract-reminder-scheduler` (cron harian 08:00 WIB via pg_cron):
+  - Scan `profiles` dengan `contract_end_date` = today+30 atau today+7 atau today.
+  - Kirim FCM ke admin/HR + email via Resend (RESEND_API_KEY sudah ada).
+  - Karyawan bersangkutan juga dapat FCM/email.
+  - Insert log ke `contract_reminders_log`.
+- Badge notifikasi in-app di bell admin.
 
-### 6. Memory
-- Tambah memory baru: `business-travel-allowance` (rumus & integrasi).
+---
 
-## Catatan keamanan & ketahanan
-- Helper akan **idempotent**: kalau request yang sama di-approve ulang (mis. unlock & approve lagi), tidak double — pakai marker di `deduction_notes`/log sederhana. Saya akan tambahkan kolom `payroll_override_id` opsional di `business_travel_requests` agar bisa di-revert saat dibatalkan? **(opsional; bisa di-skip kalau Anda mau lebih sederhana — lihat pertanyaan di bawah)**.
-- Tidak ada perubahan ke RPC approval existing → modul lain (notifikasi, audit, kalender) tetap berjalan.
+## Batch B — Struktur Organisasi Visual (Org Chart)
 
-## Pertanyaan terakhir sebelum eksekusi
-1. **Reversal**: jika dinas yang sudah approved kemudian dibatalkan/diedit admin → tunjangan otomatis ikut dicabut/diupdate, atau cukup hitung saat approval pertama saja (admin edit manual jika perlu)?
-2. **Payroll sudah finalized**: jika payroll bulan tsb sudah `finalized=true`, apakah tambahan tunjangan dinas **ditolak** (toast warning, admin harus unlock dulu), atau **tetap masuk ke override** (admin nanti unlock + re-generate)?
+- Tambah kolom `profiles.reports_to` (uuid FK ke profiles).
+- Halaman `/dashboard/org-chart`:
+  - Rendering pohon hierarki (react-flow / custom tree) dari CEO/pimpinan ke bawah berdasarkan `reports_to`.
+  - Node: foto, nama, jabatan, departemen. Zoom/pan.
+  - Filter per departemen.
+  - Export PNG.
+- Dialog edit atasan di `Employees.tsx`.
+
+---
+
+## Batch C — Training & Sertifikasi Tracker
+
+**Database**
+- `training_programs`: master training (nama, kategori, penyelenggara, biaya).
+- `employee_trainings`: employee_id, training_id, tgl mulai/selesai, status, sertifikat_url, skor, expiry_date, notes.
+- Bucket storage `training-certificates` (private).
+
+**UI**
+- Halaman `/dashboard/training`:
+  - Tab **Program**: master training (admin CRUD).
+  - Tab **Riwayat Karyawan**: siapa ikut training apa, status, sertifikat.
+  - Tab **Sertifikasi Kadaluarsa**: sertifikat expiring dalam 60 hari.
+- Tab **Training** di `EmployeeDetailDialog`.
+- Karyawan bisa lihat & upload sertifikat sendiri di Employee Self Service.
+
+---
+
+## Batch D — Exit Interview, Handover & Asset Management
+
+**Database**
+- `assets`: id, asset_code, name, category (Laptop/HP/dll), brand, serial_number, purchase_date, purchase_price, condition, status (available/assigned/maintenance/lost).
+- `asset_assignments`: asset_id, employee_id, assigned_at, returned_at, condition_out, condition_in, notes.
+- `exit_interviews`: employee_id, interview_date, reason, satisfaction (jsonb rating), suggestions, would_recommend, interviewer.
+- `handover_checklists`: employee_id, item (jsonb list: asset, akun, dokumen, tugas), status, verified_by.
+
+**UI**
+- Halaman `/dashboard/assets` (sidebar MANAJEMEN):
+  - Master asset (CRUD, kategori, kondisi).
+  - Assign/return asset ke karyawan (dengan foto kondisi opsional).
+  - Riwayat pemegang per asset.
+- Tab **Aset Dipegang** di `EmployeeDetailDialog`.
+- Halaman `/dashboard/exit-management`:
+  - Tab **Exit Interview**: form terstruktur (alasan, rating budaya kerja, saran).
+  - Tab **Handover Checklist**: template item (asset return, akun email, dokumen serah terima, transfer knowledge) + verifikasi HR.
+- Integrasi ke `FinalSettlementDialog`: block finalisasi jika handover belum 100% & aset belum return.
+
+---
+
+## Catatan Teknis
+
+- Semua tabel di schema `public`, wajib GRANT + RLS + policy per role.
+- Trigger `update_updated_at_column` untuk audit timestamp.
+- FCM pakai `send-notification` edge function existing. Email pakai Resend (secret sudah ada).
+- Cron pakai `pg_cron` + `pg_net` yang sudah aktif (mengikuti pola `scheduled-backup`).
+- Semua halaman baru daftarkan di `DashboardLayout` sidebar (kategori MANAJEMEN) dan `App.tsx` routing.
+- i18n keys ditambahkan di `id.json` & `en.json`.
+
+## Kanal Notifikasi Default (Batch A)
+
+- **Penerima**: admin + HR + karyawan bersangkutan.
+- **Kanal**: FCM push (in-app) + Email Resend.
+- Kalau mau berbeda, beri tahu sebelum saya mulai Batch A.
+
+## Urutan Eksekusi
+
+1. Approve plan → saya kerjakan **Batch A** penuh (DB + UI + edge function + cron).
+2. Setelah Anda test & OK → Batch B.
+3. Lanjut C, lalu D.
+
+Kalau setuju, balas **"lanjut Batch A"**. Kalau mau ubah urutan/scope batch, beri tahu.

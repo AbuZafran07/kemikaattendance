@@ -123,6 +123,9 @@ const Employees = () => {
     bpjs_kesehatan_enabled: true,
     bpjs_ketenagakerjaan_enabled: true,
     contract_type: "permanent",
+    contract_start_date: "",
+    contract_end_date: "",
+    contract_number: "",
     npwp: "",
     bank_name: "",
     bank_account_number: "",
@@ -480,6 +483,9 @@ const Employees = () => {
            bpjs_kesehatan_enabled: editFormData.bpjs_kesehatan_enabled,
            bpjs_ketenagakerjaan_enabled: editFormData.bpjs_ketenagakerjaan_enabled,
           contract_type: editFormData.contract_type,
+          contract_start_date: editFormData.contract_start_date || null,
+          contract_end_date: editFormData.contract_type === "contract" ? (editFormData.contract_end_date || null) : null,
+          contract_number: editFormData.contract_number || null,
           annual_leave_quota: editFormData.leave_active ? (Number(editFormData.annual_leave_quota) || 12) : 0,
           remaining_leave: editFormData.leave_active ? (Number(editFormData.remaining_leave) || 0) : 0,
           npwp: result.data.npwp || null,
@@ -583,6 +589,9 @@ const Employees = () => {
       bpjs_kesehatan_enabled: employee.bpjs_kesehatan_enabled !== false,
       bpjs_ketenagakerjaan_enabled: employee.bpjs_ketenagakerjaan_enabled !== false,
       contract_type: employee.contract_type || "permanent",
+      contract_start_date: employee.contract_start_date || "",
+      contract_end_date: employee.contract_end_date || "",
+      contract_number: employee.contract_number || "",
       npwp: employee.npwp || "",
       bank_name: employee.bank_name || "",
       bank_account_number: employee.bank_account_number || "",
@@ -636,6 +645,9 @@ const Employees = () => {
       bpjs_kesehatan_enabled: true,
       bpjs_ketenagakerjaan_enabled: true,
       contract_type: "permanent",
+      contract_start_date: "",
+      contract_end_date: "",
+      contract_number: "",
       npwp: "",
       bank_name: "",
       bank_account_number: "",
@@ -1382,6 +1394,52 @@ const Employees = () => {
                       <SelectItem value="contract">{t("employeesPage.editDialog.contract")}</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contract_number">Nomor Kontrak</Label>
+                  <Input
+                    id="edit_contract_number"
+                    placeholder="Contoh: PKWT/2026/001"
+                    value={editFormData.contract_number}
+                    onChange={(e) => setEditFormData({ ...editFormData, contract_number: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contract_start_date">Tgl Mulai Kontrak</Label>
+                  <Input
+                    id="edit_contract_start_date"
+                    type="date"
+                    value={editFormData.contract_start_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, contract_start_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contract_end_date">
+                    Tgl Berakhir Kontrak {editFormData.contract_type === "contract" && <span className="text-destructive">*</span>}
+                  </Label>
+                  <Input
+                    id="edit_contract_end_date"
+                    type="date"
+                    value={editFormData.contract_end_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, contract_end_date: e.target.value })}
+                    disabled={editFormData.contract_type === "permanent"}
+                  />
+                  {editFormData.contract_type === "contract" && editFormData.contract_end_date && (() => {
+                    const end = new Date(editFormData.contract_end_date + 'T00:00:00');
+                    const now = new Date();
+                    const days = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                    const label = days < 0
+                      ? `⚠️ Kontrak sudah berakhir ${Math.abs(days)} hari lalu`
+                      : days <= 7
+                      ? `🔴 Berakhir dalam ${days} hari`
+                      : days <= 30
+                      ? `🟡 Berakhir dalam ${days} hari`
+                      : `🟢 Berakhir dalam ${days} hari`;
+                    return <p className="text-xs text-muted-foreground">{label}</p>;
+                  })()}
+                  {editFormData.contract_type === "permanent" && (
+                    <p className="text-xs text-muted-foreground">Tidak berlaku untuk karyawan tetap (Permanent).</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_npwp">NPWP</Label>

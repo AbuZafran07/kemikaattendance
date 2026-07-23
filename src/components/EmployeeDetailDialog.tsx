@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatAttendanceStatus } from "@/lib/statusUtils";
 import { cn } from "@/lib/utils";
 import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
+import { EmployeeDocuments } from "@/components/EmployeeDocuments";
 
 interface EmployeeDetailDialogProps {
   open: boolean;
@@ -177,11 +178,12 @@ export const EmployeeDetailDialog = ({
         </div>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="info">📋 Info</TabsTrigger>
             <TabsTrigger value="attendance">🕐 Kehadiran</TabsTrigger>
             <TabsTrigger value="payroll">💰 Payroll</TabsTrigger>
-            <TabsTrigger value="salary-history">💵 Riwayat Gaji</TabsTrigger>
+            <TabsTrigger value="salary-history">💵 Gaji</TabsTrigger>
+            <TabsTrigger value="documents">📁 Dokumen</TabsTrigger>
           </TabsList>
 
           {/* INFO TAB */}
@@ -239,6 +241,23 @@ export const EmployeeDetailDialog = ({
                 <InfoItem icon={CreditCard} label="Status PTKP" value={employee.ptkp_status || "TK/0"} />
                 <InfoItem icon={CreditCard} label="NPWP" value={employee.npwp || "-"} />
                 <InfoItem icon={Briefcase} label="Tipe Kontrak" value={employee.contract_type === "contract" ? "Contract Employee" : "Permanent Employee"} />
+                <InfoItem icon={FileText} label="Nomor Kontrak" value={employee.contract_number || "-"} />
+                <InfoItem icon={Calendar} label="Mulai Kontrak" value={employee.contract_start_date ? new Date(employee.contract_start_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "-"} />
+                <InfoItem
+                  icon={Calendar}
+                  label="Berakhir Kontrak"
+                  value={(() => {
+                    if (employee.contract_type !== "contract") return "Tidak berlaku (Permanent)";
+                    if (!employee.contract_end_date) return "-";
+                    const end = new Date(employee.contract_end_date + "T00:00:00");
+                    const days = Math.ceil((end.getTime() - Date.now()) / 86400000);
+                    const dateStr = end.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+                    if (days < 0) return `${dateStr} (⚠️ Berakhir ${Math.abs(days)} hari lalu)`;
+                    if (days <= 7) return `${dateStr} (🔴 ${days} hari lagi)`;
+                    if (days <= 30) return `${dateStr} (🟡 ${days} hari lagi)`;
+                    return `${dateStr} (🟢 ${days} hari lagi)`;
+                  })()}
+                />
               </div>
             </div>
 
@@ -409,6 +428,10 @@ export const EmployeeDetailDialog = ({
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-4">
+            <EmployeeDocuments employeeId={employee.id} />
           </TabsContent>
         </Tabs>
 

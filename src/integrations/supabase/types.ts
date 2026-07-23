@@ -50,6 +50,107 @@ export type Database = {
         }
         Relationships: []
       }
+      asset_assignments: {
+        Row: {
+          asset_id: string
+          assigned_at: string
+          assigned_by: string | null
+          condition_in: string | null
+          condition_out: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          notes: string | null
+          returned_at: string | null
+          returned_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_id: string
+          assigned_at?: string
+          assigned_by?: string | null
+          condition_in?: string | null
+          condition_out?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string
+          assigned_at?: string
+          assigned_by?: string | null
+          condition_in?: string | null
+          condition_out?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_assignments_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assets: {
+        Row: {
+          asset_code: string
+          brand: string | null
+          category: string
+          condition: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          purchase_date: string | null
+          purchase_price: number | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          asset_code: string
+          brand?: string | null
+          category: string
+          condition?: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          asset_code?: string
+          brand?: string | null
+          category?: string
+          condition?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           check_in_latitude: number
@@ -569,6 +670,48 @@ export type Database = {
           },
         ]
       }
+      exit_interviews: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          interview_date: string
+          interviewer: string | null
+          reason: string | null
+          reason_detail: string | null
+          satisfaction: Json | null
+          suggestions: string | null
+          updated_at: string
+          would_recommend: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          interview_date?: string
+          interviewer?: string | null
+          reason?: string | null
+          reason_detail?: string | null
+          satisfaction?: Json | null
+          suggestions?: string | null
+          updated_at?: string
+          would_recommend?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          interview_date?: string
+          interviewer?: string | null
+          reason?: string | null
+          reason_detail?: string | null
+          satisfaction?: Json | null
+          suggestions?: string | null
+          updated_at?: string
+          would_recommend?: boolean | null
+        }
+        Relationships: []
+      }
       final_settlements: {
         Row: {
           created_at: string
@@ -650,6 +793,42 @@ export type Database = {
           last_used_at?: string
           lat_rounded?: number
           lng_rounded?: number
+        }
+        Relationships: []
+      }
+      handover_checklists: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          items: Json
+          notes: string | null
+          status: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: []
       }

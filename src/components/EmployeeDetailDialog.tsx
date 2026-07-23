@@ -240,6 +240,23 @@ export const EmployeeDetailDialog = ({
                 <InfoItem icon={CreditCard} label="Status PTKP" value={employee.ptkp_status || "TK/0"} />
                 <InfoItem icon={CreditCard} label="NPWP" value={employee.npwp || "-"} />
                 <InfoItem icon={Briefcase} label="Tipe Kontrak" value={employee.contract_type === "contract" ? "Contract Employee" : "Permanent Employee"} />
+                <InfoItem icon={FileText} label="Nomor Kontrak" value={employee.contract_number || "-"} />
+                <InfoItem icon={Calendar} label="Mulai Kontrak" value={employee.contract_start_date ? new Date(employee.contract_start_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "-"} />
+                <InfoItem
+                  icon={Calendar}
+                  label="Berakhir Kontrak"
+                  value={(() => {
+                    if (employee.contract_type !== "contract") return "Tidak berlaku (Permanent)";
+                    if (!employee.contract_end_date) return "-";
+                    const end = new Date(employee.contract_end_date + "T00:00:00");
+                    const days = Math.ceil((end.getTime() - Date.now()) / 86400000);
+                    const dateStr = end.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+                    if (days < 0) return `${dateStr} (⚠️ Berakhir ${Math.abs(days)} hari lalu)`;
+                    if (days <= 7) return `${dateStr} (🔴 ${days} hari lagi)`;
+                    if (days <= 30) return `${dateStr} (🟡 ${days} hari lagi)`;
+                    return `${dateStr} (🟢 ${days} hari lagi)`;
+                  })()}
+                />
               </div>
             </div>
 

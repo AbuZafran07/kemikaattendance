@@ -29,6 +29,7 @@ import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type F
 import { EmployeeDocuments } from "@/components/EmployeeDocuments";
 import { ContractHistory } from "@/components/ContractHistory";
 import { EmployeeTrainings } from "@/components/EmployeeTrainings";
+import { EmployeeAssets } from "@/components/EmployeeAssets";
 
 interface EmployeeDetailDialogProps {
   open: boolean;
@@ -180,7 +181,7 @@ export const EmployeeDetailDialog = ({
         </div>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="info">📋 Info</TabsTrigger>
             <TabsTrigger value="attendance">🕐 Kehadiran</TabsTrigger>
             <TabsTrigger value="payroll">💰 Payroll</TabsTrigger>
@@ -188,6 +189,7 @@ export const EmployeeDetailDialog = ({
             <TabsTrigger value="contract-history">📜 Kontrak</TabsTrigger>
             <TabsTrigger value="documents">📁 Dokumen</TabsTrigger>
             <TabsTrigger value="training">🎓 Training</TabsTrigger>
+            <TabsTrigger value="assets">💻 Aset</TabsTrigger>
           </TabsList>
 
           {/* INFO TAB */}
@@ -444,6 +446,10 @@ export const EmployeeDetailDialog = ({
 
           <TabsContent value="training" className="mt-4">
             <EmployeeTrainings employeeId={employee.id} />
+          </TabsContent>
+
+          <TabsContent value="assets" className="mt-4">
+            <EmployeeAssets employeeId={employee.id} />
           </TabsContent>
         </Tabs>
 

@@ -1396,6 +1396,52 @@ const Employees = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="edit_contract_number">Nomor Kontrak</Label>
+                  <Input
+                    id="edit_contract_number"
+                    placeholder="Contoh: PKWT/2026/001"
+                    value={editFormData.contract_number}
+                    onChange={(e) => setEditFormData({ ...editFormData, contract_number: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contract_start_date">Tgl Mulai Kontrak</Label>
+                  <Input
+                    id="edit_contract_start_date"
+                    type="date"
+                    value={editFormData.contract_start_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, contract_start_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_contract_end_date">
+                    Tgl Berakhir Kontrak {editFormData.contract_type === "contract" && <span className="text-destructive">*</span>}
+                  </Label>
+                  <Input
+                    id="edit_contract_end_date"
+                    type="date"
+                    value={editFormData.contract_end_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, contract_end_date: e.target.value })}
+                    disabled={editFormData.contract_type === "permanent"}
+                  />
+                  {editFormData.contract_type === "contract" && editFormData.contract_end_date && (() => {
+                    const end = new Date(editFormData.contract_end_date + 'T00:00:00');
+                    const now = new Date();
+                    const days = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                    const label = days < 0
+                      ? `⚠️ Kontrak sudah berakhir ${Math.abs(days)} hari lalu`
+                      : days <= 7
+                      ? `🔴 Berakhir dalam ${days} hari`
+                      : days <= 30
+                      ? `🟡 Berakhir dalam ${days} hari`
+                      : `🟢 Berakhir dalam ${days} hari`;
+                    return <p className="text-xs text-muted-foreground">{label}</p>;
+                  })()}
+                  {editFormData.contract_type === "permanent" && (
+                    <p className="text-xs text-muted-foreground">Tidak berlaku untuk karyawan tetap (Permanent).</p>
+                  )}
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="edit_npwp">NPWP</Label>
                   <Input
                     id="edit_npwp"

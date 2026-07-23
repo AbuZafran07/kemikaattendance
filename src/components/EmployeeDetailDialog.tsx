@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
 import { EmployeeDocuments } from "@/components/EmployeeDocuments";
 import { ContractHistory } from "@/components/ContractHistory";
+import { EmployeeTrainings } from "@/components/EmployeeTrainings";
 
 interface EmployeeDetailDialogProps {
   open: boolean;
@@ -186,6 +187,7 @@ export const EmployeeDetailDialog = ({
             <TabsTrigger value="salary-history">💵 Gaji</TabsTrigger>
             <TabsTrigger value="contract-history">📜 Kontrak</TabsTrigger>
             <TabsTrigger value="documents">📁 Dokumen</TabsTrigger>
+            <TabsTrigger value="training">🎓 Training</TabsTrigger>
           </TabsList>
 
           {/* INFO TAB */}

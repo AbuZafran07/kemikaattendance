@@ -81,6 +81,7 @@ const buildNavigationGroups = (t: (k: string) => string) => [
       { name: t("nav.items.overtime"), href: "/dashboard/overtime", icon: Clock },
       { name: t("nav.items.businessTravel"), href: "/dashboard/business-travel", icon: Plane },
       { name: "Struktur Organisasi", href: "/dashboard/org-chart", icon: Network },
+      { name: "Training & Sertifikasi", href: "/dashboard/training", icon: GraduationCap },
     ],
   },
   {

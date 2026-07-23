@@ -31,6 +31,7 @@ import {
   ArrowLeft,
   Settings2,
   PanelLeft,
+  Network,
 } from "lucide-react";
 import HRDocumentModal from "@/components/HRDocumentModal";
 import HRReferenceChips from "@/components/HRReferenceChips";
@@ -79,6 +80,7 @@ const buildNavigationGroups = (t: (k: string) => string) => [
       { name: t("nav.items.leave"), href: "/dashboard/leave", icon: Calendar },
       { name: t("nav.items.overtime"), href: "/dashboard/overtime", icon: Clock },
       { name: t("nav.items.businessTravel"), href: "/dashboard/business-travel", icon: Plane },
+      { name: "Struktur Organisasi", href: "/dashboard/org-chart", icon: Network },
     ],
   },
   {

@@ -133,6 +133,7 @@ const Employees = () => {
     resign_date: "",
     resign_notes: "",
     notes: "",
+    reports_to: "",
     leave_active: true,
     annual_leave_quota: "12",
     remaining_leave: "12",
@@ -486,6 +487,7 @@ const Employees = () => {
           contract_start_date: editFormData.contract_start_date || null,
           contract_end_date: editFormData.contract_type === "contract" ? (editFormData.contract_end_date || null) : null,
           contract_number: editFormData.contract_number || null,
+          reports_to: editFormData.reports_to || null,
           annual_leave_quota: editFormData.leave_active ? (Number(editFormData.annual_leave_quota) || 12) : 0,
           remaining_leave: editFormData.leave_active ? (Number(editFormData.remaining_leave) || 0) : 0,
           npwp: result.data.npwp || null,
@@ -599,6 +601,7 @@ const Employees = () => {
       resign_date: employee.resign_date || "",
       resign_notes: employee.resign_notes || "",
       notes: employee.notes || "",
+      reports_to: employee.reports_to || "",
       leave_active: (employee.annual_leave_quota ?? 12) > 0,
       annual_leave_quota: String(employee.annual_leave_quota ?? 12),
       remaining_leave: String(employee.remaining_leave ?? 12),
@@ -655,6 +658,7 @@ const Employees = () => {
       resign_date: "",
       resign_notes: "",
       notes: "",
+      reports_to: "",
       leave_active: true,
       annual_leave_quota: "12",
       remaining_leave: "12",
@@ -1440,6 +1444,27 @@ const Employees = () => {
                   {editFormData.contract_type === "permanent" && (
                     <p className="text-xs text-muted-foreground">Tidak berlaku untuk karyawan tetap (Permanent).</p>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_reports_to">Atasan Langsung</Label>
+                  <Select
+                    value={editFormData.reports_to || "none"}
+                    onValueChange={(v) => setEditFormData({ ...editFormData, reports_to: v === "none" ? "" : v })}
+                  >
+                    <SelectTrigger id="edit_reports_to">
+                      <SelectValue placeholder="Pilih atasan..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Tidak ada (Top level) —</SelectItem>
+                      {employees
+                        .filter((e) => e.id !== editingEmployee?.id && e.status === "Active")
+                        .map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.full_name} — {e.jabatan || "-"}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_npwp">NPWP</Label>

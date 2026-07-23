@@ -27,6 +27,7 @@ import { formatAttendanceStatus } from "@/lib/statusUtils";
 import { cn } from "@/lib/utils";
 import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
 import { EmployeeDocuments } from "@/components/EmployeeDocuments";
+import { ContractHistory } from "@/components/ContractHistory";
 
 interface EmployeeDetailDialogProps {
   open: boolean;
@@ -178,11 +179,12 @@ export const EmployeeDetailDialog = ({
         </div>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="info">📋 Info</TabsTrigger>
             <TabsTrigger value="attendance">🕐 Kehadiran</TabsTrigger>
             <TabsTrigger value="payroll">💰 Payroll</TabsTrigger>
             <TabsTrigger value="salary-history">💵 Gaji</TabsTrigger>
+            <TabsTrigger value="contract-history">📜 Kontrak</TabsTrigger>
             <TabsTrigger value="documents">📁 Dokumen</TabsTrigger>
           </TabsList>
 
@@ -428,6 +430,10 @@ export const EmployeeDetailDialog = ({
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="contract-history" className="mt-4">
+            <ContractHistory employeeId={employee.id} />
           </TabsContent>
 
           <TabsContent value="documents" className="mt-4">

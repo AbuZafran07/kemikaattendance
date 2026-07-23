@@ -1465,6 +1465,7 @@ const Employees = () => {
                         ))}
                     </SelectContent>
                   </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_npwp">NPWP</Label>
                   <Input

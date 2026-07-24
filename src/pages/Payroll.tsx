@@ -2961,6 +2961,7 @@ const Payroll = () => {
                     <TableHead>{t("payrollPage.bankPreview.colAccount")}</TableHead>
                     <TableHead>{t("payrollPage.bankPreview.colBank")}</TableHead>
                     <TableHead>{t("payrollPage.bankPreview.colNik")}</TableHead>
+                    <TableHead className="text-center w-40">Tunj. Dinas<br /><span className="text-[10px] font-normal text-muted-foreground">belum via voucher?</span></TableHead>
                     <TableHead className="text-right">{t("payrollPage.bankPreview.colThp")}</TableHead>
                     <TableHead className="w-16 text-center">{t("payrollPage.bankPreview.colType")}</TableHead>
                   </TableRow>
@@ -2984,11 +2985,35 @@ const Payroll = () => {
                           {emp.bankName || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
+                        <TableCell className="text-center">
+                          {emp.tunjanganDinas > 0 ? (
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={emp.includeTunjDinas}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setBankPreviewData((prev) => prev.map((r, i) => {
+                                    if (i !== idx) return r;
+                                    const delta = checked ? r.tunjanganDinas : -r.tunjanganDinas;
+                                    return { ...r, includeTunjDinas: checked, amount: r.amount + delta };
+                                  }));
+                                }}
+                                className="h-3.5 w-3.5"
+                              />
+                              <span className="text-xs">{formatRupiah(emp.tunjanganDinas)}</span>
+                            </label>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatRupiah(Math.round(emp.amount))}
-                          {emp.includesResignMonth && (
+                          {(emp.includesResignMonth || emp.includeTunjDinas) && (
                             <div className="text-[10px] text-muted-foreground font-normal mt-0.5">
-                              {formatRupiah(Math.round(emp.baseAmount))} + {formatRupiah(Math.round(emp.includesResignMonth.amount))}
+                              {formatRupiah(Math.round(emp.baseAmount))}
+                              {emp.includeTunjDinas && <> + {formatRupiah(emp.tunjanganDinas)}<span className="text-primary"> (dinas)</span></>}
+                              {emp.includesResignMonth && <> + {formatRupiah(Math.round(emp.includesResignMonth.amount))}</>}
                             </div>
                           )}
                         </TableCell>

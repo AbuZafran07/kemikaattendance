@@ -1665,7 +1665,8 @@ const Payroll = () => {
 
       const employees = payrollData.map((item, idx) => {
         const profile = profileMap.get(item.user_id);
-        const baseAmt = item.take_home_pay - (item.thr || 0) - (item.tunjangan_perjalanan_dinas || 0);
+        const tunjDinas = Number(item.tunjangan_perjalanan_dinas || 0);
+        const baseAmt = item.take_home_pay - (item.thr || 0) - tunjDinas;
         return {
           bankAccountNumber: profile?.bank_account_number || "",
           fullName: profile?.full_name || item.employee_name || "-",
@@ -1675,6 +1676,8 @@ const Payroll = () => {
           email: profile?.email || "",
           bankName: profile?.bank_name || "",
           seqNumber: idx + 1,
+          tunjanganDinas: tunjDinas,
+          includeTunjDinas: false,
           includesResignMonth: null as { month: number; year: number; amount: number } | null,
         };
       });

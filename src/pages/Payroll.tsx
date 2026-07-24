@@ -1627,7 +1627,7 @@ const Payroll = () => {
 
   // ── e-Payroll Bank Preview ──
   const [showBankPreview, setShowBankPreview] = useState(false);
-  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; baseAmount: number; nik: string; email: string; bankName: string; seqNumber: number; includesResignMonth?: { month: number; year: number; amount: number } | null }[]>([]);
+  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; baseAmount: number; nik: string; email: string; bankName: string; seqNumber: number; tunjanganDinas: number; includeTunjDinas: boolean; includesResignMonth?: { month: number; year: number; amount: number } | null }[]>([]);
   const [bankCompanyConfig, setBankCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
   const [exportingBankPayroll, setExportingBankPayroll] = useState(false);
   const [loadingBankPreview, setLoadingBankPreview] = useState(false);
@@ -1665,7 +1665,8 @@ const Payroll = () => {
 
       const employees = payrollData.map((item, idx) => {
         const profile = profileMap.get(item.user_id);
-        const baseAmt = item.take_home_pay - (item.thr || 0) - (item.tunjangan_perjalanan_dinas || 0);
+        const tunjDinas = Number(item.tunjangan_perjalanan_dinas || 0);
+        const baseAmt = item.take_home_pay - (item.thr || 0) - tunjDinas;
         return {
           bankAccountNumber: profile?.bank_account_number || "",
           fullName: profile?.full_name || item.employee_name || "-",
@@ -1675,6 +1676,8 @@ const Payroll = () => {
           email: profile?.email || "",
           bankName: profile?.bank_name || "",
           seqNumber: idx + 1,
+          tunjanganDinas: tunjDinas,
+          includeTunjDinas: false,
           includesResignMonth: null as { month: number; year: number; amount: number } | null,
         };
       });
@@ -1736,6 +1739,8 @@ const Payroll = () => {
                 email: profile.email || "",
                 bankName: profile.bank_name || "",
                 seqNumber: employees.length + 1,
+                tunjanganDinas: 0,
+                includeTunjDinas: false,
                 includesResignMonth: { month: nextMonth, year: nextYear, amount: extraAmt },
               });
             }
@@ -2956,6 +2961,7 @@ const Payroll = () => {
                     <TableHead>{t("payrollPage.bankPreview.colAccount")}</TableHead>
                     <TableHead>{t("payrollPage.bankPreview.colBank")}</TableHead>
                     <TableHead>{t("payrollPage.bankPreview.colNik")}</TableHead>
+                    <TableHead className="text-center w-40">Tunj. Dinas<br /><span className="text-[10px] font-normal text-muted-foreground">belum via voucher?</span></TableHead>
                     <TableHead className="text-right">{t("payrollPage.bankPreview.colThp")}</TableHead>
                     <TableHead className="w-16 text-center">{t("payrollPage.bankPreview.colType")}</TableHead>
                   </TableRow>
@@ -2979,11 +2985,35 @@ const Payroll = () => {
                           {emp.bankName || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
+                        <TableCell className="text-center">
+                          {emp.tunjanganDinas > 0 ? (
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={emp.includeTunjDinas}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setBankPreviewData((prev) => prev.map((r, i) => {
+                                    if (i !== idx) return r;
+                                    const delta = checked ? r.tunjanganDinas : -r.tunjanganDinas;
+                                    return { ...r, includeTunjDinas: checked, amount: r.amount + delta };
+                                  }));
+                                }}
+                                className="h-3.5 w-3.5"
+                              />
+                              <span className="text-xs">{formatRupiah(emp.tunjanganDinas)}</span>
+                            </label>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatRupiah(Math.round(emp.amount))}
-                          {emp.includesResignMonth && (
+                          {(emp.includesResignMonth || emp.includeTunjDinas) && (
                             <div className="text-[10px] text-muted-foreground font-normal mt-0.5">
-                              {formatRupiah(Math.round(emp.baseAmount))} + {formatRupiah(Math.round(emp.includesResignMonth.amount))}
+                              {formatRupiah(Math.round(emp.baseAmount))}
+                              {emp.includeTunjDinas && <> + {formatRupiah(emp.tunjanganDinas)}<span className="text-primary"> (dinas)</span></>}
+                              {emp.includesResignMonth && <> + {formatRupiah(Math.round(emp.includesResignMonth.amount))}</>}
                             </div>
                           )}
                         </TableCell>

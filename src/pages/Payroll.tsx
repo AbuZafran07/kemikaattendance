@@ -1739,6 +1739,8 @@ const Payroll = () => {
                 email: profile.email || "",
                 bankName: profile.bank_name || "",
                 seqNumber: employees.length + 1,
+                tunjanganDinas: 0,
+                includeTunjDinas: false,
                 includesResignMonth: { month: nextMonth, year: nextYear, amount: extraAmt },
               });
             }

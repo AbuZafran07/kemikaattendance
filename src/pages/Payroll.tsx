@@ -2961,7 +2961,36 @@ const Payroll = () => {
                     <TableHead>{t("payrollPage.bankPreview.colAccount")}</TableHead>
                     <TableHead>{t("payrollPage.bankPreview.colBank")}</TableHead>
                     <TableHead>{t("payrollPage.bankPreview.colNik")}</TableHead>
-                    <TableHead className="text-center w-40">Tunj. Dinas<br /><span className="text-[10px] font-normal text-muted-foreground">belum via voucher?</span></TableHead>
+                    <TableHead className="text-center w-44">
+                      Tunj. Dinas
+                      <br />
+                      <span className="text-[10px] font-normal text-muted-foreground">belum via voucher?</span>
+                      {(() => {
+                        const eligible = bankPreviewData.filter((r) => r.tunjanganDinas > 0);
+                        if (eligible.length === 0) return null;
+                        const allChecked = eligible.every((r) => r.includeTunjDinas);
+                        const someChecked = eligible.some((r) => r.includeTunjDinas);
+                        return (
+                          <label className="mt-1 flex items-center justify-center gap-1.5 cursor-pointer font-normal">
+                            <input
+                              type="checkbox"
+                              checked={allChecked}
+                              ref={(el) => { if (el) el.indeterminate = !allChecked && someChecked; }}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setBankPreviewData((prev) => prev.map((r) => {
+                                  if (r.tunjanganDinas <= 0 || r.includeTunjDinas === checked) return r;
+                                  const delta = checked ? r.tunjanganDinas : -r.tunjanganDinas;
+                                  return { ...r, includeTunjDinas: checked, amount: r.amount + delta };
+                                }));
+                              }}
+                              className="h-3 w-3"
+                            />
+                            <span className="text-[10px] text-primary">Terapkan semua</span>
+                          </label>
+                        );
+                      })()}
+                    </TableHead>
                     <TableHead className="text-right">{t("payrollPage.bankPreview.colThp")}</TableHead>
                     <TableHead className="w-16 text-center">{t("payrollPage.bankPreview.colType")}</TableHead>
                   </TableRow>

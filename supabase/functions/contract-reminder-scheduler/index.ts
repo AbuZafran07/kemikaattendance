@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
           <p style="margin-top:16px;color:#555;">Notifikasi otomatis dari Kemika HRIS.</p>
         </div>`;
 
-      const channels: any = { fcm: false, email: false };
+      const channels: any = { fcm: false, email: false, employee_fcm: false, employee_email: false };
       // FCM ke semua admin/HR
       for (const t of adminTokens) {
         const ok = await sendFCM(t, title, body, {
@@ -152,6 +152,46 @@ Deno.serve(async (req) => {
       if (adminEmails.length) {
         const ok = await sendEmail(adminEmails, title, html);
         if (ok) channels.email = true;
+      }
+
+      // Notifikasi ke karyawan yang bersangkutan
+      const employeeTitle =
+        bucket.type === "EXPIRED"
+          ? "⚠️ Kontrak Kerja Anda Berakhir Hari Ini"
+          : bucket.type === "H7"
+          ? "⏰ Kontrak Kerja Anda Berakhir 7 Hari Lagi"
+          : "📅 Kontrak Kerja Anda Berakhir 30 Hari Lagi";
+      const employeeBody = `Kontrak Anda (${emp.contract_number || "-"}) berakhir ${emp.contract_end_date}. Silakan hubungi HRGA untuk proses perpanjangan/pengakhiran.`;
+
+      const { data: empProfile } = await supabase
+        .from("profiles")
+        .select("email, fcm_token")
+        .eq("id", emp.id)
+        .maybeSingle();
+
+      if (empProfile?.fcm_token) {
+        const ok = await sendFCM(empProfile.fcm_token, employeeTitle, employeeBody, {
+          type: "contract_reminder",
+          reminder_type: bucket.type,
+          employee_id: emp.id,
+        });
+        if (ok) channels.employee_fcm = true;
+      }
+      if (empProfile?.email) {
+        const empHtml = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;">
+            <h2 style="color:#0a4d3c;">${employeeTitle}</h2>
+            <p>Halo ${emp.full_name},</p>
+            <p>${employeeBody}</p>
+            <table style="border-collapse:collapse;width:100%;">
+              <tr><td style="padding:6px;border:1px solid #ddd;"><b>No. Kontrak</b></td><td style="padding:6px;border:1px solid #ddd;">${emp.contract_number || "-"}</td></tr>
+              <tr><td style="padding:6px;border:1px solid #ddd;"><b>Tipe</b></td><td style="padding:6px;border:1px solid #ddd;">${emp.contract_type || "-"}</td></tr>
+              <tr><td style="padding:6px;border:1px solid #ddd;"><b>Tgl Berakhir</b></td><td style="padding:6px;border:1px solid #ddd;">${emp.contract_end_date}</td></tr>
+            </table>
+            <p style="margin-top:16px;color:#555;">Notifikasi otomatis dari Kemika HRIS.</p>
+          </div>`;
+        const ok = await sendEmail([empProfile.email], employeeTitle, empHtml);
+        if (ok) channels.employee_email = true;
       }
 
       await supabase.from("contract_reminders_log").insert({

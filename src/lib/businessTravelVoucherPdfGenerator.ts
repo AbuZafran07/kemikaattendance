@@ -142,13 +142,14 @@ async function renderVoucherPage(doc: jsPDF, data: TravelVoucherData, logoBase64
   doc.setTextColor(0, 0, 0);
   doc.text("Periode Payroll", mx + 2, y + 4);
   doc.text("Hari Kerja Efektif", mx + 60, y + 4);
-  doc.text("Tarif Bersih/Hari", mx + 105, y + 4);
+  doc.text("Tarif/Hari", mx + 105, y + 4);
   doc.text("Subtotal", rightEnd - 2, y + 4, { align: "right" });
   y += 6;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  const perDayNet = Math.max(0, data.per_day_travel - data.per_day_attendance_deduction);
+  const totalDays = data.splits.reduce((a, s) => a + (s.days || 0), 0);
+  const perDayNet = totalDays > 0 ? data.total_amount / totalDays : data.per_day_travel;
   for (const s of data.splits) {
     const periodLabel = `${MONTHS_ID[s.period_month - 1]} ${s.period_year}`;
     doc.text(periodLabel, mx + 2, y + 4);
@@ -177,9 +178,9 @@ async function renderVoucherPage(doc: jsPDF, data: TravelVoucherData, logoBase64
   doc.setFontSize(8);
   doc.setTextColor(90, 90, 90);
   const calcNote =
-    `Formula: max(0, Tarif Dinas/Hari - Tunj. Kehadiran/Hari) x Hari Kerja Efektif. ` +
-    `Tarif Dinas/Hari ${fmtIDR(data.per_day_travel)}, ` +
-    `Tunj. Kehadiran/Hari rata-rata ${fmtIDR(Math.round(data.per_day_attendance_deduction))}.`;
+    `Formula: Tarif Dinas/Hari x Hari Kerja Efektif (tanpa weekend & hari libur nasional). ` +
+    `Tarif standar ${fmtIDR(data.per_day_travel)}/hari. ` +
+    `Tarif Bersih/Hari di atas = nominal transfer dibagi hari efektif (mengikuti nilai yang tercatat di payroll).`;
   const noteLines = doc.splitTextToSize(calcNote, rightEnd - mx);
   doc.text(noteLines, mx, y);
   y += 4.5 * (Array.isArray(noteLines) ? noteLines.length : 1) + 3;
@@ -319,7 +320,7 @@ export async function generateBusinessTravelVoucherBatchPDF(
       doc.setFontSize(8);
     }
 
-    const perDayNet = Math.max(0, it.per_day_travel - it.per_day_attendance_deduction);
+    const perDayNet = it.effective_days > 0 ? it.total_amount / it.effective_days : it.per_day_travel;
     const period = `${fmtDateID(it.start_date)} - ${fmtDateID(it.end_date)}`;
     const values: Record<string, string> = {
       no: String(no),
@@ -375,15 +376,14 @@ export async function generateBusinessTravelVoucherBatchPDF(
     }
   };
 
-  const avgTravel = items.reduce((a, b) => a + (b.per_day_travel || 0), 0) / items.length;
-  const avgAtt = items.reduce((a, b) => a + (b.per_day_attendance_deduction || 0), 0) / items.length;
+  const stdRate = Math.max(...items.map((b) => b.per_day_travel || 0));
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(90, 90, 90);
   const calcNote =
-    `Formula: max(0, Tarif Dinas/Hari - Tunj. Kehadiran/Hari) x Hari Kerja Efektif. ` +
-    `Tarif Dinas/Hari ${fmtIDR(Math.round(avgTravel))}, ` +
-    `Tunj. Kehadiran/Hari rata-rata ${fmtIDR(Math.round(avgAtt))}.`;
+    `Formula: Tarif Dinas/Hari x Hari Kerja Efektif (hari kerja, tanpa weekend & hari libur nasional). ` +
+    `Tarif standar Rp ${fmtIDR(Math.round(stdRate)).replace("Rp ", "")}/hari. ` +
+    `Tarif/Hari pada tabel adalah nominal transfer dibagi hari efektif, sehingga baris dengan nilai berbeda berasal dari penyesuaian/input manual di payroll.`;
   const cLines = doc.splitTextToSize(calcNote, rightEnd - mx);
   ensureSpace(4.5 * (Array.isArray(cLines) ? cLines.length : 1) + 4);
   doc.text(cLines, mx, y);

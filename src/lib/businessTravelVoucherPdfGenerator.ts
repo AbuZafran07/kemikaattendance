@@ -319,7 +319,7 @@ export async function generateBusinessTravelVoucherBatchPDF(
       doc.setFontSize(8);
     }
 
-    const perDayNet = Math.max(0, it.per_day_travel - it.per_day_attendance_deduction);
+    const perDayNet = it.effective_days > 0 ? it.total_amount / it.effective_days : it.per_day_travel;
     const period = `${fmtDateID(it.start_date)} - ${fmtDateID(it.end_date)}`;
     const values: Record<string, string> = {
       no: String(no),

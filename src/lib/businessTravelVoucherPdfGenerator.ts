@@ -148,7 +148,8 @@ async function renderVoucherPage(doc: jsPDF, data: TravelVoucherData, logoBase64
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  const perDayNet = Math.max(0, data.per_day_travel - data.per_day_attendance_deduction);
+  const totalDays = data.splits.reduce((a, s) => a + (s.days || 0), 0);
+  const perDayNet = totalDays > 0 ? data.total_amount / totalDays : data.per_day_travel;
   for (const s of data.splits) {
     const periodLabel = `${MONTHS_ID[s.period_month - 1]} ${s.period_year}`;
     doc.text(periodLabel, mx + 2, y + 4);

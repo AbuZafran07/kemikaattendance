@@ -42,10 +42,20 @@ interface Row {
 const fmtIDR = (n: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n || 0);
 
+interface TripCalc {
+  amount: number;
+  source: "manual" | "formula";
+  effective_days: number;
+  per_day_travel: number;
+  per_day_attendance: number;
+  splits: { period_month: number; period_year: number; days: number; amount: number }[];
+}
+
 const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, selectedYear }: Props) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
+  const [calcMap, setCalcMap] = useState<Record<string, TripCalc>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filterMode, setFilterMode] = useState<"period" | "all">("period");
   const [generating, setGenerating] = useState<"single" | "batch" | "split" | null>(null);

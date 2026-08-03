@@ -375,15 +375,14 @@ export async function generateBusinessTravelVoucherBatchPDF(
     }
   };
 
-  const avgTravel = items.reduce((a, b) => a + (b.per_day_travel || 0), 0) / items.length;
-  const avgAtt = items.reduce((a, b) => a + (b.per_day_attendance_deduction || 0), 0) / items.length;
+  const stdRate = Math.max(...items.map((b) => b.per_day_travel || 0));
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(90, 90, 90);
   const calcNote =
-    `Formula: max(0, Tarif Dinas/Hari - Tunj. Kehadiran/Hari) x Hari Kerja Efektif. ` +
-    `Tarif Dinas/Hari ${fmtIDR(Math.round(avgTravel))}, ` +
-    `Tunj. Kehadiran/Hari rata-rata ${fmtIDR(Math.round(avgAtt))}.`;
+    `Formula: Tarif Dinas/Hari x Hari Kerja Efektif (hari kerja, tanpa weekend & hari libur nasional). ` +
+    `Tarif standar Rp ${fmtIDR(Math.round(stdRate)).replace("Rp ", "")}/hari. ` +
+    `Tarif/Hari pada tabel adalah nominal transfer dibagi hari efektif, sehingga baris dengan nilai berbeda berasal dari penyesuaian/input manual di payroll.`;
   const cLines = doc.splitTextToSize(calcNote, rightEnd - mx);
   ensureSpace(4.5 * (Array.isArray(cLines) ? cLines.length : 1) + 4);
   doc.text(cLines, mx, y);

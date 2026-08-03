@@ -178,9 +178,9 @@ async function renderVoucherPage(doc: jsPDF, data: TravelVoucherData, logoBase64
   doc.setFontSize(8);
   doc.setTextColor(90, 90, 90);
   const calcNote =
-    `Formula: max(0, Tarif Dinas/Hari - Tunj. Kehadiran/Hari) x Hari Kerja Efektif. ` +
-    `Tarif Dinas/Hari ${fmtIDR(data.per_day_travel)}, ` +
-    `Tunj. Kehadiran/Hari rata-rata ${fmtIDR(Math.round(data.per_day_attendance_deduction))}.`;
+    `Formula: Tarif Dinas/Hari x Hari Kerja Efektif (tanpa weekend & hari libur nasional). ` +
+    `Tarif standar ${fmtIDR(data.per_day_travel)}/hari. ` +
+    `Tarif Bersih/Hari di atas = nominal transfer dibagi hari efektif (mengikuti nilai yang tercatat di payroll).`;
   const noteLines = doc.splitTextToSize(calcNote, rightEnd - mx);
   doc.text(noteLines, mx, y);
   y += 4.5 * (Array.isArray(noteLines) ? noteLines.length : 1) + 3;

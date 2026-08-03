@@ -118,10 +118,82 @@ const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, 
         };
       });
       setRows(enriched);
+      await computeAmounts(enriched, userIds);
     } catch (e: any) {
       toast({ title: "Gagal memuat", description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Nominal voucher mengikuti nilai yang benar-benar tercatat di payroll
+   * (payroll_overrides.tunjangan_perjalanan_dinas — termasuk input manual admin).
+   * Jika ada beberapa trip dalam 1 periode, nilai tercatat dibagi pro-rata
+   * berdasarkan hari dinas efektif tiap trip. Bila tidak ada nilai tercatat,
+   * jatuh kembali ke hasil formula (per_day × hari efektif).
+   */
+  const computeAmounts = async (list: Row[], userIds: string[]) => {
+    try {
+      // Semua trip approved milik karyawan terkait (untuk pro-rata per periode)
+      const { data: allTrips } = await supabase
+        .from("business_travel_requests")
+        .select("id, user_id, start_date, end_date")
+        .eq("status", "approved")
+        .in("user_id", userIds);
+
+      const tripCalcs = new Map<string, Awaited<ReturnType<typeof applyBusinessTravelAllowance>>>();
+      const daysByUserPeriod = new Map<string, number>();
+      for (const t of allTrips || []) {
+        const res = await applyBusinessTravelAllowance({
+          userId: t.user_id,
+          startDate: t.start_date,
+          endDate: t.end_date,
+          dryRun: true,
+        });
+        tripCalcs.set(t.id, res);
+        for (const s of res.splits || []) {
+          const k = `${t.user_id}-${s.period_year}-${s.period_month}`;
+          daysByUserPeriod.set(k, (daysByUserPeriod.get(k) || 0) + s.days);
+        }
+      }
+
+      const { data: overrides } = await supabase
+        .from("payroll_overrides")
+        .select("user_id, period_month, period_year, tunjangan_perjalanan_dinas")
+        .in("user_id", userIds);
+      const recorded = new Map<string, number>();
+      for (const o of (overrides || []) as any[]) {
+        const v = Number(o.tunjangan_perjalanan_dinas) || 0;
+        if (v > 0) recorded.set(`${o.user_id}-${o.period_year}-${o.period_month}`, v);
+      }
+
+      const map: Record<string, TripCalc> = {};
+      for (const r of list) {
+        const calc = tripCalcs.get(r.id);
+        if (!calc || !calc.ok) continue;
+        let manual = false;
+        const splits = (calc.splits || []).map((s) => {
+          const k = `${r.user_id}-${s.period_year}-${s.period_month}`;
+          const rec = recorded.get(k);
+          if (!rec) return { ...s };
+          const totalDays = daysByUserPeriod.get(k) || s.days;
+          const alloc = Math.round((rec * s.days) / (totalDays || 1));
+          if (alloc !== s.amount) manual = true;
+          return { ...s, amount: alloc };
+        });
+        map[r.id] = {
+          amount: splits.reduce((a, s) => a + s.amount, 0),
+          source: manual ? "manual" : "formula",
+          effective_days: calc.travel_days_effective,
+          per_day_travel: calc.per_day_travel,
+          per_day_attendance: calc.per_day_attendance,
+          splits: splits.map((s) => ({ period_month: s.period_month, period_year: s.period_year, days: s.days, amount: s.amount })),
+        };
+      }
+      setCalcMap(map);
+    } catch (e) {
+      console.error("computeAmounts failed", e);
     }
   };
 
@@ -139,13 +211,8 @@ const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, 
   const selectedRows = useMemo(() => rows.filter((r) => selectedIds.has(r.id)), [rows, selectedIds]);
 
   const buildVoucherData = async (r: Row): Promise<TravelVoucherData | null> => {
-    const calc = await applyBusinessTravelAllowance({
-      userId: r.user_id,
-      startDate: r.start_date,
-      endDate: r.end_date,
-      dryRun: true,
-    });
-    if (!calc.ok || calc.amount <= 0) return null;
+    const calc = calcMap[r.id];
+    if (!calc || calc.amount <= 0) return null;
     return {
       voucher_no: `PD-${r.id.slice(0, 8).toUpperCase()}`,
       issued_at: new Date(),
@@ -160,18 +227,16 @@ const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, 
       start_date: r.start_date,
       end_date: r.end_date,
       total_days: r.total_days,
-      effective_days: calc.travel_days_effective,
-      per_day_travel: calc.per_day_travel,
+      effective_days: calc.effective_days,
+      per_day_travel: calc.source === "manual" && calc.effective_days > 0
+        ? Math.round(calc.amount / calc.effective_days)
+        : calc.per_day_travel,
       per_day_attendance_deduction: calc.per_day_attendance,
       total_amount: calc.amount,
-      splits: (calc.splits || []).filter((s) => s.amount > 0).map((s) => ({
-        period_month: s.period_month,
-        period_year: s.period_year,
-        days: s.days,
-        amount: s.amount,
-      })),
+      splits: calc.splits.filter((s) => s.amount > 0),
     };
   };
+
 
   const handleMerged = async () => {
     if (selectedRows.length === 0) {

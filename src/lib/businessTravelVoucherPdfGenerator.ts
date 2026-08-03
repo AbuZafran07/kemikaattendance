@@ -142,7 +142,7 @@ async function renderVoucherPage(doc: jsPDF, data: TravelVoucherData, logoBase64
   doc.setTextColor(0, 0, 0);
   doc.text("Periode Payroll", mx + 2, y + 4);
   doc.text("Hari Kerja Efektif", mx + 60, y + 4);
-  doc.text("Tarif Bersih/Hari", mx + 105, y + 4);
+  doc.text("Tarif/Hari", mx + 105, y + 4);
   doc.text("Subtotal", rightEnd - 2, y + 4, { align: "right" });
   y += 6;
 

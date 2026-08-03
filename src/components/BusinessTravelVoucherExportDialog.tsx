@@ -356,8 +356,6 @@ const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, 
                     </td>
                   </tr>
                 ))}
-                  </tr>
-                ))}
               </tbody>
             </table>
           )}

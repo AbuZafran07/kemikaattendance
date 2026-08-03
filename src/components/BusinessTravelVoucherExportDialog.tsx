@@ -325,6 +325,7 @@ const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, 
                   <th className="p-2 text-left">Tujuan</th>
                   <th className="p-2 text-left">Tanggal</th>
                   <th className="p-2 text-right">Hari</th>
+                  <th className="p-2 text-right">Nominal Voucher</th>
                 </tr>
               </thead>
               <tbody>
@@ -341,6 +342,20 @@ const BusinessTravelVoucherExportDialog = ({ open, onOpenChange, selectedMonth, 
                       <span className="text-muted-foreground">s/d {format(parseISO(r.end_date), "dd MMM yyyy", { locale: idLocale })}</span>
                     </td>
                     <td className="p-2 text-right">{r.total_days}</td>
+                    <td className="p-2 text-right whitespace-nowrap">
+                      {calcMap[r.id] ? (
+                        <>
+                          <div className="font-medium">{fmtIDR(calcMap[r.id].amount)}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {calcMap[r.id].source === "manual" ? "input manual payroll" : `${calcMap[r.id].effective_days} hari × ${fmtIDR(calcMap[r.id].per_day_travel)}`}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
                   </tr>
                 ))}
               </tbody>

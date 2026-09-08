@@ -2168,6 +2168,10 @@ export type Database = {
         Args: { notes?: string; request_id: string }
         Returns: undefined
       }
+      approve_unlock_letter: {
+        Args: { p_hr_signature_data?: string; p_letter_id: string }
+        Returns: undefined
+      }
       check_attendance_thresholds: {
         Args: { p_reference_date: string; p_user_id: string }
         Returns: undefined
@@ -2242,6 +2246,14 @@ export type Database = {
         Args: { reason: string; request_id: string }
         Returns: undefined
       }
+      reject_unlock_letter: {
+        Args: { p_letter_id: string; p_reason: string }
+        Returns: undefined
+      }
+      set_unlock_letter_document: {
+        Args: { p_document_url: string; p_letter_id: string }
+        Returns: undefined
+      }
       submit_late_reason: {
         Args: {
           p_attachment_url?: string
@@ -2250,6 +2262,14 @@ export type Database = {
           p_reason: string
         }
         Returns: string
+      }
+      submit_unlock_letter: {
+        Args: { p_lock_id: string; p_signature_data: string; p_statement_text: string }
+        Returns: string
+      }
+      unlock_account: {
+        Args: { p_coaching_id: string; p_lock_id: string; p_unlock_letter_id: string }
+        Returns: undefined
       }
     }
     Enums: {

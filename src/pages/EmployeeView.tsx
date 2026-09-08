@@ -27,6 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
 import LateReasonDialog from "@/components/LateReasonDialog";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
+import AccountLockedCard from "@/components/AccountLockedCard";
 import { format } from "date-fns";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -309,6 +310,14 @@ const EmployeeView = () => {
     });
   };
   const handleCheckIn = async (photoUrl: string) => {
+    if (profile?.account_status === "locked") {
+      toast({
+        title: "Account Locked",
+        description: "Akun absensi Anda sementara dikunci. Silakan hubungi HR untuk proses pembinaan.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsProcessing(true);
     try {
       // Step 1: Convert blob URL to blob for storage upload
@@ -847,6 +856,8 @@ const EmployeeView = () => {
               </div>
             </CardContent>
           </Card>
+        ) : profile?.account_status === "locked" ? (
+          <AccountLockedCard userId={profile.id} />
         ) : (
           <Card>
             <CardContent className="pt-6 space-y-4">

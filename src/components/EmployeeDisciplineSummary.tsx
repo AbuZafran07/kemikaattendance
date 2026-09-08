@@ -55,8 +55,8 @@ const EmployeeDisciplineSummary = ({ userId, accountStatus }: EmployeeDiscipline
           .eq("user_id", userId)
           .eq("status", "terlambat"),
         supabase.from("late_reasons").select("status").eq("user_id", userId),
-        supabase.rpc("get_monthly_violation_count", { p_user_id: userId, p_month: today }),
-        supabase.rpc("get_rolling_3month_violation_count", { p_user_id: userId, p_reference_date: today }),
+        (supabase.rpc as any)("get_monthly_violation_count", { p_user_id: userId, p_month: today }),
+        (supabase.rpc as any)("get_rolling_3month_violation_count", { p_user_id: userId, p_reference_date: today }),
         supabase
           .from("disciplinary_actions")
           .select("warning_type")

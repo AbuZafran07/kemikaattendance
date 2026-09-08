@@ -57,6 +57,7 @@ const navigationGroups = [
     items: [
       { name: "Karyawan", href: "/dashboard/employees", icon: Users },
       { name: "Absensi", href: "/dashboard/attendance", icon: ClipboardCheck },
+      { name: "Alasan Telat", href: "/dashboard/attendance/late-reasons", icon: ClipboardCheck },
       { name: "Disiplin Absensi", href: "/dashboard/attendance-discipline", icon: ShieldAlert },
       { name: "Cuti", href: "/dashboard/leave", icon: Calendar },
       { name: "Lembur", href: "/dashboard/overtime", icon: Clock },

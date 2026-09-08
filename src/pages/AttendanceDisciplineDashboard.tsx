@@ -68,15 +68,15 @@ const AttendanceDisciplineDashboard = () => {
     try {
       const monthDate = `${month}-01`;
       const [{ data: statsData, error: statsError }, { data: rowsData, error: rowsError }] = await Promise.all([
-        supabase.rpc("get_attendance_discipline_dashboard_stats", { p_month: monthDate }),
-        supabase.rpc("get_attendance_discipline_employee_rows", { p_month: monthDate }),
+        (supabase.rpc as any)("get_attendance_discipline_dashboard_stats", { p_month: monthDate }),
+        (supabase.rpc as any)("get_attendance_discipline_employee_rows", { p_month: monthDate }),
       ]);
 
       if (statsError) throw statsError;
       if (rowsError) throw rowsError;
 
       setStats((statsData as unknown as Stats) || EMPTY_STATS);
-      setRows((rowsData as EmployeeRow[]) || []);
+      setRows((rowsData as unknown as EmployeeRow[]) || []);
     } catch (error) {
       toast({
         title: "Gagal Memuat Dashboard",

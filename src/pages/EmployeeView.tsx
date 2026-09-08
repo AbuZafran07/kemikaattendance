@@ -413,8 +413,8 @@ const EmployeeView = () => {
       
       // Add lateness detail to notes
       let lateText = "";
+      let lateMinutes = 0;
       if (status === "terlambat") {
-        let lateMinutes = 0;
         if (workHours && workHours.check_in_end) {
           const [endHour, endMinute] = workHours.check_in_end.split(":").map(Number);
           const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
@@ -447,6 +447,7 @@ const EmployeeView = () => {
             face_recognition_validated: false,
             status: status,
             notes: locationNote,
+            late_minutes: lateMinutes > 0 ? lateMinutes : null,
           },
           nearestOffice,
           isHybridWorker,
@@ -657,9 +658,9 @@ const EmployeeView = () => {
         .insert([insertData])
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       setIsCheckedIn(true);
       setTodayAttendance(data);
       setCheckInTime(
@@ -670,17 +671,19 @@ const EmployeeView = () => {
       );
       toast({
         title: "Check-In Berhasil",
-        description: isHybridWorker 
+        description: isHybridWorker
           ? `Check-in Hybrid berhasil! Lokasi: ${nearestOffice?.name || 'Lokasi saat ini'}`
           : `Terima kasih! Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`,
       });
       fetchRecentAttendance();
+      return data;
     } catch (error: any) {
       toast({
         title: "Check-In Gagal",
         description: error.message,
         variant: "destructive",
       });
+      return null;
     }
   };
 
@@ -719,11 +722,23 @@ const EmployeeView = () => {
     setIsProcessing(true);
 
     if (pending.type === "checkin") {
-      const insertData = {
-        ...pending.insertData,
-        notes: `${pending.insertData.notes} | Alasan: ${reason}`,
-      };
-      await completeCheckIn(insertData, pending.nearestOffice, pending.isHybridWorker);
+      // Alasan keterlambatan disimpan sebagai row late_reasons berstatus "pending"
+      // untuk direview HR, bukan lagi ditempel sebagai teks ke attendance.notes.
+      const inserted = await completeCheckIn(pending.insertData, pending.nearestOffice, pending.isHybridWorker);
+      if (inserted?.id) {
+        const { error: lateReasonError } = await supabase.rpc("submit_late_reason", {
+          p_attendance_id: inserted.id,
+          p_reason: reason,
+        });
+        if (lateReasonError) {
+          logger.error("Failed to submit late reason:", lateReasonError);
+          toast({
+            title: "Peringatan",
+            description: "Absensi tersimpan, tetapi alasan keterlambatan gagal disimpan. Hubungi HR.",
+            variant: "destructive",
+          });
+        }
+      }
     } else {
       const updateData = {
         ...pending.updateData,

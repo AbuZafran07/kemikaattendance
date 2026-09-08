@@ -2156,6 +2156,10 @@ export type Database = {
         Args: { document_url_param?: string; request_id: string }
         Returns: undefined
       }
+      approve_late_reason: {
+        Args: { notes?: string; reason_id: string }
+        Returns: undefined
+      }
       approve_leave_request: {
         Args: { notes?: string; request_id: string }
         Returns: undefined
@@ -2163,6 +2167,22 @@ export type Database = {
       approve_overtime_request: {
         Args: { notes?: string; request_id: string }
         Returns: undefined
+      }
+      check_attendance_thresholds: {
+        Args: { p_reference_date: string; p_user_id: string }
+        Returns: undefined
+      }
+      create_attendance_violation: {
+        Args: {
+          p_attendance_id: string
+          p_description?: string
+          p_late_reason_id?: string
+          p_source?: string
+          p_user_id: string
+          p_violation_date: string
+          p_violation_type: string
+        }
+        Returns: string
       }
       get_attendance_discipline_config: { Args: never; Returns: Json }
       get_biaya_jabatan_config: { Args: never; Returns: Json }
@@ -2185,9 +2205,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_monthly_violation_count: {
+        Args: { p_month: string; p_user_id: string }
+        Returns: number
+      }
       get_office_locations: { Args: never; Returns: Json }
       get_pph21_brackets_config: { Args: never; Returns: Json }
       get_ptkp_config: { Args: never; Returns: Json }
+      get_rolling_3month_violation_count: {
+        Args: { p_reference_date: string; p_user_id: string }
+        Returns: number
+      }
       get_work_hours: { Args: never; Returns: Json }
       has_role: {
         Args: {
@@ -2196,9 +2224,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_discipline_admin: { Args: never; Returns: boolean }
       mark_notifications_seen: { Args: never; Returns: string }
       reject_business_travel_request: {
         Args: { reason: string; request_id: string }
+        Returns: undefined
+      }
+      reject_late_reason: {
+        Args: { reason: string; reason_id: string }
         Returns: undefined
       }
       reject_leave_request: {
@@ -2208,6 +2241,15 @@ export type Database = {
       reject_overtime_request: {
         Args: { reason: string; request_id: string }
         Returns: undefined
+      }
+      submit_late_reason: {
+        Args: {
+          p_attachment_url?: string
+          p_attendance_id: string
+          p_description?: string
+          p_reason: string
+        }
+        Returns: string
       }
     }
     Enums: {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +16,7 @@ const AttendanceHistory = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [lateReasonStatusMap, setLateReasonStatusMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -32,6 +34,17 @@ const AttendanceHistory = () => {
 
       if (error) throw error;
       setAttendanceRecords(data || []);
+
+      const { data: lateReasons } = await supabase
+        .from('late_reasons')
+        .select('attendance_id, status')
+        .eq('user_id', profile?.id);
+
+      const map: Record<string, string> = {};
+      (lateReasons || []).forEach((lr) => {
+        map[lr.attendance_id] = lr.status;
+      });
+      setLateReasonStatusMap(map);
     } catch (error) {
       console.error('Error fetching attendance:', error);
       toast({
@@ -73,6 +86,20 @@ const AttendanceHistory = () => {
       'tidak_hadir': 'Tidak Hadir'
     };
     return statusMap[status] || status;
+  };
+
+  const lateReasonBadge = (attendanceId: string) => {
+    const status = lateReasonStatusMap[attendanceId];
+    if (!status) return null;
+    const config: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
+      pending: { label: "Alasan: Menunggu Persetujuan", variant: "secondary" },
+      approved: { label: "Alasan: Disetujui", variant: "default" },
+      rejected: { label: "Alasan: Ditolak", variant: "destructive" },
+      no_reason_submitted: { label: "Alasan Tidak Diajukan", variant: "destructive" },
+    };
+    const c = config[status];
+    if (!c) return null;
+    return <Badge variant={c.variant} className="mt-1">{c.label}</Badge>;
   };
 
   return (
@@ -124,6 +151,7 @@ const AttendanceHistory = () => {
                         <p className="text-sm text-muted-foreground">
                           {formatStatus(record.status)}
                         </p>
+                        {record.status === 'terlambat' && lateReasonBadge(record.id)}
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium">

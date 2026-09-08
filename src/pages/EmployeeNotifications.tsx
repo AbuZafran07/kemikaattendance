@@ -12,8 +12,8 @@ import { useNotificationBadge } from "@/hooks/useNotificationBadge";
 
 interface Notification {
   id: string;
-  type: "leave" | "overtime";
-  status: "pending" | "approved" | "rejected";
+  type: "leave" | "overtime" | "discipline";
+  status: "pending" | "approved" | "rejected" | "info";
   title: string;
   description: string;
   date: string;
@@ -37,8 +37,8 @@ const EmployeeNotifications = () => {
     if (!profile?.id) return;
     
     try {
-      // Fetch recent leave and overtime requests as notifications
-      const [leaveRes, overtimeRes] = await Promise.all([
+      // Fetch recent leave, overtime, and attendance discipline notifications
+      const [leaveRes, overtimeRes, disciplineRes] = await Promise.all([
         supabase
           .from("leave_requests")
           .select("*")
@@ -51,6 +51,13 @@ const EmployeeNotifications = () => {
           .eq("user_id", profile.id)
           .order("created_at", { ascending: false })
           .limit(10),
+        supabase
+          .from("attendance_notifications")
+          .select("*")
+          .eq("user_id", profile.id)
+          .eq("target_role", "employee")
+          .order("created_at", { ascending: false })
+          .limit(20),
       ]);
 
       const leaveNotifs: Notification[] = (leaveRes.data || []).map((req) => ({
@@ -71,7 +78,18 @@ const EmployeeNotifications = () => {
         date: req.updated_at || req.created_at,
       }));
 
-      const allNotifications = [...leaveNotifs, ...overtimeNotifs].sort(
+      const disciplineNotifs: Notification[] = (disciplineRes.data || []).map((n) => ({
+        id: n.id,
+        type: "discipline",
+        status: n.notif_type.includes("rejected") || n.notif_type === "account_locked" ? "rejected"
+          : n.notif_type === "account_unlocked" || n.notif_type.includes("approved") ? "approved"
+          : "info",
+        title: n.title,
+        description: n.message,
+        date: n.created_at,
+      }));
+
+      const allNotifications = [...leaveNotifs, ...overtimeNotifs, ...disciplineNotifs].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
 
@@ -99,6 +117,8 @@ const EmployeeNotifications = () => {
         return <CheckCircle className="h-5 w-5 text-green-600" />;
       case "rejected":
         return <XCircle className="h-5 w-5 text-destructive" />;
+      case "info":
+        return <Bell className="h-5 w-5 text-primary" />;
       default:
         return <Clock className="h-5 w-5 text-yellow-600" />;
     }
@@ -110,6 +130,8 @@ const EmployeeNotifications = () => {
         return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20">Disetujui</Badge>;
       case "rejected":
         return <Badge variant="destructive">Ditolak</Badge>;
+      case "info":
+        return null;
       default:
         return <Badge variant="secondary">Menunggu</Badge>;
     }

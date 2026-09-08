@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { generateUnlockLetterPDF } from "@/lib/unlockLetterPdfGenerator";
 import { uploadUnlockLetterPdf } from "@/lib/unlockLetterStorage";
+import { pushRecentAttendanceNotifications, nowMinusBuffer } from "@/lib/attendanceDisciplineNotifications";
 import logo from "@/assets/logo.png";
 import logger from "@/lib/logger";
 
@@ -54,6 +55,7 @@ const UnlockLetterDialog = ({ open, onOpenChange, lockId, onSubmitted }: UnlockL
     }
 
     setIsSubmitting(true);
+    const since = nowMinusBuffer();
     try {
       const signatureDataUrl = sigRef.current.getTrimmedCanvas().toDataURL("image/png");
 
@@ -106,6 +108,7 @@ const UnlockLetterDialog = ({ open, onOpenChange, lockId, onSubmitted }: UnlockL
       handleClearSignature();
       onOpenChange(false);
       onSubmitted();
+      pushRecentAttendanceNotifications(since);
     } catch (error) {
       toast({
         title: "Gagal Mengirim",

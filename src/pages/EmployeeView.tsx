@@ -28,6 +28,7 @@ import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
 import LateReasonDialog from "@/components/LateReasonDialog";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
 import AccountLockedCard from "@/components/AccountLockedCard";
+import { pushRecentAttendanceNotifications, nowMinusBuffer } from "@/lib/attendanceDisciplineNotifications";
 import { format } from "date-fns";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -735,6 +736,7 @@ const EmployeeView = () => {
       // untuk direview HR, bukan lagi ditempel sebagai teks ke attendance.notes.
       const inserted = await completeCheckIn(pending.insertData, pending.nearestOffice, pending.isHybridWorker);
       if (inserted?.id) {
+        const since = nowMinusBuffer();
         const { error: lateReasonError } = await supabase.rpc("submit_late_reason", {
           p_attendance_id: inserted.id,
           p_reason: reason,
@@ -746,6 +748,8 @@ const EmployeeView = () => {
             description: "Absensi tersimpan, tetapi alasan keterlambatan gagal disimpan. Hubungi HR.",
             variant: "destructive",
           });
+        } else {
+          pushRecentAttendanceNotifications(since);
         }
       }
     } else {

@@ -2189,6 +2189,22 @@ export type Database = {
         Returns: string
       }
       get_attendance_discipline_config: { Args: never; Returns: Json }
+      get_attendance_discipline_dashboard_stats: {
+        Args: { p_month?: string }
+        Returns: Json
+      }
+      get_attendance_discipline_employee_rows: {
+        Args: { p_month?: string }
+        Returns: {
+          account_status: string
+          departemen: string
+          full_name: string
+          monthly_violations: number
+          rolling_violations: number
+          user_id: string
+          warning_level: string | null
+        }[]
+      }
       get_biaya_jabatan_config: { Args: never; Returns: Json }
       get_bpjs_config: { Args: never; Returns: Json }
       get_business_travel_allowance_config: { Args: never; Returns: Json }

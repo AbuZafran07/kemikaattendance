@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
+import { pushRecentAttendanceNotifications, nowMinusBuffer } from "@/lib/attendanceDisciplineNotifications";
 import logger from "@/lib/logger";
 
 interface LateReasonRow {
@@ -126,6 +127,7 @@ const LateReasonApproval = () => {
 
   const handleReject = async (reason: string) => {
     if (!selectedId) return;
+    const since = nowMinusBuffer();
     const { error } = await supabase.rpc("reject_late_reason", { reason_id: selectedId, reason });
     if (error) {
       toast({ title: "Gagal Menolak", description: error.message, variant: "destructive" });
@@ -133,6 +135,7 @@ const LateReasonApproval = () => {
     }
     toast({ title: "Berhasil", description: "Alasan keterlambatan ditolak, dicatat sebagai pelanggaran." });
     fetchLateReasons();
+    pushRecentAttendanceNotifications(since);
   };
 
   const filteredRows = rows.filter((r) => (tab === "all" ? true : r.status === tab));

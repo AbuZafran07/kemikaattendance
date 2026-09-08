@@ -212,7 +212,7 @@ const EmployeeCoaching = () => {
   const handleApproveLetter = async () => {
     if (!selected?.unlockLetter) return;
     const since = nowMinusBuffer();
-    const { error } = await supabase.rpc("approve_unlock_letter", { p_letter_id: selected.unlockLetter.id });
+    const { error } = await (supabase.rpc as any)("approve_unlock_letter", { p_letter_id: selected.unlockLetter.id });
     if (error) {
       toast({ title: "Gagal Menyetujui", description: error.message, variant: "destructive" });
       return;
@@ -226,7 +226,7 @@ const EmployeeCoaching = () => {
   const handleRejectLetter = async (reason: string) => {
     if (!selected?.unlockLetter) return;
     const since = nowMinusBuffer();
-    const { error } = await supabase.rpc("reject_unlock_letter", {
+    const { error } = await (supabase.rpc as any)("reject_unlock_letter", {
       p_letter_id: selected.unlockLetter.id,
       p_reason: reason,
     });
@@ -245,7 +245,7 @@ const EmployeeCoaching = () => {
     setUnlocking(true);
     const since = nowMinusBuffer();
     try {
-      const { error } = await supabase.rpc("unlock_account", {
+      const { error } = await (supabase.rpc as any)("unlock_account", {
         p_lock_id: selected.lock_id,
         p_coaching_id: selected.coaching.id,
         p_unlock_letter_id: selected.unlockLetter.id,

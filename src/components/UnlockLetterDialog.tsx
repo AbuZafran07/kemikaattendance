@@ -59,7 +59,7 @@ const UnlockLetterDialog = ({ open, onOpenChange, lockId, onSubmitted }: UnlockL
     try {
       const signatureDataUrl = sigRef.current.getTrimmedCanvas().toDataURL("image/png");
 
-      const { data: letterId, error } = await supabase.rpc("submit_unlock_letter", {
+      const { data: letterId, error } = await (supabase.rpc as any)("submit_unlock_letter", {
         p_lock_id: lockId,
         p_statement_text: statementText.trim(),
         p_signature_data: signatureDataUrl,
@@ -95,7 +95,7 @@ const UnlockLetterDialog = ({ open, onOpenChange, lockId, onSubmitted }: UnlockL
 
           const documentPath = await uploadUnlockLetterPdf(pdfBlob, user!.id, letterId as string);
 
-          await supabase.rpc("set_unlock_letter_document", {
+          await (supabase.rpc as any)("set_unlock_letter_document", {
             p_letter_id: letterId as string,
             p_document_url: documentPath,
           });

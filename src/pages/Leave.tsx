@@ -30,6 +30,7 @@ const Leave = () => {
   const [dialogAction, setDialogAction] = useState<"approve" | "reject">("approve");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [detailRequest, setDetailRequest] = useState<any | null>(null);
+  const [attachmentSignedUrl, setAttachmentSignedUrl] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -40,6 +41,20 @@ const Leave = () => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  useEffect(() => {
+    const fetchAttachmentUrl = async () => {
+      if (!detailRequest?.attachment_url) {
+        setAttachmentSignedUrl(null);
+        return;
+      }
+      const { data } = await supabase.storage
+        .from("leave-attachments")
+        .createSignedUrl(detailRequest.attachment_url, 3600);
+      setAttachmentSignedUrl(data?.signedUrl || null);
+    };
+    fetchAttachmentUrl();
+  }, [detailRequest]);
 
   useEffect(() => {
     fetchLeaveRequests();
@@ -116,9 +131,27 @@ const Leave = () => {
       (profilesData || []).map(p => [p.id, p])
     );
 
+    // Fetch special leave type names (izin khusus) for any requests using one.
+    // Fetched for ALL types (not just active) so old requests using a since-deactivated
+    // type still display their name correctly.
+    const specialLeaveTypeIds = [
+      ...new Set(leaveData.map((r: any) => r.special_leave_type_id).filter(Boolean)),
+    ];
+    let specialLeaveTypesMap = new Map<string, string>();
+    if (specialLeaveTypeIds.length > 0) {
+      const { data: specialTypesData } = await supabase
+        .from("special_leave_types" as any)
+        .select("id, name")
+        .in("id", specialLeaveTypeIds);
+      specialLeaveTypesMap = new Map((specialTypesData || []).map((t: any) => [t.id, t.name]));
+    }
+
     // Combine leave requests with profiles + delegate info
     const combinedData = leaveData.map((request: any) => ({
       ...request,
+      special_leave_type_name: request.special_leave_type_id
+        ? specialLeaveTypesMap.get(request.special_leave_type_id) || "Izin Khusus"
+        : null,
       profiles: profilesMap.get(request.user_id) || null,
       delegate_profile: request.delegated_to ? profilesMap.get(request.delegated_to) || null : null,
     }));
@@ -296,9 +329,17 @@ const Leave = () => {
       izin: "Izin",
       sakit: "Sakit",
       lupa_absen: "Lupa Absen",
+      izin_khusus: "Izin Khusus",
     };
     return typeMap[type] || type;
   };
+
+  // Untuk izin khusus, tampilkan jenis spesifiknya (Pernikahan, Kematian, dll)
+  // supaya HR tahu ini bukan cuti tahunan/izin biasa.
+  const displayLeaveType = (request: any) =>
+    request.leave_type === "izin_khusus"
+      ? `Izin Khusus: ${request.special_leave_type_name || "-"}`
+      : formatLeaveType(request.leave_type);
 
   return (
     <DashboardLayout>
@@ -384,7 +425,7 @@ const Leave = () => {
                         <TableCell className="font-medium">{request.profiles?.full_name}</TableCell>
                         <TableCell>{request.profiles?.nik}</TableCell>
                         <TableCell>{request.profiles?.departemen}</TableCell>
-                        <TableCell>{formatLeaveType(request.leave_type)}</TableCell>
+                        <TableCell>{displayLeaveType(request)}</TableCell>
                         <TableCell>
                           {new Date(request.start_date).toLocaleDateString("id-ID")} -
                           {new Date(request.end_date).toLocaleDateString("id-ID")}
@@ -478,7 +519,7 @@ const Leave = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Jenis Cuti</p>
-                  <p className="font-medium">{formatLeaveType(detailRequest.leave_type)}</p>
+                  <p className="font-medium">{displayLeaveType(detailRequest)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Tanggal Mulai</p>
@@ -501,6 +542,18 @@ const Leave = () => {
                 <p className="text-sm text-muted-foreground">Alasan</p>
                 <p className="font-medium whitespace-pre-wrap">{detailRequest.reason}</p>
               </div>
+              {detailRequest.attachment_url && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Dokumen Pendukung</p>
+                  {attachmentSignedUrl ? (
+                    <a href={attachmentSignedUrl} target="_blank" rel="noreferrer" className="text-primary underline text-sm">
+                      Lihat Dokumen
+                    </a>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Memuat...</p>
+                  )}
+                </div>
+              )}
               {(detailRequest.delegated_to || detailRequest.delegation_notes) && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                   <p className="text-sm font-semibold">Pendelegasian Tugas</p>

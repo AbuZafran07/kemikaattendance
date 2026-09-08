@@ -45,6 +45,7 @@ import AttendanceAuditLog from "./pages/AttendanceAuditLog";
 import LateReasonApproval from "./pages/LateReasonApproval";
 import EmployeeCoaching from "./pages/EmployeeCoaching";
 import AttendanceDisciplineDashboard from "./pages/AttendanceDisciplineDashboard";
+import SpecialLeaveTypesSettings from "./pages/SpecialLeaveTypesSettings";
 import ApprovalAuditLog from "./pages/ApprovalAuditLog";
 import Payroll from "./pages/Payroll";
 import LoanManagement from "./pages/LoanManagement";
@@ -94,6 +95,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/overtime" element={<ProtectedRoute requireAdmin><OvertimeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/attendance-discipline" element={<ProtectedRoute requireAdmin><AttendanceDisciplineSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/special-leave-types" element={<ProtectedRoute requireAdmin><SpecialLeaveTypesSettings /></ProtectedRoute>} />
             <Route path="/dashboard/reports/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceReport /></ProtectedRoute>} />
             <Route path="/dashboard/attendance/audit-log" element={<ProtectedRoute requireAdmin><AttendanceAuditLog /></ProtectedRoute>} />
             <Route path="/dashboard/attendance/late-reasons" element={<ProtectedRoute requireAdmin><LateReasonApproval /></ProtectedRoute>} />

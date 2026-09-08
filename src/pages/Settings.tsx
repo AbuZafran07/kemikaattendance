@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree, HeartHandshake } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -31,6 +31,12 @@ export default function Settings() {
       description: "Kelola kuota dan aturan cuti",
       icon: Calendar,
       path: "/dashboard/settings/leave", // ✅ konsisten: semua menu ada di /dashboard/settings/
+    },
+    {
+      title: "Jenis Izin Khusus",
+      description: "Kelola jenis izin life-event (pernikahan, kematian, dll) yang tidak memotong kuota",
+      icon: HeartHandshake,
+      path: "/dashboard/settings/special-leave-types",
     },
     {
       title: "Kebijakan Lembur",

@@ -39,6 +39,7 @@ import BusinessTravelRequest from "./pages/BusinessTravelRequest";
 import BusinessTravelHistory from "./pages/BusinessTravelHistory";
 import BusinessTravel from "./pages/BusinessTravel";
 import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
+import AttendanceDisciplineSettings from "./pages/AttendanceDisciplineSettings";
 import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
 import AttendanceAuditLog from "./pages/AttendanceAuditLog";
 import ApprovalAuditLog from "./pages/ApprovalAuditLog";

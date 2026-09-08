@@ -174,8 +174,8 @@ export default function KPI() {
   }, [selectedEmployee, selectedYear]);
 
   const fetchEmployees = async () => {
-    const { data } = await supabase.from("profiles").select("id, full_name, position, department, basic_salary").order("full_name");
-    if (data) setEmployees(data as Employee[]);
+    const { data } = await supabase.from("profiles").select("id, full_name, jabatan, departemen, basic_salary").order("full_name");
+    if (data) setEmployees(data.map((d) => ({ id: d.id, full_name: d.full_name, position: d.jabatan ?? undefined, department: d.departemen ?? undefined, basic_salary: d.basic_salary ?? undefined })));
   };
 
   const fetchGrades = async () => {
@@ -262,10 +262,10 @@ export default function KPI() {
         sort_order: ind.sort_order, updated_at: new Date().toISOString(),
       };
       if (ind.id.startsWith("new_")) {
-        const { data } = await supabase.from("kpi_indicators").insert(payload).select().single();
+        const { data } = await supabase.from("kpi_indicators").insert(payload as never).select().single();
         if (data) setIndicators(prev => prev.map(i => i.id === ind.id ? { ...i, id: data.id } : i));
       } else {
-        await supabase.from("kpi_indicators").update(payload).eq("id", ind.id);
+        await supabase.from("kpi_indicators").update(payload as never).eq("id", ind.id);
       }
     }
     setSaving(false);
@@ -287,10 +287,10 @@ export default function KPI() {
       updated_at: new Date().toISOString(),
     };
     if (existing?.id) {
-      await supabase.from("kpi_realizations").update(payload).eq("id", existing.id);
+      await supabase.from("kpi_realizations").update(payload as never).eq("id", existing.id);
       setRealizations(prev => prev.map(r => r.id === existing.id ? { ...r, ...payload } : r));
     } else {
-      const { data } = await supabase.from("kpi_realizations").insert(payload).select().single();
+      const { data } = await supabase.from("kpi_realizations").insert(payload as never).select().single();
       if (data) setRealizations(prev => [...prev, data as KpiRealization]);
     }
   };

@@ -2156,6 +2156,10 @@ export type Database = {
         Args: { document_url_param?: string; request_id: string }
         Returns: undefined
       }
+      approve_late_reason: {
+        Args: { notes?: string; reason_id: string }
+        Returns: undefined
+      }
       approve_leave_request: {
         Args: { notes?: string; request_id: string }
         Returns: undefined
@@ -2196,9 +2200,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_discipline_admin: { Args: never; Returns: boolean }
       mark_notifications_seen: { Args: never; Returns: string }
       reject_business_travel_request: {
         Args: { reason: string; request_id: string }
+        Returns: undefined
+      }
+      reject_late_reason: {
+        Args: { reason: string; reason_id: string }
         Returns: undefined
       }
       reject_leave_request: {
@@ -2208,6 +2217,15 @@ export type Database = {
       reject_overtime_request: {
         Args: { reason: string; request_id: string }
         Returns: undefined
+      }
+      submit_late_reason: {
+        Args: {
+          p_attachment_url?: string
+          p_attendance_id: string
+          p_description?: string
+          p_reason: string
+        }
+        Returns: string
       }
     }
     Enums: {

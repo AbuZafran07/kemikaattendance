@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
-import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, MapPin, RefreshCw, Plane, ShieldAlert } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -83,16 +83,34 @@ interface BusinessTravelNotification {
   };
 }
 
+interface DisciplineNotification {
+  id: string;
+  user_id: string;
+  notif_type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  profiles: {
+    full_name: string;
+    nik: string;
+    departemen: string;
+    photo_url?: string;
+  };
+}
+
 const Notifications = () => {
   const [attendanceNotifications, setAttendanceNotifications] = useState<AttendanceNotification[]>([]);
   const [leaveNotifications, setLeaveNotifications] = useState<RequestNotification[]>([]);
   const [overtimeNotifications, setOvertimeNotifications] = useState<RequestNotification[]>([]);
   const [businessTravelNotifications, setBusinessTravelNotifications] = useState<BusinessTravelNotification[]>([]);
+  const [disciplineNotifications, setDisciplineNotifications] = useState<DisciplineNotification[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [attendancePage, setAttendancePage] = useState(1);
   const [leavePage, setLeavePage] = useState(1);
   const [overtimePage, setOvertimePage] = useState(1);
   const [travelPage, setTravelPage] = useState(1);
+  const [disciplinePage, setDisciplinePage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -114,8 +132,50 @@ const Notifications = () => {
       fetchLeaveRequests(),
       fetchOvertimeRequests(),
       fetchBusinessTravelRequests(),
+      fetchDisciplineNotifications(),
     ]);
     setIsRefreshing(false);
+  };
+
+  const fetchDisciplineNotifications = async () => {
+    const { data: notifData } = await supabase
+      .from("attendance_notifications")
+      .select("*")
+      .eq("target_role", "hr")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (!notifData || notifData.length === 0) {
+      setDisciplineNotifications([]);
+      return;
+    }
+
+    const userIds = [...new Set(notifData.map((n) => n.user_id))];
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, full_name, nik, departemen, photo_url")
+      .in("id", userIds);
+
+    const profilesWithSignedUrls = await Promise.all(
+      (profilesData || []).map(async (p) => {
+        const signedUrl = await getSignedPhotoUrl(p.photo_url);
+        return { ...p, photo_url: signedUrl };
+      }),
+    );
+
+    const profilesMap = new Map(
+      profilesWithSignedUrls.map((p) => [
+        p.id,
+        { full_name: p.full_name, nik: p.nik, departemen: p.departemen, photo_url: p.photo_url },
+      ]),
+    );
+
+    setDisciplineNotifications(
+      notifData.map((n) => ({
+        ...n,
+        profiles: profilesMap.get(n.user_id) || { full_name: "Unknown", nik: "-", departemen: "-" },
+      })) as DisciplineNotification[],
+    );
   };
 
   const fetchAttendance = async () => {
@@ -407,11 +467,34 @@ const Notifications = () => {
       )
       .subscribe();
 
+    // Subscribe to attendance discipline notifications (SP1/SP2, lock, alasan telat, dst.)
+    const disciplineChannel = supabase
+      .channel("attendance-discipline-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "attendance_notifications",
+          filter: "target_role=eq.hr",
+        },
+        (payload) => {
+          console.log("Discipline notification:", payload);
+          fetchDisciplineNotifications();
+          toast({
+            title: (payload.new as { title?: string })?.title || "Notifikasi Disiplin Absensi",
+            description: (payload.new as { message?: string })?.message,
+          });
+        },
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(attendanceChannel);
       supabase.removeChannel(leaveChannel);
       supabase.removeChannel(overtimeChannel);
       supabase.removeChannel(travelChannel);
+      supabase.removeChannel(disciplineChannel);
     };
   };
 
@@ -523,6 +606,21 @@ const Notifications = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card
+            className="cursor-pointer hover:bg-accent/5 transition-colors"
+            onClick={() => navigate("/dashboard/attendance-discipline")}
+          >
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Disiplin Absensi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-destructive" />
+                <span className="text-3xl font-bold">{disciplineNotifications.length}</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs defaultValue="attendance" className="space-y-4">
@@ -531,6 +629,7 @@ const Notifications = () => {
             <TabsTrigger value="leave">Cuti Pending ({leaveNotifications.length})</TabsTrigger>
             <TabsTrigger value="overtime">Lembur Pending ({overtimeNotifications.length})</TabsTrigger>
             <TabsTrigger value="travel">Perjalanan Dinas ({businessTravelNotifications.length})</TabsTrigger>
+            <TabsTrigger value="discipline">Disiplin Absensi ({disciplineNotifications.length})</TabsTrigger>
           </TabsList>
 
           {/* ✅ TAB AKTIVITAS ABSENSI – SUDAH ADA TANGGAL */}
@@ -752,6 +851,55 @@ const Notifications = () => {
                   totalItems={businessTravelNotifications.length}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setTravelPage}
+                  showRowsPerPage={false}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="discipline" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notifikasi Disiplin Absensi</CardTitle>
+                <CardDescription>Alasan telat, SP1/SP2, lock akun, dan surat pengajuan unlock</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-auto">
+                  {disciplineNotifications.length > 0 ? (
+                    getPaginatedData(disciplineNotifications, disciplinePage).map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
+                        onClick={() => navigate("/dashboard/attendance-discipline")}
+                      >
+                        <div className="flex items-center gap-4">
+                          <EmployeeAvatar
+                            src={notification.profiles.photo_url}
+                            name={notification.profiles.full_name}
+                            fallbackClassName="bg-destructive/10 text-destructive"
+                          />
+                          <div>
+                            <p className="font-semibold">{notification.title}</p>
+                            <p className="text-sm text-muted-foreground">{notification.message}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {notification.profiles.full_name} • {notification.profiles.departemen}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDate(notification.created_at)}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">Belum ada notifikasi disiplin absensi</div>
+                  )}
+                </div>
+                <DataTablePagination
+                  currentPage={disciplinePage}
+                  totalItems={disciplineNotifications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setDisciplinePage}
                   showRowsPerPage={false}
                 />
               </CardContent>

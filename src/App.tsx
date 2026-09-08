@@ -42,6 +42,9 @@ import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
 import AttendanceDisciplineSettings from "./pages/AttendanceDisciplineSettings";
 import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
 import AttendanceAuditLog from "./pages/AttendanceAuditLog";
+import LateReasonApproval from "./pages/LateReasonApproval";
+import EmployeeCoaching from "./pages/EmployeeCoaching";
+import AttendanceDisciplineDashboard from "./pages/AttendanceDisciplineDashboard";
 import ApprovalAuditLog from "./pages/ApprovalAuditLog";
 import Payroll from "./pages/Payroll";
 import LoanManagement from "./pages/LoanManagement";
@@ -93,6 +96,9 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/attendance-discipline" element={<ProtectedRoute requireAdmin><AttendanceDisciplineSettings /></ProtectedRoute>} />
             <Route path="/dashboard/reports/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceReport /></ProtectedRoute>} />
             <Route path="/dashboard/attendance/audit-log" element={<ProtectedRoute requireAdmin><AttendanceAuditLog /></ProtectedRoute>} />
+            <Route path="/dashboard/attendance/late-reasons" element={<ProtectedRoute requireAdmin><LateReasonApproval /></ProtectedRoute>} />
+            <Route path="/dashboard/coaching" element={<ProtectedRoute requireAdmin><EmployeeCoaching /></ProtectedRoute>} />
+            <Route path="/dashboard/attendance-discipline" element={<ProtectedRoute requireAdmin><AttendanceDisciplineDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/approval-audit-log" element={<ProtectedRoute requireAdmin><ApprovalAuditLog /></ProtectedRoute>} />
             <Route path="/dashboard/payroll" element={<ProtectedRoute requireAdmin><Payroll /></ProtectedRoute>} />
             <Route path="/dashboard/loans" element={<ProtectedRoute requireAdmin><LoanManagement /></ProtectedRoute>} />

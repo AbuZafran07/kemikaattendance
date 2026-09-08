@@ -33,6 +33,7 @@ interface AttendanceRecord {
   full_name?: string;
   departemen?: string;
   photo_url?: string;
+  late_reason_status?: string;
 }
 
 interface Profile {
@@ -150,6 +151,20 @@ const Attendance = () => {
       profiles.forEach((p) => profilesMap.set(p.id, p));
     }
 
+    // Fetch late reason statuses for late records shown in this range
+    const lateAttendanceIds = nonAdminAttendance
+      .filter((record) => record.status === "terlambat")
+      .map((record) => record.id);
+
+    const lateReasonMap = new Map<string, string>();
+    if (lateAttendanceIds.length > 0) {
+      const { data: lateReasons } = await supabase
+        .from("late_reasons")
+        .select("attendance_id, status")
+        .in("attendance_id", lateAttendanceIds);
+      (lateReasons || []).forEach((lr) => lateReasonMap.set(lr.attendance_id, lr.status));
+    }
+
     // Merge attendance with profiles
     const mergedData: AttendanceRecord[] = nonAdminAttendance.map((record) => {
       const profile = profilesMap.get(record.user_id);
@@ -158,6 +173,7 @@ const Attendance = () => {
         full_name: profile?.full_name || "Unknown",
         departemen: profile?.departemen || "-",
         photo_url: profile?.photo_url,
+        late_reason_status: lateReasonMap.get(record.id),
       };
     });
 
@@ -486,6 +502,12 @@ const Attendance = () => {
           </div>
           <div className="flex items-center gap-2">
             {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/late-reasons")}>
+                <Clock className="h-4 w-4 mr-1" />
+                Alasan Terlambat
+              </Button>
+            )}
+            {isAdmin && (
               <Button variant="default" size="sm" onClick={() => setShowManualInput(true)}>
                 <UserPlus className="h-4 w-4 mr-1" />
                 Input Manual
@@ -680,7 +702,20 @@ const Attendance = () => {
                               <span className="text-sm">{record.gps_validated ? "Valid" : "Invalid"}</span>
                             </div>
                           </TableCell>
-                          <TableCell>{getStatusBadge(record.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {getStatusBadge(record.status)}
+                              {record.status === "terlambat" && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  {record.late_reason_status === "approved" && "Alasan: Disetujui"}
+                                  {record.late_reason_status === "rejected" && "Alasan: Ditolak"}
+                                  {record.late_reason_status === "pending" && "Alasan: Menunggu"}
+                                  {record.late_reason_status === "no_reason_submitted" && "Alasan: Tidak Diajukan"}
+                                  {!record.late_reason_status && "Belum Ada Alasan"}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
                           {isAdmin && (
                             <TableCell>
                               <div className="flex items-center gap-1">

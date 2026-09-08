@@ -12,6 +12,7 @@ import { id } from "date-fns/locale";
 import { EmployeeAvatar } from "@/components/ui/employee-avatar";
 import { EditProfileDialog } from "@/components/EditProfileDialog";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import EmployeeDisciplineSummary from "@/components/EmployeeDisciplineSummary";
 
 const EmployeeProfile = () => {
   const navigate = useNavigate();
@@ -201,6 +202,9 @@ const EmployeeProfile = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Attendance Discipline */}
+        <EmployeeDisciplineSummary userId={profile.id} accountStatus={profile.account_status || "active"} />
 
         {/* Leave Balance */}
         <Card>

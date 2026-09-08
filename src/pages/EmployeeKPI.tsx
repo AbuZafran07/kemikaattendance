@@ -70,7 +70,7 @@ function computeScore(ind: KpiIndicator, realizations: KpiRealization[]) {
     if (!lastMonth) return { score: null, realVal: null, filledCount: reals.length };
     try {
       let expr = ind.custom_expr || "0";
-      cvars.forEach((_, vi) => { expr = expr.replaceAll(`v${vi}`, String(lastMonth!.custom_values?.[`v${vi}`] ?? 0)); });
+      cvars.forEach((_, vi) => { expr = expr.split(`v${vi}`).join( String(lastMonth!.custom_values?.[`v${vi}`] ?? 0)); });
       // eslint-disable-next-line no-new-func
       const realVal = Function('"use strict";return (' + expr + ')')() as number;
       return { score: tgtNum ? Math.min((realVal / tgtNum) * 100, 120) : null, realVal, filledCount: reals.length };

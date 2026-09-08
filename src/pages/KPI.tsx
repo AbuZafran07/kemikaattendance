@@ -82,7 +82,7 @@ function computeScore(ind: KpiIndicator, realizations: KpiRealization[]): { scor
     try {
       let expr = ind.custom_expr || "0";
       (ind.custom_vars || []).forEach((_, vi) => {
-        expr = expr.replaceAll(`v${vi}`, String(lastMonth!.custom_values?.[`v${vi}`] ?? 0));
+        expr = expr.split(`v${vi}`).join( String(lastMonth!.custom_values?.[`v${vi}`] ?? 0));
       });
       // eslint-disable-next-line no-new-func
       const realVal = Function('"use strict";return (' + expr + ')')() as number;

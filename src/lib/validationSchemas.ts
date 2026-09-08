@@ -149,9 +149,10 @@ export const employeeEditSchema = z.object({
 });
 
 export const leaveRequestSchema = z.object({
-  leaveType: z.enum(['cuti_tahunan', 'izin', 'sakit', 'lupa_absen'], {
+  leaveType: z.enum(['cuti_tahunan', 'izin', 'sakit', 'lupa_absen', 'izin_khusus'], {
     required_error: 'Jenis cuti harus dipilih',
   }),
+  specialLeaveTypeId: z.string().uuid().optional().or(z.literal('')),
   startDate: z.string().min(1, 'Tanggal mulai harus diisi'),
   endDate: z.string().min(1, 'Tanggal selesai harus diisi'),
   reason: z.string().trim().max(1000, 'Alasan maksimal 1000 karakter').optional().or(z.literal('')),
@@ -160,6 +161,9 @@ export const leaveRequestSchema = z.object({
 }).refine(data => new Date(data.endDate) >= new Date(data.startDate), {
   message: 'Tanggal selesai harus setelah tanggal mulai',
   path: ['endDate'],
+}).refine(data => data.leaveType !== 'izin_khusus' || !!data.specialLeaveTypeId, {
+  message: 'Jenis izin khusus harus dipilih',
+  path: ['specialLeaveTypeId'],
 });
 
 export const overtimeRequestSchema = z.object({

@@ -45,10 +45,13 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
   const [reason, setReason] = useState("");
   const [delegatedTo, setDelegatedTo] = useState("");
   const [delegationNotes, setDelegationNotes] = useState("");
+  const [specialLeaveTypes, setSpecialLeaveTypes] = useState<SpecialLeaveType[]>([]);
+  const [specialLeaveTypeId, setSpecialLeaveTypeId] = useState("");
 
   useEffect(() => {
     if (open) {
       fetchEmployees();
+      fetchSpecialLeaveTypes();
       resetForm();
     }
   }, [open]);
@@ -61,6 +64,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
     setReason("");
     setDelegatedTo("");
     setDelegationNotes("");
+    setSpecialLeaveTypeId("");
   };
 
   const fetchEmployees = async () => {
@@ -71,6 +75,34 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
       .order("full_name");
     if (data) setEmployees(data);
   };
+
+  const fetchSpecialLeaveTypes = async () => {
+    const { data } = await supabase
+      .from("special_leave_types")
+      .select("id, code, name, default_duration_days, requires_document")
+      .eq("is_active", true)
+      .order("display_order");
+    if (data) setSpecialLeaveTypes(data);
+  };
+
+  const selectedSpecialType = useMemo(
+    () => specialLeaveTypes.find((t) => t.id === specialLeaveTypeId),
+    [specialLeaveTypes, specialLeaveTypeId]
+  );
+
+  // Izin khusus: durasi tetap per jenis, tanggal selesai otomatis
+  useEffect(() => {
+    if (leaveType !== "izin_khusus" || !selectedSpecialType || !startDate) return;
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) return;
+    start.setDate(start.getDate() + selectedSpecialType.default_duration_days - 1);
+    setEndDate(start.toISOString().split("T")[0]);
+  }, [leaveType, selectedSpecialType, startDate]);
+
+  useEffect(() => {
+    if (leaveType !== "izin_khusus") setSpecialLeaveTypeId("");
+  }, [leaveType]);
+
 
   const selectedEmployee = useMemo(
     () => employees.find((e) => e.id === selectedUserId),

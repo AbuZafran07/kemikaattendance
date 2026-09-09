@@ -167,17 +167,18 @@ const LeaveRequest = () => {
     fetchSpecialLeaveTypes();
   }, []);
 
-  // Izin khusus: durasi tetap per jenis, tanggal selesai otomatis (bukan input manual)
+  // Izin khusus: jatah tetap per jenis dihitung HARI KERJA (weekend & hari libur dilewati)
   useEffect(() => {
     if (leaveType !== "izin_khusus" || !selectedSpecialType || !startDate) return;
-    const start = new Date(startDate);
-    if (isNaN(start.getTime())) return;
-    start.setDate(start.getDate() + selectedSpecialType.default_duration_days - 1);
-    const computedEndDate = start.toISOString().split("T")[0];
-    if (form.getValues("endDate") !== computedEndDate) {
+    const computedEndDate = getSpecialLeaveEndDate(
+      startDate,
+      selectedSpecialType.default_duration_days,
+      holidays
+    );
+    if (computedEndDate && form.getValues("endDate") !== computedEndDate) {
       form.setValue("endDate", computedEndDate, { shouldValidate: true });
     }
-  }, [leaveType, selectedSpecialType, startDate, form]);
+  }, [leaveType, selectedSpecialType, startDate, holidays, form]);
 
   // Reset pilihan izin khusus & lampiran saat pindah ke jenis cuti lain
   useEffect(() => {

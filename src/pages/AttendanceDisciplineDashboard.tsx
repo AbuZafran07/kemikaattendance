@@ -228,8 +228,23 @@ const AttendanceDisciplineDashboard = () => {
                             <Badge variant="outline">Aktif</Badge>
                           )}
                         </TableCell>
+                        <TableCell className="text-right">
+                          {row.warning_level ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setLetterTarget({ userId: row.user_id, name: row.full_name })}
+                            >
+                              <FileWarning className="h-4 w-4 mr-1" />
+                              Surat SP
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
+
                   </TableBody>
                 </Table>
               </div>

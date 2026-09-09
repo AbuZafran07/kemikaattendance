@@ -160,6 +160,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
         approval_notes: "Dibuat langsung oleh Admin",
         delegated_to: delegatedTo,
         delegation_notes: delegationNotes.trim(),
+        special_leave_type_id: leaveType === "izin_khusus" ? specialLeaveTypeId : null,
       } as any).select("id").single();
 
       if (error) throw error;

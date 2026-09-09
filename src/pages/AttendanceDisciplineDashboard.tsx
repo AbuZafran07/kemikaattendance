@@ -57,6 +57,8 @@ const AttendanceDisciplineDashboard = () => {
   const [stats, setStats] = useState<Stats>(EMPTY_STATS);
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [letterTarget, setLetterTarget] = useState<{ userId: string; name: string } | null>(null);
+
 
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [warningFilter, setWarningFilter] = useState("all");

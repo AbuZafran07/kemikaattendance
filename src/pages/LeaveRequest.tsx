@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { leaveRequestSchema, LeaveRequestFormData } from "@/lib/validationSchemas";
 import { useLeavePolicy } from "@/hooks/usePolicySettings";
+import { getSpecialLeaveEndDate } from "@/lib/specialLeaveDates";
 import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { notifyAdmins, NotificationTemplates, formatLeaveTypeForNotification } from "@/lib/notifications";

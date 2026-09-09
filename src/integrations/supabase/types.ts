@@ -2168,7 +2168,43 @@ export type Database = {
         Args: { notes?: string; request_id: string }
         Returns: undefined
       }
+      approve_unlock_letter: {
+        Args: { p_hr_signature_data?: string; p_letter_id: string }
+        Returns: undefined
+      }
+      check_attendance_thresholds: {
+        Args: { p_reference_date: string; p_user_id: string }
+        Returns: undefined
+      }
+      create_attendance_violation: {
+        Args: {
+          p_attendance_id: string
+          p_description?: string
+          p_late_reason_id?: string
+          p_source?: string
+          p_user_id: string
+          p_violation_date: string
+          p_violation_type: string
+        }
+        Returns: string
+      }
       get_attendance_discipline_config: { Args: never; Returns: Json }
+      get_attendance_discipline_dashboard_stats: {
+        Args: { p_month?: string }
+        Returns: Json
+      }
+      get_attendance_discipline_employee_rows: {
+        Args: { p_month?: string }
+        Returns: {
+          account_status: string
+          departemen: string
+          full_name: string
+          monthly_violations: number
+          rolling_violations: number
+          user_id: string
+          warning_level: string
+        }[]
+      }
       get_biaya_jabatan_config: { Args: never; Returns: Json }
       get_bpjs_config: { Args: never; Returns: Json }
       get_business_travel_allowance_config: { Args: never; Returns: Json }
@@ -2189,9 +2225,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_monthly_violation_count: {
+        Args: { p_month: string; p_user_id: string }
+        Returns: number
+      }
       get_office_locations: { Args: never; Returns: Json }
       get_pph21_brackets_config: { Args: never; Returns: Json }
       get_ptkp_config: { Args: never; Returns: Json }
+      get_rolling_3month_violation_count: {
+        Args: { p_reference_date: string; p_user_id: string }
+        Returns: number
+      }
       get_work_hours: { Args: never; Returns: Json }
       has_role: {
         Args: {
@@ -2218,6 +2262,14 @@ export type Database = {
         Args: { reason: string; request_id: string }
         Returns: undefined
       }
+      reject_unlock_letter: {
+        Args: { p_letter_id: string; p_reason: string }
+        Returns: undefined
+      }
+      set_unlock_letter_document: {
+        Args: { p_document_url: string; p_letter_id: string }
+        Returns: undefined
+      }
       submit_late_reason: {
         Args: {
           p_attachment_url?: string
@@ -2226,6 +2278,22 @@ export type Database = {
           p_reason: string
         }
         Returns: string
+      }
+      submit_unlock_letter: {
+        Args: {
+          p_lock_id: string
+          p_signature_data: string
+          p_statement_text: string
+        }
+        Returns: string
+      }
+      unlock_account: {
+        Args: {
+          p_coaching_id: string
+          p_lock_id: string
+          p_unlock_letter_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

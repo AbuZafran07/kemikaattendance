@@ -66,6 +66,21 @@ Deno.serve(async (req) => {
     const { data: config } = await supabase.rpc("get_attendance_discipline_config");
     const deadlineHours: number = (config as any)?.late_reason_deadline_hours ?? 24;
 
+    // Lewati akhir pekan & hari libur nasional/cuti bersama
+    const dayOfWeek = wib.getUTCDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    let isHoliday = false;
+    if (!isWeekend) {
+      const { data: policyRow } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "overtime_policy")
+        .maybeSingle();
+      const holidays: Array<{ date: string }> = ((policyRow?.value as any)?.holidays) || [];
+      isHoliday = holidays.some((h) => h.date === todayStr);
+    }
+    const skipAbsenceScan = isWeekend || isHoliday;
+
     // ============ 1. No attendance / absent without permission ============
     const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
     const adminIds = new Set((adminRoles || []).map((r) => r.user_id));
@@ -73,7 +88,9 @@ Deno.serve(async (req) => {
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, full_name")
-      .eq("status", "Active");
+      .eq("status", "Active")
+      .not("departemen", "in", "(BOD,Komisaris)")
+      .is("resign_date", null);
     if (profilesError) throw profilesError;
 
     const activeEmployees = (profiles || []).filter((p) => !adminIds.has(p.id));

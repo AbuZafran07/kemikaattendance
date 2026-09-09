@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
 
     const absenceResults: Array<{ user_id: string; violation_type: string | null }> = [];
 
-    if (missingEmployees.length > 0) {
+    if (missingEmployees.length > 0 && !skipAbsenceScan) {
       const missingIds = missingEmployees.map((p) => p.id);
 
       const { data: leaveRequests } = await supabase

@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import DisciplinaryLettersCard from "@/components/DisciplinaryLettersCard";
+
 
 interface Stats {
   total_employees: number;
@@ -57,6 +60,8 @@ const AttendanceDisciplineDashboard = () => {
   const [stats, setStats] = useState<Stats>(EMPTY_STATS);
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [letterTarget, setLetterTarget] = useState<{ userId: string; name: string } | null>(null);
+
 
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [warningFilter, setWarningFilter] = useState("all");
@@ -203,6 +208,8 @@ const AttendanceDisciplineDashboard = () => {
                       <TableHead>Pelanggaran 3 Bulan</TableHead>
                       <TableHead>Warning Level</TableHead>
                       <TableHead>Status Akun</TableHead>
+                      <TableHead className="text-right">Dokumen</TableHead>
+
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -228,8 +235,23 @@ const AttendanceDisciplineDashboard = () => {
                             <Badge variant="outline">Aktif</Badge>
                           )}
                         </TableCell>
+                        <TableCell className="text-right">
+                          {row.warning_level ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setLetterTarget({ userId: row.user_id, name: row.full_name })}
+                            >
+                              <FileWarning className="h-4 w-4 mr-1" />
+                              Surat SP
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
+
                   </TableBody>
                 </Table>
               </div>
@@ -237,7 +259,19 @@ const AttendanceDisciplineDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!letterTarget} onOpenChange={(open) => !open && setLetterTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Surat Peringatan — {letterTarget?.name}</DialogTitle>
+          </DialogHeader>
+          {letterTarget && (
+            <DisciplinaryLettersCard userId={letterTarget.userId} employeeName={letterTarget.name} />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
+
   );
 };
 

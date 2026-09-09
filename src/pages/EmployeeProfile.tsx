@@ -13,6 +13,8 @@ import { EmployeeAvatar } from "@/components/ui/employee-avatar";
 import { EditProfileDialog } from "@/components/EditProfileDialog";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import EmployeeDisciplineSummary from "@/components/EmployeeDisciplineSummary";
+import DisciplinaryLettersCard from "@/components/DisciplinaryLettersCard";
+
 
 const EmployeeProfile = () => {
   const navigate = useNavigate();
@@ -205,6 +207,10 @@ const EmployeeProfile = () => {
 
         {/* Attendance Discipline */}
         <EmployeeDisciplineSummary userId={profile.id} accountStatus={profile.account_status || "active"} />
+
+        {/* Warning Letters */}
+        <DisciplinaryLettersCard userId={profile.id} employeeName={profile.full_name} />
+
 
         {/* Leave Balance */}
         <Card>

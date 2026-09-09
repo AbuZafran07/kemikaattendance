@@ -214,6 +214,8 @@ Deno.serve(async (req) => {
         success: true,
         date: todayStr,
         current_hour_wib: currentHourWib,
+        absence_scan_skipped: skipAbsenceScan,
+        skip_reason: isWeekend ? "weekend" : isHoliday ? "holiday" : null,
         employees_checked: activeEmployees.length,
         missing_attendance: missingEmployees.length,
         violations_created: absenceResults.filter((r) => r.violation_type).length,

@@ -259,7 +259,19 @@ const AttendanceDisciplineDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!letterTarget} onOpenChange={(open) => !open && setLetterTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Surat Peringatan — {letterTarget?.name}</DialogTitle>
+          </DialogHeader>
+          {letterTarget && (
+            <DisciplinaryLettersCard userId={letterTarget.userId} employeeName={letterTarget.name} />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
+
   );
 };
 

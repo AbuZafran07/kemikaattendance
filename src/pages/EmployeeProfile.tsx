@@ -13,6 +13,8 @@ import { EmployeeAvatar } from "@/components/ui/employee-avatar";
 import { EditProfileDialog } from "@/components/EditProfileDialog";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import EmployeeDisciplineSummary from "@/components/EmployeeDisciplineSummary";
+import DisciplinaryLettersCard from "@/components/DisciplinaryLettersCard";
+
 
 const EmployeeProfile = () => {
   const navigate = useNavigate();

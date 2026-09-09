@@ -206,6 +206,10 @@ const EmployeeProfile = () => {
         {/* Attendance Discipline */}
         <EmployeeDisciplineSummary userId={profile.id} accountStatus={profile.account_status || "active"} />
 
+        {/* Warning Letters */}
+        <DisciplinaryLettersCard userId={profile.id} employeeName={profile.full_name} />
+
+
         {/* Leave Balance */}
         <Card>
           <CardHeader>

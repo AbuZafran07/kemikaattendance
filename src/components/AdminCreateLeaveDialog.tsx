@@ -92,14 +92,16 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
     [specialLeaveTypes, specialLeaveTypeId]
   );
 
-  // Izin khusus: durasi tetap per jenis, tanggal selesai otomatis
+  // Izin khusus: jatah tetap per jenis dihitung HARI KERJA (weekend & hari libur dilewati)
   useEffect(() => {
     if (leaveType !== "izin_khusus" || !selectedSpecialType || !startDate) return;
-    const start = new Date(startDate);
-    if (isNaN(start.getTime())) return;
-    start.setDate(start.getDate() + selectedSpecialType.default_duration_days - 1);
-    setEndDate(start.toISOString().split("T")[0]);
-  }, [leaveType, selectedSpecialType, startDate]);
+    const computed = getSpecialLeaveEndDate(
+      startDate,
+      selectedSpecialType.default_duration_days,
+      overtimePolicy.holidays || []
+    );
+    if (computed) setEndDate(computed);
+  }, [leaveType, selectedSpecialType, startDate, overtimePolicy.holidays]);
 
   useEffect(() => {
     if (leaveType !== "izin_khusus") setSpecialLeaveTypeId("");

@@ -66,6 +66,21 @@ Deno.serve(async (req) => {
     const { data: config } = await supabase.rpc("get_attendance_discipline_config");
     const deadlineHours: number = (config as any)?.late_reason_deadline_hours ?? 24;
 
+    // Lewati akhir pekan & hari libur nasional/cuti bersama
+    const dayOfWeek = wib.getUTCDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    let isHoliday = false;
+    if (!isWeekend) {
+      const { data: policyRow } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "overtime_policy")
+        .maybeSingle();
+      const holidays: Array<{ date: string }> = ((policyRow?.value as any)?.holidays) || [];
+      isHoliday = holidays.some((h) => h.date === todayStr);
+    }
+    const skipAbsenceScan = isWeekend || isHoliday;
+
     // ============ 1. No attendance / absent without permission ============
     const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
     const adminIds = new Set((adminRoles || []).map((r) => r.user_id));
@@ -73,7 +88,9 @@ Deno.serve(async (req) => {
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("id, full_name")
-      .eq("status", "Active");
+      .eq("status", "Active")
+      .not("departemen", "in", "(BOD,Komisaris)")
+      .is("resign_date", null);
     if (profilesError) throw profilesError;
 
     const activeEmployees = (profiles || []).filter((p) => !adminIds.has(p.id));
@@ -92,7 +109,7 @@ Deno.serve(async (req) => {
 
     const absenceResults: Array<{ user_id: string; violation_type: string | null }> = [];
 
-    if (missingEmployees.length > 0) {
+    if (missingEmployees.length > 0 && !skipAbsenceScan) {
       const missingIds = missingEmployees.map((p) => p.id);
 
       const { data: leaveRequests } = await supabase
@@ -197,6 +214,8 @@ Deno.serve(async (req) => {
         success: true,
         date: todayStr,
         current_hour_wib: currentHourWib,
+        absence_scan_skipped: skipAbsenceScan,
+        skip_reason: isWeekend ? "weekend" : isHoliday ? "holiday" : null,
         employees_checked: activeEmployees.length,
         missing_attendance: missingEmployees.length,
         violations_created: absenceResults.filter((r) => r.violation_type).length,

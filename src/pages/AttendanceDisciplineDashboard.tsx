@@ -208,6 +208,8 @@ const AttendanceDisciplineDashboard = () => {
                       <TableHead>Pelanggaran 3 Bulan</TableHead>
                       <TableHead>Warning Level</TableHead>
                       <TableHead>Status Akun</TableHead>
+                      <TableHead className="text-right">Dokumen</TableHead>
+
                     </TableRow>
                   </TableHeader>
                   <TableBody>

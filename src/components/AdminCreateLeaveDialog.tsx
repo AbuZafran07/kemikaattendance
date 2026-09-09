@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { differenceInCalendarDays } from "date-fns";
 import { logApprovalAction } from "@/lib/approvalAuditLog";
+import { getSpecialLeaveEndDate } from "@/lib/specialLeaveDates";
+import { useOvertimePolicy } from "@/hooks/usePolicySettings";
 
 interface AdminCreateLeaveDialogProps {
   open: boolean;

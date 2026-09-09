@@ -131,7 +131,14 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
       return;
     }
 
-    const totalDays = differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
+    if (leaveType === "izin_khusus" && !selectedSpecialType) {
+      toast({ title: "Jenis izin khusus harus dipilih", variant: "destructive" });
+      return;
+    }
+
+    const totalDays = leaveType === "izin_khusus" && selectedSpecialType
+      ? selectedSpecialType.default_duration_days
+      : differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
     if (totalDays <= 0) {
       toast({ title: "Tanggal tidak valid", description: "Tanggal selesai harus setelah tanggal mulai", variant: "destructive" });
       return;

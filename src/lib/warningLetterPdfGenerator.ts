@@ -40,12 +40,13 @@ export const buildWarningLetterNumber = (data: WarningLetterData): string => {
 
 export async function generateWarningLetterPDF(
   data: WarningLetterData,
-  logoSrc: string,
+  _logoSrc?: string,
 ): Promise<Blob> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth();
-  const mx = 18;
-  const rightEnd = pw - mx;
+  const ph = doc.internal.pageSize.getHeight();
+  const mx = 22;
+  const rightEnd = 180; // hindari ornamen hijau di sisi kanan kop surat
   const contentWidth = rightEnd - mx;
 
   const isSp2 = data.warning_type.toLowerCase() === "sp2";
@@ -53,36 +54,18 @@ export async function generateWarningLetterPDF(
   const periodDate = new Date(data.period_month);
   const periodLabel = `${MONTHS_ID[periodDate.getMonth()]} ${periodDate.getFullYear()}`;
 
-  let logoBase64: string | null = null;
+  // ── KOP SURAT RESMI (background A4) ──
   try {
-    logoBase64 = await loadImageAsBase64(logoSrc);
+    const letterhead = await loadImageAsBase64(letterheadSrc);
+    doc.addImage(letterhead, "JPEG", 0, 0, pw, ph);
   } catch {
-    /* logo optional */
+    /* kop opsional */
   }
 
-  // ── HEADER ──
-  doc.setFillColor(...GREEN);
-  doc.rect(0, 0, pw, 4, "F");
-
-  let y = 15;
-  if (logoBase64) {
-    doc.addImage(logoBase64, "PNG", mx, y, 18, 18);
-  }
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.setTextColor(...DARK_TEXT);
-  doc.text("PT. KEMIKA KARYA PRATAMA", mx + 22, y + 7);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...GRAY_TEXT);
-  doc.text("Jl. Uri Beta Selatan Raya No. 78 Larangan Utara, Kota Tangerang 15154", mx + 22, y + 13);
-
-  y = 34;
-  doc.setDrawColor(...GREEN);
-  doc.setLineWidth(0.8);
-  doc.line(mx, y, rightEnd, y);
+  let y = 42;
 
   // ── TITLE ──
+
   y += 9;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);

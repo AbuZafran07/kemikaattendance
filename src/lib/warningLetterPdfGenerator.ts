@@ -1,5 +1,7 @@
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "@/lib/payslipPdfGenerator";
+import letterheadSrc from "@/assets/kemika-letterhead.jpg";
+
 
 const GREEN = [0, 135, 81] as const;
 const DARK_GREEN = [0, 92, 56] as const;

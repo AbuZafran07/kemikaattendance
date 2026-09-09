@@ -49,6 +49,7 @@ const PendingRequests = ({ leaveRequests, overtimeRequests, businessTravelReques
       izin: "Izin",
       sakit: "Sakit",
       lupa_absen: "Lupa Absen",
+      izin_khusus: "Izin Khusus",
     };
     return types[type] || type;
   };

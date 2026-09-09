@@ -207,6 +207,7 @@ export const formatLeaveTypeForNotification = (type: string): string => {
     izin: "Izin",
     sakit: "Sakit",
     lupa_absen: "Lupa Absen",
+    izin_khusus: "Izin Khusus",
   };
   return typeMap[type] || type;
 };

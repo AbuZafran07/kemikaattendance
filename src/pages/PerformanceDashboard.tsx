@@ -115,7 +115,8 @@ const PerformanceDashboard = () => {
       cuti_tahunan: 'Cuti Tahunan',
       izin: 'Izin',
       sakit: 'Sakit',
-      lupa_absen: 'Lupa Absen'
+      lupa_absen: 'Lupa Absen',
+      izin_khusus: 'Izin Khusus'
     };
     return types[type] || type;
   };

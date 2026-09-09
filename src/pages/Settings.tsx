@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree, ShieldAlert, HeartHandshake } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -37,6 +37,18 @@ export default function Settings() {
       description: "Atur aturan dan kompensasi lembur",
       icon: FileText,
       path: "/dashboard/settings/overtime",
+    },
+    {
+      title: "Jenis Izin Khusus",
+      description: "Kelola jenis izin life-event (pernikahan, duka, dll) dan durasi tetapnya",
+      icon: HeartHandshake,
+      path: "/dashboard/settings/special-leave-types",
+    },
+    {
+      title: "Disiplin Absensi",
+      description: "Atur ambang batas SP, lock akun, dan peringatan dini disiplin kehadiran",
+      icon: ShieldAlert,
+      path: "/dashboard/settings/attendance-discipline",
     },
     {
       title: "Hari Libur & Event Kantor",

@@ -29,6 +29,7 @@ export const formatLeaveType = (leaveType: string): string => {
     izin: "Izin",
     sakit: "Sakit",
     lupa_absen: "Lupa Absen",
+    izin_khusus: "Izin Khusus",
   };
 
   return typeMap[leaveType] || leaveType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());

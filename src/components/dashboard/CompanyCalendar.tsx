@@ -55,6 +55,7 @@ const leaveTypeLabels: Record<string, string> = {
   izin: "Izin",
   sakit: "Sakit",
   lupa_absen: "Lupa Absen",
+  izin_khusus: "Izin Khusus",
 };
 
 const CompanyCalendar = () => {

@@ -40,6 +40,7 @@ import BusinessTravelHistory from "./pages/BusinessTravelHistory";
 import BusinessTravel from "./pages/BusinessTravel";
 import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
 import AttendanceDisciplineSettings from "./pages/AttendanceDisciplineSettings";
+import SpecialLeaveTypesSettings from "./pages/SpecialLeaveTypesSettings";
 import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
 import AttendanceAuditLog from "./pages/AttendanceAuditLog";
 import EmployeeCoaching from "./pages/EmployeeCoaching";
@@ -92,6 +93,7 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/overtime" element={<ProtectedRoute requireAdmin><OvertimeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/attendance-discipline" element={<ProtectedRoute requireAdmin><AttendanceDisciplineSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/special-leave-types" element={<ProtectedRoute requireAdmin><SpecialLeaveTypesSettings /></ProtectedRoute>} />
             <Route path="/dashboard/reports/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceReport /></ProtectedRoute>} />
             <Route path="/dashboard/attendance/audit-log" element={<ProtectedRoute requireAdmin><AttendanceAuditLog /></ProtectedRoute>} />
             {/* Alasan Telat & Disiplin Absensi sekarang jadi tab di halaman Absensi; rute lama diarahkan ke tab yang sesuai supaya bookmark lama tidak rusak. */}

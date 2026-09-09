@@ -1434,6 +1434,7 @@ export type Database = {
           approval_notes: string | null
           approved_at: string | null
           approved_by: string | null
+          attachment_url: string | null
           created_at: string
           delegated_to: string | null
           delegation_notes: string | null
@@ -1442,6 +1443,7 @@ export type Database = {
           leave_type: Database["public"]["Enums"]["leave_type"]
           reason: string
           rejection_reason: string | null
+          special_leave_type_id: string | null
           start_date: string
           status: Database["public"]["Enums"]["leave_status"]
           total_days: number
@@ -1452,6 +1454,7 @@ export type Database = {
           approval_notes?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          attachment_url?: string | null
           created_at?: string
           delegated_to?: string | null
           delegation_notes?: string | null
@@ -1460,6 +1463,7 @@ export type Database = {
           leave_type: Database["public"]["Enums"]["leave_type"]
           reason: string
           rejection_reason?: string | null
+          special_leave_type_id?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["leave_status"]
           total_days: number
@@ -1470,6 +1474,7 @@ export type Database = {
           approval_notes?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          attachment_url?: string | null
           created_at?: string
           delegated_to?: string | null
           delegation_notes?: string | null
@@ -1478,11 +1483,56 @@ export type Database = {
           leave_type?: Database["public"]["Enums"]["leave_type"]
           reason?: string
           rejection_reason?: string | null
+          special_leave_type_id?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["leave_status"]
           total_days?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_special_leave_type_id_fkey"
+            columns: ["special_leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "special_leave_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_leave_types: {
+        Row: {
+          code: string
+          created_at: string
+          default_duration_days: number
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          requires_document: boolean
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_duration_days: number
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          requires_document?: boolean
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_duration_days?: number
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          requires_document?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2300,7 +2350,7 @@ export type Database = {
       app_role: "admin" | "employee" | "hr"
       attendance_status: "hadir" | "terlambat" | "pulang_cepat" | "tidak_hadir"
       leave_status: "pending" | "approved" | "rejected"
-      leave_type: "cuti_tahunan" | "izin" | "sakit" | "lupa_absen"
+      leave_type: "cuti_tahunan" | "izin" | "sakit" | "lupa_absen" | "izin_khusus"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2431,7 +2481,7 @@ export const Constants = {
       app_role: ["admin", "employee", "hr"],
       attendance_status: ["hadir", "terlambat", "pulang_cepat", "tidak_hadir"],
       leave_status: ["pending", "approved", "rejected"],
-      leave_type: ["cuti_tahunan", "izin", "sakit", "lupa_absen"],
+      leave_type: ["cuti_tahunan", "izin", "sakit", "lupa_absen", "izin_khusus"],
     },
   },
 } as const

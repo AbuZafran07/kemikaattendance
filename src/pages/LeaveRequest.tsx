@@ -5,11 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, AlertCircle, Info } from "lucide-react";
+import { ArrowLeft, AlertCircle, Info, Paperclip } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,14 @@ interface DepartmentColleague {
   jabatan: string;
 }
 
+interface SpecialLeaveType {
+  id: string;
+  code: string;
+  name: string;
+  default_duration_days: number;
+  requires_document: boolean;
+}
+
 const LeaveRequest = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -41,6 +50,8 @@ const LeaveRequest = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [colleagues, setColleagues] = useState<DepartmentColleague[]>([]);
+  const [specialLeaveTypes, setSpecialLeaveTypes] = useState<SpecialLeaveType[]>([]);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const isAnnualLeaveInactive = profile?.annual_leave_quota === 0 && profile?.remaining_leave === 0;
 
@@ -48,6 +59,7 @@ const LeaveRequest = () => {
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
       leaveType: undefined,
+      specialLeaveTypeId: undefined,
       startDate: "",
       endDate: "",
       reason: "",
@@ -57,8 +69,10 @@ const LeaveRequest = () => {
   });
 
   const leaveType = form.watch("leaveType");
+  const specialLeaveTypeId = form.watch("specialLeaveTypeId");
   const startDate = form.watch("startDate");
   const endDate = form.watch("endDate");
+  const selectedSpecialType = specialLeaveTypes.find((t) => t.id === specialLeaveTypeId);
 
   // Fetch used quotas for validation
   useEffect(() => {
@@ -136,6 +150,43 @@ const LeaveRequest = () => {
     fetchColleagues();
   }, [profile?.id, profile?.departemen]);
 
+  // Fetch active special leave types (izin khusus)
+  useEffect(() => {
+    const fetchSpecialLeaveTypes = async () => {
+      try {
+        const { data } = await supabase
+          .from("special_leave_types")
+          .select("id, code, name, default_duration_days, requires_document")
+          .eq("is_active", true)
+          .order("display_order");
+        if (data) setSpecialLeaveTypes(data);
+      } catch (error) {
+        console.error("Error fetching special leave types:", error);
+      }
+    };
+    fetchSpecialLeaveTypes();
+  }, []);
+
+  // Izin khusus: durasi tetap per jenis, tanggal selesai otomatis (bukan input manual)
+  useEffect(() => {
+    if (leaveType !== "izin_khusus" || !selectedSpecialType || !startDate) return;
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) return;
+    start.setDate(start.getDate() + selectedSpecialType.default_duration_days - 1);
+    const computedEndDate = start.toISOString().split("T")[0];
+    if (form.getValues("endDate") !== computedEndDate) {
+      form.setValue("endDate", computedEndDate, { shouldValidate: true });
+    }
+  }, [leaveType, selectedSpecialType, startDate, form]);
+
+  // Reset pilihan izin khusus & lampiran saat pindah ke jenis cuti lain
+  useEffect(() => {
+    if (leaveType !== "izin_khusus") {
+      form.setValue("specialLeaveTypeId", undefined);
+      setAttachmentFile(null);
+    }
+  }, [leaveType, form]);
+
   // Calculate working days only (exclude Saturday, Sunday, and national holidays)
   const calculateWorkingDays = (start: string, end: string, holidayList: Holiday[]) => {
     if (!start || !end) return 0;
@@ -165,8 +216,12 @@ const LeaveRequest = () => {
   };
 
   const totalDays = useMemo(() => {
+    // Izin khusus: jatah tetap per-kejadian (kalender), bukan hitungan hari kerja
+    if (leaveType === "izin_khusus" && selectedSpecialType) {
+      return selectedSpecialType.default_duration_days;
+    }
     return calculateWorkingDays(startDate, endDate, holidays);
-  }, [startDate, endDate, holidays]);
+  }, [leaveType, selectedSpecialType, startDate, endDate, holidays]);
 
   // Validate based on policy settings
   useEffect(() => {
@@ -177,21 +232,31 @@ const LeaveRequest = () => {
       return;
     }
 
-    // Check advance request days (except for sick leave and lupa_absen)
-    if (leaveType !== "sakit" && leaveType !== "lupa_absen") {
+    // Check advance request days (except for sick leave, lupa_absen, and izin khusus/life-event
+    // yang sering tidak bisa direncanakan jauh hari, mis. duka atau melahirkan)
+    if (leaveType !== "sakit" && leaveType !== "lupa_absen" && leaveType !== "izin_khusus") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const selectedDate = new Date(startDate);
       const daysDiff = Math.floor((selectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (daysDiff < policy.min_days_advance_request) {
         errors.push(`Pengajuan cuti harus minimal ${policy.min_days_advance_request} hari sebelumnya`);
       }
     }
 
-    // Check max consecutive days
-    if (totalDays > policy.max_consecutive_days) {
+    // Check max consecutive days (izin khusus punya jatah tetap per-kejadian, di luar kebijakan ini)
+    if (leaveType !== "izin_khusus" && totalDays > policy.max_consecutive_days) {
       errors.push(`Maksimal cuti berturut-turut adalah ${policy.max_consecutive_days} hari`);
+    }
+
+    // Izin khusus wajib pilih jenisnya, dan wajib lampirkan dokumen kalau disyaratkan
+    if (leaveType === "izin_khusus") {
+      if (!selectedSpecialType) {
+        errors.push("Jenis izin khusus harus dipilih");
+      } else if (selectedSpecialType.requires_document && !attachmentFile) {
+        errors.push(`Lampiran dokumen pendukung wajib diunggah untuk "${selectedSpecialType.name}"`);
+      }
     }
 
     // Check quota based on leave type
@@ -217,7 +282,7 @@ const LeaveRequest = () => {
     }
 
     setValidationErrors(errors);
-  }, [leaveType, startDate, endDate, totalDays, policy, usedQuotas, isAnnualLeaveInactive]);
+  }, [leaveType, startDate, endDate, totalDays, policy, usedQuotas, isAnnualLeaveInactive, selectedSpecialType, attachmentFile]);
 
   const getQuotaInfo = () => {
     return {
@@ -254,10 +319,24 @@ const LeaveRequest = () => {
     setIsSubmitting(true);
 
     try {
+      let attachmentPath: string | null = null;
+
+      if (data.leaveType === "izin_khusus" && attachmentFile && profile?.id) {
+        const fileExt = attachmentFile.name.split(".").pop();
+        const filePath = `${profile.id}/${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("leave-attachments")
+          .upload(filePath, attachmentFile);
+        if (uploadError) throw uploadError;
+        attachmentPath = filePath;
+      }
+
       const { error } = await supabase.from("leave_requests").insert([
         {
           user_id: profile?.id,
           leave_type: data.leaveType,
+          special_leave_type_id: data.leaveType === "izin_khusus" ? data.specialLeaveTypeId : null,
+          attachment_url: attachmentPath,
           start_date: data.startDate,
           end_date: data.endDate,
           total_days: totalDays,
@@ -368,12 +447,40 @@ const LeaveRequest = () => {
                                 Sakit (Sisa: {quotaInfo.sick.remaining} hari)
                               </SelectItem>
                               <SelectItem value="lupa_absen">Lupa Absen</SelectItem>
+                              <SelectItem value="izin_khusus">Izin Khusus (pernikahan, duka, dll)</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
+                    {leaveType === "izin_khusus" && (
+                      <FormField
+                        control={form.control}
+                        name="specialLeaveTypeId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Jenis Izin Khusus</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Pilih jenis izin khusus" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {specialLeaveTypes.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>
+                                    {t.name} ({t.default_duration_days} hari)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
 
                     <FormField
                       control={form.control}
@@ -396,9 +503,13 @@ const LeaveRequest = () => {
                         <FormItem>
                           <FormLabel>Tanggal Selesai</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input type="date" {...field} readOnly={leaveType === "izin_khusus"} />
                           </FormControl>
-                          {totalDays > 0 && (
+                          {leaveType === "izin_khusus" ? (
+                            <p className="text-xs text-muted-foreground">
+                              Total: {totalDays} hari (otomatis, jatah tetap untuk jenis izin ini)
+                            </p>
+                          ) : totalDays > 0 && (
                             <p className="text-xs text-muted-foreground">
                               Total: {totalDays} hari kerja (tidak termasuk Sabtu, Minggu & libur nasional)
                             </p>
@@ -407,6 +518,26 @@ const LeaveRequest = () => {
                         </FormItem>
                       )}
                     />
+
+                    {leaveType === "izin_khusus" && selectedSpecialType?.requires_document && (
+                      <div className="space-y-2">
+                        <Label htmlFor="attachment" className="text-sm font-medium leading-none">
+                          Lampiran Dokumen Pendukung <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Input
+                            id="attachment"
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Contoh: surat nikah, akta kelahiran/kematian, atau dokumen pendukung lainnya (gambar/PDF).
+                        </p>
+                      </div>
+                    )}
 
                     {/* Validation Errors */}
                     {validationErrors.length > 0 && (

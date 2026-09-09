@@ -116,11 +116,22 @@ const Leave = () => {
       (profilesData || []).map(p => [p.id, p])
     );
 
+    // Fetch special leave type names (for leave_type = 'izin_khusus')
+    const { data: specialTypesData } = await supabase
+      .from("special_leave_types")
+      .select("id, name");
+    const specialTypesMap = new Map(
+      (specialTypesData || []).map((t) => [t.id, t.name])
+    );
+
     // Combine leave requests with profiles + delegate info
     const combinedData = leaveData.map((request: any) => ({
       ...request,
       profiles: profilesMap.get(request.user_id) || null,
       delegate_profile: request.delegated_to ? profilesMap.get(request.delegated_to) || null : null,
+      special_leave_type_name: request.special_leave_type_id
+        ? specialTypesMap.get(request.special_leave_type_id) || null
+        : null,
     }));
 
     logger.debug("Leave requests fetched:", combinedData);
@@ -290,7 +301,8 @@ const Leave = () => {
     }
   };
 
-  const formatLeaveType = (type: string) => {
+  const formatLeaveType = (type: string, specialName?: string | null) => {
+    if (type === "izin_khusus") return specialName || "Izin Khusus";
     const typeMap: Record<string, string> = {
       cuti_tahunan: "Cuti Tahunan",
       izin: "Izin",
@@ -298,6 +310,17 @@ const Leave = () => {
       lupa_absen: "Lupa Absen",
     };
     return typeMap[type] || type;
+  };
+
+  const viewAttachment = async (path: string) => {
+    const { data, error } = await supabase.storage
+      .from("leave-attachments")
+      .createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) {
+      toast({ title: "Gagal Membuka Lampiran", description: error?.message || "URL tidak tersedia", variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   };
 
   return (
@@ -384,7 +407,7 @@ const Leave = () => {
                         <TableCell className="font-medium">{request.profiles?.full_name}</TableCell>
                         <TableCell>{request.profiles?.nik}</TableCell>
                         <TableCell>{request.profiles?.departemen}</TableCell>
-                        <TableCell>{formatLeaveType(request.leave_type)}</TableCell>
+                        <TableCell>{formatLeaveType(request.leave_type, request.special_leave_type_name)}</TableCell>
                         <TableCell>
                           {new Date(request.start_date).toLocaleDateString("id-ID")} -
                           {new Date(request.end_date).toLocaleDateString("id-ID")}
@@ -478,7 +501,7 @@ const Leave = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Jenis Cuti</p>
-                  <p className="font-medium">{formatLeaveType(detailRequest.leave_type)}</p>
+                  <p className="font-medium">{formatLeaveType(detailRequest.leave_type, detailRequest.special_leave_type_name)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Tanggal Mulai</p>
@@ -501,6 +524,15 @@ const Leave = () => {
                 <p className="text-sm text-muted-foreground">Alasan</p>
                 <p className="font-medium whitespace-pre-wrap">{detailRequest.reason}</p>
               </div>
+              {detailRequest.attachment_url && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Lampiran Dokumen</p>
+                  <Button size="sm" variant="outline" onClick={() => viewAttachment(detailRequest.attachment_url)}>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Lihat Lampiran
+                  </Button>
+                </div>
+              )}
               {(detailRequest.delegated_to || detailRequest.delegation_notes) && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                   <p className="text-sm font-semibold">Pendelegasian Tugas</p>

@@ -1500,42 +1500,6 @@ export type Database = {
           },
         ]
       }
-      special_leave_types: {
-        Row: {
-          code: string
-          created_at: string
-          default_duration_days: number
-          display_order: number
-          id: string
-          is_active: boolean
-          name: string
-          requires_document: boolean
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          default_duration_days: number
-          display_order?: number
-          id?: string
-          is_active?: boolean
-          name: string
-          requires_document?: boolean
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          default_duration_days?: number
-          display_order?: number
-          id?: string
-          is_active?: boolean
-          name?: string
-          requires_document?: boolean
-          updated_at?: string
-        }
-        Relationships: []
-      }
       loan_installments: {
         Row: {
           amount: number
@@ -2107,6 +2071,42 @@ export type Database = {
         }
         Relationships: []
       }
+      special_leave_types: {
+        Row: {
+          code: string
+          created_at: string
+          default_duration_days: number
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          requires_document: boolean
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_duration_days: number
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          requires_document?: boolean
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_duration_days?: number
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          requires_document?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           created_at: string
@@ -2350,7 +2350,12 @@ export type Database = {
       app_role: "admin" | "employee" | "hr"
       attendance_status: "hadir" | "terlambat" | "pulang_cepat" | "tidak_hadir"
       leave_status: "pending" | "approved" | "rejected"
-      leave_type: "cuti_tahunan" | "izin" | "sakit" | "lupa_absen" | "izin_khusus"
+      leave_type:
+        | "cuti_tahunan"
+        | "izin"
+        | "sakit"
+        | "lupa_absen"
+        | "izin_khusus"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2481,7 +2486,13 @@ export const Constants = {
       app_role: ["admin", "employee", "hr"],
       attendance_status: ["hadir", "terlambat", "pulang_cepat", "tidak_hadir"],
       leave_status: ["pending", "approved", "rejected"],
-      leave_type: ["cuti_tahunan", "izin", "sakit", "lupa_absen", "izin_khusus"],
+      leave_type: [
+        "cuti_tahunan",
+        "izin",
+        "sakit",
+        "lupa_absen",
+        "izin_khusus",
+      ],
     },
   },
 } as const

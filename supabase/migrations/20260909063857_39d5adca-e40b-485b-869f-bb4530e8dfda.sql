@@ -1,0 +1,16 @@
+REVOKE EXECUTE ON FUNCTION public.approve_late_reason(uuid, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.reject_late_reason(uuid, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.submit_late_reason(uuid, text, text, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.approve_unlock_letter(uuid, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.reject_unlock_letter(uuid, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.set_unlock_letter_document(uuid, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.submit_unlock_letter(uuid, text, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.unlock_account(uuid, uuid, uuid) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.check_attendance_thresholds(uuid, date) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.create_attendance_violation(uuid, uuid, date, text, text, text, uuid) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_attendance_discipline_config() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_attendance_discipline_dashboard_stats(date) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_attendance_discipline_employee_rows(date) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_monthly_violation_count(uuid, date) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_rolling_3month_violation_count(uuid, date) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.is_discipline_admin() FROM anon;

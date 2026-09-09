@@ -25,6 +25,15 @@ interface EmployeeRow {
   jabatan: string;
 }
 
+interface SpecialLeaveType {
+  id: string;
+  code: string;
+  name: string;
+  default_duration_days: number;
+  requires_document: boolean;
+}
+
+
 const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLeaveDialogProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);

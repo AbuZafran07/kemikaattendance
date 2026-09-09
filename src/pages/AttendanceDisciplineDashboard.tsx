@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Users, Clock, CheckCircle2, AlertTriangle, TrendingUp, FileWarning, Lock, ArrowLeft, ClipboardList, ShieldCheck,
+  Users, Clock, CheckCircle2, AlertTriangle, TrendingUp, FileWarning, Lock, ClipboardList, ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -117,22 +116,14 @@ const AttendanceDisciplineDashboard = () => {
   ];
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard Disiplin Absensi</h1>
-              <p className="text-sm text-muted-foreground mt-1">Ringkasan pelanggaran, SP, dan lock akun karyawan</p>
-            </div>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Dashboard Disiplin Absensi</h2>
+            <p className="text-sm text-muted-foreground mt-1">Ringkasan pelanggaran, SP, dan lock akun karyawan</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/late-reasons")}>
-              Alasan Terlambat
-            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/coaching")}>
               <ClipboardList className="h-4 w-4 mr-1" />
               Pembinaan
@@ -246,7 +237,7 @@ const AttendanceDisciplineDashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 };
 

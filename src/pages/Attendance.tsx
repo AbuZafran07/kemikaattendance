@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Clock, CheckCircle2, XCircle, RefreshCw, Camera, Calendar, Eye, Pencil, Trash2, Search, RotateCcw, UserPlus } from "lucide-react";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import ManualAttendanceDialog from "@/components/ManualAttendanceDialog";
+import LateReasonApproval from "@/pages/LateReasonApproval";
+import AttendanceDisciplineDashboard from "@/pages/AttendanceDisciplineDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,10 +46,18 @@ interface Profile {
   photo_url: string | null;
 }
 
+const VALID_TABS = ["absensi", "late-reasons", "discipline"] as const;
+
 const Attendance = () => {
   const navigate = useNavigate();
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab = (VALID_TABS as readonly string[]).includes(tabParam || "") ? (tabParam as string) : "absensi";
+  const handleTabChange = (value: string) => {
+    setSearchParams(value === "absensi" ? {} : { tab: value });
+  };
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -495,43 +506,44 @@ const Attendance = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Rekap Absensi</h1>
-            <p className="text-muted-foreground mt-1">Data rekap absensi seluruh karyawan</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/late-reasons")}>
-                <Clock className="h-4 w-4 mr-1" />
-                Alasan Terlambat
-              </Button>
-            )}
-            {isAdmin && (
-              <Button variant="default" size="sm" onClick={() => setShowManualInput(true)}>
-                <UserPlus className="h-4 w-4 mr-1" />
-                Input Manual
-              </Button>
-            )}
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/audit-log")}>
-                <Calendar className="h-4 w-4 mr-1" />
-                Audit Log
-              </Button>
-            )}
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={handleRecalculateAll} disabled={isRecalculating || attendanceData.length === 0}>
-                <RotateCcw className={`h-4 w-4 mr-1 ${isRecalculating ? "animate-spin" : ""}`} />
-                Hitung Ulang Status
-              </Button>
-            )}
-            <Button variant="outline" size="icon" onClick={fetchAttendanceData} disabled={isRefreshing}>
-              <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Absensi</h1>
+          <p className="text-muted-foreground mt-1">Rekap absensi, alasan terlambat, dan disiplin absensi karyawan</p>
         </div>
 
-        {/* Date Filter */}
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList>
+            <TabsTrigger value="absensi">Absensi</TabsTrigger>
+            <TabsTrigger value="late-reasons">Alasan Telat</TabsTrigger>
+            <TabsTrigger value="discipline">Disiplin Absensi</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="absensi" className="space-y-6 mt-4">
+            <div className="flex items-center justify-end gap-2">
+              {isAdmin && (
+                <Button variant="default" size="sm" onClick={() => setShowManualInput(true)}>
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Input Manual
+                </Button>
+              )}
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance/audit-log")}>
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Audit Log
+                </Button>
+              )}
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={handleRecalculateAll} disabled={isRecalculating || attendanceData.length === 0}>
+                  <RotateCcw className={`h-4 w-4 mr-1 ${isRecalculating ? "animate-spin" : ""}`} />
+                  Hitung Ulang Status
+                </Button>
+              )}
+              <Button variant="outline" size="icon" onClick={fetchAttendanceData} disabled={isRefreshing}>
+                <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+
+            {/* Date Filter */}
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -747,6 +759,16 @@ const Attendance = () => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="late-reasons" className="mt-4">
+            <LateReasonApproval />
+          </TabsContent>
+
+          <TabsContent value="discipline" className="mt-4">
+            <AttendanceDisciplineDashboard />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Photo Preview Dialog */}

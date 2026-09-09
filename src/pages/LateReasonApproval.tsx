@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +34,6 @@ const statusLabel: Record<string, { label: string; variant: "default" | "seconda
 };
 
 const LateReasonApproval = () => {
-  const navigate = useNavigate();
   const { userRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = userRole === "admin" || userRole === "hr";
@@ -150,18 +147,13 @@ const LateReasonApproval = () => {
       .toUpperCase();
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/attendance")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Persetujuan Alasan Terlambat</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Tinjau dan setujui/tolak alasan keterlambatan karyawan. Alasan yang ditolak otomatis tercatat sebagai pelanggaran disiplin.
-            </p>
-          </div>
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">Persetujuan Alasan Terlambat</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Tinjau dan setujui/tolak alasan keterlambatan karyawan. Alasan yang ditolak otomatis tercatat sebagai pelanggaran disiplin.
+          </p>
         </div>
 
         <Card>
@@ -282,7 +274,7 @@ const LateReasonApproval = () => {
         title="Alasan Keterlambatan"
         onConfirm={dialogAction === "approve" ? handleApprove : handleReject}
       />
-    </DashboardLayout>
+    </>
   );
 };
 

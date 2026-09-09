@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { FCMNotifications } from "./components/FCMNotifications";
@@ -42,9 +42,7 @@ import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
 import AttendanceDisciplineSettings from "./pages/AttendanceDisciplineSettings";
 import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
 import AttendanceAuditLog from "./pages/AttendanceAuditLog";
-import LateReasonApproval from "./pages/LateReasonApproval";
 import EmployeeCoaching from "./pages/EmployeeCoaching";
-import AttendanceDisciplineDashboard from "./pages/AttendanceDisciplineDashboard";
 import ApprovalAuditLog from "./pages/ApprovalAuditLog";
 import Payroll from "./pages/Payroll";
 import LoanManagement from "./pages/LoanManagement";
@@ -96,9 +94,10 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/attendance-discipline" element={<ProtectedRoute requireAdmin><AttendanceDisciplineSettings /></ProtectedRoute>} />
             <Route path="/dashboard/reports/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceReport /></ProtectedRoute>} />
             <Route path="/dashboard/attendance/audit-log" element={<ProtectedRoute requireAdmin><AttendanceAuditLog /></ProtectedRoute>} />
-            <Route path="/dashboard/attendance/late-reasons" element={<ProtectedRoute requireAdmin><LateReasonApproval /></ProtectedRoute>} />
+            {/* Alasan Telat & Disiplin Absensi sekarang jadi tab di halaman Absensi; rute lama diarahkan ke tab yang sesuai supaya bookmark lama tidak rusak. */}
+            <Route path="/dashboard/attendance/late-reasons" element={<Navigate to="/dashboard/attendance?tab=late-reasons" replace />} />
             <Route path="/dashboard/coaching" element={<ProtectedRoute requireAdmin><EmployeeCoaching /></ProtectedRoute>} />
-            <Route path="/dashboard/attendance-discipline" element={<ProtectedRoute requireAdmin><AttendanceDisciplineDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/attendance-discipline" element={<Navigate to="/dashboard/attendance?tab=discipline" replace />} />
             <Route path="/dashboard/approval-audit-log" element={<ProtectedRoute requireAdmin><ApprovalAuditLog /></ProtectedRoute>} />
             <Route path="/dashboard/payroll" element={<ProtectedRoute requireAdmin><Payroll /></ProtectedRoute>} />
             <Route path="/dashboard/loans" element={<ProtectedRoute requireAdmin><LoanManagement /></ProtectedRoute>} />

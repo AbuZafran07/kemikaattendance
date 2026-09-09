@@ -38,6 +38,7 @@ interface SpecialLeaveType {
 
 const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLeaveDialogProps) => {
   const { toast } = useToast();
+  const { policy: overtimePolicy } = useOvertimePolicy();
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");

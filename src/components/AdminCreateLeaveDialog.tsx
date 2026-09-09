@@ -221,9 +221,32 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
                 <SelectItem value="izin">Izin</SelectItem>
                 <SelectItem value="sakit">Sakit</SelectItem>
                 <SelectItem value="lupa_absen">Lupa Absen</SelectItem>
+                <SelectItem value="izin_khusus">Izin Khusus</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {leaveType === "izin_khusus" && (
+            <div>
+              <Label>Jenis Izin Khusus</Label>
+              <Select value={specialLeaveTypeId} onValueChange={setSpecialLeaveTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih jenis izin khusus" />
+                </SelectTrigger>
+                <SelectContent>
+                  {specialLeaveTypes.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.default_duration_days} hari)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedSpecialType && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Jatah tetap {selectedSpecialType.default_duration_days} hari kalender, tanggal selesai terisi otomatis.
+                </p>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Tanggal Mulai</Label>
@@ -231,7 +254,12 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
             </div>
             <div>
               <Label>Tanggal Selesai</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                disabled={leaveType === "izin_khusus"}
+              />
             </div>
           </div>
           <div>

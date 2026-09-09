@@ -25,6 +25,15 @@ interface EmployeeRow {
   jabatan: string;
 }
 
+interface SpecialLeaveType {
+  id: string;
+  code: string;
+  name: string;
+  default_duration_days: number;
+  requires_document: boolean;
+}
+
+
 const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLeaveDialogProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -36,10 +45,13 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
   const [reason, setReason] = useState("");
   const [delegatedTo, setDelegatedTo] = useState("");
   const [delegationNotes, setDelegationNotes] = useState("");
+  const [specialLeaveTypes, setSpecialLeaveTypes] = useState<SpecialLeaveType[]>([]);
+  const [specialLeaveTypeId, setSpecialLeaveTypeId] = useState("");
 
   useEffect(() => {
     if (open) {
       fetchEmployees();
+      fetchSpecialLeaveTypes();
       resetForm();
     }
   }, [open]);
@@ -52,6 +64,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
     setReason("");
     setDelegatedTo("");
     setDelegationNotes("");
+    setSpecialLeaveTypeId("");
   };
 
   const fetchEmployees = async () => {
@@ -62,6 +75,34 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
       .order("full_name");
     if (data) setEmployees(data);
   };
+
+  const fetchSpecialLeaveTypes = async () => {
+    const { data } = await supabase
+      .from("special_leave_types")
+      .select("id, code, name, default_duration_days, requires_document")
+      .eq("is_active", true)
+      .order("display_order");
+    if (data) setSpecialLeaveTypes(data);
+  };
+
+  const selectedSpecialType = useMemo(
+    () => specialLeaveTypes.find((t) => t.id === specialLeaveTypeId),
+    [specialLeaveTypes, specialLeaveTypeId]
+  );
+
+  // Izin khusus: durasi tetap per jenis, tanggal selesai otomatis
+  useEffect(() => {
+    if (leaveType !== "izin_khusus" || !selectedSpecialType || !startDate) return;
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) return;
+    start.setDate(start.getDate() + selectedSpecialType.default_duration_days - 1);
+    setEndDate(start.toISOString().split("T")[0]);
+  }, [leaveType, selectedSpecialType, startDate]);
+
+  useEffect(() => {
+    if (leaveType !== "izin_khusus") setSpecialLeaveTypeId("");
+  }, [leaveType]);
+
 
   const selectedEmployee = useMemo(
     () => employees.find((e) => e.id === selectedUserId),
@@ -90,7 +131,14 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
       return;
     }
 
-    const totalDays = differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
+    if (leaveType === "izin_khusus" && !selectedSpecialType) {
+      toast({ title: "Jenis izin khusus harus dipilih", variant: "destructive" });
+      return;
+    }
+
+    const totalDays = leaveType === "izin_khusus" && selectedSpecialType
+      ? selectedSpecialType.default_duration_days
+      : differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
     if (totalDays <= 0) {
       toast({ title: "Tanggal tidak valid", description: "Tanggal selesai harus setelah tanggal mulai", variant: "destructive" });
       return;
@@ -112,6 +160,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
         approval_notes: "Dibuat langsung oleh Admin",
         delegated_to: delegatedTo,
         delegation_notes: delegationNotes.trim(),
+        special_leave_type_id: leaveType === "izin_khusus" ? specialLeaveTypeId : null,
       } as any).select("id").single();
 
       if (error) throw error;
@@ -172,9 +221,32 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
                 <SelectItem value="izin">Izin</SelectItem>
                 <SelectItem value="sakit">Sakit</SelectItem>
                 <SelectItem value="lupa_absen">Lupa Absen</SelectItem>
+                <SelectItem value="izin_khusus">Izin Khusus</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {leaveType === "izin_khusus" && (
+            <div>
+              <Label>Jenis Izin Khusus</Label>
+              <Select value={specialLeaveTypeId} onValueChange={setSpecialLeaveTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih jenis izin khusus" />
+                </SelectTrigger>
+                <SelectContent>
+                  {specialLeaveTypes.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.default_duration_days} hari)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedSpecialType && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Jatah tetap {selectedSpecialType.default_duration_days} hari kalender, tanggal selesai terisi otomatis.
+                </p>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Tanggal Mulai</Label>
@@ -182,7 +254,12 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
             </div>
             <div>
               <Label>Tanggal Selesai</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                disabled={leaveType === "izin_khusus"}
+              />
             </div>
           </div>
           <div>

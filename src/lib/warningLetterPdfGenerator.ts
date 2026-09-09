@@ -165,18 +165,16 @@ export async function generateWarningLetterPDF(
   doc.text("HRD PT. Kemika Karya Pratama", mx, y);
   doc.text(data.employee_name || "-", mx + colWidth + 20, y);
 
-  // ── FOOTER ──
-  const ph = doc.internal.pageSize.getHeight();
+  // ── CATATAN SISTEM (di atas footer kop surat) ──
+  doc.setFont("helvetica", "italic");
   doc.setFontSize(7.5);
   doc.setTextColor(...GRAY_TEXT);
   doc.text(
     "Dokumen ini diterbitkan otomatis oleh sistem Kemika Attendance (HRIS) berdasarkan data kehadiran karyawan.",
-    pw / 2,
-    ph - 12,
-    { align: "center" },
+    mx,
+    248,
   );
-  doc.setFillColor(...GREEN);
-  doc.rect(0, ph - 4, pw, 4, "F");
+
 
   return doc.output("blob");
 }

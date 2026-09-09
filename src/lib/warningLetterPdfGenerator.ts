@@ -121,7 +121,7 @@ export async function generateWarningLetterPDF(
   doc.setFontSize(10);
 
   const paragraphs: string[] = [
-    `Berdasarkan hasil pemantauan disiplin kehadiran karyawan pada periode ${periodLabel}, tercatat sebanyak ${data.violation_count_at_issuance} (${data.violation_count_at_issuance}) pelanggaran kehadiran, meliputi keterlambatan tanpa alasan yang disetujui dan/atau ketidakhadiran tanpa keterangan.`,
+    `Berdasarkan hasil pemantauan disiplin kehadiran karyawan pada periode ${periodLabel}, tercatat sebanyak ${data.violation_count_at_issuance} pelanggaran kehadiran, meliputi keterlambatan tanpa alasan yang disetujui dan/atau ketidakhadiran tanpa keterangan.`,
     isSp2
       ? `Sehubungan dengan hal tersebut dan karena Surat Peringatan Pertama (SP-1) yang telah diterbitkan sebelumnya belum menunjukkan perbaikan, dengan ini Perusahaan menerbitkan SURAT PERINGATAN KEDUA (SP-2) kepada Saudara/i.`
       : `Sehubungan dengan hal tersebut, dengan ini Perusahaan menerbitkan SURAT PERINGATAN PERTAMA (SP-1) kepada Saudara/i sebagai bentuk pembinaan disiplin kerja.`,

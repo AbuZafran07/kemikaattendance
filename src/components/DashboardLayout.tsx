@@ -137,6 +137,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       .on("postgres_changes", { event: "*", schema: "public", table: "leave_requests" }, fetchPendingCount)
       .on("postgres_changes", { event: "*", schema: "public", table: "overtime_requests" }, fetchPendingCount)
       .on("postgres_changes", { event: "*", schema: "public", table: "business_travel_requests" }, fetchPendingCount)
+      .on("postgres_changes", { event: "*", schema: "public", table: "late_reasons" }, fetchPendingCount)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

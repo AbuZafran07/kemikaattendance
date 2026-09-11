@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PendingItem {
   id: string;
-  type: "leave" | "overtime" | "travel";
+  type: "leave" | "overtime" | "travel" | "late";
   title: string;
   subtitle: string;
   date: string;

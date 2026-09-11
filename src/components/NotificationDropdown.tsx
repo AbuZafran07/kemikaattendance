@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Calendar, Clock, Plane, ArrowRight } from "lucide-react";
+import { Bell, Calendar, Clock, Plane, ArrowRight, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PendingItem {
   id: string;
-  type: "leave" | "overtime" | "travel";
+  type: "leave" | "overtime" | "travel" | "late";
   title: string;
   subtitle: string;
   date: string;
@@ -25,6 +25,7 @@ const typeConfig = {
   leave: { icon: Calendar, label: "Cuti", color: "bg-blue-500/10 text-blue-600", route: "/dashboard/leave" },
   overtime: { icon: Clock, label: "Lembur", color: "bg-orange-500/10 text-orange-600", route: "/dashboard/overtime" },
   travel: { icon: Plane, label: "Dinas", color: "bg-purple-500/10 text-purple-600", route: "/dashboard/business-travel" },
+  late: { icon: AlarmClock, label: "Telat", color: "bg-red-500/10 text-red-600", route: "/dashboard/attendance?tab=late-reasons" },
 };
 
 const leaveTypeLabels: Record<string, string> = {
@@ -48,7 +49,7 @@ export const NotificationDropdown = ({ pendingCount }: NotificationDropdownProps
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const [leaveRes, overtimeRes, travelRes] = await Promise.all([
+      const [leaveRes, overtimeRes, travelRes, lateRes] = await Promise.all([
         supabase
           .from("leave_requests")
           .select("id, leave_type, start_date, end_date, created_at, user_id")
@@ -67,12 +68,19 @@ export const NotificationDropdown = ({ pendingCount }: NotificationDropdownProps
           .eq("status", "pending")
           .order("created_at", { ascending: false })
           .limit(5),
+        supabase
+          .from("late_reasons")
+          .select("id, reason, violation_date:submitted_at, created_at, user_id")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(5),
       ]);
 
       const allData = [
         ...(leaveRes.data || []).map((r: any) => ({ ...r, _type: "leave" as const })),
         ...(overtimeRes.data || []).map((r: any) => ({ ...r, _type: "overtime" as const })),
         ...(travelRes.data || []).map((r: any) => ({ ...r, _type: "travel" as const })),
+        ...(lateRes.data || []).map((r: any) => ({ ...r, _type: "late" as const })),
       ];
 
       // Fetch profiles for all user IDs
@@ -116,6 +124,17 @@ export const NotificationDropdown = ({ pendingCount }: NotificationDropdownProps
           type: "travel",
           title: r.destination,
           subtitle: `${format(new Date(r.start_date), "d MMM", { locale: localeId })} - ${format(new Date(r.end_date), "d MMM yyyy", { locale: localeId })}`,
+          date: r.created_at,
+          userName: profilesMap.get(r.user_id) || "Unknown",
+        });
+      });
+
+      (lateRes.data || []).forEach((r: any) => {
+        mapped.push({
+          id: r.id,
+          type: "late",
+          title: "Alasan Telat",
+          subtitle: r.reason || "-",
           date: r.created_at,
           userName: profilesMap.get(r.user_id) || "Unknown",
         });

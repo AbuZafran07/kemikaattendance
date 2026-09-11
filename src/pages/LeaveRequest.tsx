@@ -570,6 +570,7 @@ const LeaveRequest = () => {
                       )}
                     />
 
+                    {leaveType !== "lupa_absen" && (
                     <div className="border-t pt-4 space-y-4">
                       <div>
                         <p className="text-sm font-semibold">Pendelegasian Tugas</p>

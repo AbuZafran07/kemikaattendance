@@ -272,6 +272,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
             <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Alasan cuti..." />
           </div>
 
+          {leaveType !== "lupa_absen" && (
           <div className="border-t pt-4 space-y-3">
             <div>
               <p className="text-sm font-semibold">Pendelegasian Tugas</p>

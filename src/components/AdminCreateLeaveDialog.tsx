@@ -131,7 +131,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
       toast({ title: "Lengkapi semua field", variant: "destructive" });
       return;
     }
-    if (!delegatedTo || !delegationNotes.trim()) {
+    if (leaveType !== "lupa_absen" && (!delegatedTo || !delegationNotes.trim())) {
       toast({ title: "Pendelegasian tugas wajib diisi", description: "Pilih karyawan pengganti dan tuliskan detail tugas", variant: "destructive" });
       return;
     }

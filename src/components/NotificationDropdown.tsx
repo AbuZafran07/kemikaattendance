@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Calendar, Clock, Plane, ArrowRight } from "lucide-react";
+import { Bell, Calendar, Clock, Plane, ArrowRight, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import {

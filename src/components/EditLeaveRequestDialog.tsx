@@ -84,7 +84,7 @@ export const EditLeaveRequestDialog = ({
       toast.error("Harap lengkapi semua field");
       return;
     }
-    if (!delegatedTo || !delegationNotes.trim()) {
+    if (leaveType !== "lupa_absen" && (!delegatedTo || !delegationNotes.trim())) {
       toast.error("Pendelegasian tugas wajib diisi");
       return;
     }

@@ -25,6 +25,7 @@ const typeConfig = {
   leave: { icon: Calendar, label: "Cuti", color: "bg-blue-500/10 text-blue-600", route: "/dashboard/leave" },
   overtime: { icon: Clock, label: "Lembur", color: "bg-orange-500/10 text-orange-600", route: "/dashboard/overtime" },
   travel: { icon: Plane, label: "Dinas", color: "bg-purple-500/10 text-purple-600", route: "/dashboard/business-travel" },
+  late: { icon: AlarmClock, label: "Telat", color: "bg-red-500/10 text-red-600", route: "/dashboard/attendance?tab=late-reasons" },
 };
 
 const leaveTypeLabels: Record<string, string> = {

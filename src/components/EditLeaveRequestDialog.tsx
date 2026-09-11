@@ -186,6 +186,7 @@ export const EditLeaveRequestDialog = ({
             />
           </div>
 
+          {leaveType !== "lupa_absen" && (
           <div className="border-t pt-3 space-y-3">
             <div>
               <p className="text-sm font-semibold">Pendelegasian Tugas</p>

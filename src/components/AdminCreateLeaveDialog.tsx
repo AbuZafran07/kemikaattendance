@@ -313,6 +313,8 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
               />
             </div>
           </div>
+          )}
+
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>

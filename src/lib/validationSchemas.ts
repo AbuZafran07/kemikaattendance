@@ -164,6 +164,12 @@ export const leaveRequestSchema = z.object({
 }).refine(data => data.leaveType !== 'izin_khusus' || !!data.specialLeaveTypeId, {
   message: 'Jenis izin khusus harus dipilih',
   path: ['specialLeaveTypeId'],
+}).refine(data => data.leaveType === 'lupa_absen' || !!data.delegatedTo, {
+  message: 'Karyawan pengganti harus dipilih',
+  path: ['delegatedTo'],
+}).refine(data => data.leaveType === 'lupa_absen' || !!data.delegationNotes?.trim(), {
+  message: 'Detail tugas yang didelegasikan harus diisi',
+  path: ['delegationNotes'],
 });
 
 export const overtimeRequestSchema = z.object({

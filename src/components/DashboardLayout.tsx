@@ -120,12 +120,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   // Fetch pending requests count for notification badge
   useEffect(() => {
     const fetchPendingCount = async () => {
-      const [leaveRes, overtimeRes, travelRes] = await Promise.all([
+      const [leaveRes, overtimeRes, travelRes, lateRes] = await Promise.all([
         supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("overtime_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("business_travel_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("late_reasons").select("id", { count: "exact", head: true }).eq("status", "pending"),
       ]);
-      const total = (leaveRes.count || 0) + (overtimeRes.count || 0) + (travelRes.count || 0);
+      const total = (leaveRes.count || 0) + (overtimeRes.count || 0) + (travelRes.count || 0) + (lateRes.count || 0);
       setPendingCount(total);
     };
     fetchPendingCount();

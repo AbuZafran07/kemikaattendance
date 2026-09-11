@@ -340,8 +340,8 @@ const LeaveRequest = () => {
           end_date: data.endDate,
           total_days: totalDays,
           reason: data.reason || "",
-          delegated_to: data.delegatedTo,
-          delegation_notes: data.delegationNotes,
+          delegated_to: data.leaveType === "lupa_absen" ? null : data.delegatedTo || null,
+          delegation_notes: data.leaveType === "lupa_absen" ? null : data.delegationNotes || null,
         } as any,
       ]);
 

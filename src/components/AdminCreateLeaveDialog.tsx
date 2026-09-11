@@ -131,7 +131,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
       toast({ title: "Lengkapi semua field", variant: "destructive" });
       return;
     }
-    if (!delegatedTo || !delegationNotes.trim()) {
+    if (leaveType !== "lupa_absen" && (!delegatedTo || !delegationNotes.trim())) {
       toast({ title: "Pendelegasian tugas wajib diisi", description: "Pilih karyawan pengganti dan tuliskan detail tugas", variant: "destructive" });
       return;
     }
@@ -163,8 +163,8 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
         approved_by: currentUser?.id,
         approved_at: new Date().toISOString(),
         approval_notes: "Dibuat langsung oleh Admin",
-        delegated_to: delegatedTo,
-        delegation_notes: delegationNotes.trim(),
+        delegated_to: leaveType === "lupa_absen" ? null : delegatedTo || null,
+        delegation_notes: leaveType === "lupa_absen" ? null : delegationNotes.trim() || null,
         special_leave_type_id: leaveType === "izin_khusus" ? specialLeaveTypeId : null,
       } as any).select("id").single();
 
@@ -272,6 +272,7 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
             <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Alasan cuti..." />
           </div>
 
+          {leaveType !== "lupa_absen" && (
           <div className="border-t pt-4 space-y-3">
             <div>
               <p className="text-sm font-semibold">Pendelegasian Tugas</p>
@@ -312,6 +313,8 @@ const AdminCreateLeaveDialog = ({ open, onOpenChange, onCreated }: AdminCreateLe
               />
             </div>
           </div>
+          )}
+
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>

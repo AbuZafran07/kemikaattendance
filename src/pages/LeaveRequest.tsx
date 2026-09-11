@@ -340,8 +340,8 @@ const LeaveRequest = () => {
           end_date: data.endDate,
           total_days: totalDays,
           reason: data.reason || "",
-          delegated_to: data.delegatedTo,
-          delegation_notes: data.delegationNotes,
+          delegated_to: data.leaveType === "lupa_absen" ? null : data.delegatedTo || null,
+          delegation_notes: data.leaveType === "lupa_absen" ? null : data.delegationNotes || null,
         } as any,
       ]);
 
@@ -570,6 +570,7 @@ const LeaveRequest = () => {
                       )}
                     />
 
+                    {leaveType !== "lupa_absen" && (
                     <div className="border-t pt-4 space-y-4">
                       <div>
                         <p className="text-sm font-semibold">Pendelegasian Tugas</p>
@@ -621,6 +622,8 @@ const LeaveRequest = () => {
                         )}
                       />
                     </div>
+                    )}
+
 
                     <Button
                       type="submit"

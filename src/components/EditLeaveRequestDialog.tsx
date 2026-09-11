@@ -84,7 +84,7 @@ export const EditLeaveRequestDialog = ({
       toast.error("Harap lengkapi semua field");
       return;
     }
-    if (!delegatedTo || !delegationNotes.trim()) {
+    if (leaveType !== "lupa_absen" && (!delegatedTo || !delegationNotes.trim())) {
       toast.error("Pendelegasian tugas wajib diisi");
       return;
     }
@@ -105,8 +105,8 @@ export const EditLeaveRequestDialog = ({
           end_date: endDate,
           total_days: totalDays,
           reason: reason.trim(),
-          delegated_to: delegatedTo,
-          delegation_notes: delegationNotes.trim(),
+          delegated_to: leaveType === "lupa_absen" ? null : delegatedTo || null,
+          delegation_notes: leaveType === "lupa_absen" ? null : delegationNotes.trim() || null,
         } as any)
         .eq("id", request.id);
 
@@ -186,6 +186,7 @@ export const EditLeaveRequestDialog = ({
             />
           </div>
 
+          {leaveType !== "lupa_absen" && (
           <div className="border-t pt-3 space-y-3">
             <div>
               <p className="text-sm font-semibold">Pendelegasian Tugas</p>
@@ -218,6 +219,7 @@ export const EditLeaveRequestDialog = ({
               />
             </div>
           </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>

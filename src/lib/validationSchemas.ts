@@ -156,14 +156,20 @@ export const leaveRequestSchema = z.object({
   startDate: z.string().min(1, 'Tanggal mulai harus diisi'),
   endDate: z.string().min(1, 'Tanggal selesai harus diisi'),
   reason: z.string().trim().max(1000, 'Alasan maksimal 1000 karakter').optional().or(z.literal('')),
-  delegatedTo: z.string().uuid('Karyawan pengganti harus dipilih'),
-  delegationNotes: z.string().trim().min(1, 'Detail tugas yang didelegasikan harus diisi').max(1000, 'Detail tugas maksimal 1000 karakter'),
+  delegatedTo: z.string().optional().or(z.literal('')),
+  delegationNotes: z.string().trim().max(1000, 'Detail tugas maksimal 1000 karakter').optional().or(z.literal('')),
 }).refine(data => new Date(data.endDate) >= new Date(data.startDate), {
   message: 'Tanggal selesai harus setelah tanggal mulai',
   path: ['endDate'],
 }).refine(data => data.leaveType !== 'izin_khusus' || !!data.specialLeaveTypeId, {
   message: 'Jenis izin khusus harus dipilih',
   path: ['specialLeaveTypeId'],
+}).refine(data => data.leaveType === 'lupa_absen' || !!data.delegatedTo, {
+  message: 'Karyawan pengganti harus dipilih',
+  path: ['delegatedTo'],
+}).refine(data => data.leaveType === 'lupa_absen' || !!data.delegationNotes?.trim(), {
+  message: 'Detail tugas yang didelegasikan harus diisi',
+  path: ['delegationNotes'],
 });
 
 export const overtimeRequestSchema = z.object({

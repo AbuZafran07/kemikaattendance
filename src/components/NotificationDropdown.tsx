@@ -129,6 +129,17 @@ export const NotificationDropdown = ({ pendingCount }: NotificationDropdownProps
         });
       });
 
+      (lateRes.data || []).forEach((r: any) => {
+        mapped.push({
+          id: r.id,
+          type: "late",
+          title: "Alasan Telat",
+          subtitle: r.reason || "-",
+          date: r.created_at,
+          userName: profilesMap.get(r.user_id) || "Unknown",
+        });
+      });
+
       // Sort by date desc and take top 10
       mapped.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setItems(mapped.slice(0, 10));

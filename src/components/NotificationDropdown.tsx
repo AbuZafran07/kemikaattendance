@@ -68,12 +68,19 @@ export const NotificationDropdown = ({ pendingCount }: NotificationDropdownProps
           .eq("status", "pending")
           .order("created_at", { ascending: false })
           .limit(5),
+        supabase
+          .from("late_reasons")
+          .select("id, reason, violation_date:submitted_at, created_at, user_id")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(5),
       ]);
 
       const allData = [
         ...(leaveRes.data || []).map((r: any) => ({ ...r, _type: "leave" as const })),
         ...(overtimeRes.data || []).map((r: any) => ({ ...r, _type: "overtime" as const })),
         ...(travelRes.data || []).map((r: any) => ({ ...r, _type: "travel" as const })),
+        ...(lateRes.data || []).map((r: any) => ({ ...r, _type: "late" as const })),
       ];
 
       // Fetch profiles for all user IDs

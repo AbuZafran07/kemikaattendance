@@ -105,8 +105,8 @@ export const EditLeaveRequestDialog = ({
           end_date: endDate,
           total_days: totalDays,
           reason: reason.trim(),
-          delegated_to: delegatedTo,
-          delegation_notes: delegationNotes.trim(),
+          delegated_to: leaveType === "lupa_absen" ? null : delegatedTo || null,
+          delegation_notes: leaveType === "lupa_absen" ? null : delegationNotes.trim() || null,
         } as any)
         .eq("id", request.id);
 

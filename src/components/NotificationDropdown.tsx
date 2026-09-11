@@ -49,7 +49,7 @@ export const NotificationDropdown = ({ pendingCount }: NotificationDropdownProps
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const [leaveRes, overtimeRes, travelRes] = await Promise.all([
+      const [leaveRes, overtimeRes, travelRes, lateRes] = await Promise.all([
         supabase
           .from("leave_requests")
           .select("id, leave_type, start_date, end_date, created_at, user_id")

@@ -746,9 +746,9 @@ const Employees = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
               <Download className="h-4 w-4 mr-2" />
-              Export
+              {isExporting ? "Mengekspor..." : "Export"}
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);

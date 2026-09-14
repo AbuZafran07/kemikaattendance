@@ -46,6 +46,7 @@ import { useDepartmentJabatan } from "@/hooks/useDepartmentJabatan";
 import { employeeSchema, employeeEditSchema } from "@/lib/validationSchemas";
 import { compressEmployeePhoto, blobToFile } from "@/lib/imageCompression";
 import logger from "@/lib/logger";
+import { exportToExcelFile } from "@/lib/excelExport";
 
 const Employees = () => {
   const { departments: DEPARTMENT_OPTIONS, jabatanOptions: JABATAN_OPTIONS } = useDepartmentJabatan();

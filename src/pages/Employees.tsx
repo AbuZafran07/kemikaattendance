@@ -653,6 +653,79 @@ const Employees = () => {
     setSearchQuery("");
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (searchFilteredEmployees.length === 0) {
+      toast({
+        title: "Tidak Ada Data",
+        description: "Tidak ada karyawan yang sesuai filter saat ini untuk diekspor",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const fmtDate = (d?: string | null) => (d ? d.split("T")[0] : "-");
+      const fmtNum = (n?: number | string | null) => (n === null || n === undefined || n === "" ? "-" : Number(n));
+      const fmtBool = (b?: boolean | null) => (b ? "Ya" : "Tidak");
+
+      const data = searchFilteredEmployees.map((emp) => ({
+        "NIK": emp.nik || "-",
+        "Nama Lengkap": emp.full_name || "-",
+        "Email": emp.email || "-",
+        "Jabatan": emp.jabatan || "-",
+        "Departemen": emp.departemen || "-",
+        "Telepon": emp.phone || "-",
+        "Alamat": emp.address || "-",
+        "Status": emp.status || "Active",
+        "Tipe Kerja": emp.work_type === "wfa" ? "WFA" : emp.work_type === "hybrid" ? "Hybrid" : "WFO",
+        "Tanggal Masuk": fmtDate(emp.join_date),
+        "Tanggal Resign": emp.resign_date ? fmtDate(emp.resign_date) : "-",
+        "Keterangan Resign": emp.resign_notes || "-",
+        "Catatan": emp.notes || "-",
+        "Tipe Kontrak": emp.contract_type === "contract" ? "Kontrak" : "Tetap",
+        "No. Kontrak": emp.contract_number || "-",
+        "Mulai Kontrak": emp.contract_start_date ? fmtDate(emp.contract_start_date) : "-",
+        "Akhir Kontrak": emp.contract_end_date ? fmtDate(emp.contract_end_date) : "-",
+        "Gaji Pokok": fmtNum(emp.basic_salary),
+        "Status PTKP": emp.ptkp_status || "-",
+        "Tunj. Komunikasi": fmtNum(emp.tunjangan_komunikasi),
+        "Tunj. Jabatan": fmtNum(emp.tunjangan_jabatan),
+        "Tunj. Operasional": fmtNum(emp.tunjangan_operasional),
+        "BPJS Kesehatan": fmtBool(emp.bpjs_kesehatan_enabled),
+        "BPJS Ketenagakerjaan": fmtBool(emp.bpjs_ketenagakerjaan_enabled),
+        "NPWP": emp.npwp || "-",
+        "Bank": emp.bank_name || "-",
+        "No. Rekening": emp.bank_account_number ? `'${emp.bank_account_number}` : "-",
+        "Kuota Cuti Tahunan": fmtNum(emp.annual_leave_quota),
+        "Sisa Cuti": fmtNum(emp.remaining_leave),
+      }));
+
+      const suffix = viewMode === "active" ? "Aktif" : "Arsip";
+      await exportToExcelFile(
+        data,
+        "Data Karyawan",
+        `Data_Karyawan_${suffix}_${new Date().toISOString().split("T")[0]}.xlsx`
+      );
+
+      toast({
+        title: "Export Berhasil",
+        description: `${data.length} data karyawan (${suffix.toLowerCase()}) berhasil diekspor ke Excel`,
+      });
+    } catch (error) {
+      logger.error("Error exporting employees:", error);
+      toast({
+        title: "Export Gagal",
+        description: "Terjadi kesalahan saat mengekspor data karyawan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')

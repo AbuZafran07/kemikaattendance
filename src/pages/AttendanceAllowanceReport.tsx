@@ -354,7 +354,25 @@ export default function AttendanceAllowanceReport() {
           const earlyLeaveDeduction = isExcluded ? 0 : ratePerHour * att.totalEarlyLeaveHours;
           const finalAllowance = Math.max(0, Math.round(baseAllowance - lateDeduction - earlyLeaveDeduction));
 
+          // Build one row per working day in the period
+          const userDays = dayMap.get(p.id);
+          const dayDetails: DayDetail[] = workingDays.map((d) => {
+            const ds = format(d, "yyyy-MM-dd");
+            return (
+              userDays?.get(ds) || {
+                date: ds,
+                check_in: null,
+                check_out: null,
+                status: null,
+                late_hours: 0,
+                early_hours: 0,
+                counted: false,
+              }
+            );
+          });
+
           return {
+            days: dayDetails,
             id: p.id,
             full_name: p.full_name,
             jabatan: p.jabatan,

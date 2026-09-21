@@ -64,6 +64,10 @@ const navigationGroups = [
       { name: "Cuti", href: "/dashboard/leave", icon: Calendar },
       { name: "Lembur", href: "/dashboard/overtime", icon: Clock },
       { name: "Perjalanan Dinas", href: "/dashboard/business-travel", icon: Plane },
+      { name: "Struktur Organisasi", href: "/dashboard/org-chart", icon: Network },
+      { name: "Training & Sertifikasi", href: "/dashboard/training", icon: GraduationCap },
+      { name: "Manajemen Aset", href: "/dashboard/assets", icon: Laptop },
+      { name: "Exit Management", href: "/dashboard/exit-management", icon: DoorOpen },
     ],
   },
   {
@@ -75,12 +79,14 @@ const navigationGroups = [
       { name: "Tarif TER PPh21", href: "/dashboard/ter-management", icon: FileText },
       { name: "Bukti Potong 1721-A1", href: "/dashboard/bukti-potong", icon: FileCheck },
       { name: "Laporan PPh 21", href: "/dashboard/reports/pph21", icon: FileText },
+      { name: "Laporan BPJS", href: "/dashboard/reports/bpjs", icon: FileText },
     ],
   },
   {
     label: "KPI",
     items: [
       { name: "KPI Management", href: "/dashboard/kpi", icon: Target },
+      { name: "KPI Recap", href: "/dashboard/kpi-recap", icon: Trophy },
     ],
   },
   {
@@ -88,7 +94,10 @@ const navigationGroups = [
     items: [
       { name: "Laporan", href: "/dashboard/reports", icon: FileText },
       { name: "Audit Log", href: "/dashboard/approval-audit-log", icon: ShieldCheck },
+      { name: "Audit Lupa Absen", href: "/dashboard/attendance/lupa-absen-log", icon: ShieldCheck },
+      { name: "Payroll Audit Log", href: "/dashboard/payroll-audit-log", icon: ShieldCheck },
       { name: "Notifikasi", href: "/dashboard/notifications", icon: Bell },
+      { name: "Notifikasi Kontrak", href: "/dashboard/contract-notifications", icon: Bell },
     ],
   },
   {

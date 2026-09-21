@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,25 +16,31 @@ import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { notifyAdmins, NotificationTemplates } from "@/lib/notifications";
+import { useTranslation } from "react-i18next";
 
-const businessTravelSchema = z.object({
-  destination: z.string().trim().min(1, "Tujuan harus diisi").max(200, "Tujuan maksimal 200 karakter"),
-  purpose: z.string().trim().min(1, "Keperluan harus diisi").max(500, "Keperluan maksimal 500 karakter"),
-  startDate: z.string().min(1, "Tanggal mulai harus diisi"),
-  endDate: z.string().min(1, "Tanggal selesai harus diisi"),
-  notes: z.string().trim().max(1000, "Catatan maksimal 1000 karakter").optional().or(z.literal("")),
+const makeSchema = (t: (k: string) => string) => z.object({
+  destination: z.string().trim().min(1, t("travelRequest.errDestRequired")).max(200, t("travelRequest.errDestMax")),
+  purpose: z.string().trim().min(1, t("travelRequest.errPurposeRequired")).max(500, t("travelRequest.errPurposeMax")),
+  startDate: z.string().min(1, t("travelRequest.errStartRequired")),
+  endDate: z.string().min(1, t("travelRequest.errEndRequired")),
+  notes: z.string().trim().max(1000, t("travelRequest.errNotesMax")).optional().or(z.literal("")),
 }).refine(data => new Date(data.endDate) >= new Date(data.startDate), {
-  message: "Tanggal selesai harus setelah tanggal mulai",
+  message: t("travelRequest.errEndAfterStart"),
   path: ["endDate"],
 });
 
-type BusinessTravelFormData = z.infer<typeof businessTravelSchema>;
+type BusinessTravelFormData = z.infer<ReturnType<typeof makeSchema>>;
 
 const BusinessTravelRequest = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [caFile, setCaFile] = useState<File | null>(null);
+  const [caNumber, setCaNumber] = useState("");
+  const [caWarningAck, setCaWarningAck] = useState(false);
+  const businessTravelSchema = useMemo(() => makeSchema(t), [t]);
 
   const form = useForm<BusinessTravelFormData>({
     resolver: zodResolver(businessTravelSchema),
@@ -61,25 +68,86 @@ const BusinessTravelRequest = () => {
     return calculateDays(startDate, endDate);
   }, [startDate, endDate]);
 
+  const handleCaFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Format file tidak didukung", description: "Gunakan PDF, JPG, PNG, atau DOC/DOCX.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Ukuran file terlalu besar", description: "Maksimal 10 MB.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    setCaFile(file);
+  };
+
   const onSubmit = async (data: BusinessTravelFormData) => {
+    if (!caFile && !caWarningAck) {
+      setCaWarningAck(true);
+      toast({
+        title: "Dokumen CA belum dilampirkan",
+        description:
+          "Tanpa dokumen CA (Cash Advance), tunjangan perjalanan dinas tidak akan dibayarkan. Klik kirim sekali lagi bila tetap ingin melanjutkan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from("business_travel_requests").insert([
-        {
-          user_id: profile?.id,
-          destination: data.destination,
-          purpose: data.purpose,
-          start_date: data.startDate,
-          end_date: data.endDate,
-          total_days: totalDays,
-          notes: data.notes || null,
-        },
-      ]);
+      const { data: inserted, error } = await supabase
+        .from("business_travel_requests")
+        .insert([
+          {
+            user_id: profile?.id,
+            destination: data.destination,
+            purpose: data.purpose,
+            start_date: data.startDate,
+            end_date: data.endDate,
+            total_days: totalDays,
+            notes: data.notes || null,
+            ca_number: caNumber.trim() || null,
+          } as any,
+        ])
+        .select("id")
+        .single();
 
       if (error) throw error;
 
-      // Send notification to admins
+      // Upload dokumen CA (bila ada)
+      if (caFile && inserted?.id) {
+        const ext = caFile.name.split(".").pop();
+        const path = `${profile?.id}/ca_${inserted.id}_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("business-travel-docs")
+          .upload(path, caFile);
+
+        if (upErr) {
+          toast({
+            title: "Pengajuan terkirim, tapi dokumen CA gagal diupload",
+            description: upErr.message,
+            variant: "destructive",
+          });
+        } else {
+          await supabase
+            .from("business_travel_requests")
+            .update({ ca_document_url: path, ca_uploaded_at: new Date().toISOString() } as any)
+            .eq("id", inserted.id);
+        }
+      }
+
+
       const notification = NotificationTemplates.businessTravelSubmitted(
         profile?.full_name || 'Karyawan',
         data.destination,
@@ -88,15 +156,15 @@ const BusinessTravelRequest = () => {
       notifyAdmins(notification.title, notification.body, { type: 'business_travel' });
 
       toast({
-        title: "Berhasil",
-        description: "Pengajuan perjalanan dinas berhasil dikirim dan menunggu persetujuan.",
+        title: t("travelRequest.successTitle"),
+        description: t("travelRequest.successDesc"),
       });
 
       navigate("/employee");
     } catch (error: any) {
       toast({
-        title: "Gagal Mengirim",
-        description: error.message || "Terjadi kesalahan.",
+        title: t("travelRequest.failTitle"),
+        description: error.message || "",
         variant: "destructive",
       });
     } finally {
@@ -118,8 +186,8 @@ const BusinessTravelRequest = () => {
       <div className="container mx-auto px-4 py-6 max-w-lg">
         <Card>
           <CardHeader>
-            <CardTitle>Ajukan Perjalanan Dinas</CardTitle>
-            <CardDescription>Isi formulir pengajuan perjalanan dinas luar</CardDescription>
+            <CardTitle>{t("travelRequest.title")}</CardTitle>
+            <CardDescription>{t("travelRequest.subtitle")}</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -129,11 +197,11 @@ const BusinessTravelRequest = () => {
                   name="destination"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tujuan</FormLabel>
+                      <FormLabel>{t("travelRequest.destination")}</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Contoh: Surabaya, Jakarta, dll" 
-                          {...field} 
+                        <Input
+                          placeholder={t("travelRequest.destinationPlaceholder")}
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -146,11 +214,11 @@ const BusinessTravelRequest = () => {
                   name="purpose"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Keperluan</FormLabel>
+                      <FormLabel>{t("travelRequest.purpose")}</FormLabel>
                       <FormControl>
                         <Textarea
                           rows={3}
-                          placeholder="Jelaskan keperluan perjalanan dinas..."
+                          placeholder={t("travelRequest.purposePlaceholder")}
                           {...field}
                         />
                       </FormControl>
@@ -164,7 +232,7 @@ const BusinessTravelRequest = () => {
                   name="startDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tanggal Mulai</FormLabel>
+                      <FormLabel>{t("travelRequest.startDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -178,13 +246,13 @@ const BusinessTravelRequest = () => {
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tanggal Selesai</FormLabel>
+                      <FormLabel>{t("travelRequest.endDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
                       {totalDays > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Total: {totalDays} hari
+                          {t("travelRequest.totalDays", { n: totalDays })}
                         </p>
                       )}
                       <FormMessage />
@@ -197,11 +265,11 @@ const BusinessTravelRequest = () => {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Catatan Tambahan (Opsional)</FormLabel>
+                      <FormLabel>{t("travelRequest.notes")}</FormLabel>
                       <FormControl>
                         <Textarea
                           rows={3}
-                          placeholder="Catatan tambahan jika ada..."
+                          placeholder={t("travelRequest.notesPlaceholder")}
                           {...field}
                         />
                       </FormControl>
@@ -210,12 +278,40 @@ const BusinessTravelRequest = () => {
                   )}
                 />
 
+                <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="ca-number">Nomor CA (Cash Advance) — opsional</Label>
+                    <Input
+                      id="ca-number"
+                      placeholder="Contoh: CA/2026/09/001"
+                      value={caNumber}
+                      onChange={(e) => setCaNumber(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="ca-doc">Dokumen Cash Advance (CA)</Label>
+                    <Input
+                      id="ca-doc"
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={handleCaFileChange}
+                    />
+                    {caFile && (
+                      <p className="text-xs text-muted-foreground">File dipilih: {caFile.name}</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Format PDF, JPG, PNG, DOC/DOCX. Maksimal 10 MB. Tunjangan perjalanan dinas hanya
+                    dibayarkan bila dokumen CA dilampirkan.
+                  </p>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
+                  {isSubmitting ? t("travelRequest.submitting") : t("travelRequest.submit")}
                 </Button>
               </form>
             </Form>

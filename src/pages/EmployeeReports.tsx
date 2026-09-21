@@ -173,51 +173,135 @@ async function fetchEmployeeData(
   };
 }
 
-function formatRecords(data: EmployeeAttendanceData, startDate: string, endDate: string, holidayDates: Set<string>) {
-  const rangeStart = new Date(startDate);
-  const rangeEnd = new Date(endDate);
+interface DailyRecordRow {
+  tanggal: string;
+  checkIn: string;
+  checkOut: string;
+  durasi: string;
+  status: string;
+  keterangan: string;
+}
 
-  const formattedAttendance = data.attendance.map((record: any) => ({
-    tanggal: format(new Date(record.check_in_time), "yyyy-MM-dd"),
-    checkIn: format(new Date(record.check_in_time), "HH:mm:ss"),
-    checkOut: record.check_out_time ? format(new Date(record.check_out_time), "HH:mm:ss") : "-",
-    durasi: record.duration_minutes ? `${record.duration_minutes} min` : "-",
-    status: formatAttendanceStatus(record.status),
-    keterangan: record.notes || "-",
-  }));
+/**
+ * Bangun baris laporan per hari kerja: satu tanggal = satu baris.
+ * Prioritas isi: absensi > dinas > cuti/izin/sakit > "Tidak Hadir".
+ * "Lupa Absen" tidak membuat baris sendiri bila tanggalnya sudah punya absensi.
+ */
+function formatRecords(
+  data: EmployeeAttendanceData,
+  startDate: string,
+  endDate: string,
+  holidayDates: Set<string>,
+): DailyRecordRow[] {
+  const rangeStart = new Date(`${startDate}T00:00:00`);
+  const rangeEnd = new Date(`${endDate}T00:00:00`);
 
-  const formattedLeave: any[] = [];
-  data.leave.forEach((leave: any) => {
-    const start = new Date(leave.start_date) < rangeStart ? rangeStart : new Date(leave.start_date);
-    const end = new Date(leave.end_date) > rangeEnd ? rangeEnd : new Date(leave.end_date);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      if (isNonWorkingDay(new Date(d), holidayDates)) continue;
-      formattedLeave.push({
-        tanggal: format(new Date(d), "yyyy-MM-dd"),
-        checkIn: "-", checkOut: "-", durasi: "-",
-        status: formatAttendanceStatus(leave.leave_type),
-        keterangan: leave.reason || "-",
-      });
-    }
+  const byDate = new Map<string, DailyRecordRow>();
+
+  // 1. Absensi — gabungkan bila ada beberapa record di satu tanggal
+  const attByDate = new Map<string, any[]>();
+  data.attendance.forEach((record: any) => {
+    const dateStr = format(new Date(record.check_in_time), "yyyy-MM-dd");
+    if (!attByDate.has(dateStr)) attByDate.set(dateStr, []);
+    attByDate.get(dateStr)!.push(record);
   });
 
-  const formattedTravel: any[] = [];
-  data.travel.forEach((travel: any) => {
-    const start = new Date(travel.start_date) < rangeStart ? rangeStart : new Date(travel.start_date);
-    const end = new Date(travel.end_date) > rangeEnd ? rangeEnd : new Date(travel.end_date);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+  attByDate.forEach((records, dateStr) => {
+    const sorted = [...records].sort(
+      (a, b) => new Date(a.check_in_time).getTime() - new Date(b.check_in_time).getTime(),
+    );
+    const first = sorted[0];
+    const withCheckOut = sorted.filter((r) => r.check_out_time);
+    const lastOut = withCheckOut.length
+      ? withCheckOut.reduce((acc, r) =>
+          new Date(r.check_out_time).getTime() > new Date(acc.check_out_time).getTime() ? r : acc,
+        )
+      : null;
+    const totalDuration = sorted.reduce((sum, r) => sum + (r.duration_minutes || 0), 0);
+    const notes = sorted.map((r) => r.notes).filter(Boolean).join("; ");
+
+    byDate.set(dateStr, {
+      tanggal: dateStr,
+      checkIn: format(new Date(first.check_in_time), "HH:mm:ss"),
+      checkOut: lastOut ? format(new Date(lastOut.check_out_time), "HH:mm:ss") : "-",
+      durasi: totalDuration ? `${totalDuration} min` : "-",
+      status: formatAttendanceStatus(first.status),
+      keterangan: notes || "-",
+    });
+  });
+
+  const eachDay = (start: string, end: string, cb: (dateStr: string) => void) => {
+    const s = new Date(`${start}T00:00:00`) < rangeStart ? rangeStart : new Date(`${start}T00:00:00`);
+    const e = new Date(`${end}T00:00:00`) > rangeEnd ? rangeEnd : new Date(`${end}T00:00:00`);
+    for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
       if (isNonWorkingDay(new Date(d), holidayDates)) continue;
-      formattedTravel.push({
-        tanggal: format(new Date(d), "yyyy-MM-dd"),
-        checkIn: "-", checkOut: "-", durasi: "-",
+      cb(format(new Date(d), "yyyy-MM-dd"));
+    }
+  };
+
+  // 2. Dinas
+  data.travel.forEach((travel: any) => {
+    eachDay(travel.start_date, travel.end_date, (dateStr) => {
+      if (byDate.has(dateStr)) return;
+      byDate.set(dateStr, {
+        tanggal: dateStr,
+        checkIn: "-",
+        checkOut: "-",
+        durasi: "-",
         status: formatAttendanceStatus("dinas"),
         keterangan: `${travel.destination} - ${travel.purpose}`,
       });
-    }
+    });
   });
 
-  return [...formattedAttendance, ...formattedLeave, ...formattedTravel]
-    .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+  // 3. Cuti / Izin / Sakit / Lupa Absen
+  data.leave.forEach((leave: any) => {
+    eachDay(leave.start_date, leave.end_date, (dateStr) => {
+      const existing = byDate.get(dateStr);
+      if (existing) {
+        // Lupa absen menempel sebagai keterangan pada baris absensi yang sudah ada
+        if (leave.leave_type === "lupa_absen") {
+          const note = leave.reason ? `Lupa Absen: ${leave.reason}` : "Lupa Absen (disetujui)";
+          existing.keterangan = existing.keterangan && existing.keterangan !== "-"
+            ? `${existing.keterangan} | ${note}`
+            : note;
+        }
+        return;
+      }
+      byDate.set(dateStr, {
+        tanggal: dateStr,
+        checkIn: "-",
+        checkOut: "-",
+        durasi: "-",
+        status: formatAttendanceStatus(leave.leave_type),
+        keterangan: leave.reason || "-",
+      });
+    });
+  });
+
+  // 4. Hari kerja tanpa data → Tidak Hadir (dibatasi masa kerja aktif)
+  const emp = data.employee as any;
+  const joinDate = emp?.join_date ? new Date(`${emp.join_date}T00:00:00`) : null;
+  const resignDate = emp?.resign_date ? new Date(`${emp.resign_date}T00:00:00`) : null;
+
+  for (const d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+    const day = new Date(d);
+    if (isNonWorkingDay(day, holidayDates)) continue;
+    if (joinDate && day < joinDate) continue;
+    if (resignDate && day > resignDate) continue;
+    const dateStr = format(day, "yyyy-MM-dd");
+    if (byDate.has(dateStr)) continue;
+    byDate.set(dateStr, {
+      tanggal: dateStr,
+      checkIn: "-",
+      checkOut: "-",
+      durasi: "-",
+      status: formatAttendanceStatus("tidak_hadir"),
+      keterangan: "-",
+    });
+  }
+
+  return [...byDate.values()].sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 }
 
 function countWorkingDaysInRange(startDate: string, endDate: string, holidayDates: Set<string>): number {
@@ -326,12 +410,21 @@ export default function EmployeeReports() {
   const EXCLUDED_DEPARTMENTS = ["BOD", "Komisaris"];
 
   const fetchEmployees = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name, nik, departemen, status, work_type")
-      .order("full_name");
+    const [{ data }, { data: adminRoles }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, nik, departemen, status, work_type, join_date, resign_date")
+        .order("full_name"),
+      supabase.from("user_roles").select("user_id").eq("role", "admin"),
+    ]);
     if (data) {
-      const filtered = data.filter((e: any) => !EXCLUDED_DEPARTMENTS.includes(e.departemen) && e.status === "Active");
+      const adminIds = new Set((adminRoles || []).map((r: any) => r.user_id));
+      const filtered = data.filter(
+        (e: any) =>
+          !EXCLUDED_DEPARTMENTS.includes(e.departemen) &&
+          e.status === "Active" &&
+          !adminIds.has(e.id),
+      );
       setEmployees(filtered);
     }
   };
@@ -506,13 +599,15 @@ export default function EmployeeReports() {
           Keterangan: r.keterangan,
         }));
 
+        const workingDaysInPeriodXlsx = countWorkingDaysInRange(startDate, endDate, holidayDates);
         const headerRows = [
           [`Laporan Kehadiran: ${emp.full_name}`],
           [`NIK: ${emp.nik}`],
           [`Departemen: ${emp.departemen}`],
           [`Periode: ${startDate} s/d ${endDate}`],
-          [`Hadir: ${empData.summary.hadir} | Terlambat: ${empData.summary.terlambat} | Pulang Cepat: ${empData.summary.pulangCepat}`],
-          [`Cuti Tahunan: ${empData.summary.cutiTahunan} | Sakit: ${empData.summary.sakit} | Izin: ${empData.summary.izin} | Lupa Absen: ${empData.summary.lupaAbsen} | Dinas: ${empData.summary.dinas}`],
+          [`Total Hari Kerja: ${workingDaysInPeriodXlsx} hari | Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${empData.summary.dinas} hari`],
+          [`Hadir Tepat Waktu: ${empData.summary.hadir} | Terlambat: ${empData.summary.terlambat} | Pulang Cepat: ${empData.summary.pulangCepat}`],
+          [`Cuti Tahunan: ${empData.summary.cutiTahunan} | Sakit: ${empData.summary.sakit} | Izin: ${empData.summary.izin} | Lupa Absen: ${empData.summary.lupaAbsen}`],
         ];
 
         if (enableAI) {
@@ -586,7 +681,8 @@ export default function EmployeeReports() {
         doc.text(`Departemen: ${emp.departemen}`, 14, 40);
         doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 45);
 
-        doc.text(`Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${s.dinas} hari`, 14, 55);
+        const workingDaysInPeriodPdf = countWorkingDaysInRange(startDate, endDate, holidayDates);
+        doc.text(`Total Hari Kerja: ${workingDaysInPeriodPdf} hari | Total Kehadiran: ${empData.attendance.length} hari | Dinas: ${s.dinas} hari`, 14, 55);
         doc.text(`Hadir Tepat Waktu: ${s.hadir} | Terlambat: ${s.terlambat} | Pulang Cepat: ${s.pulangCepat}`, 14, 60);
         doc.text(`Cuti Tahunan: ${s.cutiTahunan} hari | Sakit: ${s.sakit} hari | Izin: ${s.izin} hari | Lupa Absen: ${s.lupaAbsen} hari`, 14, 65);
         doc.text(`Total Jam Kerja: ${Math.floor(s.totalDuration / 60)} jam ${s.totalDuration % 60} menit`, 14, 70);

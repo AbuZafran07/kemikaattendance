@@ -3,9 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { playNotificationSound } from '@/lib/notificationSound';
 
+const FALLBACK_DAYS = 7;
+
+const getFallbackCutoff = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - FALLBACK_DAYS);
+  return d.toISOString();
+};
+
 export const useNotificationBadge = () => {
   const [badgeCount, setBadgeCount] = useState(0);
-  const prevCountRef = useRef(-1); // -1 means first fetch, skip sound
+  const prevCountRef = useRef(-1);
+  const lastSeenRef = useRef<string | null>(null);
   const { profile } = useAuth();
 
   const updateAppBadge = useCallback((count: number) => {
@@ -18,33 +27,27 @@ export const useNotificationBadge = () => {
     }
   }, []);
 
+  const loadLastSeen = useCallback(async (): Promise<string> => {
+    if (!profile?.id) return getFallbackCutoff();
+    try {
+      const { data } = await supabase
+        .from('notification_last_seen' as any)
+        .select('last_seen_at')
+        .eq('user_id', profile.id)
+        .maybeSingle();
+      const ts = (data as any)?.last_seen_at as string | undefined;
+      return ts || getFallbackCutoff();
+    } catch {
+      return getFallbackCutoff();
+    }
+  }, [profile?.id]);
+
   const fetchBadgeCount = useCallback(async () => {
     if (!profile?.id) return;
 
     try {
-      // For employees: count pending leave & overtime requests (their own)
-      const [leaveRes, overtimeRes, travelRes] = await Promise.all([
-        supabase
-          .from('leave_requests')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profile.id)
-          .eq('status', 'pending'),
-        supabase
-          .from('overtime_requests')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profile.id)
-          .eq('status', 'pending'),
-        supabase
-          .from('business_travel_requests')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profile.id)
-          .eq('status', 'pending'),
-      ]);
-
-      // Also check for recently approved/rejected (last 7 days) that employee might not have seen
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const cutoff = sevenDaysAgo.toISOString();
+      const lastSeen = await loadLastSeen();
+      lastSeenRef.current = lastSeen;
 
       const [leaveUpdated, overtimeUpdated, travelUpdated] = await Promise.all([
         supabase
@@ -52,30 +55,26 @@ export const useNotificationBadge = () => {
           .select('id', { count: 'exact', head: true })
           .eq('user_id', profile.id)
           .in('status', ['approved', 'rejected'])
-          .gte('updated_at', cutoff),
+          .gt('updated_at', lastSeen),
         supabase
           .from('overtime_requests')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', profile.id)
           .in('status', ['approved', 'rejected'])
-          .gte('updated_at', cutoff),
+          .gt('updated_at', lastSeen),
         supabase
           .from('business_travel_requests')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', profile.id)
           .in('status', ['approved', 'rejected'])
-          .gte('updated_at', cutoff),
+          .gt('updated_at', lastSeen),
       ]);
 
       const total =
-        (leaveRes.count || 0) +
-        (overtimeRes.count || 0) +
-        (travelRes.count || 0) +
         (leaveUpdated.count || 0) +
         (overtimeUpdated.count || 0) +
         (travelUpdated.count || 0);
 
-      // Play sound only if count increased AND it's not the first fetch
       if (prevCountRef.current >= 0 && total > prevCountRef.current) {
         playNotificationSound();
       }
@@ -85,32 +84,17 @@ export const useNotificationBadge = () => {
     } catch (error) {
       console.error('Error fetching badge count:', error);
     }
-  }, [profile?.id, updateAppBadge]);
+  }, [profile?.id, updateAppBadge, loadLastSeen]);
 
   useEffect(() => {
     fetchBadgeCount();
-
-    // Refresh every 60 seconds as fallback
     const interval = setInterval(fetchBadgeCount, 60000);
 
-    // Real-time subscriptions for instant badge updates
     const channel = supabase
       .channel('badge-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'leave_requests' },
-        () => fetchBadgeCount()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'overtime_requests' },
-        () => fetchBadgeCount()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'business_travel_requests' },
-        () => fetchBadgeCount()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_requests' }, () => fetchBadgeCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'overtime_requests' }, () => fetchBadgeCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'business_travel_requests' }, () => fetchBadgeCount())
       .subscribe();
 
     return () => {
@@ -122,12 +106,20 @@ export const useNotificationBadge = () => {
     };
   }, [fetchBadgeCount]);
 
-  const clearBadge = useCallback(() => {
+  const clearBadge = useCallback(async () => {
+    if (!profile?.id) return;
+    prevCountRef.current = 0;
     setBadgeCount(0);
     if ('clearAppBadge' in navigator) {
       (navigator as any).clearAppBadge();
     }
-  }, []);
+    try {
+      const { data } = await supabase.rpc('mark_notifications_seen' as any);
+      if (data) lastSeenRef.current = data as string;
+    } catch (error) {
+      console.error('Error marking notifications seen:', error);
+    }
+  }, [profile?.id]);
 
   return { badgeCount, refreshBadge: fetchBadgeCount, clearBadge };
 };

@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 const FIREBASE_SERVER_KEY = Deno.env.get("FIREBASE_SERVER_KEY");
@@ -43,6 +43,40 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Authentication: allow either cron shared secret or an admin Bearer token
+    const cronSecret = Deno.env.get("BUDGET_EXPENSE_SECRET");
+    const providedCronSecret = req.headers.get("x-cron-secret");
+    const isCron = !!cronSecret && providedCronSecret === cronSecret;
+
+    if (!isCron) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const token = authHeader.replace("Bearer ", "");
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const authClient = createClient(SUPABASE_URL, anonKey);
+      const { data: userData, error: userErr } = await authClient.auth.getUser(token);
+      if (userErr || !userData?.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userData.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!roleRow) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Cek apakah ini panggilan manual (force=true) untuk lewati cek jam
     let force = false;
@@ -129,7 +163,7 @@ Deno.serve(async (req) => {
     if (profErr) throw profErr;
 
     let sent = 0;
-    const results: Array<{ user_id: string; name: string; sent: boolean }> = [];
+    let failed = 0;
 
     for (const profile of profiles || []) {
       if (!profile.fcm_token) continue;
@@ -139,8 +173,7 @@ Deno.serve(async (req) => {
         `Halo ${profile.full_name}, Anda belum melakukan check-out hari ini. Jangan lupa absen pulang agar tunjangan kehadiran Anda tetap dihitung.`
       );
       const ok = result && (result.success === 1 || result.message_id);
-      if (ok) sent++;
-      results.push({ user_id: profile.id, name: profile.full_name, sent: !!ok });
+      if (ok) sent++; else failed++;
     }
 
     return new Response(
@@ -151,7 +184,7 @@ Deno.serve(async (req) => {
         current_hour_wib: currentHourWib,
         total_pending: attendances.length,
         notifications_sent: sent,
-        results,
+        notifications_failed: failed,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

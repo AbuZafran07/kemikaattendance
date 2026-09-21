@@ -13,8 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Calculator, FileText, Loader2, DollarSign, Users, TrendingUp, Lock, Download, Building2, FileSpreadsheet, Printer, Landmark, AlertTriangle, Gift, Info, Search, ChevronLeft, ChevronRight, ChevronDown, Receipt } from "lucide-react";
 import { exportToExcelFile } from "@/lib/excelExport";
+import BusinessTravelVoucherExportDialog from "@/components/BusinessTravelVoucherExportDialog";
 import {
   calculatePayroll,
   calculateOvertimePay,
@@ -32,8 +33,14 @@ import {
 } from "@/components/ui/dialog";
 import { isWeekend } from "@/hooks/usePolicySettings";
 import { format, eachDayOfInterval } from "date-fns";
-import { calculateCutoffTenure, calculateProrateFactor } from "@/lib/tenureCalculation";
+import { calculateCutoffTenure, calculateProrateFactor, calculateProrateFactorWithResign, getCutoffPeriodBounds, validateCutoffPeriodForPayroll } from "@/lib/tenureCalculation";
 import logo from "@/assets/logo.png";
+import { UnlockPayrollDialog } from "@/components/UnlockPayrollDialog";
+import { logPayrollAction, snapshotPayrollRow } from "@/lib/payrollAuditLog";
+import { useAuth } from "@/contexts/AuthContext";
+import { Unlock } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { getFixedAllowanceComponents, DEFAULT_FIXED_ALLOWANCE_COMPONENTS, type FixedAllowanceComponents } from "@/lib/bpjsFixedComponents";
 
 /** Parse "YYYY-MM-DD" as local date (avoids UTC-shift timezone bug) */
 const parseLocalDate = (s: string): Date => {
@@ -83,6 +90,7 @@ interface PayrollData {
   bonus_lainnya?: number;
   pengembalian_employee?: number;
   insentif_penjualan?: number;
+  tunjangan_perjalanan_dinas?: number;
 }
 
 interface PayrollPeriod {
@@ -102,6 +110,7 @@ interface DeductionOverride {
 // Income additions per employee before generating
 interface IncomeAddition {
   tunjangan_kehadiran: number;
+  tunjangan_komunikasi: number;
   tunjangan_kesehatan: number;
   bonus_tahunan: number;
   thr: number;
@@ -110,6 +119,7 @@ interface IncomeAddition {
   pengembalian_employee: number;
   insentif_penjualan: number;
   overtime_override: number;
+  tunjangan_perjalanan_dinas: number;
 }
 
 const MONTHS = [
@@ -125,9 +135,12 @@ const currentYear = currentDate.getFullYear();
 
 
 const Payroll = () => {
+  const { t } = useTranslation();
+  const monthLabel = (m: number) => t(`payrollPage.months.${m}`);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
+  const [showTravelVoucherDialog, setShowTravelVoucherDialog] = useState(false);
   const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -136,7 +149,7 @@ const Payroll = () => {
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
   const [deductionOverrides, setDeductionOverrides] = useState<Map<string, DeductionOverride>>(new Map());
   const [incomeAdditions, setIncomeAdditions] = useState<Map<string, IncomeAddition>>(new Map());
-  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; full_name: string; tunjangan_komunikasi?: number; tunjangan_jabatan?: number; tunjangan_operasional?: number }[]>([]);
   const [deductionSearch, setDeductionSearch] = useState("");
   const [incomeSearch, setIncomeSearch] = useState("");
   const [selectedDeductionEmp, setSelectedDeductionEmp] = useState<string | null>(null);
@@ -148,30 +161,43 @@ const Payroll = () => {
     cutoffDay: number;
     profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
   } | null>(null);
-  const [hasIdulFitriInPeriod, setHasIdulFitriInPeriod] = useState(false);
+  const [idulFitriAvailability, setIdulFitriAvailability] = useState({ month: selectedMonth, year: selectedYear, found: false });
+  const hasIdulFitriInPeriod =
+    idulFitriAvailability.month === selectedMonth &&
+    idulFitriAvailability.year === selectedYear &&
+    idulFitriAvailability.found;
   const [payrollSearch, setPayrollSearch] = useState("");
   const [payrollPage, setPayrollPage] = useState(1);
   const payrollPerPage = 10;
+  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+  const [preGenerateSnapshot, setPreGenerateSnapshot] = useState<Map<string, any> | null>(null);
+  const [facFlags, setFacFlags] = useState<FixedAllowanceComponents>(DEFAULT_FIXED_ALLOWANCE_COMPONENTS);
+
+  useEffect(() => { getFixedAllowanceComponents().then(setFacFlags).catch(() => {}); }, []);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
   useEffect(() => { fetchPayrollData(); loadOverridesFromDB(); checkIdulFitriInPeriod(); }, [selectedMonth, selectedYear]);
 
   const checkIdulFitriInPeriod = async () => {
+    const month = selectedMonth;
+    const year = selectedYear;
+    setIdulFitriAvailability({ month, year, found: false });
     try {
       const { data: settingsData } = await supabase
         .from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle();
       const holidays: { name: string; date: string }[] = (settingsData?.value as any)?.holidays || [];
-      const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
+      const idulFitriKeywords = ["idul fitri", "lebaran", "eid al-fitr", "idulfitri"];
       const found = holidays.some((h) => {
         const d = parseLocalDate(h.date);
-        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear &&
+        return d.getMonth() + 1 === month && d.getFullYear() === year &&
           idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw));
       });
-      setHasIdulFitriInPeriod(found);
+      setIdulFitriAvailability({ month, year, found });
     } catch {
-      setHasIdulFitriInPeriod(false);
+      setIdulFitriAvailability({ month, year, found: false });
     }
   };
 
@@ -189,6 +215,7 @@ const Payroll = () => {
       for (const row of data || []) {
         newIncome.set(row.user_id, {
           tunjangan_kehadiran: Number(row.tunjangan_kehadiran) || 0,
+          tunjangan_komunikasi: Number((row as any).tunjangan_komunikasi) || 0,
           tunjangan_kesehatan: Number(row.tunjangan_kesehatan) || 0,
           bonus_tahunan: Number(row.bonus_tahunan) || 0,
           thr: Number(row.thr) || 0,
@@ -197,6 +224,7 @@ const Payroll = () => {
           pengembalian_employee: Number(row.pengembalian_employee) || 0,
           insentif_penjualan: Number(row.insentif_penjualan) || 0,
           overtime_override: Number((row as any).overtime_override) || 0,
+          tunjangan_perjalanan_dinas: Number((row as any).tunjangan_perjalanan_dinas) || 0,
         });
         newDeductions.set(row.user_id, {
           loan_deduction: Number(row.loan_deduction) || 0,
@@ -224,7 +252,7 @@ const Payroll = () => {
       }
 
       const records = Array.from(allUserIds).map(userId => {
-        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+        const inc = incomeAdditions.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 };
         const ded = deductionOverrides.get(userId) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
         // Only save if there's any non-zero value
         const hasData = Object.values(inc).some(v => Number(v) > 0) || ded.loan_deduction > 0 || ded.other_deduction > 0 || ded.deduction_notes.trim().length > 0;
@@ -251,10 +279,52 @@ const Payroll = () => {
         if (error) throw error;
       }
 
-      toast({ title: "Data Tersimpan", description: `Override ${MONTHS[selectedMonth - 1].label} ${selectedYear} berhasil disimpan.` });
+      // Mirror perubahan ke tabel `payroll` agar Detail langsung refresh
+      // tanpa harus Generate ulang. Hanya kolom breakdown income yang diupdate.
+      if (type === 'income' || type === 'both') {
+        const { data: existingPeriod } = await supabase
+          .from("payroll_periods")
+          .select("id")
+          .eq("month", selectedMonth)
+          .eq("year", selectedYear)
+          .maybeSingle();
+
+        if (existingPeriod?.id) {
+          for (const userId of allUserIds) {
+            const inc = incomeAdditions.get(userId) || {
+              tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+              thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+              pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
+            };
+            const updatePayload: Record<string, number> = {
+              tunjangan_komunikasi: Number(inc.tunjangan_komunikasi) || 0,
+              tunjangan_kesehatan: Number(inc.tunjangan_kesehatan) || 0,
+              bonus_tahunan: Number(inc.bonus_tahunan) || 0,
+              thr: Number(inc.thr) || 0,
+              insentif_kinerja: Number(inc.insentif_kinerja) || 0,
+              bonus_lainnya: Number(inc.bonus_lainnya) || 0,
+              pengembalian_employee: Number(inc.pengembalian_employee) || 0,
+              insentif_penjualan: Number(inc.insentif_penjualan) || 0,
+              tunjangan_perjalanan_dinas: Number((inc as any).tunjangan_perjalanan_dinas) || 0,
+            };
+            await supabase
+              .from("payroll")
+              .update(updatePayload)
+              .eq("user_id", userId)
+              .eq("period_id", existingPeriod.id);
+          }
+          // Refresh tampilan tabel payroll
+          await fetchPayrollData();
+        }
+      }
+
+      toast({
+        title: t("payrollPage.toast.savedTitle"),
+        description: t("payrollPage.toast.savedDesc", { month: monthLabel(selectedMonth), year: selectedYear }),
+      });
     } catch (error: any) {
       console.error("Error saving overrides:", error);
-      toast({ title: "Gagal Simpan", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.saveFailed"), description: error.message, variant: "destructive" });
     }
   };
 
@@ -297,9 +367,12 @@ const Payroll = () => {
         departemen: profileMap.get(p.user_id)?.dept || "-",
         jabatan: profileMap.get(p.user_id)?.jabatan || "-",
         nik: profileMap.get(p.user_id)?.nik || "-",
-        tunjangan_komunikasi: profileMap.get(p.user_id)?.tunjangan_komunikasi || 0,
+        // Tunj. Komunikasi: pakai nilai manual yang TERSIMPAN di payroll (bukan plafon profil),
+        // sehingga Detail Slip & Tunj. Kehadiran (hasil pengurangan) konsisten dengan input manual.
+        tunjangan_komunikasi: Number((p as any).tunjangan_komunikasi) || 0,
         tunjangan_jabatan: profileMap.get(p.user_id)?.tunjangan_jabatan || 0,
         tunjangan_operasional: profileMap.get(p.user_id)?.tunjangan_operasional || 0,
+        tunjangan_perjalanan_dinas: Number((p as any).tunjangan_perjalanan_dinas) || 0,
       }));
 
       enriched.sort((a, b) => (a.employee_name || "").localeCompare(b.employee_name || ""));
@@ -482,8 +555,13 @@ const Payroll = () => {
     const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
     setEmployees(emps);
 
-    // Merge existing DB overrides with employee list (fill missing with defaults)
-    const overrides = new Map<string, DeductionOverride>(deductionOverrides);
+    // Merge existing DB overrides with employee list (fill missing with defaults).
+    // Always reset loan_deduction to 0 — pinjaman dihitung otomatis dari modul Manajemen Pinjaman,
+    // tidak boleh di-override manual dari dialog ini agar tidak double-count.
+    const overrides = new Map<string, DeductionOverride>();
+    deductionOverrides.forEach((v, k) => {
+      overrides.set(k, { ...v, loan_deduction: 0 });
+    });
     for (const emp of emps || []) {
       if (!overrides.has(emp.id)) {
         overrides.set(emp.id, { loan_deduction: 0, other_deduction: 0, deduction_notes: "" });
@@ -495,17 +573,23 @@ const Payroll = () => {
 
   const openIncomeDialog = async () => {
     const [{ data: empsRaw }, { data: adminRoles }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name").eq("status", "Active").order("full_name"),
+      supabase.from("profiles").select("id, full_name, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional").eq("status", "Active").order("full_name"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
     ]);
     const adminIds = new Set((adminRoles || []).map(r => r.user_id));
-    const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
+    const emps = (empsRaw || []).filter((e: any) => !adminIds.has(e.id)).map((e: any) => ({
+      id: e.id,
+      full_name: e.full_name,
+      tunjangan_komunikasi: Number(e.tunjangan_komunikasi) || 0,
+      tunjangan_jabatan: Number(e.tunjangan_jabatan) || 0,
+      tunjangan_operasional: Number(e.tunjangan_operasional) || 0,
+    }));
     setEmployees(emps);
 
     const additions = new Map<string, IncomeAddition>(incomeAdditions);
     for (const emp of emps || []) {
       if (!additions.has(emp.id)) {
-        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 });
+        additions.set(emp.id, { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 });
       }
     }
     setIncomeAdditions(additions);
@@ -515,7 +599,7 @@ const Payroll = () => {
   const updateIncome = (userId: string, field: keyof IncomeAddition, value: string) => {
     setIncomeAdditions(prev => {
       const next = new Map(prev);
-      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+      const current = next.get(userId) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 };
       next.set(userId, { ...current, [field]: Number(value) || 0 });
       return next;
     });
@@ -534,15 +618,15 @@ const Payroll = () => {
       const holidays: { id: string; name: string; date: string }[] =
         (settingsData?.value as any)?.holidays || [];
 
-      const idulFitriKeywords = ["idul fitri", "hari raya", "lebaran", "eid al-fitr"];
+      const idulFitriKeywords = ["idul fitri", "lebaran", "eid al-fitr", "idulfitri"];
       const idulFitriHolidays = holidays.filter((h) =>
         idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw))
       );
 
       if (idulFitriHolidays.length === 0) {
         toast({
-          title: "Tanggal Idul Fitri Tidak Ditemukan",
-          description: "Tambahkan hari libur Idul Fitri di Pengaturan Lembur > Hari Libur Nasional terlebih dahulu.",
+          title: t("payrollPage.toast.thrNotFoundTitle"),
+          description: t("payrollPage.toast.thrNotFoundDesc"),
           variant: "destructive",
         });
         return;
@@ -563,7 +647,7 @@ const Payroll = () => {
       const cutoffDay = (cutoffResult.data?.value as any)?.cutoff_day || 21;
 
       if (!profiles || profiles.length === 0) {
-        toast({ title: "Gagal", description: "Data karyawan tidak ditemukan.", variant: "destructive" });
+        toast({ title: t("payrollPage.toast.failed"), description: t("payrollPage.toast.employeeNotFound"), variant: "destructive" });
         return;
       }
 
@@ -585,7 +669,7 @@ const Payroll = () => {
         .filter(Boolean) as { id: string; full_name: string; join_date: string; basic_salary: number }[];
 
       if (eligibleProfiles.length === 0) {
-        toast({ title: "Tidak Ada Karyawan Berhak", description: "Semua karyawan memiliki masa kerja < 1 bulan sebelum Idul Fitri.", variant: "destructive" });
+        toast({ title: t("payrollPage.toast.noEligibleTitle"), description: t("payrollPage.toast.noEligibleDesc"), variant: "destructive" });
         return;
       }
 
@@ -597,7 +681,7 @@ const Payroll = () => {
       });
     } catch (error: any) {
       console.error("Error fetching THR data:", error);
-      toast({ title: "Gagal", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.failed"), description: error.message, variant: "destructive" });
     } finally {
       setCalculatingThr(false);
     }
@@ -628,9 +712,9 @@ const Payroll = () => {
 
         if (thrAmount > 0) {
           const current = next.get(profile.id) || {
-            tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+            tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
             thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
-            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0,
+            pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
           };
           next.set(profile.id, { ...current, thr: thrAmount });
           updatedCount++;
@@ -641,8 +725,8 @@ const Payroll = () => {
 
     const formattedDate = format(refDate, "dd MMM yyyy");
     toast({
-      title: "THR Berhasil Dihitung",
-      description: `${updatedCount} karyawan dihitung berdasarkan ${thrConfirmData.idulFitriName} (${formattedDate}). Basis: Gaji Pokok.`,
+      title: t("payrollPage.toast.thrCalculatedTitle"),
+      description: t("payrollPage.toast.thrCalculatedDesc", { count: updatedCount, name: thrConfirmData.idulFitriName, date: formattedDate }),
     });
     setThrConfirmData(null);
   };
@@ -669,13 +753,60 @@ const Payroll = () => {
         .eq("month", selectedMonth).eq("year", selectedYear).maybeSingle();
 
       if (existingPeriod?.status === "finalized") {
-        toast({ title: "Payroll Terkunci", description: "Payroll periode ini sudah difinalisasi.", variant: "destructive" });
+        toast({ title: t("payrollPage.toast.lockedTitle"), description: t("payrollPage.toast.lockedDesc"), variant: "destructive" });
         setGenerating(false); return;
       }
 
       if (existingPeriod) {
         periodId = existingPeriod.id;
         await supabase.from("payroll").delete().eq("period_id", periodId);
+
+        // Revert any previously scheduled/paid loan installments for this period back to pending,
+        // so re-generate is idempotent and doesn't double-count cicilan.
+        const { data: prevInstallments } = await supabase
+          .from("loan_installments")
+          .select("id, loan_id, amount, status")
+          .eq("payroll_period_id", periodId)
+          .in("status", ["scheduled", "paid"]);
+
+        if (prevInstallments && prevInstallments.length > 0) {
+          // Group reverts per loan to recompute counters
+          const revertByLoan = new Map<string, { paidCount: number; totalAmount: number }>();
+          for (const inst of prevInstallments) {
+            const cur = revertByLoan.get(inst.loan_id) || { paidCount: 0, totalAmount: 0 };
+            // Only previously "paid" rows actually decremented loan counters
+            if (inst.status === "paid") {
+              cur.paidCount += 1;
+              cur.totalAmount += Number(inst.amount) || 0;
+            }
+            revertByLoan.set(inst.loan_id, cur);
+          }
+
+          // Reset installments rows
+          await supabase
+            .from("loan_installments")
+            .update({ status: "pending", payment_date: null, payroll_period_id: null })
+            .eq("payroll_period_id", periodId);
+
+          // Restore loan counters where needed
+          for (const [loanId, { paidCount, totalAmount }] of revertByLoan.entries()) {
+            if (paidCount === 0 && totalAmount === 0) continue;
+            const { data: lr } = await supabase
+              .from("employee_loans")
+              .select("paid_installments, remaining_amount, total_amount, total_installments")
+              .eq("id", loanId)
+              .single();
+            if (lr) {
+              const newPaid = Math.max(0, lr.paid_installments - paidCount);
+              const newRemaining = Math.min(Number(lr.total_amount), Number(lr.remaining_amount) + totalAmount);
+              await supabase.from("employee_loans").update({
+                paid_installments: newPaid,
+                remaining_amount: newRemaining,
+                status: newPaid >= lr.total_installments ? "completed" : "active",
+              }).eq("id", loanId);
+            }
+          }
+        }
       } else {
         const { data: newPeriod, error } = await supabase
           .from("payroll_periods").insert({ month: selectedMonth, year: selectedYear, status: "draft" })
@@ -684,8 +815,21 @@ const Payroll = () => {
         periodId = newPeriod.id;
       }
 
+      // Fetch cutoff day first to determine the active period bounds
+      const { data: cutoffSettingDataPre } = await supabase
+        .from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle();
+      const cutoffDayPre = (cutoffSettingDataPre?.value as any)?.cutoff_day || 21;
+      const { start: periodStartDate, end: periodEndDate } = getCutoffPeriodBounds(selectedMonth, selectedYear, cutoffDayPre);
+      const periodStartStr = format(periodStartDate, "yyyy-MM-dd");
+      const periodEndStr = format(periodEndDate, "yyyy-MM-dd");
+
+      // Active employees + Resigned employees whose resign_date >= period start
+      // (still worked at least part of this cutoff period — payroll wajib tetap muncul,
+      //  prorate dihitung di calculateProrateFactorWithResign)
       const { data: empsRaw } = await supabase
-        .from("profiles").select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled, bpjs_ketenagakerjaan_enabled, join_date").eq("status", "Active");
+        .from("profiles")
+        .select("id, full_name, basic_salary, ptkp_status, status, tunjangan_komunikasi, tunjangan_jabatan, tunjangan_operasional, bpjs_kesehatan_enabled, bpjs_ketenagakerjaan_enabled, join_date, resign_date")
+        .or(`status.eq.Active,and(status.eq.Resigned,resign_date.gte.${periodStartStr})`);
 
       // Exclude admin users from payroll
       const { data: adminRoles } = await supabase
@@ -694,7 +838,7 @@ const Payroll = () => {
       const emps = (empsRaw || []).filter(e => !adminIds.has(e.id));
 
       if (!emps || emps.length === 0) {
-        toast({ title: "Tidak ada karyawan", description: "Tidak ditemukan karyawan aktif.", variant: "destructive" });
+        toast({ title: t("payrollPage.toast.noEmployeesTitle"), description: t("payrollPage.toast.noEmployeesDesc"), variant: "destructive" });
         setGenerating(false); return;
       }
 
@@ -733,6 +877,119 @@ const Payroll = () => {
       });
 
       const allowanceMap = await calculateAttendanceAllowances();
+
+      // === Pull Medical Reimbursement dari Budget Expense ===
+      // Match by email (priority) → fallback full_name. Period mengikuti cut-off (21-20).
+      // Hasil DITAMBAHKAN (Add) ke tunjangan_kesehatan manual yang sudah ada di payroll_overrides.
+      const medicalMap = new Map<string, { total: number; count: number; matched_by: string; source_name?: string }>();
+      try {
+        const { data: empProfilesForMatch } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", emps.map((e: any) => e.id));
+
+        // Guard: pastikan periode klaim cocok dengan bulan payroll yang dipilih
+        const periodCheck = validateCutoffPeriodForPayroll(
+          periodStartStr, periodEndStr, selectedMonth, selectedYear, cutoffDayPre
+        );
+        if (!periodCheck.valid) {
+          console.error("Medical reimbursement period mismatch:", periodCheck.reason);
+          toast({
+            title: t("payrollPage.toast.claimMismatch"),
+            description: periodCheck.reason,
+            variant: "destructive",
+          });
+          throw new Error(periodCheck.reason);
+        }
+
+        const { data: medRes, error: medErr } = await supabase.functions.invoke(
+          "fetch-medical-reimbursements",
+          {
+            body: {
+              start_date: periodCheck.expected.start,
+              end_date: periodCheck.expected.end,
+              employees: empProfilesForMatch || [],
+            },
+          }
+        );
+
+        if (medErr) {
+          console.warn("Medical reimbursement fetch failed:", medErr);
+        } else if (medRes?.success && medRes?.data) {
+          for (const [uid, info] of Object.entries(medRes.data as Record<string, any>)) {
+            medicalMap.set(uid, {
+              total: Number(info.total) || 0,
+              count: Number(info.count) || 0,
+              matched_by: info.matched_by || "email",
+              source_name: info.source_name,
+            });
+          }
+
+          // REPLACE behavior (idempotent): hasil sync Budget Expense untuk periode cut-off
+          // ini langsung menggantikan tunjangan_kesehatan, sehingga generate berulang
+          // tidak membuat nilai berlipat.
+          if (medicalMap.size > 0) {
+            setIncomeAdditions((prev) => {
+              const next = new Map(prev);
+              for (const [uid, info] of medicalMap.entries()) {
+                const cur = next.get(uid) || {
+                  tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+                  thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+                  pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
+                };
+                // REPLACE: nilai sync = single source of truth untuk periode ini
+                cur.tunjangan_kesehatan = info.total;
+                next.set(uid, cur);
+              }
+              return next;
+            });
+
+            // Mirror ke local Map agar payrollRecords.map (yang baca incomeAdditions via getter)
+            // segera melihat nilai terbaru tanpa menunggu re-render.
+            for (const [uid, info] of medicalMap.entries()) {
+              const cur = incomeAdditions.get(uid) || {
+                tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0,
+                thr: 0, insentif_kinerja: 0, bonus_lainnya: 0,
+                pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0,
+              };
+              cur.tunjangan_kesehatan = info.total;
+              incomeAdditions.set(uid, cur);
+            }
+
+            // Persist nilai sync ke payroll_overrides (REPLACE, bukan accumulate)
+            for (const [uid, info] of medicalMap.entries()) {
+              const newTk = info.total;
+              const { data: existing } = await supabase
+                .from("payroll_overrides")
+                .select("id")
+                .eq("user_id", uid)
+                .eq("period_year", selectedYear)
+                .eq("period_month", selectedMonth)
+                .maybeSingle();
+              if (existing) {
+                await supabase.from("payroll_overrides")
+                  .update({ tunjangan_kesehatan: newTk, updated_at: new Date().toISOString() })
+                  .eq("id", existing.id);
+              } else {
+                await supabase.from("payroll_overrides").insert({
+                  user_id: uid,
+                  period_year: selectedYear,
+                  period_month: selectedMonth,
+                  tunjangan_kesehatan: newTk,
+                });
+              }
+            }
+
+            toast({
+              title: t("payrollPage.toast.medicalSyncedTitle"),
+              description: t("payrollPage.toast.medicalSyncedDesc", { count: medicalMap.size, claims: [...medicalMap.values()].reduce((s, v) => s + v.count, 0) }),
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Medical reimbursement integration error:", e);
+      }
+
 
       // Fetch dynamic BPJS config
       let bpjsConfig: BPJSRatesConfig | undefined;
@@ -807,29 +1064,40 @@ const Payroll = () => {
       // Fetch active loans for auto-deduction
       const { data: activeLoans } = await supabase
         .from("employee_loans")
-        .select("id, user_id, monthly_installment, paid_installments, total_installments, remaining_amount")
+        .select("id, user_id, monthly_installment, paid_installments, total_installments, remaining_amount, loan_type, description")
         .eq("status", "active");
 
-      // Build loan deduction map: sum of all active loan installments per employee
+      // Build deduction maps:
+      //  - loanDeductionMap: pinjaman & kasbon → field loan_deduction
+      //  - otherAutoDeductionMap: potongan_lain → field other_deduction (auto, dari modul Deduction)
+      // loanIds tetap dikumpulkan bersama supaya scheduling installment tetap berjalan untuk semua tipe.
       const loanDeductionMap = new Map<string, { amount: number; loanIds: { id: string; amount: number }[] }>();
+      const otherAutoDeductionMap = new Map<string, { amount: number; notes: string[] }>();
       for (const loan of activeLoans || []) {
         if (loan.paid_installments >= loan.total_installments) continue;
         const installmentAmount = Math.min(loan.monthly_installment, loan.remaining_amount);
         const existing = loanDeductionMap.get(loan.user_id) || { amount: 0, loanIds: [] };
-        existing.amount += installmentAmount;
         existing.loanIds.push({ id: loan.id, amount: installmentAmount });
+
+        if (loan.loan_type === "potongan_lain") {
+          const o = otherAutoDeductionMap.get(loan.user_id) || { amount: 0, notes: [] };
+          o.amount += installmentAmount;
+          if (loan.description && loan.description.trim()) o.notes.push(loan.description.trim());
+          otherAutoDeductionMap.set(loan.user_id, o);
+        } else {
+          existing.amount += installmentAmount;
+        }
         loanDeductionMap.set(loan.user_id, existing);
       }
 
-      // Fetch cutoff day for prorate calculation
-      const { data: cutoffSettingData } = await supabase
-        .from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle();
-      const cutoffDay = (cutoffSettingData?.value as any)?.cutoff_day || 21;
+      // Cutoff already fetched above; reuse cutoffDayPre
+      const cutoffDay = cutoffDayPre;
 
       const payrollRecords = emps.map((emp: any) => {
-        // Calculate prorate factor for employees joining mid-period
+        // Calculate prorate factor for employees joining mid-period AND/OR resigning mid-period
         const joinDate = emp.join_date ? parseLocalDate(emp.join_date) : new Date(2000, 0, 1);
-        const prorateFactor = calculateProrateFactor(joinDate, selectedMonth, selectedYear, cutoffDay);
+        const resignDate = emp.resign_date ? parseLocalDate(emp.resign_date) : null;
+        const prorateFactor = calculateProrateFactorWithResign(joinDate, resignDate, selectedMonth, selectedYear, cutoffDay);
 
         const fullBasicSalary = Number(emp.basic_salary) || 0;
         const basicSalary = Math.round(fullBasicSalary * prorateFactor);
@@ -854,10 +1122,25 @@ const Payroll = () => {
         const attendanceAllowance = (inc?.tunjangan_kehadiran && inc.tunjangan_kehadiran > 0) ? inc.tunjangan_kehadiran : autoAttendanceAllowance;
 
         // Fixed allowances from profile (prorated)
-        const tunjanganKomunikasi = Math.round((Number(emp.tunjangan_komunikasi) || 0) * prorateFactor);
+        // Tunj. Komunikasi: murni dari input manual dialog Tambahan Penghasilan (tidak tetap).
+        // Dibatasi (cap) oleh nilai maks pada profil karyawan (profiles.tunjangan_komunikasi) bila > 0.
+        const komunikasiInput = Number(inc?.tunjangan_komunikasi) || 0;
+        const komunikasiMax = Number(emp.tunjangan_komunikasi) || 0;
+        const tunjanganKomunikasi = komunikasiMax > 0 ? Math.min(komunikasiInput, komunikasiMax) : komunikasiInput;
         const tunjanganJabatan = Math.round((Number(emp.tunjangan_jabatan) || 0) * prorateFactor);
         const tunjanganOperasional = Math.round((Number(emp.tunjangan_operasional) || 0) * prorateFactor);
         const fixedAllowances = tunjanganKomunikasi + tunjanganJabatan + tunjanganOperasional;
+
+        // Komponen tunjangan tetap untuk DPP BPJS (hormati flag fixed_allowance_components dari BPJS Settings).
+        // Default: Jabatan & Operasional = tetap; Komunikasi = tidak tetap (Tambahan Penghasilan).
+        const fac = (bpjsConfig as any)?.fixed_allowance_components || {};
+        const facJabatan = fac.jabatan === undefined ? true : !!fac.jabatan;
+        const facKomunikasi = fac.komunikasi === undefined ? false : !!fac.komunikasi;
+        const facOperasional = fac.operasional === undefined ? true : !!fac.operasional;
+        const bpjsFixedAllowance =
+          (facJabatan ? tunjanganJabatan : 0) +
+          (facKomunikasi ? tunjanganKomunikasi : 0) +
+          (facOperasional ? tunjanganOperasional : 0);
 
         // Incidental income from dialog (exclude tunjangan_kehadiran as it's handled separately)
         const tunjanganKesehatan = inc?.tunjangan_kesehatan || 0;
@@ -867,15 +1150,27 @@ const Payroll = () => {
         const bonusLainnya = inc?.bonus_lainnya || 0;
         const pengembalianEmployee = inc?.pengembalian_employee || 0;
         const insentifPenjualan = inc?.insentif_penjualan || 0;
-        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya + pengembalianEmployee + insentifPenjualan;
+        const tunjanganPerjalananDinas = (inc as any)?.tunjangan_perjalanan_dinas || 0;
+        const incidentalIncome = tunjanganKesehatan + bonusTahunan + thr + insentifKinerja + bonusLainnya + pengembalianEmployee + insentifPenjualan + tunjanganPerjalananDinas;
 
         // Total allowance = attendance + fixed + incidental
         const totalAllowance = attendanceAllowance + fixedAllowances + incidentalIncome;
 
-        // Combine manual loan override with auto loan deduction
-        const autoLoanDeduction = loanDed?.amount || 0;
-        const manualLoanDeduction = ded?.loan_deduction || 0;
-        const finalLoanDeduction = manualLoanDeduction > 0 ? manualLoanDeduction : autoLoanDeduction;
+        // Loan deduction strictly from auto-calc (modul Manajemen Pinjaman),
+        // manual override pinjaman dihapus untuk mencegah double-count.
+        const finalLoanDeduction = loanDed?.amount || 0;
+
+        // Auto "Potongan Lain" dari modul Deduction (loan_type = 'potongan_lain') ditambahkan ke other_deduction,
+        // PLUS input manual other_deduction dari dialog Tambahan Penghasilan.
+        const otherAuto = otherAutoDeductionMap.get(emp.id);
+        const finalOtherDeduction = (otherAuto?.amount || 0) + (ded?.other_deduction || 0);
+
+        // Sinkronisasi catatan: gabungkan deskripsi dari modul Deduction (potongan_lain) dengan catatan manual.
+        const autoNotesParts: string[] = [];
+        if ((otherAuto?.notes?.length || 0) > 0) autoNotesParts.push(...(otherAuto!.notes));
+        if (finalLoanDeduction > 0) autoNotesParts.push("Cicilan pinjaman otomatis");
+        const manualNote = (ded?.deduction_notes || "").trim();
+        const mergedNotes = [manualNote, autoNotesParts.join("; ")].filter(Boolean).join(" | ");
 
         // Map PTKP status to TER category (e.g. K/I/0 -> K/0 for TER lookup)
         const terCategory = ptkpStatus.replace("/I", "");
@@ -883,9 +1178,10 @@ const Payroll = () => {
 
         const result = calculatePayroll({
           basicSalary, allowance: totalAllowance, overtimeTotal, ptkpStatus, overtimeHours,
+          fixedAllowance: bpjsFixedAllowance,
           loanDeduction: finalLoanDeduction,
-          otherDeduction: ded?.other_deduction || 0,
-          deductionNotes: ded?.deduction_notes || (autoLoanDeduction > 0 ? "Cicilan pinjaman otomatis" : ""),
+          otherDeduction: finalOtherDeduction,
+          deductionNotes: mergedNotes,
           month: selectedMonth,
           terRates: terRatesForEmp,
           totalPphJanNov: pphJanNovMap.get(emp.id) || 0,
@@ -912,16 +1208,16 @@ const Payroll = () => {
           bonus_lainnya: bonusLainnya,
           pengembalian_employee: pengembalianEmployee,
           insentif_penjualan: insentifPenjualan,
+          tunjangan_perjalanan_dinas: tunjanganPerjalananDinas,
         };
       });
 
       const { error: insertError } = await supabase.from("payroll").insert(payrollRecords);
       if (insertError) throw insertError;
 
-      // Mark loan installments as paid and update loan records
-      for (const [userId, loanDed] of loanDeductionMap.entries()) {
-        const manualOverride = deductionOverrides.get(userId)?.loan_deduction || 0;
-        if (manualOverride > 0) continue; // Skip auto-update if manual override used
+      // Schedule loan installments for this period (NOT yet paid).
+      // They will be marked "paid" and decrement loan counters only when payroll is finalized.
+      for (const [, loanDed] of loanDeductionMap.entries()) {
 
         for (const { id: loanId, amount } of loanDed.loanIds) {
           // Find next pending installment
@@ -936,53 +1232,237 @@ const Payroll = () => {
 
           if (nextInst) {
             await supabase.from("loan_installments").update({
-              status: "paid",
-              payment_date: new Date().toISOString().split("T")[0],
+              status: "scheduled",
+              payment_date: null,
               payroll_period_id: periodId,
               amount,
             }).eq("id", nextInst.id);
           }
-
-          // Update loan record
-          const { data: loanRecord } = await supabase
-            .from("employee_loans")
-            .select("paid_installments, total_installments, remaining_amount")
-            .eq("id", loanId)
-            .single();
-
-          if (loanRecord) {
-            const newPaid = loanRecord.paid_installments + 1;
-            const newRemaining = Math.max(0, loanRecord.remaining_amount - amount);
-            const newStatus = newPaid >= loanRecord.total_installments ? "completed" : "active";
-            await supabase.from("employee_loans").update({
-              paid_installments: newPaid,
-              remaining_amount: newRemaining,
-              status: newStatus,
-            }).eq("id", loanId);
-          }
         }
       }
       toast({
-        title: "Payroll Berhasil Di-generate",
-        description: `${payrollRecords.length} karyawan dihitung untuk ${MONTHS[selectedMonth - 1].label} ${selectedYear}.`,
+        title: t("payrollPage.toast.generateSuccessTitle"),
+        description: t("payrollPage.toast.generateSuccessDesc", { count: payrollRecords.length, month: monthLabel(selectedMonth), year: selectedYear }),
       });
+
+      // === AUDIT LOG: regenerate after unlock ===
+      if (preGenerateSnapshot && preGenerateSnapshot.size > 0 && user) {
+        try {
+          // Build map of new payroll rows by user_id
+          const newRowsByUser = new Map<string, any>();
+          payrollRecords.forEach((r: any) => newRowsByUser.set(r.user_id, r));
+
+          // Get the unlock reason from latest audit log
+          const { data: latestUnlock } = await supabase
+            .from("payroll_audit_logs" as any)
+            .select("reason")
+            .eq("period_id", periodId)
+            .eq("action_type", "unlock")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const unlockReason = (latestUnlock as any)?.reason || "Generate ulang setelah unlock";
+
+          // Log per-employee diff (only those that changed)
+          const auditPromises: Promise<any>[] = [];
+          for (const [userId, beforeSnap] of preGenerateSnapshot.entries()) {
+            const newRow = newRowsByUser.get(userId);
+            if (!newRow) continue;
+            const afterSnap = snapshotPayrollRow(newRow);
+            // Skip if no changes
+            const changed = Object.keys(afterSnap).some(
+              (k) => (beforeSnap as any)[k] !== (afterSnap as any)[k]
+            );
+            if (!changed) continue;
+            auditPromises.push(
+              logPayrollAction({
+                period_id: periodId,
+                period_month: selectedMonth,
+                period_year: selectedYear,
+                action_type: "regenerate",
+                performed_by: user.id,
+                reason: unlockReason,
+                affected_user_id: userId,
+                before_data: beforeSnap,
+                after_data: afterSnap,
+              })
+            );
+          }
+          await Promise.all(auditPromises);
+          setPreGenerateSnapshot(null);
+        } catch (auditErr) {
+          console.error("Failed to log regenerate audit:", auditErr);
+        }
+      }
+
       fetchPayrollData();
     } catch (error: any) {
       console.error("Error generating payroll:", error);
-      toast({ title: "Gagal Generate Payroll", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.generateFailed"), description: error.message, variant: "destructive" });
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleFinalize = async () => {
-    if (!period) return;
+  const handleUnlock = async (reason: string) => {
+    if (!period || !user) return;
     try {
-      await supabase.from("payroll_periods").update({ status: "finalized" }).eq("id", period.id);
-      toast({ title: "Payroll Difinalisasi", description: "Payroll periode ini sudah dikunci." });
+      // Snapshot current payroll BEFORE unlocking
+      const { data: currentRows } = await supabase
+        .from("payroll")
+        .select("*")
+        .eq("period_id", period.id);
+
+      const snap = new Map<string, any>();
+      (currentRows || []).forEach((row: any) => {
+        snap.set(row.user_id, snapshotPayrollRow(row));
+      });
+      setPreGenerateSnapshot(snap);
+
+      // Unlock period (status -> draft)
+      const { error } = await supabase
+        .from("payroll_periods")
+        .update({ status: "draft" })
+        .eq("id", period.id);
+      if (error) throw error;
+
+      // Revert "paid" loan installments for this period back to "scheduled"
+      // and restore loan counters, since payment is no longer finalized.
+      const { data: paidInsts } = await supabase
+        .from("loan_installments")
+        .select("id, loan_id, amount")
+        .eq("payroll_period_id", period.id)
+        .eq("status", "paid");
+
+      if (paidInsts && paidInsts.length > 0) {
+        await supabase
+          .from("loan_installments")
+          .update({ status: "scheduled", payment_date: null })
+          .eq("payroll_period_id", period.id)
+          .eq("status", "paid");
+
+        const aggByLoan = new Map<string, { count: number; total: number }>();
+        for (const inst of paidInsts) {
+          const cur = aggByLoan.get(inst.loan_id) || { count: 0, total: 0 };
+          cur.count += 1;
+          cur.total += Number(inst.amount) || 0;
+          aggByLoan.set(inst.loan_id, cur);
+        }
+        for (const [loanId, { count, total }] of aggByLoan.entries()) {
+          const { data: lr } = await supabase
+            .from("employee_loans")
+            .select("paid_installments, remaining_amount, total_amount, total_installments")
+            .eq("id", loanId)
+            .single();
+          if (lr) {
+            const newPaid = Math.max(0, lr.paid_installments - count);
+            const newRemaining = Math.min(Number(lr.total_amount), Number(lr.remaining_amount) + total);
+            await supabase.from("employee_loans").update({
+              paid_installments: newPaid,
+              remaining_amount: newRemaining,
+              status: newPaid >= lr.total_installments ? "completed" : "active",
+            }).eq("id", loanId);
+          }
+        }
+      }
+
+      // Log unlock action
+      await logPayrollAction({
+        period_id: period.id,
+        period_month: selectedMonth,
+        period_year: selectedYear,
+        action_type: "unlock",
+        performed_by: user.id,
+        reason,
+        affected_user_id: null,
+        before_data: { status: "finalized", total_employees: snap.size },
+        after_data: { status: "draft" },
+      });
+
+      toast({
+        title: t("payrollPage.toast.unlockSuccessTitle"),
+        description: t("payrollPage.toast.unlockSuccessDesc"),
+      });
       fetchPayrollData();
     } catch (error: any) {
-      toast({ title: "Gagal", description: error.message, variant: "destructive" });
+      console.error("Error unlocking payroll:", error);
+      toast({ title: t("payrollPage.toast.unlockFailed"), description: error.message, variant: "destructive" });
+      throw error;
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!period || !user) return;
+    try {
+      await supabase.from("payroll_periods").update({ status: "finalized" }).eq("id", period.id);
+
+      // Convert all "scheduled" loan installments for this period to "paid",
+      // and decrement loan counters now (real disbursement).
+      const { data: scheduledInsts } = await supabase
+        .from("loan_installments")
+        .select("id, loan_id, amount")
+        .eq("payroll_period_id", period.id)
+        .eq("status", "scheduled");
+
+      if (scheduledInsts && scheduledInsts.length > 0) {
+        const todayStr = new Date().toISOString().split("T")[0];
+        await supabase
+          .from("loan_installments")
+          .update({ status: "paid", payment_date: todayStr })
+          .eq("payroll_period_id", period.id)
+          .eq("status", "scheduled");
+
+        // Aggregate per loan and update employee_loans counters
+        const aggByLoan = new Map<string, { count: number; total: number }>();
+        for (const inst of scheduledInsts) {
+          const cur = aggByLoan.get(inst.loan_id) || { count: 0, total: 0 };
+          cur.count += 1;
+          cur.total += Number(inst.amount) || 0;
+          aggByLoan.set(inst.loan_id, cur);
+        }
+        for (const [loanId, { count, total }] of aggByLoan.entries()) {
+          const { data: lr } = await supabase
+            .from("employee_loans")
+            .select("paid_installments, remaining_amount, total_installments")
+            .eq("id", loanId)
+            .single();
+          if (lr) {
+            const newPaid = lr.paid_installments + count;
+            const newRemaining = Math.max(0, Number(lr.remaining_amount) - total);
+            await supabase.from("employee_loans").update({
+              paid_installments: newPaid,
+              remaining_amount: newRemaining,
+              status: newPaid >= lr.total_installments ? "completed" : "active",
+            }).eq("id", loanId);
+          }
+        }
+      }
+
+      // If this period had been unlocked before, log as refinalize
+      const { data: unlockExists } = await supabase
+        .from("payroll_audit_logs" as any)
+        .select("id")
+        .eq("period_id", period.id)
+        .eq("action_type", "unlock")
+        .limit(1)
+        .maybeSingle();
+
+      if (unlockExists) {
+        await logPayrollAction({
+          period_id: period.id,
+          period_month: selectedMonth,
+          period_year: selectedYear,
+          action_type: "refinalize",
+          performed_by: user.id,
+          reason: "Finalisasi ulang setelah revisi",
+          affected_user_id: null,
+        });
+      }
+
+      toast({ title: t("payrollPage.toast.finalizedTitle"), description: t("payrollPage.toast.finalizedDesc") });
+      fetchPayrollData();
+    } catch (error: any) {
+      toast({ title: t("payrollPage.toast.failed"), description: error.message, variant: "destructive" });
     }
   };
 
@@ -1034,6 +1514,7 @@ const Payroll = () => {
       bonus_tahunan: item.bonus_tahunan || 0,
       bonus_lainnya: item.bonus_lainnya || 0,
       pengembalian_employee: item.pengembalian_employee || 0,
+      tunjangan_perjalanan_dinas: item.tunjangan_perjalanan_dinas || 0,
       bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
       bpjs_kesehatan: item.bpjs_kesehatan,
       loan_deduction: item.loan_deduction,
@@ -1085,8 +1566,9 @@ const Payroll = () => {
       "Tunj. Komunikasi": item.tunjangan_komunikasi || 0,
       "Tunj. Jabatan": item.tunjangan_jabatan || 0,
       "Tunj. Operasional": item.tunjangan_operasional || 0,
-      "Tunj. Kehadiran": item.allowance - (item.tunjangan_komunikasi || 0) - (item.tunjangan_jabatan || 0) - (item.tunjangan_operasional || 0) - (item.tunjangan_kesehatan || 0) - (item.bonus_tahunan || 0) - (item.thr || 0) - (item.insentif_kinerja || 0) - (item.bonus_lainnya || 0) - (item.pengembalian_employee || 0) - (item.insentif_penjualan || 0),
+      "Tunj. Kehadiran": item.allowance - (item.tunjangan_komunikasi || 0) - (item.tunjangan_jabatan || 0) - (item.tunjangan_operasional || 0) - (item.tunjangan_kesehatan || 0) - (item.bonus_tahunan || 0) - (item.thr || 0) - (item.insentif_kinerja || 0) - (item.bonus_lainnya || 0) - (item.pengembalian_employee || 0) - (item.insentif_penjualan || 0) - (item.tunjangan_perjalanan_dinas || 0),
       "Tunj. Kesehatan": item.tunjangan_kesehatan || 0,
+      "Tunj. Perjalanan Dinas": item.tunjangan_perjalanan_dinas || 0,
       "Bonus Tahunan": item.bonus_tahunan || 0,
       "THR": item.thr || 0,
       "Insentif Kinerja": item.insentif_kinerja || 0,
@@ -1112,18 +1594,18 @@ const Payroll = () => {
       "JKK Perusahaan (0.24%)": item.bpjs_jkk_employer,
       "JKM Perusahaan (0.3%)": item.bpjs_jkm_employer,
     }));
-    const monthLabel = MONTHS[selectedMonth - 1].label;
+    const mLabel = monthLabel(selectedMonth);
     await exportToExcelFile(
       data,
-      `Payroll ${monthLabel} ${selectedYear}`,
-      `Payroll_${monthLabel}_${selectedYear}.xlsx`,
+      `Payroll ${mLabel} ${selectedYear}`,
+      `Payroll_${mLabel}_${selectedYear}.xlsx`,
       [
         ["PT. KEMIKA KARYA PRATAMA"],
-        [`Data Payroll — ${monthLabel} ${selectedYear}`],
+        [`Data Payroll — ${mLabel} ${selectedYear}`],
         [`Digenerate: ${new Date().toLocaleString("id-ID")}`],
       ]
     );
-    toast({ title: "Export Berhasil", description: `Data payroll ${monthLabel} ${selectedYear} berhasil diexport ke Excel.` });
+    toast({ title: t("payrollPage.toast.exportSuccessTitle"), description: t("payrollPage.toast.exportPayrollDesc", { month: mLabel, year: selectedYear }) });
   };
 
   const [downloadingAllPDF, setDownloadingAllPDF] = useState(false);
@@ -1135,9 +1617,9 @@ const Payroll = () => {
         await generateSlipPDF(item);
         await new Promise(r => setTimeout(r, 300));
       }
-      toast({ title: "Download Selesai", description: `${payrollData.length} slip gaji berhasil di-download.` });
+      toast({ title: t("payrollPage.toast.downloadDoneTitle"), description: t("payrollPage.toast.downloadDoneDesc", { count: payrollData.length }) });
     } catch (error: any) {
-      toast({ title: "Gagal Download", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.downloadFailed"), description: error.message, variant: "destructive" });
     } finally {
       setDownloadingAllPDF(false);
     }
@@ -1145,7 +1627,7 @@ const Payroll = () => {
 
   // ── e-Payroll Bank Preview ──
   const [showBankPreview, setShowBankPreview] = useState(false);
-  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number }[]>([]);
+  const [bankPreviewData, setBankPreviewData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; baseAmount: number; nik: string; email: string; bankName: string; seqNumber: number; tunjanganDinas: number; includeTunjDinas: boolean; includesResignMonth?: { month: number; year: number; amount: number } | null }[]>([]);
   const [bankCompanyConfig, setBankCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
   const [exportingBankPayroll, setExportingBankPayroll] = useState(false);
   const [loadingBankPreview, setLoadingBankPreview] = useState(false);
@@ -1164,8 +1646,8 @@ const Payroll = () => {
       const companyConfig = settingsData?.value as any;
       if (!companyConfig?.account_number) {
         toast({
-          title: "Konfigurasi Belum Lengkap",
-          description: "Silakan atur nomor rekening perusahaan di menu Settings > Pengaturan Bank Perusahaan terlebih dahulu.",
+          title: t("payrollPage.toast.configIncompleteTitle"),
+          description: t("payrollPage.toast.configIncompleteDesc"),
           variant: "destructive",
         });
         return;
@@ -1183,21 +1665,106 @@ const Payroll = () => {
 
       const employees = payrollData.map((item, idx) => {
         const profile = profileMap.get(item.user_id);
+        const tunjDinas = Number(item.tunjangan_perjalanan_dinas || 0);
+        const baseAmt = item.take_home_pay - (item.thr || 0) - tunjDinas;
         return {
           bankAccountNumber: profile?.bank_account_number || "",
           fullName: profile?.full_name || item.employee_name || "-",
-          amount: item.take_home_pay - (item.thr || 0),
+          amount: baseAmt,
+          baseAmount: baseAmt,
           nik: profile?.nik || item.nik || "",
           email: profile?.email || "",
           bankName: profile?.bank_name || "",
           seqNumber: idx + 1,
+          tunjanganDinas: tunjDinas,
+          includeTunjDinas: false,
+          includesResignMonth: null as { month: number; year: number; amount: number } | null,
         };
       });
+
+      // ── Merge prorated THP of resign-month (next period) for employees with pending Final Settlement ──
+      // Use case: Karyawan resign awal bulan berikutnya → THP prorata bulan resign digabung ke transfer bulan ini.
+      const nextMonth = selectedMonth === 12 ? 1 : selectedMonth + 1;
+      const nextYear = selectedMonth === 12 ? selectedYear + 1 : selectedYear;
+      try {
+        const { data: pendingSettlements } = await (supabase as any)
+          .from("final_settlements")
+          .select("user_id, period_month, period_year")
+          .eq("status", "pending")
+          .eq("period_month", nextMonth)
+          .eq("period_year", nextYear);
+
+        if (pendingSettlements && pendingSettlements.length > 0) {
+          const resignUserIds = pendingSettlements.map((s: any) => s.user_id);
+          // payroll table uses period_id (FK → payroll_periods); resolve it first
+          const { data: nextPeriod } = await supabase
+            .from("payroll_periods")
+            .select("id")
+            .eq("month", nextMonth)
+            .eq("year", nextYear)
+            .maybeSingle();
+          const { data: nextPayrolls } = nextPeriod?.id
+            ? await (supabase as any)
+                .from("payroll")
+                .select("user_id, take_home_pay, thr, tunjangan_perjalanan_dinas")
+                .eq("period_id", nextPeriod.id)
+                .in("user_id", resignUserIds)
+            : { data: [] as any[] };
+
+          const missingPayroll: string[] = [];
+          for (const settle of pendingSettlements) {
+            const np = nextPayrolls?.find((p: any) => p.user_id === settle.user_id);
+            const profile = profileMap.get(settle.user_id);
+            const profileName = profile?.full_name || "-";
+            if (!np) {
+              missingPayroll.push(profileName);
+              continue;
+            }
+            const extraAmt = (Number(np.take_home_pay) || 0) - (Number(np.thr) || 0) - (Number(np.tunjangan_perjalanan_dinas) || 0);
+            if (extraAmt <= 0) continue;
+
+            const existingIdx = employees.findIndex(e => e.nik === (profile?.nik || ""));
+            if (existingIdx >= 0) {
+              employees[existingIdx].amount += extraAmt;
+              employees[existingIdx].includesResignMonth = { month: nextMonth, year: nextYear, amount: extraAmt };
+            } else {
+              // Karyawan tidak ada di payroll bulan ini (mis. resign tanpa kerja bulan ini) → tambahkan baris baru
+              if (!profile) continue;
+              employees.push({
+                bankAccountNumber: profile.bank_account_number || "",
+                fullName: profile.full_name || "-",
+                amount: extraAmt,
+                baseAmount: 0,
+                nik: profile.nik || "",
+                email: profile.email || "",
+                bankName: profile.bank_name || "",
+                seqNumber: employees.length + 1,
+                tunjanganDinas: 0,
+                includeTunjDinas: false,
+                includesResignMonth: { month: nextMonth, year: nextYear, amount: extraAmt },
+              });
+            }
+          }
+
+          if (missingPayroll.length > 0) {
+            toast({
+              title: "Payroll bulan resign belum dibuat",
+              description: `THP bulan ${monthLabel(nextMonth)} ${nextYear} belum di-generate untuk: ${missingPayroll.join(", ")}. Generate payroll periode tsb agar bisa digabung ke transfer ini.`,
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (mergeErr) {
+        console.warn("Failed to merge resign-month THP:", mergeErr);
+      }
+
+      // Re-number sequence
+      employees.forEach((e, i) => { e.seqNumber = i + 1; });
 
       setBankPreviewData(employees);
       setShowBankPreview(true);
     } catch (error: any) {
-      toast({ title: "Gagal", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.failed"), description: error.message, variant: "destructive" });
     } finally {
       setLoadingBankPreview(false);
     }
@@ -1217,12 +1784,101 @@ const Payroll = () => {
         selectedYear
       );
       downloadBankPayrollFile(csvContent, selectedMonth, selectedYear);
-      toast({ title: "Export Berhasil", description: "File e-Payroll bank berhasil di-download." });
+      toast({ title: t("payrollPage.toast.exportSuccessTitle"), description: t("payrollPage.toast.bankExportSuccessDesc") });
       setShowBankPreview(false);
     } catch (error: any) {
-      toast({ title: "Gagal Export", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.exportFailed"), description: error.message, variant: "destructive" });
     } finally {
       setExportingBankPayroll(false);
+    }
+  };
+
+  // ── e-Payroll Final Settlement (resigned employees, separate from monthly payroll) ──
+  const [showFinalSettlementBank, setShowFinalSettlementBank] = useState(false);
+  const [finalSettlementBankData, setFinalSettlementBankData] = useState<{ bankAccountNumber: string; fullName: string; amount: number; nik: string; email: string; bankName: string; seqNumber: number; settlementId: string }[]>([]);
+  const [finalSettlementCompanyConfig, setFinalSettlementCompanyConfig] = useState<{ account_number: string; bank_name: string } | null>(null);
+  const [loadingFinalSettlementBank, setLoadingFinalSettlementBank] = useState(false);
+  const [exportingFinalSettlementBank, setExportingFinalSettlementBank] = useState(false);
+
+  const handleOpenFinalSettlementBankPreview = async () => {
+    setLoadingFinalSettlementBank(true);
+    try {
+      const { data: settingsData } = await supabase
+        .from("system_settings").select("value").eq("key", "company_bank_config").single();
+      const companyConfig = settingsData?.value as any;
+      if (!companyConfig?.account_number) {
+        toast({ title: "Konfigurasi bank belum lengkap", description: "Atur rekening perusahaan di Settings → Company Bank.", variant: "destructive" });
+        return;
+      }
+      setFinalSettlementCompanyConfig(companyConfig);
+
+      const { data: settlements, error } = await (supabase as any)
+        .from("final_settlements")
+        .select("id, user_id, net_amount, status, pesangon_amount, loan_payoff")
+        .eq("status", "pending")
+        .gt("net_amount", 0);
+      if (error) throw error;
+      if (!settlements || settlements.length === 0) {
+        toast({ title: "Tidak ada Final Settlement", description: "Belum ada karyawan resign dengan settlement pending." });
+        return;
+      }
+
+      const userIds = settlements.map((s: any) => s.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles").select("id, bank_account_number, bank_name, full_name, nik, email").in("id", userIds);
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const employees = settlements.map((s: any, idx: number) => {
+        const profile = profileMap.get(s.user_id);
+        return {
+          bankAccountNumber: profile?.bank_account_number || "",
+          fullName: profile?.full_name || "-",
+          amount: Number(s.net_amount) || 0,
+          nik: profile?.nik || "",
+          email: profile?.email || "",
+          bankName: profile?.bank_name || "",
+          seqNumber: idx + 1,
+          settlementId: s.id,
+        };
+      });
+
+      setFinalSettlementBankData(employees);
+      setShowFinalSettlementBank(true);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingFinalSettlementBank(false);
+    }
+  };
+
+  const finalSettlementIncomplete = finalSettlementBankData.filter(e => !e.bankAccountNumber || !e.bankName);
+
+  const handleConfirmFinalSettlementBankExport = async () => {
+    if (!finalSettlementCompanyConfig) return;
+    setExportingFinalSettlementBank(true);
+    try {
+      const { generateBankPayrollCSV, downloadBankPayrollFile } = await import("@/lib/bankPayrollExport");
+      const csvContent = generateBankPayrollCSV(
+        { companyAccountNumber: finalSettlementCompanyConfig.account_number, companyBankName: finalSettlementCompanyConfig.bank_name },
+        finalSettlementBankData,
+        selectedMonth,
+        selectedYear,
+        'FINAL SETTLEMENT'
+      );
+      downloadBankPayrollFile(csvContent, selectedMonth, selectedYear, 'e-payroll-FinalSettlement');
+
+      // Mark as paid
+      const ids = finalSettlementBankData.map(e => e.settlementId);
+      await (supabase as any).from("final_settlements")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .in("id", ids);
+
+      toast({ title: "Export berhasil", description: "Final Settlement telah ditandai sebagai paid." });
+      setShowFinalSettlementBank(false);
+    } catch (e: any) {
+      toast({ title: "Gagal export", description: e.message, variant: "destructive" });
+    } finally {
+      setExportingFinalSettlementBank(false);
     }
   };
 
@@ -1237,7 +1893,7 @@ const Payroll = () => {
     if (payrollData.length === 0) return;
     const thrRecipients = payrollData.filter(p => (p.thr || 0) > 0);
     if (thrRecipients.length === 0) {
-      toast({ title: "Tidak Ada Data THR", description: "Belum ada karyawan yang memiliki THR pada periode ini.", variant: "destructive" });
+      toast({ title: t("payrollPage.toast.noThrTitle"), description: t("payrollPage.toast.noThrDesc"), variant: "destructive" });
       return;
     }
     setLoadingThrBankPreview(true);
@@ -1246,7 +1902,7 @@ const Payroll = () => {
         .from("system_settings").select("value").eq("key", "company_bank_config").single();
       const companyConfig = settingsData?.value as any;
       if (!companyConfig?.account_number) {
-        toast({ title: "Konfigurasi Belum Lengkap", description: "Silakan atur nomor rekening perusahaan di menu Settings > Pengaturan Bank Perusahaan terlebih dahulu.", variant: "destructive" });
+        toast({ title: t("payrollPage.toast.configIncompleteTitle"), description: t("payrollPage.toast.configIncompleteDesc"), variant: "destructive" });
         return;
       }
       setThrBankCompanyConfig(companyConfig);
@@ -1272,7 +1928,7 @@ const Payroll = () => {
       setThrBankPreviewData(employees);
       setShowThrBankPreview(true);
     } catch (error: any) {
-      toast({ title: "Gagal", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.failed"), description: error.message, variant: "destructive" });
     } finally {
       setLoadingThrBankPreview(false);
     }
@@ -1293,10 +1949,10 @@ const Payroll = () => {
         'THR'
       );
       downloadBankPayrollFile(csvContent, selectedMonth, selectedYear, 'e-payroll-THR');
-      toast({ title: "Export Berhasil", description: "File e-Payroll THR berhasil di-download." });
+      toast({ title: t("payrollPage.toast.exportSuccessTitle"), description: t("payrollPage.toast.thrBankExportDesc") });
       setShowThrBankPreview(false);
     } catch (error: any) {
-      toast({ title: "Gagal Export", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.exportFailed"), description: error.message, variant: "destructive" });
     } finally {
       setExportingThrBank(false);
     }
@@ -1308,7 +1964,7 @@ const Payroll = () => {
     // Check if any employee has THR > 0
     const thrRecipients = payrollData.filter(p => (p.thr || 0) > 0);
     if (thrRecipients.length === 0) {
-      toast({ title: "Tidak Ada Data THR", description: "Belum ada karyawan yang memiliki THR pada periode ini. Hitung THR terlebih dahulu melalui Tambahan Penghasilan.", variant: "destructive" });
+      toast({ title: t("payrollPage.toast.noThrTitle"), description: t("payrollPage.toast.noThrAddDesc"), variant: "destructive" });
       return;
     }
     setGeneratingThrPdf(true);
@@ -1362,10 +2018,10 @@ const Payroll = () => {
       });
 
       await generateThrDisbursementPDF(thrEmployees, selectedMonth, selectedYear, idulFitriDate, idulFitriName, logo);
-      toast({ title: "PDF THR Berhasil", description: "Dokumen pengajuan pembayaran THR berhasil di-download." });
+      toast({ title: t("payrollPage.toast.thrPdfTitle"), description: t("payrollPage.toast.thrPdfDesc") });
     } catch (error: any) {
       console.error("Error generating THR PDF:", error);
-      toast({ title: "Gagal Generate PDF", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.thrPdfFailed"), description: error.message, variant: "destructive" });
     } finally {
       setGeneratingThrPdf(false);
     }
@@ -1398,6 +2054,7 @@ const Payroll = () => {
           bonus_tahunan: item.bonus_tahunan || 0,
           bonus_lainnya: item.bonus_lainnya || 0,
           pengembalian_employee: item.pengembalian_employee || 0,
+          tunjangan_perjalanan_dinas: item.tunjangan_perjalanan_dinas || 0,
           bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
           bpjs_kesehatan: item.bpjs_kesehatan,
           loan_deduction: item.loan_deduction,
@@ -1418,9 +2075,9 @@ const Payroll = () => {
         selectedYear,
         logo
       );
-      toast({ title: "Export Berhasil", description: "Laporan payroll detail berhasil di-download." });
+      toast({ title: t("payrollPage.toast.exportSuccessTitle"), description: t("payrollPage.toast.reportSuccessDesc") });
     } catch (error: any) {
-      toast({ title: "Gagal Export", description: error.message, variant: "destructive" });
+      toast({ title: t("payrollPage.toast.exportFailed"), description: error.message, variant: "destructive" });
     } finally {
       setGeneratingReport(false);
     }
@@ -1432,14 +2089,14 @@ const Payroll = () => {
         <div className="space-y-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <DollarSign className="h-7 w-7 text-primary" /> Payroll
+              <DollarSign className="h-7 w-7 text-primary" /> {t("payrollPage.title")}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Kelola penggajian karyawan dengan perhitungan PPh 21 & tunjangan kehadiran otomatis
+              {t("payrollPage.subtitle")}
             </p>
             <TabsList className="mt-3">
-              <TabsTrigger value="payroll">Payroll</TabsTrigger>
-              <TabsTrigger value="overrides">Riwayat Override</TabsTrigger>
+              <TabsTrigger value="payroll">{t("payrollPage.tabs.payroll")}</TabsTrigger>
+              <TabsTrigger value="overrides">{t("payrollPage.tabs.overrides")}</TabsTrigger>
             </TabsList>
           </div>
 
@@ -1447,7 +2104,7 @@ const Payroll = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
               <SelectTrigger className="w-[130px] h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
+              <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={String(m.value)}>{monthLabel(m.value)}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
               <SelectTrigger className="w-[90px] h-9"><SelectValue /></SelectTrigger>
@@ -1455,49 +2112,66 @@ const Payroll = () => {
             </Select>
             <Button size="sm" onClick={handleGenerate} disabled={generating || period?.status === "finalized"} className="gap-1.5">
               {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calculator className="h-3.5 w-3.5" />}
-              Generate
+              {t("payrollPage.actions.generate")}
             </Button>
             <Button variant="outline" size="sm" onClick={openDeductionDialog} disabled={period?.status === "finalized"} className="gap-1.5">
-              <FileText className="h-3.5 w-3.5" /> Potongan
+              <FileText className="h-3.5 w-3.5" /> {t("payrollPage.actions.deductions")}
             </Button>
             <Button variant="outline" size="sm" onClick={openIncomeDialog} disabled={period?.status === "finalized"} className="gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5" /> Tambahan Penghasilan
+              <TrendingUp className="h-3.5 w-3.5" /> {t("payrollPage.actions.incomeAdditions")}
             </Button>
             {period?.status === "draft" && payrollData.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleFinalize} className="gap-1.5">
-                <Lock className="h-3.5 w-3.5" /> Finalisasi
+                <Lock className="h-3.5 w-3.5" /> {t("payrollPage.actions.finalize")}
+              </Button>
+            )}
+            {period?.status === "finalized" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUnlockDialog(true)}
+                className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Unlock className="h-3.5 w-3.5" /> {t("payrollPage.actions.unlock")}
               </Button>
             )}
             {payrollData.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5">
-                    <Download className="h-3.5 w-3.5" /> Export
+                    <Download className="h-3.5 w-3.5" /> {t("payrollPage.actions.export")}
                     <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
                   <DropdownMenuItem onClick={handleExportExcel} className="gap-2">
-                    <FileSpreadsheet className="h-4 w-4" /> Export Excel
+                    <FileSpreadsheet className="h-4 w-4" /> {t("payrollPage.actions.exportExcel")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportPayrollReport} disabled={generatingReport} className="gap-2">
-                    <Printer className="h-4 w-4" /> Laporan PDF
+                    <Printer className="h-4 w-4" /> {t("payrollPage.actions.reportPdf")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDownloadAllPDF} disabled={downloadingAllPDF} className="gap-2">
-                    <Download className="h-4 w-4" /> Semua Slip PDF
+                    <Download className="h-4 w-4" /> {t("payrollPage.actions.allSlipPdf")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleOpenBankPreview} disabled={loadingBankPreview} className="gap-2">
-                    <Landmark className="h-4 w-4" /> e-Payroll Bank
+                    <Landmark className="h-4 w-4" /> {t("payrollPage.actions.ePayrollBank")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleOpenFinalSettlementBankPreview} disabled={loadingFinalSettlementBank} className="gap-2">
+                    <Landmark className="h-4 w-4" /> e-Payroll Final Settlement
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowTravelVoucherDialog(true)} className="gap-2">
+                    <Receipt className="h-4 w-4" /> Voucher Perjadin (Transfer)
                   </DropdownMenuItem>
                   {hasIdulFitriInPeriod && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleExportThrPDF} disabled={generatingThrPdf} className="gap-2">
-                        <Gift className="h-4 w-4" /> PDF THR
+                        <Gift className="h-4 w-4" /> {t("payrollPage.actions.thrPdf")}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleOpenThrBankPreview} disabled={loadingThrBankPreview} className="gap-2">
-                        <Landmark className="h-4 w-4" /> e-Payroll THR
+                        <Landmark className="h-4 w-4" /> {t("payrollPage.actions.ePayrollThr")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -1510,20 +2184,20 @@ const Payroll = () => {
         <TabsContent value="payroll" className="space-y-6 mt-0">
         {period && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Status Periode:</span>
+            <span className="text-sm text-muted-foreground">{t("payrollPage.status.label")}</span>
             <Badge variant={period.status === "finalized" ? "default" : "secondary"}>
-              {period.status === "finalized" ? "🔒 Finalized" : "📝 Draft"}
+              {period.status === "finalized" ? t("payrollPage.status.finalized") : t("payrollPage.status.draft")}
             </Badge>
           </div>
         )}
 
         {payrollData.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><Users className="h-8 w-8 text-primary/60" /><div><p className="text-2xl font-bold">{payrollData.length}</p><p className="text-xs text-muted-foreground">Total Karyawan</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><TrendingUp className="h-8 w-8 text-primary/40" /><div><p className="text-lg font-bold">{formatRupiah(totalBruto)}</p><p className="text-xs text-muted-foreground">Total Bruto</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><FileText className="h-8 w-8 text-destructive/40" /><div><p className="text-lg font-bold">{formatRupiah(totalPPh)}</p><p className="text-xs text-muted-foreground">Total PPh 21</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><DollarSign className="h-8 w-8 text-primary/40" /><div><p className="text-lg font-bold">{formatRupiah(totalTHP)}</p><p className="text-xs text-muted-foreground">Total THP</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><Building2 className="h-8 w-8 text-muted-foreground/40" /><div><p className="text-lg font-bold">{formatRupiah(totalEmployerBpjs)}</p><p className="text-xs text-muted-foreground">BPJS Perusahaan</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><Users className="h-8 w-8 text-primary/60" /><div><p className="text-2xl font-bold">{payrollData.length}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalEmployees")}</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><TrendingUp className="h-8 w-8 text-primary/40" /><div><p className="text-lg font-bold">{formatRupiah(totalBruto)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalBruto")}</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><FileText className="h-8 w-8 text-destructive/40" /><div><p className="text-lg font-bold">{formatRupiah(totalPPh)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalPph")}</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><DollarSign className="h-8 w-8 text-primary/40" /><div><p className="text-lg font-bold">{formatRupiah(totalTHP)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalThp")}</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><Building2 className="h-8 w-8 text-muted-foreground/40" /><div><p className="text-lg font-bold">{formatRupiah(totalEmployerBpjs)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.employerBpjs")}</p></div></div></CardContent></Card>
           </div>
         )}
 
@@ -1531,14 +2205,14 @@ const Payroll = () => {
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <CardTitle className="text-lg">Data Payroll — {MONTHS[selectedMonth - 1].label} {selectedYear}</CardTitle>
-                <CardDescription>Daftar penggajian karyawan beserta tunjangan, potongan, dan pajak</CardDescription>
+                <CardTitle className="text-lg">{t("payrollPage.card.dataTitle", { month: monthLabel(selectedMonth), year: selectedYear })}</CardTitle>
+                <CardDescription>{t("payrollPage.card.dataDesc")}</CardDescription>
               </div>
               {payrollData.length > 0 && (
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Cari nama, NIK, dept..."
+                    placeholder={t("payrollPage.card.searchPlaceholder")}
                     value={payrollSearch}
                     onChange={(e) => { setPayrollSearch(e.target.value); setPayrollPage(1); }}
                     className="pl-9"
@@ -1553,14 +2227,14 @@ const Payroll = () => {
             ) : payrollData.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Calculator className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">Belum ada data payroll</p>
-                <p className="text-sm mt-1">Klik "Generate Payroll" untuk menghitung gaji periode ini</p>
+                <p className="font-medium">{t("payrollPage.card.emptyTitle")}</p>
+                <p className="text-sm mt-1">{t("payrollPage.card.emptyHint")}</p>
               </div>
             ) : filteredPayroll.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Search className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">Tidak ada hasil</p>
-                <p className="text-sm mt-1">Coba kata kunci lain</p>
+                <p className="font-medium">{t("payrollPage.card.noResultsTitle")}</p>
+                <p className="text-sm mt-1">{t("payrollPage.card.noResultsHint")}</p>
               </div>
             ) : (
               <>
@@ -1568,18 +2242,18 @@ const Payroll = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[40px]">No</TableHead>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>Dept</TableHead>
-                        <TableHead className="text-right">Gaji Pokok</TableHead>
-                        <TableHead className="text-right">Tunjangan</TableHead>
-                        <TableHead className="text-right">Lembur</TableHead>
-                        <TableHead className="text-right">Bruto</TableHead>
-                        <TableHead className="text-right">BPJS</TableHead>
-                        <TableHead className="text-right">Potongan</TableHead>
-                        <TableHead className="text-center">PPh 21 Mode</TableHead>
-                        <TableHead className="text-right">PPh 21</TableHead>
-                        <TableHead className="text-right">THP</TableHead>
+                        <TableHead className="w-[40px]">{t("payrollPage.table.no")}</TableHead>
+                        <TableHead>{t("payrollPage.table.name")}</TableHead>
+                        <TableHead>{t("payrollPage.table.dept")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.basicSalary")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.allowance")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.overtime")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.bruto")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.bpjs")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.deduction")}</TableHead>
+                        <TableHead className="text-center">{t("payrollPage.table.pphMode")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.pph")}</TableHead>
+                        <TableHead className="text-right">{t("payrollPage.table.thp")}</TableHead>
                         <TableHead className="w-[100px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1591,7 +2265,7 @@ const Payroll = () => {
                           <TableCell><Badge variant="outline" className="text-[10px]">{item.departemen}</Badge></TableCell>
                           <TableCell className="text-right text-sm">{formatRupiah(item.basic_salary)}</TableCell>
                           <TableCell className="text-right text-sm">{item.allowance > 0 ? formatRupiah(item.allowance) : <span className="text-muted-foreground">-</span>}</TableCell>
-                          <TableCell className="text-right text-sm">{item.overtime_hours > 0 ? <span title={`${item.overtime_hours} jam`}>{formatRupiah(item.overtime_total)}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
+                          <TableCell className="text-right text-sm">{item.overtime_hours > 0 ? <span title={t("payrollPage.table.hoursTooltip", { count: item.overtime_hours })}>{formatRupiah(item.overtime_total)}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
                           <TableCell className="text-right text-sm font-medium">{formatRupiah(item.bruto_income)}</TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">{formatRupiah(item.bpjs_kesehatan + item.bpjs_ketenagakerjaan)}</TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">
@@ -1601,7 +2275,7 @@ const Payroll = () => {
                             {item.pph21_mode === "TER" && item.pph21_ter_rate != null ? (
                               <Badge variant="outline" className="text-[10px]">TER {item.pph21_ter_rate.toFixed(2)}%</Badge>
                             ) : item.pph21_mode === "REKONSILIASI" ? (
-                              <Badge variant="secondary" className="text-[10px]">Rekonsiliasi</Badge>
+                              <Badge variant="secondary" className="text-[10px]">{t("payrollPage.table.rekonsiliasi")}</Badge>
                             ) : (
                               <span className="text-muted-foreground">{item.pph21_mode}</span>
                             )}
@@ -1610,8 +2284,8 @@ const Payroll = () => {
                           <TableCell className="text-right text-sm font-bold text-primary">{formatRupiah(item.take_home_pay)}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}>Detail</Button>
-                              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); generateSlipPDF(item); }} title="Download Slip PDF">
+                              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}>{t("payrollPage.table.detail")}</Button>
+                              <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={(e) => { e.stopPropagation(); generateSlipPDF(item); }} title={t("payrollPage.table.downloadSlipTitle")}>
                                 <Download className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -1619,7 +2293,7 @@ const Payroll = () => {
                         </TableRow>
                       ))}
                       <TableRow className="bg-muted/50 font-semibold">
-                        <TableCell colSpan={3}>Total ({filteredPayroll.length} karyawan)</TableCell>
+                        <TableCell colSpan={3}>{t("payrollPage.table.totalEmployees", { count: filteredPayroll.length })}</TableCell>
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.basic_salary, 0))}</TableCell>
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.allowance, 0))}</TableCell>
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.overtime_total, 0))}</TableCell>
@@ -1638,7 +2312,7 @@ const Payroll = () => {
                 {payrollTotalPages > 1 && (
                   <div className="flex items-center justify-between mt-4">
                     <p className="text-sm text-muted-foreground">
-                      Menampilkan {(safePage - 1) * payrollPerPage + 1}–{Math.min(safePage * payrollPerPage, filteredPayroll.length)} dari {filteredPayroll.length}
+                      {t("payrollPage.table.showing", { from: (safePage - 1) * payrollPerPage + 1, to: Math.min(safePage * payrollPerPage, filteredPayroll.length), total: filteredPayroll.length })}
                     </p>
                     <div className="flex items-center gap-1">
                       <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPayrollPage(safePage - 1)}>
@@ -1675,131 +2349,150 @@ const Payroll = () => {
         <Dialog open={!!detailItem} onOpenChange={(open) => !open && setDetailItem(null)}>
           <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detail Slip Gaji</DialogTitle>
-              <DialogDescription>{detailItem?.employee_name} — {MONTHS[selectedMonth - 1].label} {selectedYear}</DialogDescription>
+              <DialogTitle>{t("payrollPage.detail.title")}</DialogTitle>
+              <DialogDescription>{detailItem?.employee_name} — {monthLabel(selectedMonth)} {selectedYear}</DialogDescription>
             </DialogHeader>
             {detailItem && (
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
-                  <span className="text-muted-foreground">Gaji Pokok</span>
+                  <span className="text-muted-foreground">{t("payrollPage.detail.basicSalary")}</span>
                   <span className="text-right font-medium">{formatRupiah(detailItem.basic_salary)}</span>
-                  <span className="text-muted-foreground">Tunjangan Kehadiran</span>
-                  <span className="text-right">{formatRupiah(detailItem.allowance - (detailItem.tunjangan_komunikasi || 0) - (detailItem.tunjangan_jabatan || 0) - (detailItem.tunjangan_operasional || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.thr || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - (detailItem.insentif_penjualan || 0))}</span>
-                  <span className="text-muted-foreground">Lembur ({detailItem.overtime_hours} jam)</span>
+                  <span className="text-muted-foreground">{t("payrollPage.detail.attendanceAllowance")}</span>
+                  <span className="text-right">{formatRupiah(detailItem.allowance - (detailItem.tunjangan_komunikasi || 0) - (detailItem.tunjangan_jabatan || 0) - (detailItem.tunjangan_operasional || 0) - (detailItem.tunjangan_kesehatan || 0) - (detailItem.bonus_tahunan || 0) - (detailItem.thr || 0) - (detailItem.insentif_kinerja || 0) - (detailItem.bonus_lainnya || 0) - (detailItem.pengembalian_employee || 0) - (detailItem.insentif_penjualan || 0) - (detailItem.tunjangan_perjalanan_dinas || 0))}</span>
+                  <span className="text-muted-foreground">{t("payrollPage.detail.overtimeWithHours", { hours: detailItem.overtime_hours })}</span>
                   <span className="text-right">{formatRupiah(detailItem.overtime_total)}</span>
                 </div>
-                {/* Fixed Allowances Breakdown */}
-                {((detailItem.tunjangan_komunikasi || 0) + (detailItem.tunjangan_jabatan || 0) + (detailItem.tunjangan_operasional || 0)) > 0 && (
-                  <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
-                    <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">📋 Tunjangan Tetap</span>
-                    {(detailItem.tunjangan_komunikasi || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Tunjangan Komunikasi</span>
-                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_komunikasi!)}</span>
-                    </>}
-                    {(detailItem.tunjangan_jabatan || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Tunjangan Jabatan</span>
-                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_jabatan!)}</span>
-                    </>}
-                    {(detailItem.tunjangan_operasional || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Tunjangan Operasional</span>
-                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_operasional!)}</span>
-                    </>}
-                  </div>
-                )}
-                {/* Incidental Income Breakdown */}
-                {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0)) > 0 && (
+                {(() => {
+                  const tunjItems = [
+                    { key: "komunikasi" as const, labelKey: "payrollPage.detail.tunjKomunikasi", val: detailItem.tunjangan_komunikasi || 0 },
+                    { key: "jabatan" as const, labelKey: "payrollPage.detail.tunjJabatan", val: detailItem.tunjangan_jabatan || 0 },
+                    { key: "operasional" as const, labelKey: "payrollPage.detail.tunjOperasional", val: detailItem.tunjangan_operasional || 0 },
+                  ];
+                  const tetap = tunjItems.filter(i => facFlags[i.key] && i.val > 0);
+                  const tidakTetap = tunjItems.filter(i => !facFlags[i.key] && i.val > 0);
+                  return (
+                    <>
+                      {tetap.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
+                          <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.fixedAllowances")}</span>
+                          {tetap.map(i => (
+                            <div key={i.key} className="contents">
+                              <span className="text-muted-foreground text-xs">{t(i.labelKey)}</span>
+                              <span className="text-right text-xs">{formatRupiah(i.val)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {tidakTetap.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-accent/40 rounded p-2">
+                          <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">Tunjangan Tidak Tetap (Tambahan Penghasilan)</span>
+                          {tidakTetap.map(i => (
+                            <div key={i.key} className="contents">
+                              <span className="text-muted-foreground text-xs">{t(i.labelKey)}</span>
+                              <span className="text-right text-xs">{formatRupiah(i.val)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+                {((detailItem.tunjangan_kesehatan || 0) + (detailItem.bonus_tahunan || 0) + (detailItem.thr || 0) + (detailItem.insentif_kinerja || 0) + (detailItem.bonus_lainnya || 0) + (detailItem.pengembalian_employee || 0) + (detailItem.insentif_penjualan || 0) + (detailItem.tunjangan_perjalanan_dinas || 0)) > 0 && (
                   <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-primary/5 rounded p-2">
-                    <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">💰 Penghasilan Insidental</span>
+                    <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.incidentalIncome")}</span>
                     {(detailItem.tunjangan_kesehatan || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Tunjangan Kesehatan</span>
+                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.tunjKesehatan")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_kesehatan!)}</span>
                     </>}
                     {(detailItem.bonus_tahunan || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Bonus Tahunan</span>
+                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.bonusTahunan")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.bonus_tahunan!)}</span>
                     </>}
                     {(detailItem.thr || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">THR</span>
+                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.thr")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.thr!)}</span>
                     </>}
                     {(detailItem.insentif_kinerja || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Insentif Kinerja</span>
+                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.insentifKinerja")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.insentif_kinerja!)}</span>
                     </>}
                     {(detailItem.bonus_lainnya || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Bonus Lainnya</span>
+                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.bonusLainnya")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.bonus_lainnya!)}</span>
                     </>}
                     {(detailItem.pengembalian_employee || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Pengembalian Employee</span>
+                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.pengembalian")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.pengembalian_employee!)}</span>
                     </>}
                     {(detailItem.insentif_penjualan || 0) > 0 && <>
-                      <span className="text-muted-foreground text-xs">Insentif Penjualan</span>
+                      <span className="text-muted-foreground text-xs">{t("payrollPage.detail.insentifPenjualan")}</span>
                       <span className="text-right text-xs">{formatRupiah(detailItem.insentif_penjualan!)}</span>
+                    </>}
+                    {(detailItem.tunjangan_perjalanan_dinas || 0) > 0 && <>
+                      <span className="text-muted-foreground text-xs">Tunj. Perjalanan Dinas</span>
+                      <span className="text-right text-xs">{formatRupiah(detailItem.tunjangan_perjalanan_dinas!)}</span>
                     </>}
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
-                  <span className="font-semibold">Bruto</span>
+                  <span className="font-semibold">{t("payrollPage.detail.bruto")}</span>
                   <span className="text-right font-semibold">{formatRupiah(detailItem.bruto_income)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
-                  <span className="text-muted-foreground">BPJS Kesehatan (1%)</span>
+                  <span className="text-muted-foreground">{t("payrollPage.detail.bpjsKes")}</span>
                   <span className="text-right text-destructive">-{formatRupiah(detailItem.bpjs_kesehatan)}</span>
-                  <span className="text-muted-foreground">BPJS TK + JP (3%)</span>
+                  <span className="text-muted-foreground">{t("payrollPage.detail.bpjsTk")}</span>
                   <span className="text-right text-destructive">-{formatRupiah(detailItem.bpjs_ketenagakerjaan)}</span>
                   {detailItem.loan_deduction > 0 && <>
-                    <span className="text-muted-foreground">Pinjaman/Kasbon</span>
+                    <span className="text-muted-foreground">{t("payrollPage.detail.loan")}</span>
                     <span className="text-right text-destructive">-{formatRupiah(detailItem.loan_deduction)}</span>
                   </>}
                   {detailItem.other_deduction > 0 && <>
-                    <span className="text-muted-foreground">Potongan Lain</span>
+                    <span className="text-muted-foreground">{t("payrollPage.detail.otherDeduction")}</span>
                     <span className="text-right text-destructive">-{formatRupiah(detailItem.other_deduction)}</span>
                   </>}
                   {detailItem.deduction_notes && (
-                    <span className="col-span-2 text-xs text-muted-foreground italic">Catatan: {detailItem.deduction_notes}</span>
+                    <span className="col-span-2 text-xs text-muted-foreground italic">{t("payrollPage.detail.noteLabel", { note: detailItem.deduction_notes })}</span>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
-                  <span className="font-semibold">Netto</span>
+                  <span className="font-semibold">{t("payrollPage.detail.netto")}</span>
                   <span className="text-right font-semibold">{formatRupiah(detailItem.netto_income)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
-                  <span className="text-muted-foreground">PTKP ({detailItem.ptkp_status})</span>
+                  <span className="text-muted-foreground">{t("payrollPage.detail.ptkpLabel", { status: detailItem.ptkp_status })}</span>
                   <span className="text-right">{formatRupiah(detailItem.ptkp_value)}</span>
-                  <span className="text-muted-foreground">PKP (Tahunan)</span>
+                  <span className="text-muted-foreground">{t("payrollPage.detail.pkpYearly")}</span>
                   <span className="text-right">{formatRupiah(detailItem.pkp)}</span>
                   <span className="text-muted-foreground">
-                    PPh 21 / bulan
+                    {t("payrollPage.detail.pphMonthly")}
                     {detailItem.pph21_mode === "TER" && <Badge variant="outline" className="ml-1 text-[9px]">TER {detailItem.pph21_ter_rate}%</Badge>}
-                    {detailItem.pph21_mode === "REKONSILIASI" && <Badge variant="secondary" className="ml-1 text-[9px]">Rekonsiliasi</Badge>}
+                    {detailItem.pph21_mode === "REKONSILIASI" && <Badge variant="secondary" className="ml-1 text-[9px]">{t("payrollPage.detail.rekonsiliasi")}</Badge>}
                   </span>
                   <span className="text-right text-destructive font-medium">-{formatRupiah(detailItem.pph21_monthly)}</span>
                 </div>
 
-                {/* Employer BPJS */}
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
-                  <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">Kontribusi Perusahaan</span>
-                  <span className="text-muted-foreground text-xs">BPJS Kes (4%)</span>
+                  <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.companyContribution")}</span>
+                  <span className="text-muted-foreground text-xs">{t("payrollPage.detail.bpjsKes4")}</span>
                   <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_kes_employer)}</span>
-                  <span className="text-muted-foreground text-xs">JHT (3.7%)</span>
+                  <span className="text-muted-foreground text-xs">{t("payrollPage.detail.jht")}</span>
                   <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jht_employer)}</span>
-                  <span className="text-muted-foreground text-xs">JP (2%)</span>
+                  <span className="text-muted-foreground text-xs">{t("payrollPage.detail.jp")}</span>
                   <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jp_employer)}</span>
-                  <span className="text-muted-foreground text-xs">JKK (0.24%)</span>
+                  <span className="text-muted-foreground text-xs">{t("payrollPage.detail.jkk")}</span>
                   <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jkk_employer)}</span>
-                  <span className="text-muted-foreground text-xs">JKM (0.3%)</span>
+                  <span className="text-muted-foreground text-xs">{t("payrollPage.detail.jkm")}</span>
                   <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_jkm_employer)}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <span className="text-base font-bold">Take Home Pay</span>
+                  <span className="text-base font-bold">{t("payrollPage.detail.thp")}</span>
                   <span className="text-right text-base font-bold text-primary">{formatRupiah(detailItem.take_home_pay)}</span>
                 </div>
                 <div className="pt-3 border-t border-border">
                   <Button onClick={() => generateSlipPDF(detailItem)} className="w-full gap-2">
-                    <Download className="h-4 w-4" /> Download Slip Gaji PDF
+                    <Download className="h-4 w-4" /> {t("payrollPage.detail.downloadPdf")}
                   </Button>
                 </div>
               </div>
@@ -1811,21 +2504,34 @@ const Payroll = () => {
         <Dialog open={showDeductionDialog} onOpenChange={(open) => { setShowDeductionDialog(open); if (!open) { setDeductionSearch(""); setSelectedDeductionEmp(null); } }}>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Potongan Tambahan Karyawan</DialogTitle>
-              <DialogDescription>Klik nama karyawan untuk mengisi potongan. Karyawan dengan potongan akan ditandai.</DialogDescription>
+              <DialogTitle>{t("payrollPage.deductionDialog.title")}</DialogTitle>
+              <DialogDescription>{t("payrollPage.deductionDialog.desc")}</DialogDescription>
             </DialogHeader>
             <Input
-              placeholder="🔍 Cari karyawan..."
+              placeholder={t("payrollPage.deductionDialog.search")}
               value={deductionSearch}
               onChange={(e) => setDeductionSearch(e.target.value)}
               className="mb-2"
             />
             <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
-              {employees
+              {(() => {
+                const loanMap = new Map<string, number>();
+                const otherTotalMap = new Map<string, number>();
+                const autoNotesMap = new Map<string, string>();
+                payrollData.forEach(p => {
+                  loanMap.set(p.user_id, Number(p.loan_deduction) || 0);
+                  otherTotalMap.set(p.user_id, Number(p.other_deduction) || 0);
+                  autoNotesMap.set(p.user_id, p.deduction_notes || "");
+                });
+                return employees
                 .filter(emp => emp.full_name.toLowerCase().includes(deductionSearch.toLowerCase()))
                 .map((emp) => {
                   const ded = deductionOverrides.get(emp.id) || { loan_deduction: 0, other_deduction: 0, deduction_notes: "" };
-                  const hasValue = (ded.loan_deduction > 0 || ded.other_deduction > 0);
+                  const autoLoan = loanMap.get(emp.id) || 0;
+                  // Auto "Potongan Lain" = total other_deduction di payroll - manual override
+                  const totalOther = otherTotalMap.get(emp.id) || 0;
+                  const autoOther = Math.max(0, totalOther - (ded.other_deduction || 0));
+                  const hasValue = (autoLoan > 0 || autoOther > 0 || ded.other_deduction > 0);
                   const isExpanded = selectedDeductionEmp === emp.id;
                   return (
                     <div key={emp.id} className={`border rounded-lg transition-colors ${hasValue ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
@@ -1836,41 +2542,67 @@ const Payroll = () => {
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm">{emp.full_name}</span>
-                          {hasValue && <Badge variant="outline" className="text-[10px]">Ada potongan</Badge>}
+                          {hasValue && <Badge variant="outline" className="text-[10px]">{t("payrollPage.deductionDialog.hasDeduction")}</Badge>}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {hasValue && (
-                            <span>{formatRupiah(ded.loan_deduction + ded.other_deduction)}</span>
+                            <span>{formatRupiah(autoLoan + autoOther + ded.other_deduction)}</span>
                           )}
                           <span className="text-muted-foreground">{isExpanded ? "▲" : "▼"}</span>
                         </div>
                       </button>
                       {isExpanded && (
                         <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-3 gap-2">
                             <div>
-                              <Label className="text-xs">Pinjaman/Kasbon</Label>
-                              <Input type="number" value={ded.loan_deduction || ""} placeholder="0"
-                                onChange={(e) => updateDeduction(emp.id, "loan_deduction", e.target.value)} />
+                              <Label className="text-xs">{t("payrollPage.deductionDialog.loanLabel")}</Label>
+                              <Input
+                                type="text"
+                                value={autoLoan > 0 ? formatRupiah(autoLoan) : t("payrollPage.deductionDialog.noInstallment")}
+                                readOnly
+                                disabled
+                                className="bg-muted/50 cursor-not-allowed"
+                                title={t("payrollPage.deductionDialog.loanTooltip")}
+                              />
                             </div>
                             <div>
-                              <Label className="text-xs">Potongan Lain</Label>
+                              <Label className="text-xs">{t("payrollPage.deductionDialog.otherAuto")}</Label>
+                              <Input
+                                type="text"
+                                value={autoOther > 0 ? formatRupiah(autoOther) : t("payrollPage.deductionDialog.none")}
+                                readOnly
+                                disabled
+                                className="bg-muted/50 cursor-not-allowed"
+                                title={t("payrollPage.deductionDialog.otherAutoTooltip")}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">{t("payrollPage.deductionDialog.otherManual")}</Label>
                               <Input type="number" value={ded.other_deduction || ""} placeholder="0"
                                 onChange={(e) => updateDeduction(emp.id, "other_deduction", e.target.value)} />
                             </div>
                           </div>
+                          <p className="text-[11px] text-muted-foreground italic">
+                            {t("payrollPage.deductionDialog.info")}
+                          </p>
+                          {autoNotesMap.get(emp.id) && (
+                            <div className="text-[11px] text-muted-foreground">
+                              <span className="font-medium">{t("payrollPage.deductionDialog.syncedNote")}</span> {autoNotesMap.get(emp.id)}
+                            </div>
+                          )}
                           <div>
-                            <Label className="text-xs">Catatan</Label>
-                            <Textarea rows={1} value={ded.deduction_notes} placeholder="Keterangan potongan..."
+                            <Label className="text-xs">{t("payrollPage.deductionDialog.manualNote")}</Label>
+                            <Textarea rows={1} value={ded.deduction_notes} placeholder={t("payrollPage.deductionDialog.manualNotePlaceholder")}
                               onChange={(e) => updateDeduction(emp.id, "deduction_notes", e.target.value)} />
                           </div>
                         </div>
                       )}
                     </div>
                   );
-                })}
+                });
+              })()}
             </div>
-            <Button onClick={async () => { await saveOverridesToDB('deduction'); setShowDeductionDialog(false); }} className="w-full mt-2">Simpan & Tutup</Button>
+            <Button onClick={async () => { await saveOverridesToDB('deduction'); setShowDeductionDialog(false); }} className="w-full mt-2">{t("payrollPage.deductionDialog.saveClose")}</Button>
           </DialogContent>
         </Dialog>
 
@@ -1878,8 +2610,8 @@ const Payroll = () => {
         <Dialog open={showIncomeDialog} onOpenChange={(open) => { setShowIncomeDialog(open); if (!open) { setIncomeSearch(""); setSelectedIncomeEmp(null); } }}>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Tambahan Penghasilan Insidental</DialogTitle>
-              <DialogDescription>Klik nama karyawan untuk mengisi tambahan penghasilan. Tunjangan tetap diambil otomatis dari data karyawan.</DialogDescription>
+              <DialogTitle>{t("payrollPage.incomeDialog.title")}</DialogTitle>
+              <DialogDescription>{t("payrollPage.incomeDialog.desc")}</DialogDescription>
             </DialogHeader>
             {hasIdulFitriInPeriod && (
               <Button
@@ -1890,11 +2622,11 @@ const Payroll = () => {
                 onClick={handleAutoCalculateTHR}
               >
                 {calculatingThr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-                Hitung THR Otomatis (Permenaker No.6/2016)
+                {t("payrollPage.incomeDialog.thrAuto")}
               </Button>
             )}
             <Input
-              placeholder="🔍 Cari karyawan..."
+              placeholder={t("payrollPage.incomeDialog.search")}
               value={incomeSearch}
               onChange={(e) => setIncomeSearch(e.target.value)}
               className="mb-2"
@@ -1903,7 +2635,7 @@ const Payroll = () => {
               {employees
                 .filter(emp => emp.full_name.toLowerCase().includes(incomeSearch.toLowerCase()))
                 .map((emp) => {
-                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0 };
+                  const inc = incomeAdditions.get(emp.id) || { tunjangan_kehadiran: 0, tunjangan_komunikasi: 0, tunjangan_kesehatan: 0, bonus_tahunan: 0, thr: 0, insentif_kinerja: 0, bonus_lainnya: 0, pengembalian_employee: 0, insentif_penjualan: 0, overtime_override: 0, tunjangan_perjalanan_dinas: 0 };
                   const totalInc = Object.values(inc).reduce((s, v) => s + (Number(v) || 0), 0);
                   const hasValue = totalInc > 0;
                   const isExpanded = selectedIncomeEmp === emp.id;
@@ -1916,7 +2648,7 @@ const Payroll = () => {
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm">{emp.full_name}</span>
-                          {hasValue && <Badge variant="outline" className="text-[10px]">Ada tambahan</Badge>}
+                          {hasValue && <Badge variant="outline" className="text-[10px]">{t("payrollPage.incomeDialog.hasAddition")}</Badge>}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {hasValue && (
@@ -1933,6 +2665,38 @@ const Payroll = () => {
                               <Input type="number" value={inc.tunjangan_kehadiran || ""} placeholder="0 (otomatis)"
                                 onChange={(e) => updateIncome(emp.id, "tunjangan_kehadiran", e.target.value)} />
                               <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis</span>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between gap-2">
+                                <Label className="text-xs">Tunj. Komunikasi</Label>
+                                {(emp.tunjangan_komunikasi || 0) > 0 ? (
+                                  <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                    Maks {formatRupiah(emp.tunjangan_komunikasi || 0)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground">Plafon belum diset</span>
+                                )}
+                              </div>
+                              <Input
+                                type="number"
+                                value={inc.tunjangan_komunikasi || ""}
+                                placeholder={(emp.tunjangan_komunikasi || 0) > 0 ? `Maks ${formatRupiah(emp.tunjangan_komunikasi || 0)}` : "0"}
+                                max={(emp.tunjangan_komunikasi || 0) > 0 ? emp.tunjangan_komunikasi : undefined}
+                                onChange={(e) => {
+                                  const raw = Number(e.target.value) || 0;
+                                  const cap = Number(emp.tunjangan_komunikasi) || 0;
+                                  if (cap > 0 && raw > cap) {
+                                    toast({
+                                      title: "Melebihi plafon",
+                                      description: `Tunj. Komunikasi ${emp.full_name} dibatasi ke ${formatRupiah(cap)} (plafon dari profil karyawan).`,
+                                      variant: "destructive",
+                                    });
+                                  }
+                                  const capped = cap > 0 ? Math.min(raw, cap) : raw;
+                                  updateIncome(emp.id, "tunjangan_komunikasi", String(capped));
+                                }}
+                              />
+                              <span className="text-[10px] text-muted-foreground">Otomatis dibatasi plafon profil karyawan</span>
                             </div>
                             <div>
                               <Label className="text-xs">Tunj. Kesehatan</Label>
@@ -1970,12 +2734,38 @@ const Payroll = () => {
                                 onChange={(e) => updateIncome(emp.id, "insentif_penjualan", e.target.value)} />
                             </div>
                             <div>
+                              <Label className="text-xs">Tunj. Perjalanan Dinas</Label>
+                              <Input type="number" value={(inc as any).tunjangan_perjalanan_dinas || ""} placeholder="0 (otomatis dari approval dinas)"
+                                onChange={(e) => updateIncome(emp.id, "tunjangan_perjalanan_dinas" as any, e.target.value)} />
+                              <span className="text-[10px] text-muted-foreground">Terisi otomatis saat approve perjalanan dinas</span>
+                            </div>
+                            <div>
                               <Label className="text-xs">Override Lembur</Label>
                               <Input type="number" value={inc.overtime_override || ""} placeholder="0 (otomatis)"
                                 onChange={(e) => updateIncome(emp.id, "overtime_override", e.target.value)} />
                               <span className="text-[10px] text-muted-foreground">Kosongkan untuk hitung otomatis PP 35</span>
                             </div>
                           </div>
+                          {(() => {
+                            const nonFixedItems = [
+                              { key: "jabatan" as const, label: "Tunj. Jabatan", value: emp.tunjangan_jabatan || 0 },
+                              { key: "operasional" as const, label: "Tunj. Operasional", value: emp.tunjangan_operasional || 0 },
+                            ].filter(i => !facFlags[i.key] && i.value > 0);
+                            if (nonFixedItems.length === 0) return null;
+                            return (
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <p className="text-[11px] font-semibold text-muted-foreground mb-2">✨ Tambahan Penghasilan Otomatis (dari profil karyawan, di luar DPP BPJS)</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                  {nonFixedItems.map(i => (
+                                    <div key={i.key} className="text-xs p-2 rounded bg-muted/40">
+                                      <p className="text-muted-foreground">{i.label}</p>
+                                      <p className="font-semibold">{formatRupiah(i.value)}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -2072,10 +2862,10 @@ const Payroll = () => {
           <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Landmark className="h-5 w-5" /> Preview e-Payroll Bank
+                <Landmark className="h-5 w-5" /> {t("payrollPage.bankPreview.title")}
               </DialogTitle>
               <DialogDescription>
-                Review data transfer gaji sebelum download file — {MONTHS[selectedMonth - 1].label} {selectedYear}
+                {t("payrollPage.bankPreview.desc", { month: monthLabel(selectedMonth), year: selectedYear })}
               </DialogDescription>
             </DialogHeader>
 
@@ -2084,23 +2874,23 @@ const Payroll = () => {
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-sm text-destructive">
-                    {bankIncompleteEmployees.length} karyawan belum memiliki data rekening bank lengkap:
+                    {t("payrollPage.bankPreview.incompleteTitle", { count: bankIncompleteEmployees.length })}
                   </p>
                   <ul className="text-xs text-destructive/80 mt-1 list-disc list-inside">
                     {bankIncompleteEmployees.map((e) => (
-                      <li key={e.nik}>{e.fullName} — {!e.bankAccountNumber ? "No. Rekening kosong" : "Nama Bank kosong"}</li>
+                      <li key={e.nik}>{e.fullName} — {!e.bankAccountNumber ? t("payrollPage.bankPreview.noAccount") : t("payrollPage.bankPreview.noBank")}</li>
                     ))}
                   </ul>
-                  <p className="text-xs text-muted-foreground mt-1">Lengkapi data di halaman Karyawan sebelum export.</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("payrollPage.bankPreview.completeHint")}</p>
                 </div>
               </div>
             )}
 
             {bankCompanyConfig && (
               <div className="flex items-center gap-4 text-sm bg-muted/50 rounded-lg p-3">
-                <div><span className="text-muted-foreground">Rekening Pengirim:</span> <span className="font-medium">{bankCompanyConfig.account_number}</span></div>
-                <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{bankCompanyConfig.bank_name}</span></div>
-                <div><span className="text-muted-foreground">Total:</span> <span className="font-bold">{formatRupiah(bankPreviewData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
+                <div><span className="text-muted-foreground">{t("payrollPage.bankPreview.senderAccount")}</span> <span className="font-medium">{bankCompanyConfig.account_number}</span></div>
+                <div><span className="text-muted-foreground">{t("payrollPage.bankPreview.bank")}</span> <span className="font-medium">{bankCompanyConfig.bank_name}</span></div>
+                <div><span className="text-muted-foreground">{t("payrollPage.bankPreview.total")}</span> <span className="font-bold">{formatRupiah(bankPreviewData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
               </div>
             )}
 
@@ -2108,22 +2898,101 @@ const Payroll = () => {
               <div className="flex items-start gap-2 text-sm bg-primary/10 border border-primary/20 rounded-lg p-3">
                 <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <p className="text-primary">
-                  <span className="font-semibold">Catatan:</span> Nominal THP sudah dikurangi THR karena THR dibayarkan terpisah melalui e-Payroll THR.
+                  <span className="font-semibold">{t("payrollPage.bankPreview.thrNote")}</span> {t("payrollPage.bankPreview.thrNoteDesc")}
                 </p>
               </div>
             )}
+
+            {bankPreviewData.some(e => e.includesResignMonth) && (() => {
+              const merged = bankPreviewData.filter(e => e.includesResignMonth);
+              const totalBase = merged.reduce((s, e) => s + Math.round(e.baseAmount), 0);
+              const totalResign = merged.reduce((s, e) => s + Math.round(e.includesResignMonth!.amount), 0);
+              return (
+                <div className="text-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-amber-900 dark:text-amber-200">
+                        Rekonsiliasi THP Gabungan ({monthLabel(selectedMonth)} {selectedYear} + {monthLabel(merged[0].includesResignMonth!.month)} {merged[0].includesResignMonth!.year})
+                      </p>
+                      <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                        THP karyawan resign untuk bulan berikutnya digabung ke transfer bulan ini agar sekali kirim.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-amber-200 dark:border-amber-900 bg-background/60 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Karyawan</TableHead>
+                          <TableHead className="text-right">THP {monthLabel(selectedMonth)}</TableHead>
+                          <TableHead className="text-right">THP {monthLabel(merged[0].includesResignMonth!.month)} (prorata)</TableHead>
+                          <TableHead className="text-right">Total Transfer</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {merged.map((e) => (
+                          <TableRow key={`recon-${e.nik}`}>
+                            <TableCell className="font-medium">{e.fullName}</TableCell>
+                            <TableCell className="text-right">{formatRupiah(Math.round(e.baseAmount))}</TableCell>
+                            <TableCell className="text-right text-amber-700 dark:text-amber-300">+ {formatRupiah(Math.round(e.includesResignMonth!.amount))}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatRupiah(Math.round(e.amount))}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-amber-100/60 dark:bg-amber-950/50">
+                          <TableCell className="font-semibold">Subtotal</TableCell>
+                          <TableCell className="text-right font-semibold">{formatRupiah(totalBase)}</TableCell>
+                          <TableCell className="text-right font-semibold text-amber-700 dark:text-amber-300">+ {formatRupiah(totalResign)}</TableCell>
+                          <TableCell className="text-right font-bold">{formatRupiah(totalBase + totalResign)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="flex-1 overflow-auto min-h-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">No</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>No. Rekening</TableHead>
-                    <TableHead>Bank</TableHead>
-                    <TableHead>NIK</TableHead>
-                    <TableHead className="text-right">THP</TableHead>
-                    <TableHead className="w-16 text-center">Tipe</TableHead>
+                    <TableHead className="w-10">{t("payrollPage.bankPreview.colNo")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colName")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colAccount")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colBank")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colNik")}</TableHead>
+                    <TableHead className="text-center w-44">
+                      Tunj. Dinas
+                      <br />
+                      <span className="text-[10px] font-normal text-muted-foreground">belum via voucher?</span>
+                      {(() => {
+                        const eligible = bankPreviewData.filter((r) => r.tunjanganDinas > 0);
+                        if (eligible.length === 0) return null;
+                        const allChecked = eligible.every((r) => r.includeTunjDinas);
+                        const someChecked = eligible.some((r) => r.includeTunjDinas);
+                        return (
+                          <label className="mt-1 flex items-center justify-center gap-1.5 cursor-pointer font-normal">
+                            <input
+                              type="checkbox"
+                              checked={allChecked}
+                              ref={(el) => { if (el) el.indeterminate = !allChecked && someChecked; }}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setBankPreviewData((prev) => prev.map((r) => {
+                                  if (r.tunjanganDinas <= 0 || r.includeTunjDinas === checked) return r;
+                                  const delta = checked ? r.tunjanganDinas : -r.tunjanganDinas;
+                                  return { ...r, includeTunjDinas: checked, amount: r.amount + delta };
+                                }));
+                              }}
+                              className="h-3 w-3"
+                            />
+                            <span className="text-[10px] text-primary">Terapkan semua</span>
+                          </label>
+                        );
+                      })()}
+                    </TableHead>
+                    <TableHead className="text-right">{t("payrollPage.bankPreview.colThp")}</TableHead>
+                    <TableHead className="w-16 text-center">{t("payrollPage.bankPreview.colType")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2132,19 +3001,55 @@ const Payroll = () => {
                     return (
                       <TableRow key={idx} className={isIncomplete ? "bg-destructive/5" : ""}>
                         <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{emp.fullName}</TableCell>
+                        <TableCell className="font-medium">
+                          {emp.fullName}
+                          {emp.includesResignMonth && (
+                            <Badge variant="secondary" className="ml-2 text-[10px]">+ THP {monthLabel(emp.includesResignMonth.month)} {emp.includesResignMonth.year}</Badge>
+                          )}
+                        </TableCell>
                         <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
-                          {emp.bankAccountNumber || "⚠ Belum diisi"}
+                          {emp.bankAccountNumber || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className={!emp.bankName ? "text-destructive font-medium" : ""}>
-                          {emp.bankName || "⚠ Belum diisi"}
+                          {emp.bankName || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
-                        <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
+                        <TableCell className="text-center">
+                          {emp.tunjanganDinas > 0 ? (
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={emp.includeTunjDinas}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setBankPreviewData((prev) => prev.map((r, i) => {
+                                    if (i !== idx) return r;
+                                    const delta = checked ? r.tunjanganDinas : -r.tunjanganDinas;
+                                    return { ...r, includeTunjDinas: checked, amount: r.amount + delta };
+                                  }));
+                                }}
+                                className="h-3.5 w-3.5"
+                              />
+                              <span className="text-xs">{formatRupiah(emp.tunjanganDinas)}</span>
+                            </label>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatRupiah(Math.round(emp.amount))}
+                          {(emp.includesResignMonth || emp.includeTunjDinas) && (
+                            <div className="text-[10px] text-muted-foreground font-normal mt-0.5">
+                              {formatRupiah(Math.round(emp.baseAmount))}
+                              {emp.includeTunjDinas && <> + {formatRupiah(emp.tunjanganDinas)}<span className="text-primary"> (dinas)</span></>}
+                              {emp.includesResignMonth && <> + {formatRupiah(Math.round(emp.includesResignMonth.amount))}</>}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-center">
                           {bankCompanyConfig && (
                             <Badge variant={emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "secondary" : "outline"} className="text-[10px]">
-                              {emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "OBU" : "IBU"}
+                              {emp.bankName?.toLowerCase().includes(bankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "IBU" : "OBU"}
                             </Badge>
                           )}
                         </TableCell>
@@ -2156,12 +3061,95 @@ const Payroll = () => {
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t">
-              <p className="text-xs text-muted-foreground">{bankPreviewData.length} karyawan • Format: TXT (semicolon-separated)</p>
+              <p className="text-xs text-muted-foreground">{t("payrollPage.bankPreview.footer", { count: bankPreviewData.length })}</p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowBankPreview(false)}>Batal</Button>
+                <Button variant="outline" onClick={() => setShowBankPreview(false)}>{t("payrollPage.bankPreview.cancel")}</Button>
                 <Button onClick={handleConfirmBankExport} disabled={exportingBankPayroll || bankIncompleteEmployees.length > 0} className="gap-2">
                   {exportingBankPayroll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  Download e-Payroll
+                  {t("payrollPage.bankPreview.download")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Final Settlement Bank Preview Dialog */}
+        <Dialog open={showFinalSettlementBank} onOpenChange={setShowFinalSettlementBank}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Landmark className="h-5 w-5" /> e-Payroll Final Settlement
+              </DialogTitle>
+              <DialogDescription>
+                Transfer pesangon/uang pisah & pelunasan pinjaman untuk karyawan resign. Slip & e-Payroll bulanan tidak terpengaruh.
+              </DialogDescription>
+            </DialogHeader>
+
+            {finalSettlementIncomplete.length > 0 && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm text-destructive">
+                    {finalSettlementIncomplete.length} karyawan belum memiliki rekening bank
+                  </p>
+                  <ul className="text-xs text-destructive/80 mt-1 list-disc list-inside">
+                    {finalSettlementIncomplete.map((e) => (
+                      <li key={e.settlementId}>{e.fullName}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {finalSettlementCompanyConfig && (
+              <div className="flex items-center gap-4 text-sm bg-muted/50 rounded-lg p-3">
+                <div><span className="text-muted-foreground">Rekening Pengirim:</span> <span className="font-medium">{finalSettlementCompanyConfig.account_number}</span></div>
+                <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{finalSettlementCompanyConfig.bank_name}</span></div>
+                <div><span className="text-muted-foreground">Total:</span> <span className="font-bold">{formatRupiah(finalSettlementBankData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-auto min-h-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">No</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Rekening</TableHead>
+                    <TableHead>Bank</TableHead>
+                    <TableHead>NIK</TableHead>
+                    <TableHead className="text-right">Net Settlement</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {finalSettlementBankData.map((emp, idx) => {
+                    const isIncomplete = !emp.bankAccountNumber || !emp.bankName;
+                    return (
+                      <TableRow key={emp.settlementId} className={isIncomplete ? "bg-destructive/5" : ""}>
+                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{emp.fullName}</TableCell>
+                        <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
+                          {emp.bankAccountNumber || "—"}
+                        </TableCell>
+                        <TableCell className={!emp.bankName ? "text-destructive font-medium" : ""}>
+                          {emp.bankName || "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
+                        <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t">
+              <p className="text-xs text-muted-foreground">{finalSettlementBankData.length} karyawan · setelah export, status → paid</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowFinalSettlementBank(false)}>Batal</Button>
+                <Button onClick={handleConfirmFinalSettlementBankExport} disabled={exportingFinalSettlementBank || finalSettlementIncomplete.length > 0} className="gap-2">
+                  {exportingFinalSettlementBank ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Download CSV
                 </Button>
               </div>
             </div>
@@ -2173,10 +3161,10 @@ const Payroll = () => {
           <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Gift className="h-5 w-5 text-primary" /> Preview e-Payroll THR
+                <Gift className="h-5 w-5 text-primary" /> {t("payrollPage.bankPreview.thrTitle")}
               </DialogTitle>
               <DialogDescription>
-                Review data transfer THR sebelum download file — {MONTHS[selectedMonth - 1].label} {selectedYear}
+                {t("payrollPage.bankPreview.thrDesc", { month: monthLabel(selectedMonth), year: selectedYear })}
               </DialogDescription>
             </DialogHeader>
 
@@ -2185,23 +3173,23 @@ const Payroll = () => {
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-sm text-destructive">
-                    {thrBankIncompleteEmployees.length} karyawan belum memiliki data rekening bank lengkap:
+                    {t("payrollPage.bankPreview.incompleteTitle", { count: thrBankIncompleteEmployees.length })}
                   </p>
                   <ul className="text-xs text-destructive/80 mt-1 list-disc list-inside">
                     {thrBankIncompleteEmployees.map((e) => (
-                      <li key={e.nik}>{e.fullName} — {!e.bankAccountNumber ? "No. Rekening kosong" : "Nama Bank kosong"}</li>
+                      <li key={e.nik}>{e.fullName} — {!e.bankAccountNumber ? t("payrollPage.bankPreview.noAccount") : t("payrollPage.bankPreview.noBank")}</li>
                     ))}
                   </ul>
-                  <p className="text-xs text-muted-foreground mt-1">Lengkapi data di halaman Karyawan sebelum export.</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("payrollPage.bankPreview.completeHint")}</p>
                 </div>
               </div>
             )}
 
             {thrBankCompanyConfig && (
               <div className="flex items-center gap-4 text-sm bg-muted/50 rounded-lg p-3">
-                <div><span className="text-muted-foreground">Rekening Pengirim:</span> <span className="font-medium">{thrBankCompanyConfig.account_number}</span></div>
-                <div><span className="text-muted-foreground">Bank:</span> <span className="font-medium">{thrBankCompanyConfig.bank_name}</span></div>
-                <div><span className="text-muted-foreground">Total THR:</span> <span className="font-bold">{formatRupiah(thrBankPreviewData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
+                <div><span className="text-muted-foreground">{t("payrollPage.bankPreview.senderAccount")}</span> <span className="font-medium">{thrBankCompanyConfig.account_number}</span></div>
+                <div><span className="text-muted-foreground">{t("payrollPage.bankPreview.bank")}</span> <span className="font-medium">{thrBankCompanyConfig.bank_name}</span></div>
+                <div><span className="text-muted-foreground">{t("payrollPage.bankPreview.totalThr")}</span> <span className="font-bold">{formatRupiah(thrBankPreviewData.reduce((s, e) => s + Math.round(e.amount), 0))}</span></div>
               </div>
             )}
 
@@ -2209,13 +3197,13 @@ const Payroll = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">No</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>No. Rekening</TableHead>
-                    <TableHead>Bank</TableHead>
-                    <TableHead>NIK</TableHead>
-                    <TableHead className="text-right">THR</TableHead>
-                    <TableHead className="w-16 text-center">Tipe</TableHead>
+                    <TableHead className="w-10">{t("payrollPage.bankPreview.colNo")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colName")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colAccount")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colBank")}</TableHead>
+                    <TableHead>{t("payrollPage.bankPreview.colNik")}</TableHead>
+                    <TableHead className="text-right">{t("payrollPage.bankPreview.colThr")}</TableHead>
+                    <TableHead className="w-16 text-center">{t("payrollPage.bankPreview.colType")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2226,17 +3214,17 @@ const Payroll = () => {
                         <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                         <TableCell className="font-medium">{emp.fullName}</TableCell>
                         <TableCell className={!emp.bankAccountNumber ? "text-destructive font-medium" : ""}>
-                          {emp.bankAccountNumber || "⚠ Belum diisi"}
+                          {emp.bankAccountNumber || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className={!emp.bankName ? "text-destructive font-medium" : ""}>
-                          {emp.bankName || "⚠ Belum diisi"}
+                          {emp.bankName || t("payrollPage.bankPreview.notFilled")}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">{emp.nik}</TableCell>
                         <TableCell className="text-right font-medium">{formatRupiah(Math.round(emp.amount))}</TableCell>
                         <TableCell className="text-center">
                           {thrBankCompanyConfig && (
                             <Badge variant={emp.bankName?.toLowerCase().includes(thrBankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "secondary" : "outline"} className="text-[10px]">
-                              {emp.bankName?.toLowerCase().includes(thrBankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "OBU" : "IBU"}
+                              {emp.bankName?.toLowerCase().includes(thrBankCompanyConfig.bank_name.toLowerCase().split(' ')[0]) ? "IBU" : "OBU"}
                             </Badge>
                           )}
                         </TableCell>
@@ -2248,12 +3236,12 @@ const Payroll = () => {
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t">
-              <p className="text-xs text-muted-foreground">{thrBankPreviewData.length} karyawan • Format: TXT (semicolon-separated)</p>
+              <p className="text-xs text-muted-foreground">{t("payrollPage.bankPreview.footer", { count: thrBankPreviewData.length })}</p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowThrBankPreview(false)}>Batal</Button>
+                <Button variant="outline" onClick={() => setShowThrBankPreview(false)}>{t("payrollPage.bankPreview.cancel")}</Button>
                 <Button onClick={handleConfirmThrBankExport} disabled={exportingThrBank || thrBankIncompleteEmployees.length > 0} className="gap-2">
                   {exportingThrBank ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  Download e-Payroll THR
+                  {t("payrollPage.bankPreview.downloadThr")}
                 </Button>
               </div>
             </div>
@@ -2265,6 +3253,19 @@ const Payroll = () => {
           <PayrollOverrideHistory />
         </TabsContent>
       </Tabs>
+
+      <UnlockPayrollDialog
+        open={showUnlockDialog}
+        onOpenChange={setShowUnlockDialog}
+        onConfirm={handleUnlock}
+        periodLabel={period ? `${MONTHS[selectedMonth - 1].label} ${selectedYear}` : ""}
+      />
+      <BusinessTravelVoucherExportDialog
+        open={showTravelVoucherDialog}
+        onOpenChange={setShowTravelVoucherDialog}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+      />
     </DashboardLayout>
   );
 };

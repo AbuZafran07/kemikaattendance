@@ -27,6 +27,9 @@ const AdminCreateBusinessTravelDialog = ({ open, onOpenChange, onCreated }: Admi
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [caFile, setCaFile] = useState<File | null>(null);
+  const [caNumber, setCaNumber] = useState("");
+
 
   useEffect(() => {
     if (open) {
@@ -42,6 +45,8 @@ const AdminCreateBusinessTravelDialog = ({ open, onOpenChange, onCreated }: Admi
     setStartDate("");
     setEndDate("");
     setNotes("");
+    setCaFile(null);
+    setCaNumber("");
   };
 
   const fetchEmployees = async () => {
@@ -78,9 +83,28 @@ const AdminCreateBusinessTravelDialog = ({ open, onOpenChange, onCreated }: Admi
         status: "approved" as any,
         approved_by: currentUser?.id,
         approved_at: new Date().toISOString(),
-      }).select("id").single();
+        ca_number: caNumber.trim() || null,
+      } as any).select("id").single();
 
       if (error) throw error;
+
+      // Upload dokumen CA (Cash Advance) — syarat tunjangan dinas
+      if (caFile && data?.id) {
+        const ext = caFile.name.split(".").pop();
+        const path = `${selectedUserId}/ca_${data.id}_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("business-travel-docs")
+          .upload(path, caFile);
+        if (upErr) {
+          toast({ title: "Dokumen CA gagal diupload", description: upErr.message, variant: "destructive" });
+        } else {
+          await supabase
+            .from("business_travel_requests")
+            .update({ ca_document_url: path, ca_uploaded_at: new Date().toISOString() } as any)
+            .eq("id", data.id);
+        }
+      }
+
 
       if (currentUser && data) {
         await logApprovalAction({
@@ -94,7 +118,28 @@ const AdminCreateBusinessTravelDialog = ({ open, onOpenChange, onCreated }: Admi
         });
       }
 
-      toast({ title: "Berhasil", description: "Perjalanan dinas karyawan berhasil dibuat" });
+      // Auto-inject travel allowance to payroll_overrides (admin-create is auto-approved)
+      let travelNote = "";
+      try {
+        const { applyBusinessTravelAllowance } = await import("@/lib/businessTravelAllowance");
+        const res = await applyBusinessTravelAllowance({
+          userId: selectedUserId,
+          startDate,
+          endDate,
+          requestId: data?.id,
+        });
+        if (!res.ok && res.reason) {
+          toast({ title: "Tunjangan dinas tidak diproses", description: res.reason, variant: "destructive" });
+        } else if (res.ok && res.amount > 0) {
+          const monthName = new Date(res.period_year, res.period_month - 1, 1).toLocaleString("id-ID", { month: "long" });
+          const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(res.amount);
+          travelNote = ` Tunj. dinas ${fmt} → payroll ${monthName} ${res.period_year}.`;
+        }
+      } catch (err) {
+        console.error("applyBusinessTravelAllowance failed:", err);
+      }
+
+      toast({ title: "Berhasil", description: `Perjalanan dinas karyawan berhasil dibuat.${travelNote}` });
       onCreated();
       onOpenChange(false);
     } catch (error: any) {
@@ -149,6 +194,32 @@ const AdminCreateBusinessTravelDialog = ({ open, onOpenChange, onCreated }: Admi
             <Label>Catatan (opsional)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan tambahan..." />
           </div>
+          <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+            <div>
+              <Label>Nomor CA (Cash Advance) — opsional</Label>
+              <Input value={caNumber} onChange={(e) => setCaNumber(e.target.value)} placeholder="Contoh: CA/2026/09/001" />
+            </div>
+            <div>
+              <Label>Dokumen CA (Cash Advance)</Label>
+              <Input
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  if (f && f.size > 10 * 1024 * 1024) {
+                    toast({ title: "Ukuran file terlalu besar", description: "Maksimal 10 MB.", variant: "destructive" });
+                    e.target.value = "";
+                    return;
+                  }
+                  setCaFile(f);
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tanpa dokumen CA, tunjangan perjalanan dinas tidak akan diproses.
+            </p>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>
             <Button onClick={handleSubmit} disabled={loading}>

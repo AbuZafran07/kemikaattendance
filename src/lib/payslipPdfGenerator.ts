@@ -73,6 +73,7 @@ export interface PayslipData {
   bonus_tahunan: number;
   bonus_lainnya: number;
   pengembalian_employee: number;
+  tunjangan_perjalanan_dinas?: number;
   // Deductions
   bpjs_ketenagakerjaan: number; // JHT + JP employee
   bpjs_kesehatan: number;
@@ -154,7 +155,7 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
   // Calculate tunjangan kehadiran (attendance allowance)
   const fixedTotal = (data.tunjangan_komunikasi || 0) + (data.tunjangan_jabatan || 0) + (data.tunjangan_operasional || 0);
   const incidentalTotal = (data.tunjangan_kesehatan || 0) + (data.bonus_tahunan || 0) + (data.thr || 0)
-    + (data.insentif_kinerja || 0) + (data.bonus_lainnya || 0) + (data.pengembalian_employee || 0) + (data.insentif_penjualan || 0);
+    + (data.insentif_kinerja || 0) + (data.bonus_lainnya || 0) + (data.pengembalian_employee || 0) + (data.insentif_penjualan || 0) + (data.tunjangan_perjalanan_dinas || 0);
   const tunjanganKehadiran = Math.max(0, data.allowance - fixedTotal - incidentalTotal);
 
   // JHT Employee = 2% of basic salary, JP Employee = 1% of basic salary
@@ -176,6 +177,7 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
     ["Insentif Penjualan", data.insentif_penjualan || 0],
     ["Bonus Tahunan", data.bonus_tahunan || 0],
     ["Bonus Lainnya", data.bonus_lainnya || 0],
+    ["Tunjangan Perjalanan Dinas", data.tunjangan_perjalanan_dinas || 0],
     ["Pengembalian Employee", data.pengembalian_employee || 0],
   ];
 
@@ -250,7 +252,7 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
     + (data.tunjangan_jabatan || 0) + (data.tunjangan_komunikasi || 0) + (data.tunjangan_kesehatan || 0)
     + (data.thr || 0) + (data.overtime_total || 0) + (data.insentif_kinerja || 0)
     + (data.insentif_penjualan || 0) + (data.bonus_tahunan || 0) + (data.bonus_lainnya || 0)
-    + (data.pengembalian_employee || 0);
+    + (data.pengembalian_employee || 0) + (data.tunjangan_perjalanan_dinas || 0);
 
   const totalDeduction = data.bpjs_ketenagakerjaan + data.bpjs_kesehatan
     + (data.loan_deduction || 0) + (data.other_deduction || 0) + data.pph21_monthly;

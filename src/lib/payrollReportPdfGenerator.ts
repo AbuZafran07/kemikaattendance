@@ -64,6 +64,7 @@ export interface PayrollReportItem {
   bonus_tahunan: number;
   bonus_lainnya: number;
   pengembalian_employee: number;
+  tunjangan_perjalanan_dinas?: number;
   bpjs_ketenagakerjaan: number;
   bpjs_kesehatan: number;
   loan_deduction: number;
@@ -240,7 +241,8 @@ export async function generatePayrollReportPDF(
   const incomeRows = items.map((item, idx) => {
     const fixedTotal = (item.tunjangan_komunikasi || 0) + (item.tunjangan_jabatan || 0) + (item.tunjangan_operasional || 0);
     const incidentalTotal = (item.tunjangan_kesehatan || 0) + (item.bonus_tahunan || 0) + (item.thr || 0)
-      + (item.insentif_kinerja || 0) + (item.bonus_lainnya || 0) + (item.pengembalian_employee || 0) + (item.insentif_penjualan || 0);
+      + (item.insentif_kinerja || 0) + (item.bonus_lainnya || 0) + (item.pengembalian_employee || 0) + (item.insentif_penjualan || 0)
+      + (item.tunjangan_perjalanan_dinas || 0);
     const tunjanganKehadiran = Math.max(0, item.allowance - fixedTotal - incidentalTotal);
 
     return [
@@ -254,6 +256,7 @@ export async function generatePayrollReportPDF(
       fmtRp(item.tunjangan_jabatan || 0),
       fmtRp(item.tunjangan_komunikasi || 0),
       fmtRp(item.tunjangan_kesehatan || 0),
+      fmtRp(item.tunjangan_perjalanan_dinas || 0),
       fmtRp(item.overtime_total || 0),
       fmtRp(item.thr || 0),
       fmtRp((item.insentif_kinerja || 0) + (item.insentif_penjualan || 0) + (item.bonus_tahunan || 0) + (item.bonus_lainnya || 0) + (item.pengembalian_employee || 0)),
@@ -267,13 +270,14 @@ export async function generatePayrollReportPDF(
     fmtRp(items.reduce((s, i) => s + i.basic_salary, 0)),
     fmtRp(items.reduce((s, i) => {
       const f = (i.tunjangan_komunikasi || 0) + (i.tunjangan_jabatan || 0) + (i.tunjangan_operasional || 0);
-      const inc = (i.tunjangan_kesehatan || 0) + (i.bonus_tahunan || 0) + (i.thr || 0) + (i.insentif_kinerja || 0) + (i.bonus_lainnya || 0) + (i.pengembalian_employee || 0) + (i.insentif_penjualan || 0);
+      const inc = (i.tunjangan_kesehatan || 0) + (i.bonus_tahunan || 0) + (i.thr || 0) + (i.insentif_kinerja || 0) + (i.bonus_lainnya || 0) + (i.pengembalian_employee || 0) + (i.insentif_penjualan || 0) + (i.tunjangan_perjalanan_dinas || 0);
       return s + Math.max(0, i.allowance - f - inc);
     }, 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_operasional || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_jabatan || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_komunikasi || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.tunjangan_kesehatan || 0), 0)),
+    fmtRp(items.reduce((s, i) => s + (i.tunjangan_perjalanan_dinas || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.overtime_total || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.thr || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.insentif_kinerja || 0) + (i.insentif_penjualan || 0) + (i.bonus_tahunan || 0) + (i.bonus_lainnya || 0) + (i.pengembalian_employee || 0), 0)),
@@ -282,7 +286,7 @@ export async function generatePayrollReportPDF(
 
   autoTable(doc, {
     startY: 24,
-    head: [["No", "NIK", "Nama", "Dept", "Gaji Pokok", "T. Kehadiran", "T. Operasional", "T. Jabatan", "T. Komunikasi", "T. Kesehatan", "Lembur", "THR", "Bonus & Insentif", "Total Bruto"]],
+    head: [["No", "NIK", "Nama", "Dept", "Gaji Pokok", "T. Kehadiran", "T. Operasional", "T. Jabatan", "T. Komunikasi", "T. Kesehatan", "T. Dinas", "Lembur", "THR", "Bonus & Insentif", "Total Bruto"]],
     body: [...incomeRows, incomeTotals],
     margin: { left: mx, right: mx },
     styles: { fontSize: 6.5, cellPadding: 1.8, lineWidth: 0.1, lineColor: [200, 200, 200] },

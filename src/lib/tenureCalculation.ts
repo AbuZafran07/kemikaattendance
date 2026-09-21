@@ -126,3 +126,89 @@ export function calculateProrateFactor(
   
   return Math.min(1, Math.max(0, workedDays / totalDays));
 }
+
+/**
+ * Calculate prorate factor that accounts for BOTH join date and resign date
+ * within the same payroll cutoff period.
+ *
+ * - If joinDate is after period start, employee starts working partway in.
+ * - If resignDate is before period end, employee stops working partway through.
+ * - Returns workedDays / totalDays (0..1).
+ *
+ * @param joinDate Employee join date (always provided)
+ * @param resignDate Employee resign date (null if still active)
+ * @param periodMonth Payroll period month (1-12)
+ * @param periodYear Payroll period year
+ * @param cutoffDay The cutoff day (default 21)
+ * @returns factor between 0 and 1
+ */
+export function calculateProrateFactorWithResign(
+  joinDate: Date,
+  resignDate: Date | null,
+  periodMonth: number,
+  periodYear: number,
+  cutoffDay: number = 21
+): number {
+  const prevMonth = periodMonth - 1; // JS month index for period END month
+  const periodStartMonth = prevMonth - 1; // JS month index for period START month
+  const periodStart = new Date(periodYear, periodStartMonth, cutoffDay);
+  const periodEnd = new Date(periodYear, prevMonth, cutoffDay - 1);
+
+  // Effective start = max(joinDate, periodStart)
+  const effectiveStart = joinDate.getTime() > periodStart.getTime() ? joinDate : periodStart;
+  // Effective end = min(resignDate, periodEnd) when resignDate exists
+  const effectiveEnd =
+    resignDate && resignDate.getTime() < periodEnd.getTime() ? resignDate : periodEnd;
+
+  // Out of bounds
+  if (effectiveEnd.getTime() < periodStart.getTime()) return 0;
+  if (effectiveStart.getTime() > periodEnd.getTime()) return 0;
+  if (effectiveEnd.getTime() < effectiveStart.getTime()) return 0;
+
+  const totalDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1;
+  const workedDays = Math.round((effectiveEnd.getTime() - effectiveStart.getTime()) / 86400000) + 1;
+
+  return Math.min(1, Math.max(0, workedDays / totalDays));
+}
+
+/**
+ * Returns the cutoff period boundaries for a given payroll month.
+ */
+export function getCutoffPeriodBounds(
+  periodMonth: number,
+  periodYear: number,
+  cutoffDay: number = 21
+): { start: Date; end: Date } {
+  const prevMonth = periodMonth - 1;
+  const start = new Date(periodYear, prevMonth - 1, cutoffDay);
+  const end = new Date(periodYear, prevMonth, cutoffDay - 1);
+  return { start, end };
+}
+
+/**
+ * Validates that a (start_date, end_date) pair correctly maps to the
+ * payroll month/year using the configured cutoff day.
+ * Used to guard medical reimbursement / allowance period sync.
+ */
+export function validateCutoffPeriodForPayroll(
+  startStr: string,
+  endStr: string,
+  payrollMonth: number,
+  payrollYear: number,
+  cutoffDay: number = 21
+): { valid: boolean; reason?: string; expected: { start: string; end: string } } {
+  const { start, end } = getCutoffPeriodBounds(payrollMonth, payrollYear, cutoffDay);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const expected = { start: fmt(start), end: fmt(end) };
+  if (startStr !== expected.start || endStr !== expected.end) {
+    return {
+      valid: false,
+      reason: `Periode ${startStr}–${endStr} tidak sesuai cut-off payroll ${pad(payrollMonth)}/${payrollYear} (harusnya ${expected.start}–${expected.end}).`,
+      expected,
+    };
+  }
+  return { valid: true, expected };
+}
+

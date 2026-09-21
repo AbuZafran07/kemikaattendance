@@ -17,6 +17,27 @@ const MAX_BACKUPS = 4;
 const FIREBASE_SERVER_KEY = Deno.env.get("FIREBASE_SERVER_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
+// Ambil SEMUA baris (PostgREST default hanya 1000 baris per request)
+async function fetchAllRows(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  table: string,
+): Promise<Record<string, unknown>[]> {
+  const PAGE = 1000;
+  let from = 0;
+  let all: Record<string, unknown>[] = [];
+  while (true) {
+    const { data, error } = await supabase.from(table).select("*").range(from, from + PAGE - 1);
+    if (error) throw new Error(`Gagal ambil ${table}: ${error.message}`);
+    if (!data || data.length === 0) break;
+    all = all.concat(data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+
 async function sendEmailNotification(
   adminEmails: string[],
   success: boolean,
@@ -206,28 +227,67 @@ Deno.serve(async (req) => {
     return new Response(null, {
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
       },
     });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const cronSecret = Deno.env.get("BUDGET_EXPENSE_SECRET");
   const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  // Authentication: either a valid admin Bearer token, or a shared cron secret header
+  const providedCronSecret = req.headers.get("x-cron-secret");
+  const isCron = !!cronSecret && providedCronSecret === cronSecret;
+
+  if (!isCron) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const authClient = createClient(supabaseUrl, anonKey);
+    const { data: userData, error: userErr } = await authClient.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    }
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    }
+  }
+
 
   try {
     const backupData: Record<string, unknown[]> = {};
     let totalRecords = 0;
     for (const table of TABLES) {
-      const { data, error } = await supabase.from(table).select("*");
-      if (error) {
-        console.error(`Error fetching ${table}:`, error.message);
+      try {
+        const rows = await fetchAllRows(supabase, table);
+        backupData[table] = rows;
+        totalRecords += rows.length;
+      } catch (e) {
+        console.error(`Error fetching ${table}:`, e instanceof Error ? e.message : e);
         backupData[table] = [];
-      } else {
-        backupData[table] = data || [];
-        totalRecords += (data || []).length;
       }
     }
+
 
     const backup = {
       version: "1.0",
@@ -273,11 +333,12 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (err) {
-    console.error("Scheduled backup failed:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Scheduled backup failed:", message);
 
-    await notifyAdmins(supabase, false, err.message || "Unknown error");
+    await notifyAdmins(supabase, false, message || "Unknown error");
 
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });

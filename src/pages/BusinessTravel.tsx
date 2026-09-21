@@ -10,7 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { id } from "date-fns/locale";
+import { id, enUS } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ import { notifyEmployee, NotificationTemplates, formatDateForNotification } from
 import logger from "@/lib/logger";
 import { logApprovalAction } from "@/lib/approvalAuditLog";
 import AdminCreateBusinessTravelDialog from "@/components/AdminCreateBusinessTravelDialog";
+import { applyBusinessTravelAllowance } from "@/lib/businessTravelAllowance";
 
 interface BusinessTravelRequest {
   id: string;
@@ -39,6 +41,9 @@ interface BusinessTravelRequest {
   notes: string | null;
   status: string;
   document_url: string | null;
+  ca_document_url?: string | null;
+  ca_number?: string | null;
+  ca_uploaded_at?: string | null;
   rejection_reason: string | null;
   created_at: string;
   profiles?: {
@@ -54,6 +59,8 @@ const BusinessTravel = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const { userRole } = useAuth();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.resolvedLanguage?.startsWith("en") ? enUS : id;
   const isAdmin = userRole === "admin";
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -66,6 +73,30 @@ const BusinessTravel = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [caFile, setCaFile] = useState<File | null>(null);
+
+  const handleCaFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Ukuran file terlalu besar", description: "Maksimal 10 MB.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    setCaFile(file);
+  };
+
+  const openDocument = async (path: string) => {
+    const { data, error } = await supabase.storage
+      .from("business-travel-docs")
+      .createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) {
+      toast({ title: "Gagal membuka dokumen", description: error?.message, variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  };
+
 
   // Pagination
   const totalPages = Math.ceil(requests.length / itemsPerPage);
@@ -89,8 +120,8 @@ const BusinessTravel = () => {
 
           if (payload.eventType === "INSERT") {
             toast({
-              title: "Pengajuan Perjalanan Dinas Baru",
-              description: "Ada permintaan perjalanan dinas baru masuk",
+              title: t("travelAdmin.toastNewTitle"),
+              description: t("travelAdmin.toastNewDesc"),
             });
           }
         }
@@ -113,7 +144,7 @@ const BusinessTravel = () => {
     if (requestsError) {
       logger.error("Error fetching requests:", requestsError);
       toast({
-        title: "Gagal Memuat Data",
+        title: t("travelAdmin.toastLoadFail"),
         description: requestsError.message,
         variant: "destructive",
       });
@@ -154,6 +185,7 @@ const BusinessTravel = () => {
   const handleApproveClick = (request: BusinessTravelRequest) => {
     setSelectedRequest(request);
     setUploadingFile(null);
+    setCaFile(null);
     setUploadDialogOpen(true);
   };
 
@@ -170,8 +202,8 @@ const BusinessTravel = () => {
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
         toast({
-          title: "Format File Tidak Didukung",
-          description: "Gunakan format PDF, DOC, DOCX, JPG, atau PNG",
+          title: t("travelAdmin.toastFormatTitle"),
+          description: t("travelAdmin.toastFormatDesc"),
           variant: "destructive",
         });
         return;
@@ -179,8 +211,8 @@ const BusinessTravel = () => {
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast({
-          title: "File Terlalu Besar",
-          description: "Maksimal ukuran file adalah 10MB",
+          title: t("travelAdmin.toastSizeTitle"),
+          description: t("travelAdmin.toastSizeDesc"),
           variant: "destructive",
         });
         return;
@@ -211,6 +243,20 @@ const BusinessTravel = () => {
         documentUrl = fileName;
       }
 
+      // Upload dokumen CA (Cash Advance) bila admin melengkapi
+      if (caFile) {
+        const caExt = caFile.name.split('.').pop();
+        const caPath = `${selectedRequest.user_id}/ca_${selectedRequest.id}_${Date.now()}.${caExt}`;
+        const { error: caErr } = await supabase.storage
+          .from("business-travel-docs")
+          .upload(caPath, caFile);
+        if (caErr) throw caErr;
+        await supabase
+          .from("business_travel_requests")
+          .update({ ca_document_url: caPath, ca_uploaded_at: new Date().toISOString() } as any)
+          .eq("id", selectedRequest.id);
+      }
+
       // Use secure RPC function instead of direct update
       const { error } = await supabase.rpc('approve_business_travel_request', {
         request_id: selectedRequest.id,
@@ -219,11 +265,33 @@ const BusinessTravel = () => {
 
       if (error) throw error;
 
+
+      // Auto-calc & inject business travel allowance into payroll_overrides
+      let travelAllowanceNote = "";
+      try {
+        const { applyBusinessTravelAllowance } = await import("@/lib/businessTravelAllowance");
+        const res = await applyBusinessTravelAllowance({
+          userId: selectedRequest.user_id,
+          startDate: selectedRequest.start_date,
+          endDate: selectedRequest.end_date,
+          requestId: selectedRequest.id,
+        });
+        if (!res.ok && res.reason) {
+          toast({ title: "Tunjangan dinas tidak diproses", description: res.reason, variant: "destructive" });
+        } else if (res.ok && res.amount > 0) {
+          const monthName = new Date(res.period_year, res.period_month - 1, 1).toLocaleString("id-ID", { month: "long" });
+          const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(res.amount);
+          travelAllowanceNote = ` • Tunj. dinas ${fmt} ditambahkan ke payroll ${monthName} ${res.period_year}.`;
+        }
+      } catch (err) {
+        console.error("applyBusinessTravelAllowance failed:", err);
+      }
+
       toast({
-        title: "Berhasil",
-        description: documentUrl 
-          ? "Perjalanan dinas disetujui dan dokumen berhasil diunggah" 
-          : "Perjalanan dinas disetujui",
+        title: t("travelAdmin.toastOk"),
+        description: (documentUrl 
+          ? t("travelAdmin.toastApproveOkDoc")
+          : t("travelAdmin.toastApproveOk")) + travelAllowanceNote,
       });
 
       const currentUser = (await supabase.auth.getUser()).data.user;
@@ -251,7 +319,7 @@ const BusinessTravel = () => {
     } catch (error: any) {
       logger.error("Error approving request:", error);
       toast({
-        title: "Gagal Menyetujui",
+        title: t("travelAdmin.toastApproveFail"),
         description: error.message,
         variant: "destructive",
       });
@@ -269,14 +337,14 @@ const BusinessTravel = () => {
       // Use secure RPC function instead of direct update
       const { error } = await supabase.rpc('reject_business_travel_request', {
         request_id: selectedRequest.id,
-        reason: rejectionReason || "Ditolak oleh admin",
+        reason: rejectionReason || t("travelAdmin.rejectedByAdmin"),
       });
 
       if (error) throw error;
 
       toast({
-        title: "Berhasil",
-        description: "Perjalanan dinas ditolak",
+        title: t("travelAdmin.toastOk"),
+        description: t("travelAdmin.toastRejectOk"),
       });
 
       const currentUser = (await supabase.auth.getUser()).data.user;
@@ -287,7 +355,7 @@ const BusinessTravel = () => {
           action_type: "rejected",
           performed_by: currentUser.id,
           target_user_id: selectedRequest.user_id,
-          notes: rejectionReason || "Ditolak oleh admin",
+          notes: rejectionReason || t("travelAdmin.rejectedByAdmin"),
           details: { destination: selectedRequest.destination },
         });
       }
@@ -295,7 +363,7 @@ const BusinessTravel = () => {
       // Send notification to employee
       const notification = NotificationTemplates.businessTravelRejected(
         selectedRequest.destination, 
-        rejectionReason || "Ditolak oleh admin"
+        rejectionReason || t("travelAdmin.rejectedByAdmin")
       );
       notifyEmployee(selectedRequest.user_id, notification.title, notification.body, { type: 'business_travel_rejected' });
 
@@ -306,7 +374,7 @@ const BusinessTravel = () => {
     } catch (error: any) {
       logger.error("Error rejecting request:", error);
       toast({
-        title: "Gagal Menolak",
+        title: t("travelAdmin.toastRejectFail"),
         description: error.message,
         variant: "destructive",
       });
@@ -351,8 +419,8 @@ const BusinessTravel = () => {
       if (error) throw error;
 
       toast({
-        title: "Berhasil",
-        description: "Dokumen berhasil diunggah",
+        title: t("travelAdmin.toastOk"),
+        description: t("travelAdmin.toastUploadOk"),
       });
 
       setUploadDialogOpen(false);
@@ -362,7 +430,7 @@ const BusinessTravel = () => {
     } catch (error: any) {
       logger.error("Error uploading document:", error);
       toast({
-        title: "Gagal Mengunggah",
+        title: t("travelAdmin.toastUploadFail"),
         description: error.message,
         variant: "destructive",
       });
@@ -374,11 +442,11 @@ const BusinessTravel = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
-        return <Badge className="bg-primary">Disetujui</Badge>;
+        return <Badge className="bg-primary">{t("travelAdmin.approved")}</Badge>;
       case "rejected":
-        return <Badge variant="destructive">Ditolak</Badge>;
+        return <Badge variant="destructive">{t("travelAdmin.rejected")}</Badge>;
       case "pending":
-        return <Badge variant="secondary">Pending</Badge>;
+        return <Badge variant="secondary">{t("travelAdmin.pending")}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -389,11 +457,11 @@ const BusinessTravel = () => {
     try {
       const { error } = await supabase.from("business_travel_requests").delete().eq("id", deleteTargetId);
       if (error) throw error;
-      toast({ title: "Berhasil", description: "Permintaan perjalanan dinas berhasil dihapus" });
+      toast({ title: t("travelAdmin.toastOk"), description: t("travelAdmin.toastDeleteOk") });
       fetchRequests();
     } catch (err) {
       logger.error("Failed to delete business travel request:", err);
-      toast({ title: "Gagal", description: "Gagal menghapus permintaan perjalanan dinas", variant: "destructive" });
+      toast({ title: t("travelAdmin.toastFail"), description: t("travelAdmin.toastDeleteFail"), variant: "destructive" });
     } finally {
       setDeleteConfirmOpen(false);
       setDeleteTargetId(null);
@@ -405,13 +473,13 @@ const BusinessTravel = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Manajemen Perjalanan Dinas</h1>
-            <p className="text-muted-foreground mt-1">Kelola permintaan perjalanan dinas karyawan</p>
+            <h1 className="text-3xl font-bold tracking-tight">{t("travelAdmin.pageTitle")}</h1>
+            <p className="text-muted-foreground mt-1">{t("travelAdmin.pageSubtitle")}</p>
           </div>
           {isAdmin && (
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Buat Dinas
+              {t("travelAdmin.createBtn")}
             </Button>
           )}
         </div>
@@ -419,7 +487,7 @@ const BusinessTravel = () => {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Permintaan</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("travelAdmin.totalRequests")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -431,7 +499,7 @@ const BusinessTravel = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("travelAdmin.pending")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -443,7 +511,7 @@ const BusinessTravel = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Disetujui</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("travelAdmin.approved")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -456,24 +524,25 @@ const BusinessTravel = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Daftar Permintaan Perjalanan Dinas</CardTitle>
-            <CardDescription>Semua permintaan perjalanan dinas karyawan</CardDescription>
+            <CardTitle>{t("travelAdmin.listTitle")}</CardTitle>
+            <CardDescription>{t("travelAdmin.listDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-auto max-h-[calc(100vh-400px)]">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>NIK</TableHead>
-                    <TableHead>Departemen</TableHead>
-                    <TableHead>Tujuan</TableHead>
-                    <TableHead>Keperluan</TableHead>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Durasi</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Dokumen</TableHead>
-                    {isAdmin && <TableHead>Aksi</TableHead>}
+                    <TableHead>{t("travelAdmin.colName")}</TableHead>
+                    <TableHead>{t("travelAdmin.colNik")}</TableHead>
+                    <TableHead>{t("travelAdmin.colDept")}</TableHead>
+                    <TableHead>{t("travelAdmin.colDestination")}</TableHead>
+                    <TableHead>{t("travelAdmin.colPurpose")}</TableHead>
+                    <TableHead>{t("travelAdmin.colDate")}</TableHead>
+                    <TableHead>{t("travelAdmin.colDuration")}</TableHead>
+                    <TableHead>{t("travelAdmin.colStatus")}</TableHead>
+                    <TableHead>{t("travelAdmin.colDocument")}</TableHead>
+                    <TableHead>CA</TableHead>
+                    {isAdmin && <TableHead>{t("travelAdmin.colAction")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -486,19 +555,34 @@ const BusinessTravel = () => {
                         <TableCell>{request.destination}</TableCell>
                         <TableCell className="max-w-xs truncate">{request.purpose}</TableCell>
                         <TableCell>
-                          {format(new Date(request.start_date), "d MMM yyyy", { locale: id })} -
-                          {format(new Date(request.end_date), "d MMM yyyy", { locale: id })}
+                          {format(new Date(request.start_date), "d MMM yyyy", { locale: dateLocale })} -
+                          {format(new Date(request.end_date), "d MMM yyyy", { locale: dateLocale })}
                         </TableCell>
-                        <TableCell>{request.total_days} hari</TableCell>
+                        <TableCell>{t("travelAdmin.days", { n: request.total_days })}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         <TableCell>
                           {request.document_url ? (
                             <Badge variant="outline" className="gap-1">
                               <FileText className="h-3 w-3" />
-                              Ada
+                              {t("travelAdmin.docExists")}
                             </Badge>
                           ) : (
-                            <Badge variant="secondary">Belum Ada</Badge>
+                            <Badge variant="secondary">{t("travelAdmin.docNone")}</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {request.ca_document_url ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1 text-xs"
+                              onClick={() => openDocument(request.ca_document_url!)}
+                            >
+                              <Download className="h-3 w-3" />
+                              CA ✓
+                            </Button>
+                          ) : (
+                            <Badge variant="secondary">Tanpa CA</Badge>
                           )}
                         </TableCell>
                         {isAdmin && (
@@ -518,7 +602,7 @@ const BusinessTravel = () => {
                                 </>
                               )}
                               {request.status === "approved" && (
-                                <Button size="sm" variant="outline" onClick={() => handleUploadDocument(request)}>
+                                <Button size="sm" variant="outline" onClick={() => handleUploadDocument(request)} title="Upload Surat Tugas">
                                   <Upload className="h-4 w-4" />
                                 </Button>
                               )}
@@ -534,8 +618,8 @@ const BusinessTravel = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={isAdmin ? 10 : 9} className="text-center py-8 text-muted-foreground">
-                        Belum ada permintaan perjalanan dinas
+                      <TableCell colSpan={isAdmin ? 11 : 10} className="text-center py-8 text-muted-foreground">
+                        {t("travelAdmin.emptyTable")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -559,25 +643,25 @@ const BusinessTravel = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {selectedRequest?.status === "approved" ? "Upload Surat Dinas" : "Setujui Perjalanan Dinas"}
+              {selectedRequest?.status === "approved" ? t("travelAdmin.uploadTitle") : t("travelAdmin.approveTitle")}
             </DialogTitle>
             <DialogDescription>
               {selectedRequest?.status === "approved"
-                ? "Upload dokumen surat dinas untuk karyawan"
-                : "Anda dapat mengupload surat dinas sekarang atau nanti setelah disetujui"}
+                ? t("travelAdmin.uploadDesc")
+                : t("travelAdmin.approveDesc")}
             </DialogDescription>
           </DialogHeader>
 
           {selectedRequest && (
             <div className="space-y-4">
               <div className="text-sm space-y-1">
-                <p><strong>Nama:</strong> {selectedRequest.profiles?.full_name}</p>
-                <p><strong>Tujuan:</strong> {selectedRequest.destination}</p>
-                <p><strong>Tanggal:</strong> {format(new Date(selectedRequest.start_date), "d MMM yyyy", { locale: id })} - {format(new Date(selectedRequest.end_date), "d MMM yyyy", { locale: id })}</p>
+                <p><strong>{t("travelAdmin.fName")}:</strong> {selectedRequest.profiles?.full_name}</p>
+                <p><strong>{t("travelAdmin.fDestination")}:</strong> {selectedRequest.destination}</p>
+                <p><strong>{t("travelAdmin.fDate")}:</strong> {format(new Date(selectedRequest.start_date), "d MMM yyyy", { locale: dateLocale })} - {format(new Date(selectedRequest.end_date), "d MMM yyyy", { locale: dateLocale })}</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="document">Upload Surat Dinas (Opsional)</Label>
+                <Label htmlFor="document">{t("travelAdmin.uploadLabel")}</Label>
                 <Input
                   id="document"
                   type="file"
@@ -587,27 +671,57 @@ const BusinessTravel = () => {
                 />
                 {uploadingFile && (
                   <p className="text-xs text-muted-foreground">
-                    File dipilih: {uploadingFile.name}
+                    {t("travelAdmin.fileSelected", { name: uploadingFile.name })}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Format: PDF, DOC, DOCX, JPG, PNG (Maks. 10MB)
+                  {t("travelAdmin.fileFormatHint")}
                 </p>
               </div>
+
+              {selectedRequest.status !== "approved" && (
+                <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+                  {selectedRequest.ca_document_url ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Dokumen CA sudah dilampirkan{selectedRequest.ca_number ? ` (No. ${selectedRequest.ca_number})` : ""} — tunjangan dinas akan diproses.
+                      </p>
+                      <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => openDocument(selectedRequest.ca_document_url!)}>
+                        <Download className="h-3 w-3" /> Lihat CA
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs text-destructive">
+                        Belum ada dokumen CA (Cash Advance). Bila tetap disetujui tanpa CA, tunjangan
+                        perjalanan dinas <strong>tidak akan diproses</strong>.
+                      </p>
+                      <Label htmlFor="ca-doc-admin">Lampirkan Dokumen CA (opsional)</Label>
+                      <Input
+                        id="ca-doc-admin"
+                        type="file"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleCaFileChange}
+                      />
+                      {caFile && <p className="text-xs text-muted-foreground">File CA: {caFile.name}</p>}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
-              Batal
+              {t("travelAdmin.cancel")}
             </Button>
             {selectedRequest?.status === "approved" ? (
               <Button onClick={handleUploadOnly} disabled={!uploadingFile || isProcessing}>
-                {isProcessing ? "Mengupload..." : "Upload Dokumen"}
+                {isProcessing ? t("travelAdmin.uploading") : t("travelAdmin.uploadDoc")}
               </Button>
             ) : (
               <Button onClick={handleApprove} disabled={isProcessing}>
-                {isProcessing ? "Memproses..." : uploadingFile ? "Setujui & Upload" : "Setujui Tanpa Dokumen"}
+                {isProcessing ? t("travelAdmin.processing") : uploadingFile ? t("travelAdmin.approveAndUpload") : t("travelAdmin.approveNoDoc")}
               </Button>
             )}
           </DialogFooter>
@@ -618,24 +732,24 @@ const BusinessTravel = () => {
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tolak Perjalanan Dinas</DialogTitle>
+            <DialogTitle>{t("travelAdmin.rejectTitle")}</DialogTitle>
             <DialogDescription>
-              Berikan alasan penolakan untuk perjalanan dinas ini
+              {t("travelAdmin.rejectDesc")}
             </DialogDescription>
           </DialogHeader>
 
           {selectedRequest && (
             <div className="space-y-4">
               <div className="text-sm space-y-1">
-                <p><strong>Nama:</strong> {selectedRequest.profiles?.full_name}</p>
-                <p><strong>Tujuan:</strong> {selectedRequest.destination}</p>
+                <p><strong>{t("travelAdmin.fName")}:</strong> {selectedRequest.profiles?.full_name}</p>
+                <p><strong>{t("travelAdmin.fDestination")}:</strong> {selectedRequest.destination}</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reason">Alasan Penolakan</Label>
+                <Label htmlFor="reason">{t("travelAdmin.reasonLabel")}</Label>
                 <Textarea
                   id="reason"
-                  placeholder="Tuliskan alasan penolakan..."
+                  placeholder={t("travelAdmin.reasonPlaceholder")}
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   rows={3}
@@ -646,10 +760,10 @@ const BusinessTravel = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
-              Batal
+              {t("travelAdmin.cancel")}
             </Button>
             <Button variant="destructive" onClick={handleReject} disabled={isProcessing}>
-              {isProcessing ? "Memproses..." : "Tolak Perjalanan Dinas"}
+              {isProcessing ? t("travelAdmin.processing") : t("travelAdmin.rejectBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -659,68 +773,84 @@ const BusinessTravel = () => {
       <Dialog open={!!detailRequest} onOpenChange={(open) => !open && setDetailRequest(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Detail Perjalanan Dinas</DialogTitle>
-            <DialogDescription>Informasi lengkap permohonan perjalanan dinas karyawan</DialogDescription>
+            <DialogTitle>{t("travelAdmin.detailTitle")}</DialogTitle>
+            <DialogDescription>{t("travelAdmin.detailDesc")}</DialogDescription>
           </DialogHeader>
           {detailRequest && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Nama</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fName")}</p>
                   <p className="font-medium">{detailRequest.profiles?.full_name || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">NIK</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.colNik")}</p>
                   <p className="font-medium">{detailRequest.profiles?.nik || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Departemen</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.colDept")}</p>
                   <p className="font-medium">{detailRequest.profiles?.departemen || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Tujuan</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fDestination")}</p>
                   <p className="font-medium">{detailRequest.destination}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Tanggal Mulai</p>
-                  <p className="font-medium">{format(new Date(detailRequest.start_date), "d MMMM yyyy", { locale: id })}</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fStartDate")}</p>
+                  <p className="font-medium">{format(new Date(detailRequest.start_date), "d MMMM yyyy", { locale: dateLocale })}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Tanggal Selesai</p>
-                  <p className="font-medium">{format(new Date(detailRequest.end_date), "d MMMM yyyy", { locale: id })}</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fEndDate")}</p>
+                  <p className="font-medium">{format(new Date(detailRequest.end_date), "d MMMM yyyy", { locale: dateLocale })}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Durasi</p>
-                  <p className="font-medium">{detailRequest.total_days} hari</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fDuration")}</p>
+                  <p className="font-medium">{t("travelAdmin.days", { n: detailRequest.total_days })}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fStatus")}</p>
                   {getStatusBadge(detailRequest.status)}
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Dokumen</p>
-                  <p className="font-medium">{detailRequest.document_url ? "Ada" : "Belum Ada"}</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fDocument")}</p>
+                  <p className="font-medium">{detailRequest.document_url ? t("travelAdmin.docExists") : t("travelAdmin.docNone")}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Dokumen CA (Cash Advance)</p>
+                  {detailRequest.ca_document_url ? (
+                    <Button size="sm" variant="outline" className="mt-1 h-7 gap-1 text-xs" onClick={() => openDocument(detailRequest.ca_document_url!)}>
+                      <Download className="h-3 w-3" /> Lihat CA
+                    </Button>
+                  ) : (
+                    <p className="font-medium text-muted-foreground">Tanpa CA — tunjangan dinas tidak diproses</p>
+                  )}
+                </div>
+                {detailRequest.ca_number && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nomor CA</p>
+                    <p className="font-medium">{detailRequest.ca_number}</p>
+                  </div>
+                )}
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Keperluan</p>
+                <p className="text-sm text-muted-foreground">{t("travelAdmin.fPurpose")}</p>
                 <p className="font-medium whitespace-pre-wrap">{detailRequest.purpose}</p>
               </div>
               {detailRequest.notes && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Catatan</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fNotes")}</p>
                   <p className="font-medium whitespace-pre-wrap">{detailRequest.notes}</p>
                 </div>
               )}
               {detailRequest.rejection_reason && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Alasan Penolakan</p>
+                  <p className="text-sm text-muted-foreground">{t("travelAdmin.fRejectionReason")}</p>
                   <p className="font-medium whitespace-pre-wrap text-destructive">{detailRequest.rejection_reason}</p>
                 </div>
               )}
               <div>
-                <p className="text-sm text-muted-foreground">Tanggal Pengajuan</p>
-                <p className="font-medium">{format(new Date(detailRequest.created_at), "d MMMM yyyy, HH:mm", { locale: id })}</p>
+                <p className="text-sm text-muted-foreground">{t("travelAdmin.fSubmittedAt")}</p>
+                <p className="font-medium">{format(new Date(detailRequest.created_at), "d MMMM yyyy, HH:mm", { locale: dateLocale })}</p>
               </div>
             </div>
           )}
@@ -736,14 +866,14 @@ const BusinessTravel = () => {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Permintaan Perjalanan Dinas</AlertDialogTitle>
+            <AlertDialogTitle>{t("travelAdmin.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus permintaan perjalanan dinas ini? Tindakan ini tidak dapat dibatalkan.
+              {t("travelAdmin.deleteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTravel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+            <AlertDialogCancel>{t("travelAdmin.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTravel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t("travelAdmin.deleteBtn")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

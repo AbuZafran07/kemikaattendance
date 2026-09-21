@@ -320,6 +320,7 @@ export default function AttendanceAllowanceReport() {
           const lateHours = Math.ceil(lateMinutes / 60); // pembulatan ke atas per jam
           userAtt.late += 1;
           userAtt.totalLateHours += lateHours;
+          if (dayEntry) dayEntry.late_hours = lateHours;
         }
 
         // Calculate early departure

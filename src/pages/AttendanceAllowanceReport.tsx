@@ -797,6 +797,92 @@ export default function AttendanceAllowanceReport() {
             </Card>
           </>
         )}
+
+        {/* Detail rincian absensi per karyawan */}
+        <Dialog open={!!detailEmployee} onOpenChange={(o) => !o && setDetailEmployee(null)}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{detailEmployee?.full_name}</DialogTitle>
+              <DialogDescription>
+                {detailEmployee?.jabatan} • {detailEmployee?.departemen} • Rincian absensi per hari kerja
+              </DialogDescription>
+            </DialogHeader>
+            {detailEmployee && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Hari Kerja</p>
+                    <p className="text-lg font-bold">{detailEmployee.total_working_days}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Hadir (dihitung)</p>
+                    <p className="text-lg font-bold">{detailEmployee.days_present}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Terlambat</p>
+                    <p className="text-lg font-bold">{detailEmployee.days_late} hari / {detailEmployee.total_late_hours} jam</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Tunjangan</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(detailEmployee.final_allowance)}</p>
+                  </div>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead className="text-center">Masuk</TableHead>
+                      <TableHead className="text-center">Keluar</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Jam Telat</TableHead>
+                      <TableHead className="text-center">Jam P. Cepat</TableHead>
+                      <TableHead className="text-center">Dihitung</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detailEmployee.days.map((d) => (
+                      <TableRow key={d.date}>
+                        <TableCell className="whitespace-nowrap">
+                          {format(parseISO(d.date), "EEE, dd MMM yyyy", { locale: idLocale })}
+                        </TableCell>
+                        <TableCell className="text-center">{d.check_in || "-"}</TableCell>
+                        <TableCell className="text-center">{d.check_out || "-"}</TableCell>
+                        <TableCell className="text-center">
+                          {d.status ? (
+                            <Badge variant={d.status === "hadir" ? "secondary" : "destructive"} className="text-xs">
+                              {d.status === "hadir"
+                                ? "Hadir"
+                                : d.status === "terlambat"
+                                ? "Terlambat"
+                                : d.status === "pulang_cepat"
+                                ? "Pulang Cepat"
+                                : d.status}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">Tidak Absen</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">{d.late_hours || "-"}</TableCell>
+                        <TableCell className="text-center">{d.early_hours || "-"}</TableCell>
+                        <TableCell className="text-center">{d.counted ? "✓" : "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="font-bold border-t-2">
+                      <TableCell>TOTAL</TableCell>
+                      <TableCell className="text-center">-</TableCell>
+                      <TableCell className="text-center">-</TableCell>
+                      <TableCell className="text-center">{detailEmployee.days_present} hadir</TableCell>
+                      <TableCell className="text-center">{detailEmployee.total_late_hours}</TableCell>
+                      <TableCell className="text-center">{detailEmployee.total_early_leave_hours}</TableCell>
+                      <TableCell className="text-center">{detailEmployee.days_present}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

@@ -8,6 +8,20 @@
       "when": 1789954051921,
       "tag": "0000_fix_reject_late_reason_ambiguous_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789954703511,
+      "tag": "0001_fix_reject_late_reason_violation_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789954722508,
+      "tag": "0002_fix_reject_late_reason_source_hr",
+      "breakpoints": true
     }
   ]
 }

@@ -22,7 +22,12 @@ import {
   Megaphone,
   ShieldCheck,
   Target,
-  MessageCircleMore
+  MessageCircleMore,
+  Trophy,
+  Network,
+  GraduationCap,
+  Laptop,
+  DoorOpen,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";

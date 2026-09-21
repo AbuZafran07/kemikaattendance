@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Loader2, FileSpreadsheet, FileText, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,12 +32,23 @@ interface Holiday {
   date: string;
 }
 
+interface DayDetail {
+  date: string;
+  check_in: string | null;
+  check_out: string | null;
+  status: string | null;
+  late_hours: number;
+  early_hours: number;
+  counted: boolean;
+}
+
 interface EmployeeAllowance {
   id: string;
   full_name: string;
   jabatan: string;
   departemen: string;
   nik: string;
+  days: DayDetail[];
   total_working_days: number;
   days_present: number;
   days_late: number;
@@ -75,6 +87,7 @@ export default function AttendanceAllowanceReport() {
   const [results, setResults] = useState<EmployeeAllowance[]>([]);
   const [workHours, setWorkHours] = useState<any>(null);
   const [periodInfo, setPeriodInfo] = useState<{ totalDays: number; weekendDays: number; holidayDays: number; holidayNames: string[]; workingDays: number } | null>(null);
+  const [detailEmployee, setDetailEmployee] = useState<EmployeeAllowance | null>(null);
 
   useEffect(() => {
     fetchConfig();
@@ -181,10 +194,17 @@ export default function AttendanceAllowanceReport() {
       const adminIds = new Set((adminRoles || []).map((r) => r.user_id));
 
       // Fetch all employees
-      const { data: profiles } = await supabase
+      const { data: profilesRaw } = await supabase
         .from("profiles")
-        .select("id, full_name, jabatan, departemen, nik")
+        .select("id, full_name, jabatan, departemen, nik, status, resign_date")
         .order("full_name");
+
+      // Exclude employees who already resigned before this period started
+      const periodStartStr = format(periodStart, "yyyy-MM-dd");
+      const profiles = (profilesRaw || []).filter((p: any) => {
+        if (p.status === "Active" || !p.status) return true;
+        return !!p.resign_date && p.resign_date >= periodStartStr;
+      });
 
       // Get checkout boundary for early departure calculation
       const checkOutStart = whParsed?.check_out_start || "17:00";
@@ -247,6 +267,8 @@ export default function AttendanceAllowanceReport() {
 
       // Group attendance by user
       const attendanceByUser = new Map<string, { present: number; late: number; totalLateHours: number; earlyLeave: number; totalEarlyLeaveHours: number }>();
+      // Per-user daily detail (for the click-through breakdown)
+      const dayMap = new Map<string, Map<string, DayDetail>>();
 
       for (const record of attendanceData || []) {
         const userId = record.user_id;
@@ -254,6 +276,21 @@ export default function AttendanceAllowanceReport() {
           attendanceByUser.set(userId, { present: 0, late: 0, totalLateHours: 0, earlyLeave: 0, totalEarlyLeaveHours: 0 });
         }
         const userAtt = attendanceByUser.get(userId)!;
+        if (!dayMap.has(userId)) dayMap.set(userId, new Map());
+        const userDays = dayMap.get(userId)!;
+        const recordDateStr = record.check_in_time ? format(new Date(record.check_in_time), "yyyy-MM-dd") : null;
+        const dayEntry: DayDetail | null = recordDateStr
+          ? {
+              date: recordDateStr,
+              check_in: record.check_in_time ? format(new Date(record.check_in_time), "HH:mm") : null,
+              check_out: record.check_out_time ? format(new Date(record.check_out_time), "HH:mm") : null,
+              status: record.status,
+              late_hours: 0,
+              early_hours: 0,
+              counted: false,
+            }
+          : null;
+        if (dayEntry) userDays.set(recordDateStr!, dayEntry);
 
         // Skip attendance on holidays — holidays are not working days,
         // so attendance on those days should NOT count for allowance
@@ -272,6 +309,7 @@ export default function AttendanceAllowanceReport() {
 
         if (isValidAttendance && (record.status === "hadir" || record.status === "terlambat" || record.status === "pulang_cepat")) {
           userAtt.present += 1;
+          if (dayEntry) dayEntry.counted = true;
         }
 
         // Calculate lateness using dynamic deadline per day
@@ -284,6 +322,7 @@ export default function AttendanceAllowanceReport() {
           const lateHours = Math.ceil(lateMinutes / 60); // pembulatan ke atas per jam
           userAtt.late += 1;
           userAtt.totalLateHours += lateHours;
+          if (dayEntry) dayEntry.late_hours = lateHours;
         }
 
         // Calculate early departure
@@ -297,6 +336,7 @@ export default function AttendanceAllowanceReport() {
             const earlyHours = Math.ceil(earlyMinutes / 60); // pembulatan ke atas per jam
             userAtt.earlyLeave += 1;
             userAtt.totalEarlyLeaveHours += earlyHours;
+            if (dayEntry) dayEntry.early_hours = earlyHours;
           }
         }
       }
@@ -316,7 +356,25 @@ export default function AttendanceAllowanceReport() {
           const earlyLeaveDeduction = isExcluded ? 0 : ratePerHour * att.totalEarlyLeaveHours;
           const finalAllowance = Math.max(0, Math.round(baseAllowance - lateDeduction - earlyLeaveDeduction));
 
+          // Build one row per working day in the period
+          const userDays = dayMap.get(p.id);
+          const dayDetails: DayDetail[] = workingDays.map((d) => {
+            const ds = format(d, "yyyy-MM-dd");
+            return (
+              userDays?.get(ds) || {
+                date: ds,
+                check_in: null,
+                check_out: null,
+                status: null,
+                late_hours: 0,
+                early_hours: 0,
+                counted: false,
+              }
+            );
+          });
+
           return {
+            days: dayDetails,
             id: p.id,
             full_name: p.full_name,
             jabatan: p.jabatan,
@@ -672,7 +730,11 @@ export default function AttendanceAllowanceReport() {
                     </TableHeader>
                     <TableBody>
                       {results.map((r, idx) => (
-                        <TableRow key={r.id} className={r.excluded ? "opacity-50" : ""}>
+                        <TableRow
+                          key={r.id}
+                          onClick={() => setDetailEmployee(r)}
+                          className={`cursor-pointer hover:bg-muted/60 ${r.excluded ? "opacity-50" : ""}`}
+                        >
                           <TableCell>{idx + 1}</TableCell>
                           <TableCell className="font-medium">{r.full_name}</TableCell>
                           <TableCell>{r.jabatan}</TableCell>
@@ -735,6 +797,92 @@ export default function AttendanceAllowanceReport() {
             </Card>
           </>
         )}
+
+        {/* Detail rincian absensi per karyawan */}
+        <Dialog open={!!detailEmployee} onOpenChange={(o) => !o && setDetailEmployee(null)}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{detailEmployee?.full_name}</DialogTitle>
+              <DialogDescription>
+                {detailEmployee?.jabatan} • {detailEmployee?.departemen} • Rincian absensi per hari kerja
+              </DialogDescription>
+            </DialogHeader>
+            {detailEmployee && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Hari Kerja</p>
+                    <p className="text-lg font-bold">{detailEmployee.total_working_days}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Hadir (dihitung)</p>
+                    <p className="text-lg font-bold">{detailEmployee.days_present}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Terlambat</p>
+                    <p className="text-lg font-bold">{detailEmployee.days_late} hari / {detailEmployee.total_late_hours} jam</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Tunjangan</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(detailEmployee.final_allowance)}</p>
+                  </div>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead className="text-center">Masuk</TableHead>
+                      <TableHead className="text-center">Keluar</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Jam Telat</TableHead>
+                      <TableHead className="text-center">Jam P. Cepat</TableHead>
+                      <TableHead className="text-center">Dihitung</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detailEmployee.days.map((d) => (
+                      <TableRow key={d.date}>
+                        <TableCell className="whitespace-nowrap">
+                          {format(parseISO(d.date), "EEE, dd MMM yyyy", { locale: idLocale })}
+                        </TableCell>
+                        <TableCell className="text-center">{d.check_in || "-"}</TableCell>
+                        <TableCell className="text-center">{d.check_out || "-"}</TableCell>
+                        <TableCell className="text-center">
+                          {d.status ? (
+                            <Badge variant={d.status === "hadir" ? "secondary" : "destructive"} className="text-xs">
+                              {d.status === "hadir"
+                                ? "Hadir"
+                                : d.status === "terlambat"
+                                ? "Terlambat"
+                                : d.status === "pulang_cepat"
+                                ? "Pulang Cepat"
+                                : d.status}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">Tidak Absen</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">{d.late_hours || "-"}</TableCell>
+                        <TableCell className="text-center">{d.early_hours || "-"}</TableCell>
+                        <TableCell className="text-center">{d.counted ? "✓" : "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="font-bold border-t-2">
+                      <TableCell>TOTAL</TableCell>
+                      <TableCell className="text-center">-</TableCell>
+                      <TableCell className="text-center">-</TableCell>
+                      <TableCell className="text-center">{detailEmployee.days_present} hadir</TableCell>
+                      <TableCell className="text-center">{detailEmployee.total_late_hours}</TableCell>
+                      <TableCell className="text-center">{detailEmployee.total_early_leave_hours}</TableCell>
+                      <TableCell className="text-center">{detailEmployee.days_present}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

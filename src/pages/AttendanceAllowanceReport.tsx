@@ -192,10 +192,17 @@ export default function AttendanceAllowanceReport() {
       const adminIds = new Set((adminRoles || []).map((r) => r.user_id));
 
       // Fetch all employees
-      const { data: profiles } = await supabase
+      const { data: profilesRaw } = await supabase
         .from("profiles")
-        .select("id, full_name, jabatan, departemen, nik")
+        .select("id, full_name, jabatan, departemen, nik, status, resign_date")
         .order("full_name");
+
+      // Exclude employees who already resigned before this period started
+      const periodStartStr = format(periodStart, "yyyy-MM-dd");
+      const profiles = (profilesRaw || []).filter((p: any) => {
+        if (p.status === "Active" || !p.status) return true;
+        return !!p.resign_date && p.resign_date >= periodStartStr;
+      });
 
       // Get checkout boundary for early departure calculation
       const checkOutStart = whParsed?.check_out_start || "17:00";

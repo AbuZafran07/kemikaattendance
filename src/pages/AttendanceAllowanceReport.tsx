@@ -848,6 +848,7 @@ export default function AttendanceAllowanceReport() {
                       <TableHead className="text-center">Jam Telat</TableHead>
                       <TableHead className="text-center">Jam P. Cepat</TableHead>
                       <TableHead className="text-center">Dihitung</TableHead>
+                      <TableHead className="text-right">Nilai/Hari</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -876,6 +877,11 @@ export default function AttendanceAllowanceReport() {
                         <TableCell className="text-center">{d.late_hours || "-"}</TableCell>
                         <TableCell className="text-center">{d.early_hours || "-"}</TableCell>
                         <TableCell className="text-center">{d.counted ? "✓" : "-"}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          {d.counted
+                            ? formatCurrency(Math.max(0, ratePerDay - ((d.late_hours || 0) + (d.early_hours || 0)) * ratePerHour))
+                            : formatCurrency(0)}
+                        </TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="font-bold border-t-2">
@@ -886,11 +892,15 @@ export default function AttendanceAllowanceReport() {
                       <TableCell className="text-center">{detailEmployee.total_late_hours}</TableCell>
                       <TableCell className="text-center">{detailEmployee.total_early_leave_hours}</TableCell>
                       <TableCell className="text-center">{detailEmployee.days_present}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap text-primary">
+                        {formatCurrency(detailEmployee.final_allowance)}
+                      </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
               </div>
-            )}
+              );
+            })()}
           </DialogContent>
         </Dialog>
       </div>

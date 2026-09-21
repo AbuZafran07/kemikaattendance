@@ -807,8 +807,18 @@ export default function AttendanceAllowanceReport() {
                 {detailEmployee?.jabatan} • {detailEmployee?.departemen} • Rincian absensi per hari kerja
               </DialogDescription>
             </DialogHeader>
-            {detailEmployee && (
+            {detailEmployee && (() => {
+              const ratePerDay = detailEmployee.total_working_days > 0
+                ? (config?.max_amount || 0) / detailEmployee.total_working_days
+                : 0;
+              const ratePerHour = (config?.work_hours_per_day || 8) > 0
+                ? ratePerDay / (config?.work_hours_per_day || 8)
+                : 0;
+              return (
               <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Tarif per hari: <strong>{formatCurrency(ratePerDay)}</strong> ({formatCurrency(config?.max_amount || 0)} ÷ {detailEmployee.total_working_days} hari kerja) • Tarif potongan per jam: <strong>{formatCurrency(ratePerHour)}</strong>
+                </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">Hari Kerja</p>

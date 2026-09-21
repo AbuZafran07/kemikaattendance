@@ -265,6 +265,8 @@ export default function AttendanceAllowanceReport() {
 
       // Group attendance by user
       const attendanceByUser = new Map<string, { present: number; late: number; totalLateHours: number; earlyLeave: number; totalEarlyLeaveHours: number }>();
+      // Per-user daily detail (for the click-through breakdown)
+      const dayMap = new Map<string, Map<string, DayDetail>>();
 
       for (const record of attendanceData || []) {
         const userId = record.user_id;
@@ -272,6 +274,21 @@ export default function AttendanceAllowanceReport() {
           attendanceByUser.set(userId, { present: 0, late: 0, totalLateHours: 0, earlyLeave: 0, totalEarlyLeaveHours: 0 });
         }
         const userAtt = attendanceByUser.get(userId)!;
+        if (!dayMap.has(userId)) dayMap.set(userId, new Map());
+        const userDays = dayMap.get(userId)!;
+        const recordDateStr = record.check_in_time ? format(new Date(record.check_in_time), "yyyy-MM-dd") : null;
+        const dayEntry: DayDetail | null = recordDateStr
+          ? {
+              date: recordDateStr,
+              check_in: record.check_in_time ? format(new Date(record.check_in_time), "HH:mm") : null,
+              check_out: record.check_out_time ? format(new Date(record.check_out_time), "HH:mm") : null,
+              status: record.status,
+              late_hours: 0,
+              early_hours: 0,
+              counted: false,
+            }
+          : null;
+        if (dayEntry) userDays.set(recordDateStr!, dayEntry);
 
         // Skip attendance on holidays — holidays are not working days,
         // so attendance on those days should NOT count for allowance

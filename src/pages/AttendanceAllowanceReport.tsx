@@ -31,12 +31,23 @@ interface Holiday {
   date: string;
 }
 
+interface DayDetail {
+  date: string;
+  check_in: string | null;
+  check_out: string | null;
+  status: string | null;
+  late_hours: number;
+  early_hours: number;
+  counted: boolean;
+}
+
 interface EmployeeAllowance {
   id: string;
   full_name: string;
   jabatan: string;
   departemen: string;
   nik: string;
+  days: DayDetail[];
   total_working_days: number;
   days_present: number;
   days_late: number;

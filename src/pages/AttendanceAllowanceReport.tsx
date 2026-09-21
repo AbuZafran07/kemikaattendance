@@ -334,6 +334,7 @@ export default function AttendanceAllowanceReport() {
             const earlyHours = Math.ceil(earlyMinutes / 60); // pembulatan ke atas per jam
             userAtt.earlyLeave += 1;
             userAtt.totalEarlyLeaveHours += earlyHours;
+            if (dayEntry) dayEntry.early_hours = earlyHours;
           }
         }
       }

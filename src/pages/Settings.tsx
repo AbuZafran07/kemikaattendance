@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree, ShieldAlert, HeartHandshake } from "lucide-react";
+import { Building2, Clock, Calendar, FileText, Bell, CalendarClock, Coins, Landmark, Shield, Receipt, Briefcase, Layers, DatabaseBackup, Users, Palmtree, ShieldAlert, HeartHandshake, Plane } from "lucide-react";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -61,6 +61,12 @@ export default function Settings() {
       description: "Konfigurasi perhitungan tunjangan kehadiran",
       icon: Coins,
       path: "/dashboard/settings/attendance-allowance",
+    },
+    {
+      title: "Tunjangan Perjalanan Dinas",
+      description: "Konfigurasi perhitungan tunjangan perjalanan dinas",
+      icon: Plane,
+      path: "/dashboard/settings/business-travel-allowance",
     },
     {
       title: "Bank Perusahaan",

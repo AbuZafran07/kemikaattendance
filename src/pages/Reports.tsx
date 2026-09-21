@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileSpreadsheet, FileText, Loader2, User, Coins, Calculator } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { exportToExcelFile } from "@/lib/excelExport";
+import { exportToExcelFile, exportMultiSheetExcelFile } from "@/lib/excelExport";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, eachDayOfInterval, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
@@ -19,6 +20,7 @@ import logoImage from "@/assets/logo.png";
 import { formatAttendanceStatus, formatLeaveType } from "@/lib/statusUtils";
 import { isWeekend } from "@/hooks/usePolicySettings";
 import { isAttendanceExempt } from "@/lib/employeeFilters";
+import { buildAttendanceReportRows } from "@/lib/attendanceReportRows";
 
 const loadImageAsBase64 = (src: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -38,6 +40,7 @@ const loadImageAsBase64 = (src: string): Promise<string> => {
 };
 
 export default function Reports() {
+  const { t } = useTranslation();
   const { departments: DEPARTMENT_OPTIONS } = useDepartmentJabatan();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -48,6 +51,7 @@ export default function Reports() {
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [department, setDepartment] = useState<string>("all");
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState<"active" | "inactive" | "all">("active");
 
   // Helper function to fetch admin user IDs
   const fetchAdminUserIds = async (): Promise<Set<string>> => {
@@ -68,145 +72,23 @@ export default function Reports() {
       const adminUserIds = await fetchAdminUserIds();
 
       if (reportType === "attendance") {
-        const { data: attendanceData, error: attendanceError } = await supabase
-          .from("attendance")
-          .select("*")
-          .gte("check_in_time", `${startDate}T00:00:00`)
-          .lte("check_in_time", `${endDate}T23:59:59`);
-
-        if (attendanceError) throw attendanceError;
-
-        // Fetch approved leave requests within date range
-        const { data: leaveData, error: leaveError } = await supabase
-          .from("leave_requests")
-          .select("*")
-          .eq("status", "approved")
-          .lte("start_date", endDate)
-          .gte("end_date", startDate);
-
-        if (leaveError) throw leaveError;
-
-        // Fetch approved business travel requests within date range
-        const { data: travelData, error: travelError } = await supabase
-          .from("business_travel_requests")
-          .select("*")
-          .eq("status", "approved")
-          .lte("start_date", endDate)
-          .gte("end_date", startDate);
-
-        if (travelError) throw travelError;
-
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, full_name, departemen, nik, status, resign_date");
-
-        if (profilesError) throw profilesError;
-
-        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
-
-        // Build set of excluded user IDs (admins + exempt departments + inactive)
-        const excludedUserIds = new Set([
-          ...Array.from(adminUserIds),
-          ...(profiles || []).filter(p => isAttendanceExempt(p.departemen) || p.status !== "Active").map(p => p.id),
-        ]);
-
-        // Merge attendance data and exclude admins/exempt/inactive
-        let mergedAttendance =
-          attendanceData
-            ?.filter((record) => !excludedUserIds.has(record.user_id))
-            ?.map((record) => ({
-              ...record,
-              profiles: profilesMap.get(record.user_id),
-            }))
-            .filter((record) => record.profiles) || [];
-
-        if (department !== "all") {
-          mergedAttendance = mergedAttendance.filter((record) => record.profiles?.departemen === department);
-        }
-
-        // Convert attendance to report format
-        const attendanceRows = mergedAttendance.map((record: any) => {
-          const checkIn = new Date(record.check_in_time);
-          const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
-          return {
-            Date: format(checkIn, "yyyy-MM-dd"),
-            NIK: record.profiles?.nik || "-",
-            Name: record.profiles?.full_name || "-",
-            Department: record.profiles?.departemen || "-",
-            "Check In Time": format(checkIn, "HH:mm"),
-            "Check Out Time": checkOut ? format(checkOut, "HH:mm") : "-",
-            Status: formatAttendanceStatus(record.status),
-            "Duration (min)": record.duration_minutes || "-",
-          };
+        const attendanceRows = await buildAttendanceReportRows({
+          startDate,
+          endDate,
+          department,
+          adminUserIds,
         });
 
-        // Add leave records (expand each day within range)
-        const leaveRows: any[] = [];
-        const dateRangeStart = parseISO(startDate);
-        const dateRangeEnd = parseISO(endDate);
-
-        leaveData?.forEach((leave) => {
-          // Skip admin users
-          if (adminUserIds.has(leave.user_id)) return;
-          const profile = profilesMap.get(leave.user_id);
-          if (!profile) return;
-          if (department !== "all" && profile.departemen !== department) return;
-
-          const leaveStart = parseISO(leave.start_date);
-          const leaveEnd = parseISO(leave.end_date);
-          const days = eachDayOfInterval({ start: leaveStart, end: leaveEnd });
-
-          days.forEach((day) => {
-            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
-              leaveRows.push({
-                Date: format(day, "yyyy-MM-dd"),
-                NIK: profile.nik || "-",
-                Name: profile.full_name || "-",
-                Department: profile.departemen || "-",
-                "Check In Time": "-",
-                "Check Out Time": "-",
-                Status: formatLeaveType(leave.leave_type),
-                "Duration (min)": "-",
-              });
-            }
-          });
-        });
-
-        // Add business travel records (expand each day within range)
-        const travelRows: any[] = [];
-        travelData?.forEach((travel) => {
-          // Skip admin users
-          if (adminUserIds.has(travel.user_id)) return;
-          const profile = profilesMap.get(travel.user_id);
-          if (!profile) return;
-          if (department !== "all" && profile.departemen !== department) return;
-
-          const travelStart = parseISO(travel.start_date);
-          const travelEnd = parseISO(travel.end_date);
-          const days = eachDayOfInterval({ start: travelStart, end: travelEnd });
-
-          days.forEach((day) => {
-            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
-              travelRows.push({
-                Date: format(day, "yyyy-MM-dd"),
-                NIK: profile.nik || "-",
-                Name: profile.full_name || "-",
-                Department: profile.departemen || "-",
-                "Check In Time": "-",
-                "Check Out Time": "-",
-                Status: "Dinas",
-                "Duration (min)": "-",
-              });
-            }
-          });
-        });
-
-        // Combine and sort by date, then name
-        data = [...attendanceRows, ...leaveRows, ...travelRows].sort((a, b) => {
-          const dateCompare = a.Date.localeCompare(b.Date);
-          if (dateCompare !== 0) return dateCompare;
-          return a.Name.localeCompare(b.Name);
-        });
+        data = attendanceRows.map((row) => ({
+          Date: row.date,
+          NIK: row.nik,
+          Name: row.name,
+          Department: row.department,
+          "Check In Time": row.checkIn,
+          "Check Out Time": row.checkOut,
+          Status: row.status,
+          "Duration (min)": row.durationMinutes ?? "-",
+        }));
 
         filename = `Attendance_Report_${startDate}_to_${endDate}.xlsx`;
       } else if (reportType === "leave") {
@@ -482,29 +364,83 @@ export default function Reports() {
         if (error) throw error;
 
         // Exclude admin users from employee database report
-        const filteredEmployees = employeeData?.filter((emp) => !adminUserIds.has(emp.id)) || [];
+        let filteredEmployees = employeeData?.filter((emp) => !adminUserIds.has(emp.id)) || [];
 
-        data = filteredEmployees.map((emp: any) => ({
-          NIK: emp.nik,
-          "Full Name": emp.full_name,
-          Email: emp.email,
-          Department: emp.departemen,
-          Position: emp.jabatan,
-          Phone: emp.phone || "-",
-          "Join Date": emp.join_date,
-          "Annual Leave Quota": emp.annual_leave_quota,
-          "Remaining Leave": emp.remaining_leave,
-          Status: emp.status,
-          "Resign Date": emp.status === "Resigned" && emp.resign_date ? emp.resign_date : "-",
-        }));
-        filename = `Employee_Database_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+        // Apply status filter — active vs inactive/resigned should not be mixed
+        if (employeeStatusFilter === "active") {
+          filteredEmployees = filteredEmployees.filter((e) => e.status === "Active");
+        } else if (employeeStatusFilter === "inactive") {
+          filteredEmployees = filteredEmployees.filter((e) => e.status === "Inactive" || e.status === "Resigned");
+        }
+
+        const formatCurrencyVal = (v: any) =>
+          v == null || v === "" ? 0 : Number(v);
+
+        const mapEmployee = (emp: any) => ({
+          NIK: emp.nik || "-",
+          "Nama Lengkap": emp.full_name || "-",
+          Email: emp.email || "-",
+          "No. HP": emp.phone || "-",
+          Alamat: emp.address || "-",
+          Departemen: emp.departemen || "-",
+          Jabatan: emp.jabatan || "-",
+          Status: emp.status || "-",
+          "Tipe Kontrak": emp.contract_type || "-",
+          "Tipe Kerja": emp.work_type || "-",
+          "Tanggal Bergabung": emp.join_date || "-",
+          "Tanggal Resign": emp.status === "Resigned" && emp.resign_date ? emp.resign_date : "-",
+          "Kuota Cuti Tahunan": emp.annual_leave_quota ?? 0,
+          "Sisa Cuti": emp.remaining_leave ?? 0,
+          NPWP: emp.npwp || "-",
+          "Status PTKP": emp.ptkp_status || "-",
+          "Gaji Pokok": formatCurrencyVal(emp.basic_salary),
+          "Tunjangan Jabatan": formatCurrencyVal(emp.tunjangan_jabatan),
+          "Tunjangan Komunikasi": formatCurrencyVal(emp.tunjangan_komunikasi),
+          "Tunjangan Operasional": formatCurrencyVal(emp.tunjangan_operasional),
+          "BPJS Kesehatan": emp.bpjs_kesehatan_enabled ? "Aktif" : "Tidak",
+          "BPJS Ketenagakerjaan": emp.bpjs_ketenagakerjaan_enabled ? "Aktif" : "Tidak",
+          "Nama Bank": emp.bank_name || "-",
+          "No. Rekening": emp.bank_account_number || "-",
+        });
+
+        // Sort active first, then inactive/resigned, alphabetical by name within group
+        const sortByName = (a: any, b: any) =>
+          (a.full_name || "").localeCompare(b.full_name || "");
+        const activeList = filteredEmployees.filter((e) => e.status === "Active").sort(sortByName);
+        const inactiveList = filteredEmployees
+          .filter((e) => e.status === "Inactive" || e.status === "Resigned")
+          .sort(sortByName);
+
+        const statusSuffix =
+          employeeStatusFilter === "active"
+            ? "Aktif"
+            : employeeStatusFilter === "inactive"
+              ? "Inactive-Resign"
+              : "Semua";
+        filename = `Database_Karyawan_${statusSuffix}_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+
+        if (employeeStatusFilter === "all") {
+          // Always export two separate sheets when "Semua" is selected
+          await exportMultiSheetExcelFile(
+            [
+              { sheetName: "Aktif", data: activeList.map(mapEmployee) },
+              { sheetName: "Inactive-Resign", data: inactiveList.map(mapEmployee) },
+            ],
+            filename,
+          );
+          toast({ title: t("common.success"), description: t("reportsPage.toast.excelOk") });
+          setLoading(false);
+          return;
+        }
+
+        data = [...activeList, ...inactiveList].map(mapEmployee);
       }
 
       await exportToExcelFile(data, "Report", filename);
 
-      toast({ title: "Berhasil", description: "Laporan berhasil diekspor ke Excel" });
+      toast({ title: t("common.success"), description: t("reportsPage.toast.excelOk") });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -521,138 +457,24 @@ export default function Reports() {
       const adminUserIds = await fetchAdminUserIds();
 
       if (reportType === "attendance") {
-        const { data: attendanceData, error: attendanceError } = await supabase
-          .from("attendance")
-          .select("*")
-          .gte("check_in_time", `${startDate}T00:00:00`)
-          .lte("check_in_time", `${endDate}T23:59:59`);
-
-        if (attendanceError) throw attendanceError;
-
-        // Fetch approved leave requests within date range
-        const { data: leaveData, error: leaveError } = await supabase
-          .from("leave_requests")
-          .select("*")
-          .eq("status", "approved")
-          .lte("start_date", endDate)
-          .gte("end_date", startDate);
-
-        if (leaveError) throw leaveError;
-
-        // Fetch approved business travel requests within date range
-        const { data: travelData, error: travelError } = await supabase
-          .from("business_travel_requests")
-          .select("*")
-          .eq("status", "approved")
-          .lte("start_date", endDate)
-          .gte("end_date", startDate);
-
-        if (travelError) throw travelError;
-
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, full_name, departemen, nik");
-
-        if (profilesError) throw profilesError;
-
-        const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || []);
-
-        // Merge attendance data and exclude admins
-        let mergedAttendance =
-          attendanceData
-            ?.filter((record) => !adminUserIds.has(record.user_id))
-            ?.map((record) => ({
-              ...record,
-              profiles: profilesMap.get(record.user_id),
-            }))
-            .filter((record) => record.profiles) || [];
-
-        if (department !== "all") {
-          mergedAttendance = mergedAttendance.filter((record) => record.profiles?.departemen === department);
-        }
-
         columns = ["Date", "NIK", "Name", "Department", "Check In", "Check Out", "Status"];
 
-        // Convert attendance to report format
-        const attendanceRows = mergedAttendance.map((record: any) => {
-          const checkIn = new Date(record.check_in_time);
-          const checkOut = record.check_out_time ? new Date(record.check_out_time) : null;
-          return [
-            format(checkIn, "yyyy-MM-dd"),
-            record.profiles?.nik || "-",
-            record.profiles?.full_name || "-",
-            record.profiles?.departemen || "-",
-            format(checkIn, "HH:mm"),
-            checkOut ? format(checkOut, "HH:mm") : "-",
-            formatAttendanceStatus(record.status),
-          ];
+        const attendanceRows = await buildAttendanceReportRows({
+          startDate,
+          endDate,
+          department,
+          adminUserIds,
         });
 
-        // Add leave records (expand each day within range)
-        const leaveRows: any[] = [];
-        const dateRangeStart = parseISO(startDate);
-        const dateRangeEnd = parseISO(endDate);
-
-        leaveData?.forEach((leave) => {
-          // Skip admin users
-          if (adminUserIds.has(leave.user_id)) return;
-          const profile = profilesMap.get(leave.user_id);
-          if (!profile) return;
-          if (department !== "all" && profile.departemen !== department) return;
-
-          const leaveStart = parseISO(leave.start_date);
-          const leaveEnd = parseISO(leave.end_date);
-          const days = eachDayOfInterval({ start: leaveStart, end: leaveEnd });
-
-          days.forEach((day) => {
-            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
-              leaveRows.push([
-                format(day, "yyyy-MM-dd"),
-                profile.nik || "-",
-                profile.full_name || "-",
-                profile.departemen || "-",
-                "-",
-                "-",
-                formatLeaveType(leave.leave_type),
-              ]);
-            }
-          });
-        });
-
-        // Add business travel records (expand each day within range)
-        const travelRows: any[] = [];
-        travelData?.forEach((travel) => {
-          // Skip admin users
-          if (adminUserIds.has(travel.user_id)) return;
-          const profile = profilesMap.get(travel.user_id);
-          if (!profile) return;
-          if (department !== "all" && profile.departemen !== department) return;
-
-          const travelStart = parseISO(travel.start_date);
-          const travelEnd = parseISO(travel.end_date);
-          const days = eachDayOfInterval({ start: travelStart, end: travelEnd });
-
-          days.forEach((day) => {
-            if (isWithinInterval(day, { start: dateRangeStart, end: dateRangeEnd })) {
-              travelRows.push([
-                format(day, "yyyy-MM-dd"),
-                profile.nik || "-",
-                profile.full_name || "-",
-                profile.departemen || "-",
-                "-",
-                "-",
-                "Dinas",
-              ]);
-            }
-          });
-        });
-
-        // Combine and sort by date, then name
-        data = [...attendanceRows, ...leaveRows, ...travelRows].sort((a, b) => {
-          const dateCompare = a[0].localeCompare(b[0]);
-          if (dateCompare !== 0) return dateCompare;
-          return a[2].localeCompare(b[2]);
-        });
+        data = attendanceRows.map((row) => [
+          row.date,
+          row.nik,
+          row.name,
+          row.department,
+          row.checkIn,
+          row.checkOut,
+          row.status,
+        ]);
 
         title = `Laporan Absensi (${startDate} s.d ${endDate})`;
       } else if (reportType === "leave") {
@@ -934,9 +756,9 @@ export default function Reports() {
       });
 
       doc.save(`${reportType}_report_${format(new Date(), "yyyy-MM-dd")}.pdf`);
-      toast({ title: "Berhasil", description: "Laporan berhasil diekspor ke PDF" });
+      toast({ title: t("common.success"), description: t("reportsPage.toast.pdfOk") });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -946,19 +768,19 @@ export default function Reports() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Laporan & Analytics</h1>
-          <p className="text-muted-foreground mt-1">Buat dan ekspor laporan absensi, cuti, dan data karyawan</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("reportsPage.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("reportsPage.subtitle")}</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Laporan Umum</CardTitle>
-              <CardDescription>Export laporan absensi, cuti, dan database karyawan</CardDescription>
+              <CardTitle>{t("reportsPage.general.title")}</CardTitle>
+              <CardDescription>{t("reportsPage.general.desc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Gunakan form di bawah untuk menghasilkan laporan berdasarkan rentang tanggal dan departemen
+                {t("reportsPage.general.hint")}
               </p>
             </CardContent>
           </Card>
@@ -970,16 +792,16 @@ export default function Reports() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
-                <CardTitle>Laporan Per Karyawan</CardTitle>
+                <CardTitle>{t("reportsPage.perEmployee.title")}</CardTitle>
               </div>
-              <CardDescription>Export data kehadiran untuk karyawan individual</CardDescription>
+              <CardDescription>{t("reportsPage.perEmployee.desc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Pilih karyawan tertentu dan hasilkan laporan kehadiran mereka dalam format Excel atau PDF
+                {t("reportsPage.perEmployee.hint")}
               </p>
               <Button variant="link" className="mt-2 p-0 h-auto">
-                Buka Laporan Per Karyawan →
+                {t("reportsPage.perEmployee.cta")}
               </Button>
             </CardContent>
           </Card>
@@ -991,16 +813,16 @@ export default function Reports() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Coins className="h-5 w-5 text-primary" />
-                <CardTitle>Tunjangan Kehadiran</CardTitle>
+                <CardTitle>{t("reportsPage.allowance.title")}</CardTitle>
               </div>
-              <CardDescription>Perhitungan tunjangan kehadiran bulanan</CardDescription>
+              <CardDescription>{t("reportsPage.allowance.desc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Hitung tunjangan kehadiran berdasarkan data absensi dengan potongan keterlambatan otomatis
+                {t("reportsPage.allowance.hint")}
               </p>
               <Button variant="link" className="mt-2 p-0 h-auto">
-                Buka Laporan Tunjangan →
+                {t("reportsPage.allowance.cta")}
               </Button>
             </CardContent>
           </Card>
@@ -1008,35 +830,35 @@ export default function Reports() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Konfigurasi Laporan</CardTitle>
-            <CardDescription>Pilih jenis laporan dan filter</CardDescription>
+            <CardTitle>{t("reportsPage.config.title")}</CardTitle>
+            <CardDescription>{t("reportsPage.config.desc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="reportType">Jenis Laporan</Label>
+                <Label htmlFor="reportType">{t("reportsPage.config.reportType")}</Label>
                 <Select value={reportType} onValueChange={(value: any) => setReportType(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="attendance">Laporan Absensi</SelectItem>
-                    <SelectItem value="leave">Laporan Cuti</SelectItem>
-                    <SelectItem value="overtime">Laporan Lembur</SelectItem>
-                    <SelectItem value="business_travel">Laporan Perjalanan Dinas</SelectItem>
-                    <SelectItem value="payroll">Laporan Payroll (Absensi + Tunjangan)</SelectItem>
-                    <SelectItem value="employees">Database Karyawan</SelectItem>
+                    <SelectItem value="attendance">{t("reportsPage.types.attendance")}</SelectItem>
+                    <SelectItem value="leave">{t("reportsPage.types.leave")}</SelectItem>
+                    <SelectItem value="overtime">{t("reportsPage.types.overtime")}</SelectItem>
+                    <SelectItem value="business_travel">{t("reportsPage.types.business_travel")}</SelectItem>
+                    <SelectItem value="payroll">{t("reportsPage.types.payroll")}</SelectItem>
+                    <SelectItem value="employees">{t("reportsPage.types.employees")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="department">Departemen</Label>
+                <Label htmlFor="department">{t("reportsPage.config.department")}</Label>
                 <Select value={department} onValueChange={setDepartment}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Departemen</SelectItem>
+                    <SelectItem value="all">{t("reportsPage.config.allDept")}</SelectItem>
                     {DEPARTMENT_OPTIONS.map((dept) => (
                       <SelectItem key={dept} value={dept}>
                         {dept}
@@ -1047,14 +869,32 @@ export default function Reports() {
               </div>
             </div>
 
+            {reportType === "employees" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="employeeStatus">Status Karyawan</Label>
+                  <Select value={employeeStatusFilter} onValueChange={(v: any) => setEmployeeStatusFilter(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Hanya Aktif</SelectItem>
+                      <SelectItem value="inactive">Hanya Inactive / Resign</SelectItem>
+                      <SelectItem value="all">Semua (dipisah per grup)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {reportType !== "employees" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Tanggal Mulai</Label>
+                  <Label htmlFor="startDate">{t("common.startDate")}</Label>
                   <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">Tanggal Akhir</Label>
+                  <Label htmlFor="endDate">{t("common.endDate")}</Label>
                   <Input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
                 </div>
               </div>
@@ -1071,12 +911,12 @@ export default function Reports() {
                 ) : (
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                 )}
-                Export ke Excel
+                {t("reportsPage.btn.excel")}
               </Button>
               {reportType !== "employees" && (
                 <Button onClick={exportToPDF} disabled={loading || !startDate || !endDate} variant="outline">
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                  Export ke PDF
+                  {t("reportsPage.btn.pdf")}
                 </Button>
               )}
             </div>

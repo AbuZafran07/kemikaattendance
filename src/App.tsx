@@ -31,6 +31,9 @@ import OvertimeSettings from "./pages/OvertimeSettings";
 import SpecialWorkHoursSettings from "./pages/SpecialWorkHoursSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import KPI from "./pages/KPI";
+import EmployeeKPI from "./pages/EmployeeKPI";
+import KPIRecap from "./pages/KPIRecap";
 import EmployeeSelfService from "./pages/EmployeeSelfService";
 import EmployeeNotifications from "./pages/EmployeeNotifications";
 import RequestHistory from "./pages/RequestHistory";
@@ -42,9 +45,11 @@ import AttendanceAllowanceSettings from "./pages/AttendanceAllowanceSettings";
 import AttendanceDisciplineSettings from "./pages/AttendanceDisciplineSettings";
 import SpecialLeaveTypesSettings from "./pages/SpecialLeaveTypesSettings";
 import AttendanceAllowanceReport from "./pages/AttendanceAllowanceReport";
+import BusinessTravelAllowanceSettings from "./pages/BusinessTravelAllowanceSettings";
 import AttendanceAuditLog from "./pages/AttendanceAuditLog";
-import EmployeeCoaching from "./pages/EmployeeCoaching";
+import LupaAbsenAuditLog from "./pages/LupaAbsenAuditLog";
 import ApprovalAuditLog from "./pages/ApprovalAuditLog";
+import EmployeeCoaching from "./pages/EmployeeCoaching";
 import Payroll from "./pages/Payroll";
 import LoanManagement from "./pages/LoanManagement";
 import EmployeePayrollHistory from "./pages/EmployeePayrollHistory";
@@ -52,7 +57,9 @@ import EmployeeLoanHistory from "./pages/EmployeeLoanHistory";
 import TERManagement from "./pages/TERManagement";
 import BuktiPotong1721A1 from "./pages/BuktiPotong1721A1";
 import PPh21Report from "./pages/PPh21Report";
+import BPJSReport from "./pages/BPJSReport";
 import PayrollAnalytics from "./pages/PayrollAnalytics";
+import PayrollAuditLog from "./pages/PayrollAuditLog";
 import AnnouncementManagement from "./pages/AnnouncementManagement";
 import CompanyBankSettings from "./pages/CompanyBankSettings";
 import BPJSSettings from "./pages/BPJSSettings";
@@ -62,8 +69,12 @@ import PPh21BracketsSettings from "./pages/PPh21BracketsSettings";
 import BackupRestore from "./pages/BackupRestore";
 import DepartmentJabatanSettings from "./pages/DepartmentJabatanSettings";
 import HolidayEventSettings from "./pages/HolidayEventSettings";
-import KPI from "./pages/KPI";
-import EmployeeKPI from "./pages/EmployeeKPI";
+import ContractNotifications from "./pages/ContractNotifications";
+import OrgChart from "./pages/OrgChart";
+import Training from "./pages/Training";
+import EmployeeTrainingPage from "./pages/EmployeeTraining";
+import AssetManagement from "./pages/AssetManagement";
+import ExitManagement from "./pages/ExitManagement";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -92,10 +103,12 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/leave" element={<ProtectedRoute requireAdmin><LeaveSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/overtime" element={<ProtectedRoute requireAdmin><OvertimeSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/settings/business-travel-allowance" element={<ProtectedRoute requireAdmin><BusinessTravelAllowanceSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/attendance-discipline" element={<ProtectedRoute requireAdmin><AttendanceDisciplineSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/special-leave-types" element={<ProtectedRoute requireAdmin><SpecialLeaveTypesSettings /></ProtectedRoute>} />
             <Route path="/dashboard/reports/attendance-allowance" element={<ProtectedRoute requireAdmin><AttendanceAllowanceReport /></ProtectedRoute>} />
             <Route path="/dashboard/attendance/audit-log" element={<ProtectedRoute requireAdmin><AttendanceAuditLog /></ProtectedRoute>} />
+            <Route path="/dashboard/attendance/lupa-absen-log" element={<ProtectedRoute requireAdmin><LupaAbsenAuditLog /></ProtectedRoute>} />
             {/* Alasan Telat & Disiplin Absensi sekarang jadi tab di halaman Absensi; rute lama diarahkan ke tab yang sesuai supaya bookmark lama tidak rusak. */}
             <Route path="/dashboard/attendance/late-reasons" element={<Navigate to="/dashboard/attendance?tab=late-reasons" replace />} />
             <Route path="/dashboard/coaching" element={<ProtectedRoute requireAdmin><EmployeeCoaching /></ProtectedRoute>} />
@@ -106,9 +119,17 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/ter-management" element={<ProtectedRoute requireAdmin><TERManagement /></ProtectedRoute>} />
             <Route path="/dashboard/bukti-potong" element={<ProtectedRoute requireAdmin><BuktiPotong1721A1 /></ProtectedRoute>} />
             <Route path="/dashboard/reports/pph21" element={<ProtectedRoute requireAdmin><PPh21Report /></ProtectedRoute>} />
+            <Route path="/dashboard/reports/bpjs" element={<ProtectedRoute requireAdmin><BPJSReport /></ProtectedRoute>} />
             <Route path="/dashboard/payroll-analytics" element={<ProtectedRoute requireAdmin><PayrollAnalytics /></ProtectedRoute>} />
+            <Route path="/dashboard/payroll-audit-log" element={<ProtectedRoute requireAdmin><PayrollAuditLog /></ProtectedRoute>} />
             <Route path="/dashboard/announcements" element={<ProtectedRoute requireAdmin><AnnouncementManagement /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
+            <Route path="/dashboard/contract-notifications" element={<ProtectedRoute requireAdmin><ContractNotifications /></ProtectedRoute>} />
+            <Route path="/dashboard/org-chart" element={<ProtectedRoute requireAdmin><OrgChart /></ProtectedRoute>} />
+            <Route path="/dashboard/training" element={<ProtectedRoute requireAdmin><Training /></ProtectedRoute>} />
+            <Route path="/dashboard/assets" element={<ProtectedRoute requireAdmin><AssetManagement /></ProtectedRoute>} />
+            <Route path="/dashboard/exit-management" element={<ProtectedRoute requireAdmin><ExitManagement /></ProtectedRoute>} />
+            <Route path="/employee/training" element={<ProtectedRoute><EmployeeTrainingPage /></ProtectedRoute>} />
             <Route path="/employee" element={<ProtectedRoute><EmployeeView /></ProtectedRoute>} />
             <Route path="/employee/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
             <Route path="/employee/leave-request" element={<ProtectedRoute><LeaveRequest /></ProtectedRoute>} />
@@ -132,9 +153,10 @@ const App = () => <QueryClientProvider client={queryClient}>
             <Route path="/dashboard/settings/backup" element={<ProtectedRoute requireAdmin><BackupRestore /></ProtectedRoute>} />
             <Route path="/dashboard/settings/department-jabatan" element={<ProtectedRoute requireAdmin><DepartmentJabatanSettings /></ProtectedRoute>} />
             <Route path="/dashboard/settings/holidays" element={<ProtectedRoute requireAdmin><HolidayEventSettings /></ProtectedRoute>} />
-            <Route path="/dashboard/kpi" element={<ProtectedRoute requireAdmin><KPI /></ProtectedRoute>} />
-            <Route path="/employee/kpi" element={<ProtectedRoute><EmployeeKPI /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/dashboard/kpi" element={<ProtectedRoute requireAdmin><KPI /></ProtectedRoute>} />
+            <Route path="/dashboard/kpi-recap" element={<ProtectedRoute requireAdmin><KPIRecap /></ProtectedRoute>} />
+            <Route path="/employee/kpi" element={<ProtectedRoute><EmployeeKPI /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

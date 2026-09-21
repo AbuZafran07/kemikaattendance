@@ -7,9 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Loader2, Info, Shield } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Loader2, Info, Shield, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearFixedAllowanceComponentsCache } from "@/lib/bpjsFixedComponents";
+
+export type BPJSBaseCalculation = "basic" | "basic_plus_fixed";
 
 export interface BPJSConfig {
   // Kesehatan
@@ -31,6 +36,17 @@ export interface BPJSConfig {
 
   // JKM
   jkm_employer_rate: number;   // default 0.3%
+
+  // Dasar perhitungan BPJS
+  base_calculation: BPJSBaseCalculation; // default "basic"
+  // Tanggal efektif perubahan dasar perhitungan (YYYY-MM-DD), diisi otomatis saat base_calculation berubah.
+  base_calculation_effective_date?: string;
+  // Komponen tunjangan tetap yang dipakai sebagai dasar BPJS (hanya aktif saat base_calculation = basic_plus_fixed)
+  fixed_allowance_components: {
+    jabatan: boolean;
+    komunikasi: boolean;
+    operasional: boolean;
+  };
 }
 
 export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
@@ -44,6 +60,9 @@ export const DEFAULT_BPJS_CONFIG: BPJSConfig = {
   jp_max_salary: 10547400,
   jkk_employer_rate: 0.24,
   jkm_employer_rate: 0.3,
+  base_calculation: "basic",
+  base_calculation_effective_date: undefined,
+  fixed_allowance_components: { jabatan: true, komunikasi: false, operasional: true },
 };
 
 const formatCurrency = (v: number) =>
@@ -65,7 +84,17 @@ export default function BPJSSettings() {
         .eq("key", "bpjs_config")
         .maybeSingle();
       if (error) throw error;
-      if (data?.value) setConfig({ ...DEFAULT_BPJS_CONFIG, ...(data.value as any) });
+      if (data?.value) {
+        const loaded = data.value as any;
+        setConfig({
+          ...DEFAULT_BPJS_CONFIG,
+          ...loaded,
+          fixed_allowance_components: {
+            ...DEFAULT_BPJS_CONFIG.fixed_allowance_components,
+            ...(loaded.fixed_allowance_components || {}),
+          },
+        });
+      }
     } catch (e: any) {
       console.error("Error fetching BPJS config:", e);
     } finally {
@@ -78,11 +107,20 @@ export default function BPJSSettings() {
     try {
       const { data: existing } = await supabase
         .from("system_settings")
-        .select("id")
+        .select("id, value")
         .eq("key", "bpjs_config")
         .maybeSingle();
 
-      const payload = { key: "bpjs_config", value: config as any, description: "Konfigurasi tarif BPJS Ketenagakerjaan & Kesehatan", updated_at: new Date().toISOString() };
+      // Auto-stamp tanggal efektif jika base_calculation berubah
+      const prevConfig = (existing?.value as any) || {};
+      const baseChanged = (prevConfig.base_calculation ?? "basic") !== config.base_calculation;
+      const today = new Date().toISOString().slice(0, 10);
+      const finalConfig: BPJSConfig = {
+        ...config,
+        base_calculation_effective_date: baseChanged ? today : (config.base_calculation_effective_date || prevConfig.base_calculation_effective_date),
+      };
+
+      const payload = { key: "bpjs_config", value: finalConfig as any, description: "Konfigurasi tarif BPJS Ketenagakerjaan & Kesehatan", updated_at: new Date().toISOString() };
 
       if (existing) {
         const { error } = await supabase.from("system_settings").update(payload).eq("key", "bpjs_config");
@@ -91,7 +129,11 @@ export default function BPJSSettings() {
         const { error } = await supabase.from("system_settings").insert(payload);
         if (error) throw error;
       }
-      toast.success("Pengaturan BPJS berhasil disimpan");
+      setConfig(finalConfig);
+      clearFixedAllowanceComponentsCache();
+      toast.success(baseChanged
+        ? `Pengaturan BPJS disimpan. Dasar perhitungan berlaku efektif: ${today}`
+        : "Pengaturan BPJS berhasil disimpan");
     } catch (e: any) {
       toast.error("Gagal menyimpan: " + e.message);
     } finally {
@@ -133,6 +175,78 @@ export default function BPJSSettings() {
             Pastikan menyesuaikan dengan regulasi terbaru dari BPJS.
           </AlertDescription>
         </Alert>
+
+        {/* Dasar Perhitungan BPJS */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Calculator className="h-5 w-5 text-primary" /> Dasar Perhitungan BPJS
+            </CardTitle>
+            <CardDescription>
+              Pilih komponen gaji yang dipakai sebagai dasar (DPP) perhitungan iuran BPJS Kesehatan & Ketenagakerjaan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup
+              value={config.base_calculation}
+              onValueChange={(v) => setConfig(prev => ({ ...prev, base_calculation: v as BPJSBaseCalculation }))}
+              className="space-y-3"
+            >
+              <label htmlFor="base-basic" className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:border-primary/40">
+                <RadioGroupItem id="base-basic" value="basic" className="mt-1" />
+                <div className="space-y-0.5">
+                  <p className="font-medium text-sm">Gaji Pokok saja</p>
+                  <p className="text-xs text-muted-foreground">DPP BPJS = Gaji Pokok (rekomendasi standar saat ini).</p>
+                </div>
+              </label>
+              <label htmlFor="base-plus" className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:border-primary/40">
+                <RadioGroupItem id="base-plus" value="basic_plus_fixed" className="mt-1" />
+                <div className="space-y-0.5">
+                  <p className="font-medium text-sm">Gaji Pokok + Tunjangan Tetap</p>
+                  <p className="text-xs text-muted-foreground">DPP BPJS = Gapok + Tunjangan Jabatan + Tunjangan Komunikasi + Tunjangan Operasional.</p>
+                </div>
+              </label>
+            </RadioGroup>
+
+            {config.base_calculation === "basic_plus_fixed" && (
+              <div className="mt-4 p-3 border rounded-lg bg-muted/30 space-y-3">
+                <div>
+                  <p className="font-medium text-sm">Komponen Tunjangan Tetap</p>
+                  <p className="text-xs text-muted-foreground">
+                    Centang tunjangan yang dianggap <strong>tetap</strong> dan dimasukkan ke DPP BPJS. Hilangkan centang untuk menjadikannya <strong>tidak tetap</strong> (tidak menambah dasar iuran BPJS, namun tetap masuk komponen gaji bruto).
+                  </p>
+                </div>
+                {(["jabatan", "komunikasi", "operasional"] as const).map((key) => (
+                  <label key={key} htmlFor={`fac-${key}`} className="flex items-center gap-3 cursor-pointer">
+                    <Checkbox
+                      id={`fac-${key}`}
+                      checked={config.fixed_allowance_components[key]}
+                      onCheckedChange={(checked) =>
+                        setConfig(prev => ({
+                          ...prev,
+                          fixed_allowance_components: {
+                            ...prev.fixed_allowance_components,
+                            [key]: checked === true,
+                          },
+                        }))
+                      }
+                    />
+                    <span className="text-sm capitalize">Tunjangan {key}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">
+              Perubahan berlaku saat <strong>Generate Payroll</strong> berikutnya. Tetap menghormati batas maksimal gaji per program.
+            </p>
+            {config.base_calculation_effective_date && (
+              <p className="text-xs text-primary mt-2">
+                <strong>Berlaku efektif sejak:</strong> {new Date(config.base_calculation_effective_date).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
 
         {/* BPJS Kesehatan */}
         <Card>

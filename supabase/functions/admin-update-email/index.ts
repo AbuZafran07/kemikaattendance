@@ -93,7 +93,8 @@ serve(async (req: Request): Promise<Response> => {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    console.error("[admin-update-email] Unexpected error:", errorMessage);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500, headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }

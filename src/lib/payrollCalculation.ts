@@ -52,6 +52,7 @@ const BPJS_KES_MAX_SALARY = 12000000;
 const BPJS_JP_MAX_SALARY = 10547400;
 
 // Dynamic BPJS config interface (rates stored as percentages in DB)
+export type BPJSBaseCalculation = "basic" | "basic_plus_fixed";
 export interface BPJSRatesConfig {
   kes_employee_rate: number;
   kes_employer_rate: number;
@@ -63,6 +64,15 @@ export interface BPJSRatesConfig {
   jp_max_salary: number;
   jkk_employer_rate: number;
   jkm_employer_rate: number;
+  // Dasar perhitungan BPJS: "basic" = hanya gaji pokok, "basic_plus_fixed" = gapok + tunjangan tetap
+  base_calculation?: BPJSBaseCalculation;
+  // Komponen tunjangan tetap yang dipakai sebagai dasar BPJS (hanya berlaku bila base_calculation = basic_plus_fixed).
+  // Default: semua true demi kompatibilitas. Atur false untuk menjadikan tunjangan tsb "tidak tetap".
+  fixed_allowance_components?: {
+    jabatan?: boolean;
+    komunikasi?: boolean;
+    operasional?: boolean;
+  };
 }
 
 // Biaya Jabatan (5% of bruto, max 6,000,000/year or 500,000/month)
@@ -160,6 +170,8 @@ export function calculatePPh21Reconciliation(
 export interface PayrollInput {
   basicSalary: number;
   allowance: number;
+  // Tunjangan tetap (jabatan + komunikasi + operasional) — dipakai jika base_calculation = basic_plus_fixed
+  fixedAllowance?: number;
   overtimeTotal: number;
   ptkpStatus: string;
   overtimeHours: number;
@@ -217,6 +229,7 @@ export interface PayrollResult {
 export function calculatePayroll(input: PayrollInput): PayrollResult {
   const {
     basicSalary, allowance, overtimeTotal, ptkpStatus, overtimeHours,
+    fixedAllowance = 0,
     loanDeduction = 0, otherDeduction = 0, deductionNotes = "",
     month, terRates, totalPphJanNov = 0,
     bpjsKesehatanEnabled = true,
@@ -244,20 +257,24 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const jkkEmployerRate = bpjsConfig ? bpjsConfig.jkk_employer_rate / 100 : BPJS_JKK_EMPLOYER_RATE;
   const jkmEmployerRate = bpjsConfig ? bpjsConfig.jkm_employer_rate / 100 : BPJS_JKM_EMPLOYER_RATE;
 
-  // Employee BPJS - based on basic salary only
-  const bpjsKesSalary = Math.min(basicSalary, kesMaxSalary);
-  const bpjsJpSalary = Math.min(basicSalary, jpMaxSalary);
+  // Tentukan dasar perhitungan BPJS: gapok saja, atau gapok + tunjangan tetap
+  const baseCalc: BPJSBaseCalculation = bpjsConfig?.base_calculation ?? "basic";
+  const bpjsBase = baseCalc === "basic_plus_fixed" ? basicSalary + fixedAllowance : basicSalary;
+
+  // Employee BPJS - based on configured base
+  const bpjsKesSalary = Math.min(bpjsBase, kesMaxSalary);
+  const bpjsJpSalary = Math.min(bpjsBase, jpMaxSalary);
   const bpjsKesehatan = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * kesEmployeeRate) : 0;
-  const bpjsJhtEmployee = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jhtEmployeeRate) : 0;
+  const bpjsJhtEmployee = bpjsKetenagakerjaanEnabled ? Math.round(bpjsBase * jhtEmployeeRate) : 0;
   const bpjsJpEmployee = bpjsKetenagakerjaanEnabled ? Math.round(bpjsJpSalary * jpEmployeeRate) : 0;
   const bpjsKetenagakerjaan = bpjsJhtEmployee + bpjsJpEmployee;
 
-  // Employer BPJS - based on basic salary only
+  // Employer BPJS - based on configured base
   const bpjsKesEmployer = bpjsKesehatanEnabled ? Math.round(bpjsKesSalary * kesEmployerRate) : 0;
-  const bpjsJhtEmployer = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jhtEmployerRate) : 0;
+  const bpjsJhtEmployer = bpjsKetenagakerjaanEnabled ? Math.round(bpjsBase * jhtEmployerRate) : 0;
   const bpjsJpEmployer = bpjsKetenagakerjaanEnabled ? Math.round(bpjsJpSalary * jpEmployerRate) : 0;
-  const bpjsJkkEmployer = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jkkEmployerRate) : 0;
-  const bpjsJkmEmployer = bpjsKetenagakerjaanEnabled ? Math.round(basicSalary * jkmEmployerRate) : 0;
+  const bpjsJkkEmployer = bpjsKetenagakerjaanEnabled ? Math.round(bpjsBase * jkkEmployerRate) : 0;
+  const bpjsJkmEmployer = bpjsKetenagakerjaanEnabled ? Math.round(bpjsBase * jkmEmployerRate) : 0;
 
   // Bruto = Gaji Pokok + Semua Tunjangan/Tambahan + BPJS Perusahaan
   const totalBpjsEmployer = bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer;

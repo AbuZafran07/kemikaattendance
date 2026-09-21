@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -57,7 +58,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   useEffect(() => {
     if (editorRef.current && value !== lastHtmlRef.current) {
       lastHtmlRef.current = value;
-      editorRef.current.innerHTML = value;
+      editorRef.current.innerHTML = DOMPurify.sanitize(value);
     }
   }, [value]);
 
@@ -201,7 +202,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         ref={(el) => {
           (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
           if (el && !el.innerHTML && value) {
-            el.innerHTML = value;
+            el.innerHTML = DOMPurify.sanitize(value);
             lastHtmlRef.current = value;
           }
         }}

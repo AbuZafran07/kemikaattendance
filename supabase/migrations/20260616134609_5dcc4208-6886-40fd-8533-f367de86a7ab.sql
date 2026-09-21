@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.get_business_travel_allowance_config() FROM PUBLIC, anon;

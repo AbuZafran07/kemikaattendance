@@ -63,6 +63,12 @@ export default function Settings() {
       path: "/dashboard/settings/attendance-allowance",
     },
     {
+      title: "Tunjangan Perjalanan Dinas",
+      description: "Konfigurasi perhitungan tunjangan perjalanan dinas",
+      icon: Plane,
+      path: "/dashboard/settings/business-travel-allowance",
+    },
+    {
       title: "Bank Perusahaan",
       description: "Atur rekening perusahaan untuk e-Payroll bank",
       icon: Landmark,

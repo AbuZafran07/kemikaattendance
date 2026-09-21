@@ -307,6 +307,7 @@ export default function AttendanceAllowanceReport() {
 
         if (isValidAttendance && (record.status === "hadir" || record.status === "terlambat" || record.status === "pulang_cepat")) {
           userAtt.present += 1;
+          if (dayEntry) dayEntry.counted = true;
         }
 
         // Calculate lateness using dynamic deadline per day

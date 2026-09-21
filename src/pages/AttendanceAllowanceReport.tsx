@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Loader2, FileSpreadsheet, FileText, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -728,7 +729,11 @@ export default function AttendanceAllowanceReport() {
                     </TableHeader>
                     <TableBody>
                       {results.map((r, idx) => (
-                        <TableRow key={r.id} className={r.excluded ? "opacity-50" : ""}>
+                        <TableRow
+                          key={r.id}
+                          onClick={() => setDetailEmployee(r)}
+                          className={`cursor-pointer hover:bg-muted/60 ${r.excluded ? "opacity-50" : ""}`}
+                        >
                           <TableCell>{idx + 1}</TableCell>
                           <TableCell className="font-medium">{r.full_name}</TableCell>
                           <TableCell>{r.jabatan}</TableCell>

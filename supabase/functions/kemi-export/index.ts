@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // bank accounts, and other personal/financial fields.
     const { data: employees, error: empError } = await supabase
       .from('profiles')
-      .select('id, employee_id, full_name, department, jabatan, status, join_date, resign_date, employment_type')
+      .select('id, full_name, departemen, jabatan, status, join_date, resign_date, contract_type, work_type')
       .order('full_name', { ascending: true });
 
     if (empError) {
@@ -61,7 +61,40 @@ Deno.serve(async (req) => {
     }
 
     const rows = employees ?? [];
-    const active = rows.filter((e) => e.status === 'active');
+    const active = rows.filter((e) => e.status === 'Active');
+
+    // Attendance for the last 30 days — date, name, department, status, late minutes.
+    // No salary or personal data.
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const sinceStr = since.toISOString().slice(0, 10);
+
+    const { data: attendanceRows, error: attError } = await supabase
+      .from('attendance')
+      .select('user_id, check_in_time, status, late_minutes')
+      .gte('check_in_time', `${sinceStr}T00:00:00+07:00`)
+      .order('check_in_time', { ascending: false });
+
+    if (attError) {
+      console.error('[kemi-export] attendance query failed:', attError.message);
+      return json({ error: 'Failed to fetch data' }, 500);
+    }
+
+    const profileMap = new Map(rows.map((e) => [e.id, e]));
+
+    const attendance = (attendanceRows ?? [])
+      .map((a) => {
+        const p = profileMap.get(a.user_id);
+        if (!p) return null;
+        return {
+          date: (a.check_in_time as string).slice(0, 10),
+          full_name: p.full_name,
+          department: p.departemen,
+          status: a.status,
+          late_minutes: a.late_minutes ?? 0,
+        };
+      })
+      .filter(Boolean);
 
     return json({
       generated_at: new Date().toISOString(),
@@ -69,18 +102,19 @@ Deno.serve(async (req) => {
         total_employees: rows.length,
         active_employees: active.length,
         resigned_employees: rows.length - active.length,
-        departments: [...new Set(rows.map((e) => e.department).filter(Boolean))].sort(),
+        departments: [...new Set(rows.map((e) => e.departemen).filter(Boolean))].sort(),
       },
       employees: rows.map((e) => ({
-        employee_id: e.employee_id,
         full_name: e.full_name,
-        department: e.department,
+        department: e.departemen,
         jabatan: e.jabatan,
         status: e.status,
-        employment_type: e.employment_type,
+        employment_type: e.contract_type,
+        work_type: e.work_type,
         join_date: e.join_date,
         resign_date: e.resign_date,
       })),
+      attendance,
     });
   } catch (error) {
     console.error('[kemi-export] unexpected error:', error);

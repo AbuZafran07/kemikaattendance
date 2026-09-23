@@ -22,6 +22,13 @@
       "when": 1789954722508,
       "tag": "0002_fix_reject_late_reason_source_hr",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790148525968,
+      "tag": "0003_tighten_rls_selected_findings",
+      "breakpoints": true
     }
   ]
 }

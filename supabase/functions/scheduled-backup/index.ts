@@ -13,7 +13,7 @@ const TABLES = [
   "loan_installments",
 ];
 
-const MAX_BACKUPS = 4;
+const MAX_BACKUPS = 14; // backup harian, simpan 14 hari terakhir
 const FIREBASE_SERVER_KEY = Deno.env.get("FIREBASE_SERVER_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
@@ -98,7 +98,7 @@ async function sendEmailNotification(
               </tr>
               <tr>
                 <td style="padding:10px 16px;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;">Tipe</td>
-                <td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #e2e8f0;">Backup Terjadwal (Mingguan)</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;border-bottom:1px solid #e2e8f0;">Backup Terjadwal (Harian)</td>
               </tr>
               <tr style="background-color:#f8fafc;">
                 <td style="padding:10px 16px;font-size:13px;color:#64748b;">Tabel</td>

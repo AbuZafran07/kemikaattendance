@@ -710,7 +710,7 @@ export default function BackupRestore() {
               <Badge variant="default" className="ml-2">Aktif</Badge>
             </CardTitle>
             <CardDescription>
-              Backup otomatis berjalan setiap minggu (Minggu 02:00 UTC) dan menyimpan 4 backup terakhir
+              Backup otomatis berjalan setiap hari (02:00 UTC) dan menyimpan 14 backup terakhir
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -727,7 +727,7 @@ export default function BackupRestore() {
             )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5" />
-              Jadwal: Setiap hari Minggu pukul 02:00 UTC · Retensi: 4 backup terakhir
+              Jadwal: Setiap hari pukul 02:00 UTC · Retensi: 14 backup terakhir
             </div>
             <Button onClick={handleAutoBackupCloud} disabled={isExporting}>
               {isExporting ? (

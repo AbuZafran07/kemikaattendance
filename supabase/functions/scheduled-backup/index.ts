@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TABLES = [
   "profiles",
@@ -151,7 +151,7 @@ async function sendEmailNotification(
 }
 
 async function notifyAdminsPush(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   profiles: { id: string; fcm_token: string | null }[],
   success: boolean,
   details: string
@@ -189,7 +189,7 @@ async function notifyAdminsPush(
 }
 
 async function notifyAdmins(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   success: boolean,
   details: string
 ) {

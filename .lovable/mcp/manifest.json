@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "sdk_version": "3.5.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://psaqqtfitxevwkgzupnp.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "hris-kemika",
+      "version": "0.1.0",
+      "title": "HRIS Kemika"
+    },
+    "tools": [
+      {
+        "name": "list_my_attendance",
+        "title": "Riwayat absensi saya",
+        "description": "Read the signed-in employee's most recent attendance records, without photos, coordinates, notes, or payroll data.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 30,
+              "description": "Maximum attendance records to return, from 1 to 50."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

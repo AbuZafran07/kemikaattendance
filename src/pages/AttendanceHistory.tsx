@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { exportToExcelFile } from '@/lib/excelExport';
 import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
+import { useWebMCP } from "use-webmcp-tool";
+import { runWebMCPTool } from "@/lib/webmcp-telemetry";
 
 const AttendanceHistory = () => {
   const navigate = useNavigate();
@@ -19,11 +21,22 @@ const AttendanceHistory = () => {
   const [lateReasonStatusMap, setLateReasonStatusMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
 
+  useWebMCP({
+    name: "read_visible_attendance",
+    description: "Read the attendance records currently shown on the employee's attendance history screen, without notes, photos, or location data.",
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    enabled: Boolean(profile?.id) && profile?.status === "Active" && !["BOD", "Komisaris"].includes(profile?.departemen) && !isLoading,
+    execute: () => runWebMCPTool("read_visible_attendance", () => attendanceRecords.length
+      ? attendanceRecords.slice(0, 50).map(record => `${record.id}: ${new Date(record.check_in_time).toLocaleDateString('id-ID')}; ${record.status}; check-in ${new Date(record.check_in_time).toLocaleTimeString('id-ID')}${record.check_out_time ? `; check-out ${new Date(record.check_out_time).toLocaleTimeString('id-ID')}` : ''}`).join("\n")
+      : "Tidak ada absensi pada tampilan ini."),
+  });
+
   useEffect(() => {
     fetchAttendanceHistory();
-  }, []);
+  }, [profile?.id]);
 
   const fetchAttendanceHistory = async () => {
+    if (!profile?.id) return;
     setIsLoading(true);
     try {
       const { data, error } = await supabase

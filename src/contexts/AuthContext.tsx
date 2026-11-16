@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import logger from '@/lib/logger';
+import { oauthReturnPath } from '@/lib/oauth-return-path';
 
 interface AuthContextType {
   user: User | null;
@@ -136,7 +137,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const role = roleData?.role || 'employee';
       
       // Navigate based on role
-      if (role === 'admin' || role === 'hr') {
+      const next = oauthReturnPath(new URLSearchParams(window.location.search).get('next'));
+      if (next !== '/') {
+        navigate(next);
+      } else if (role === 'admin' || role === 'hr') {
         navigate('/dashboard');
       } else {
         navigate('/employee');

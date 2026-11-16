@@ -75,6 +75,7 @@ import Training from "./pages/Training";
 import EmployeeTrainingPage from "./pages/EmployeeTraining";
 import AssetManagement from "./pages/AssetManagement";
 import ExitManagement from "./pages/ExitManagement";
+import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
 const App = () => <QueryClientProvider client={queryClient}>
@@ -85,6 +86,7 @@ const App = () => <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <FCMNotifications />
           <Routes>
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />

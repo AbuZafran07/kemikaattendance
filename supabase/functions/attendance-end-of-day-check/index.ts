@@ -10,12 +10,11 @@
 // Dijadwalkan mirip checkout-reminder (lihat komentar di file itu): lewat pg_cron /
 // Supabase Dashboard Cron Jobs, dipanggil setelah jam kerja selesai setiap hari kerja.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { authenticateCronRequest } from '../_shared/cron-auth.ts';
+import { attendancePushStore, drainAttendancePush } from '../_shared/attendance-push.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -25,6 +24,9 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const denied = authenticateCronRequest(req);
+  if (denied) return denied;
+
   try {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Missing configuration");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -32,6 +34,9 @@ Deno.serve(async (req) => {
     // The database serializes this with reason submission and checks all history.
     const { data: missingLateReasons, error: missingReasonError } = await supabase.rpc("scan_missing_late_reasons");
     if (missingReasonError) throw missingReasonError;
+    const { error: reminderError } = await supabase.rpc('send_late_reason_reminders');
+    if (reminderError) throw reminderError;
+    await drainAttendancePush(attendancePushStore(supabase));
 
     let force = false;
     if (req.method === "POST") {
@@ -165,6 +170,8 @@ Deno.serve(async (req) => {
         absenceResults.push({ user_id: employee.id, violation_type: violationType });
       }
     }
+
+    await drainAttendancePush(attendancePushStore(supabase));
 
     // No expiration scan: an already-submitted reason is not a missing reason.
     // Rejection/approval RPCs own the decision and associated violation count.

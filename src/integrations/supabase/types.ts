@@ -370,6 +370,10 @@ export type Database = {
           is_read: boolean
           message: string
           notif_type: string
+          push_claim: string | null
+          push_claimed_until: string | null
+          push_invalid_token: string | null
+          push_retry_after: string | null
           pushed_at: string | null
           related_id: string | null
           target_role: string | null
@@ -385,6 +389,10 @@ export type Database = {
           is_read?: boolean
           message: string
           notif_type: string
+          push_claim?: string | null
+          push_claimed_until?: string | null
+          push_invalid_token?: string | null
+          push_retry_after?: string | null
           pushed_at?: string | null
           related_id?: string | null
           target_role?: string | null
@@ -400,6 +408,10 @@ export type Database = {
           is_read?: boolean
           message?: string
           notif_type?: string
+          push_claim?: string | null
+          push_claimed_until?: string | null
+          push_invalid_token?: string | null
+          push_retry_after?: string | null
           pushed_at?: string | null
           related_id?: string | null
           target_role?: string | null
@@ -2242,6 +2254,18 @@ export type Database = {
         Args: { p_reference_date: string; p_user_id: string }
         Returns: undefined
       }
+      claim_attendance_push: {
+        Args: never
+        Returns: {
+          attendance_date: string
+          fcm_token: string
+          id: string
+          message: string
+          push_claim: string
+          title: string
+          user_id: string
+        }[]
+      }
       create_attendance_violation: {
         Args: {
           p_attendance_id: string
@@ -2253,6 +2277,15 @@ export type Database = {
           p_violation_type: string
         }
         Returns: string
+      }
+      finish_attendance_push: {
+        Args: {
+          p_claim: string
+          p_id: string
+          p_status: string
+          p_token: string
+        }
+        Returns: undefined
       }
       get_attendance_discipline_config: { Args: never; Returns: Json }
       get_attendance_discipline_dashboard_stats: {

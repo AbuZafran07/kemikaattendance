@@ -1,7 +1,7 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
-const FIREBASE_SERVER_KEY = Deno.env.get('FIREBASE_SERVER_KEY');
+import { sendFcm } from '../_shared/fcm.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -152,40 +152,27 @@ Deno.serve(async (req) => {
       throw new Error(`Invalid URL in notification body: ${urlValidation.reason}`);
     }
 
-    if (!FIREBASE_SERVER_KEY) {
-      throw new Error('Firebase server key not configured');
+    const stringData: Record<string, string> = {};
+    for (const [key, value] of Object.entries(data || {})) {
+      if (typeof value !== 'string') throw new Error('FCM data values must be strings');
+      stringData[key] = value;
     }
-
-    // Audit log (server-side only, no sensitive data exposed)
-    console.log(`[AUDIT] Notification sent - Title: "${sanitizedTitle.substring(0, 30)}..."`);
-
-    // Send FCM notification
-    const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `key=${FIREBASE_SERVER_KEY}`
-      },
-      body: JSON.stringify({
-        to: fcmToken,
-        notification: {
-          title: sanitizedTitle,
-          body: sanitizedBody,
-          icon: '/logo.png'
-        },
-        data: data || {}
-      })
-    });
-
-    const result = await response.json();
-    
-    console.log(`[AUDIT] Notification delivery completed`);
-    
+    const result = await sendFcm(fcmToken, sanitizedTitle, sanitizedBody, stringData);
+    if (result.status === 'unregistered') {
+      const { error } = await supabase.from('profiles').update({ fcm_token: null }).eq('fcm_token', fcmToken);
+      if (error) throw error;
+    }
+    if (result.status !== 'sent') {
+      return new Response(JSON.stringify({ success: false, error: 'Push tidak dapat dikirim', status: result.httpStatus }), {
+        status: result.status === 'unregistered' ? 410 : 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     return new Response(JSON.stringify({ success: true, result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'Notifikasi tidak dapat dikirim' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

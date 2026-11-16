@@ -30,4 +30,4 @@
 # Attendance notification delivery
 - [x] Include new employee attendance notifications in badge and scoped realtime updates; enable publication.
 - [x] Format Indonesian dates and next warning thresholds; all 60 regression tests pass and preview builds cleanly.
-- [ ] Enable server FCM delivery and pushed_at deduplication for all inserts (blocked: Firebase connector declined).
+- [ ] Migrate send-notification to connector-backed FCM HTTP v1, add leased server delivery with pushed_at, remove browser duplicate senders, and verify automated schedules and token cleanup.

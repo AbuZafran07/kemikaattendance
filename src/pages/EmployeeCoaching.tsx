@@ -22,7 +22,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
 import { getUnlockLetterSignedUrl } from "@/lib/unlockLetterStorage";
-import { pushRecentAttendanceNotifications, nowMinusBuffer } from "@/lib/attendanceDisciplineNotifications";
 import logger from "@/lib/logger";
 
 interface LockedRow {
@@ -211,7 +210,7 @@ const EmployeeCoaching = () => {
 
   const handleApproveLetter = async () => {
     if (!selected?.unlockLetter) return;
-    const since = nowMinusBuffer();
+
     const { error } = await (supabase.rpc as any)("approve_unlock_letter", { p_letter_id: selected.unlockLetter.id });
     if (error) {
       toast({ title: "Gagal Menyetujui", description: error.message, variant: "destructive" });
@@ -220,12 +219,12 @@ const EmployeeCoaching = () => {
     toast({ title: "Berhasil", description: "Surat unlock disetujui." });
     await fetchLockedAccounts();
     setSelected(null);
-    pushRecentAttendanceNotifications(since);
+
   };
 
   const handleRejectLetter = async (reason: string) => {
     if (!selected?.unlockLetter) return;
-    const since = nowMinusBuffer();
+
     const { error } = await (supabase.rpc as any)("reject_unlock_letter", {
       p_letter_id: selected.unlockLetter.id,
       p_reason: reason,
@@ -237,13 +236,13 @@ const EmployeeCoaching = () => {
     toast({ title: "Berhasil", description: "Surat unlock ditolak." });
     await fetchLockedAccounts();
     setSelected(null);
-    pushRecentAttendanceNotifications(since);
+
   };
 
   const handleUnlock = async () => {
     if (!selected?.coaching || !selected?.unlockLetter) return;
     setUnlocking(true);
-    const since = nowMinusBuffer();
+
     try {
       const { error } = await (supabase.rpc as any)("unlock_account", {
         p_lock_id: selected.lock_id,
@@ -254,7 +253,7 @@ const EmployeeCoaching = () => {
       toast({ title: "Berhasil", description: "Akun karyawan berhasil dibuka kembali." });
       await fetchLockedAccounts();
       setSelected(null);
-      pushRecentAttendanceNotifications(since);
+
     } catch (error) {
       toast({
         title: "Gagal Unlock",

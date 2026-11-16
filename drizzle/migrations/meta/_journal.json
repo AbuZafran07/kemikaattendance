@@ -85,6 +85,13 @@
       "when": 1794812023324,
       "tag": "0011_attendance_notification_badge_and_wording",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794813426206,
+      "tag": "0012_attendance_push_claims",
+      "breakpoints": true
     }
   ]
 }

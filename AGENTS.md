@@ -12,3 +12,4 @@
 - Generate counted-violation notices and threshold actions atomically in the attendance insert trigger, merge existing employee warning messages by event key, and link dated notifications to WIB-bounded history; this prevents duplicate notices and incorrect next-day rejection dates.
 - Run the SQL-only reason reminder hourly with attendance-row locking and unique event keys; daily checks cannot reliably cover the four-hour reminder window.
 - Count employee attendance notices after the server last-seen timestamp and use unique scoped realtime channels; shared channel names leak subscriptions when multiple badge hooks mount.
+- Deliver employee attendance push exclusively from a server queue with atomic leased claims and success-only pushed_at; compare the failed device token before clearing it so replacement registrations survive. Use connector-backed FCM v1, with service-account OAuth exchange managed by the connector.

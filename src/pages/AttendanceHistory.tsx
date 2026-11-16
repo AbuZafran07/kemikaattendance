@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,9 @@ import { isWithinLateReasonDeadline } from "@/lib/lateReasonDeadline";
 
 const AttendanceHistory = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedDate = searchParams.get("date");
+  const selectedDate = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : null;
   const { profile } = useAuth();
   const { toast } = useToast();
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
@@ -58,17 +61,22 @@ const AttendanceHistory = () => {
 
   useEffect(() => {
     fetchAttendanceHistory();
-  }, [profile?.id]);
+  }, [profile?.id, selectedDate]);
 
   const fetchAttendanceHistory = async () => {
     if (!profile?.id) return;
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('attendance')
         .select('*')
         .eq('user_id', profile?.id)
         .order('check_in_time', { ascending: false });
+      if (selectedDate) {
+        const start = new Date(`${selectedDate}T00:00:00+07:00`);
+        query = query.gte('check_in_time', start.toISOString()).lt('check_in_time', new Date(start.getTime() + 86400000).toISOString());
+      }
+      const { data, error } = await query;
 
       if (error) throw error;
       setAttendanceRecords(data || []);
@@ -165,13 +173,17 @@ const AttendanceHistory = () => {
             <CardDescription>
               Total: {attendanceRecords.length} record absensi
             </CardDescription>
+            {selectedDate && <div className="flex items-center justify-between gap-2">
+              <Badge variant="secondary">{selectedDate}</Badge>
+              <Button variant="ghost" size="sm" onClick={() => setSearchParams({})}>Semua Tanggal</Button>
+            </div>}
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8">Memuat data...</div>
             ) : attendanceRecords.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Belum ada data absensi
+                {selectedDate ? `Tidak ada catatan absensi pada ${selectedDate}` : "Belum ada data absensi"}
               </div>
             ) : (
               <div className="space-y-4">

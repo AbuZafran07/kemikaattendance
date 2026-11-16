@@ -24,6 +24,7 @@ export async function isolated(check) {
         CREATE OR REPLACE FUNCTION pg_temp.get_attendance_discipline_config() RETURNS jsonb LANGUAGE sql AS $$SELECT '{"sp1_threshold":5,"sp2_threshold":8,"lock_threshold":11}'::jsonb$$;
         CREATE OR REPLACE FUNCTION pg_temp.get_monthly_violation_count(uuid,date) RETURNS integer LANGUAGE sql AS $$SELECT count(*)::integer FROM pg_temp.attendance_violations WHERE user_id=$1 AND is_counted AND date_trunc('month',violation_date)=date_trunc('month',$2)$$;
         CREATE OR REPLACE FUNCTION pg_temp.fake_now() RETURNS timestamptz LANGUAGE sql AS $$SELECT '2026-11-16 10:00+07'::timestamptz$$;
+        DROP FUNCTION IF EXISTS pg_temp.create_attendance_violation(uuid,uuid,date,text,text,text,uuid);
         CREATE OR REPLACE FUNCTION pg_temp.create_attendance_violation(uuid,uuid,date,text,text,text,uuid) RETURNS uuid LANGUAGE plpgsql AS $$BEGIN INSERT INTO pg_temp.attendance_violations VALUES(gen_random_uuid(),$1,$2,$7,$3,$4,true); RETURN $1; END$$;
         INSERT INTO profiles VALUES('00000000-0000-0000-0000-000000000001','Active',NULL,'active');
         INSERT INTO attendance VALUES('00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000001','terlambat',1,'2026-11-15 09:59+07');

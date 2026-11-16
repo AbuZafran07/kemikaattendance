@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { useNotificationBadge } from "@/hooks/useNotificationBadge";
+import { useNavigate } from "react-router-dom";
 
 interface Notification {
   id: string;
@@ -17,9 +18,11 @@ interface Notification {
   title: string;
   description: string;
   date: string;
+  attendanceDate?: string | null;
 }
 
 const EmployeeNotifications = () => {
+  const navigate = useNavigate();
   const { signOut, profile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +90,7 @@ const EmployeeNotifications = () => {
         title: n.title,
         description: n.message,
         date: n.created_at,
+        attendanceDate: n.attendance_date,
       }));
 
       const allNotifications = [...leaveNotifs, ...overtimeNotifs, ...disciplineNotifs].sort(
@@ -178,12 +182,17 @@ const EmployeeNotifications = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     {getStatusIcon(notif.status)}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="font-medium">{notif.title}</h3>
                         {getStatusBadge(notif.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground">{notif.description}</p>
+                      <p className="text-sm text-muted-foreground break-words">{notif.description}</p>
+                      {notif.attendanceDate && (
+                        <Button variant="link" className="h-auto p-0 mt-2 text-left whitespace-normal" onClick={() => navigate(`/employee/attendance-history?date=${notif.attendanceDate}`)}>
+                          Riwayat Absensi · {notif.attendanceDate}
+                        </Button>
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(notif.date).toLocaleDateString("id-ID", {
                           day: "numeric",

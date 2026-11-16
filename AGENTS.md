@@ -9,3 +9,5 @@
 - MCP database access must use the verified OAuth caller's shared lazy client and existing RLS; no privileged or anonymous fallback is permitted.
 - Browser tools register in their owning screen using `useWebMCP` and the shared telemetry helper; this bounds their lifetime and preserves normal UI operation.
 - Preserve canonical same-origin consent return paths through existing password login; employee registration remains administrator-managed.
+- Generate counted-violation notices and threshold actions atomically in the attendance insert trigger, merge existing employee warning messages by event key, and link dated notifications to WIB-bounded history; this prevents duplicate notices and incorrect next-day rejection dates.
+- Run the SQL-only reason reminder hourly with attendance-row locking and unique event keys; daily checks cannot reliably cover the four-hour reminder window.

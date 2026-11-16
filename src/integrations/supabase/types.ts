@@ -362,7 +362,10 @@ export type Database = {
       }
       attendance_notifications: {
         Row: {
+          attendance_date: string | null
+          attendance_id: string | null
           created_at: string
+          event_key: string | null
           id: string
           is_read: boolean
           message: string
@@ -373,7 +376,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attendance_date?: string | null
+          attendance_id?: string | null
           created_at?: string
+          event_key?: string | null
           id?: string
           is_read?: boolean
           message: string
@@ -384,7 +390,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attendance_date?: string | null
+          attendance_id?: string | null
           created_at?: string
+          event_key?: string | null
           id?: string
           is_read?: boolean
           message?: string
@@ -2299,6 +2308,10 @@ export type Database = {
       is_discipline_admin: { Args: never; Returns: boolean }
       late_reason_deadline_hours: { Args: never; Returns: number }
       mark_notifications_seen: { Args: never; Returns: string }
+      notify_late_reason_decision: {
+        Args: { p_reason_id: string }
+        Returns: undefined
+      }
       reconcile_attendance_discipline: {
         Args: { p_attendance_id: string; p_month: string; p_user_id: string }
         Returns: undefined
@@ -2324,6 +2337,7 @@ export type Database = {
         Returns: undefined
       }
       scan_missing_late_reasons: { Args: never; Returns: number }
+      send_late_reason_reminders: { Args: never; Returns: number }
       set_unlock_letter_document: {
         Args: { p_document_url: string; p_letter_id: string }
         Returns: undefined

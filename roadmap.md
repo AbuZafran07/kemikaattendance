@@ -21,3 +21,8 @@
 - [x] Generate manifest; verify missing/invalid authorization, signed-out return path, signed-in attendance UI, and clean build.
 - [ ] Verify live approve/deny and external MCP tool call (requires publishing the consent page and MCP revision).
 - [ ] Republish to activate the new hosted MCP revision (requires user publication).
+# Employee attendance notifications
+- [x] Add dated approval/rejection, deduplicated reminders and counted-violation notifications with existing progress/SP merged.
+- [x] Schedule hourly reminder and link notifications to dated history; installed schedule verified.
+- [x] Run 53 regression tests (14 notification tests and 39 existing); signed-in notification page and dated history/reset checked, preview builds cleanly.
+- [ ] Verify a real employee receives and clicks a new notification end-to-end (requester's account has no employee notifications; requires an employee test-account approval and permitted test decision).

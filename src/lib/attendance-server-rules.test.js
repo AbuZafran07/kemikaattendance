@@ -25,6 +25,7 @@ async function isolated(check) {
         CREATE OR REPLACE FUNCTION pg_temp.caller_role() RETURNS text LANGUAGE sql AS $$ SELECT 'authenticated'::text $$;
         CREATE OR REPLACE FUNCTION pg_temp.has_role(uuid,public.app_role) RETURNS boolean LANGUAGE sql AS 'SELECT admin FROM pg_temp.config';
         CREATE OR REPLACE FUNCTION pg_temp.is_discipline_admin() RETURNS boolean LANGUAGE sql AS 'SELECT admin OR hr FROM pg_temp.config';
+        DROP FUNCTION IF EXISTS pg_temp.create_attendance_violation(uuid,uuid,date,text,text,text,uuid);
         CREATE OR REPLACE FUNCTION pg_temp.create_attendance_violation(uuid,uuid,date,text,text,text,uuid) RETURNS uuid LANGUAGE plpgsql AS $$ BEGIN
           INSERT INTO pg_temp.violations SELECT $1,$3,$4 WHERE NOT EXISTS(SELECT 1 FROM pg_temp.violations WHERE user_id=$1 AND violation_date=$3); RETURN $1;
         END; $$;

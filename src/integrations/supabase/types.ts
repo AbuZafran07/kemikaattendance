@@ -2297,6 +2297,10 @@ export type Database = {
       }
       is_discipline_admin: { Args: never; Returns: boolean }
       mark_notifications_seen: { Args: never; Returns: string }
+      reconcile_attendance_discipline: {
+        Args: { p_attendance_id: string; p_month: string; p_user_id: string }
+        Returns: undefined
+      }
       reject_business_travel_request: {
         Args: { reason: string; request_id: string }
         Returns: undefined
@@ -2317,6 +2321,7 @@ export type Database = {
         Args: { p_letter_id: string; p_reason: string }
         Returns: undefined
       }
+      scan_missing_late_reasons: { Args: never; Returns: number }
       set_unlock_letter_document: {
         Args: { p_document_url: string; p_letter_id: string }
         Returns: undefined

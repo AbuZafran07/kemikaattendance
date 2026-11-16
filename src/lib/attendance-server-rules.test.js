@@ -10,8 +10,8 @@ async function isolated(check) {
     await sql.begin(async (tx) => {
       await tx.unsafe(`
         DROP TABLE IF EXISTS pg_temp.config, pg_temp.system_settings, pg_temp.profiles, pg_temp.attendance, pg_temp.leave_requests, pg_temp.business_travel_requests, pg_temp.violations CASCADE;
-        CREATE TEMP TABLE config(server_now timestamptz, admin boolean) ON COMMIT DROP;
-        INSERT INTO config VALUES ('2026-11-16 08:16:00+07',false);
+        CREATE TEMP TABLE config(server_now timestamptz, admin boolean, hr boolean DEFAULT false) ON COMMIT DROP;
+        INSERT INTO config(server_now,admin) VALUES ('2026-11-16 08:16:00+07',false);
         CREATE TEMP TABLE system_settings(key text,value jsonb) ON COMMIT DROP;
         INSERT INTO system_settings VALUES ('work_hours','{"check_in_end":"08:00","late_tolerance_minutes":15,"check_out_start":"17:00","check_out_end":"17:00","early_leave_tolerance_minutes":0,"friday_enabled":true,"friday_check_out_start":"16:00","friday_check_out_end":"16:00"}'),('overtime_policy','{"holidays":[{"date":"2026-11-11"}]}');
         CREATE TEMP TABLE profiles(id uuid,status text,account_status text,departemen text,join_date date,resign_date date) ON COMMIT DROP;
@@ -24,7 +24,7 @@ async function isolated(check) {
         CREATE OR REPLACE FUNCTION pg_temp.caller() RETURNS uuid LANGUAGE sql AS $$ SELECT '${employee}'::uuid $$;
         CREATE OR REPLACE FUNCTION pg_temp.caller_role() RETURNS text LANGUAGE sql AS $$ SELECT 'authenticated'::text $$;
         CREATE OR REPLACE FUNCTION pg_temp.has_role(uuid,public.app_role) RETURNS boolean LANGUAGE sql AS 'SELECT admin FROM pg_temp.config';
-        CREATE OR REPLACE FUNCTION pg_temp.is_discipline_admin() RETURNS boolean LANGUAGE sql AS 'SELECT true';
+        CREATE OR REPLACE FUNCTION pg_temp.is_discipline_admin() RETURNS boolean LANGUAGE sql AS 'SELECT admin OR hr FROM pg_temp.config';
         CREATE OR REPLACE FUNCTION pg_temp.create_attendance_violation(uuid,uuid,date,text,text,text,uuid) RETURNS uuid LANGUAGE plpgsql AS $$ BEGIN
           INSERT INTO pg_temp.violations SELECT $1,$3,$4 WHERE NOT EXISTS(SELECT 1 FROM pg_temp.violations WHERE user_id=$1 AND violation_date=$3); RETURN $1;
         END; $$;
@@ -86,6 +86,7 @@ for (const table of ["leave_requests", "business_travel_requests"]) {
   test(`${table}: next-day rejection rechecks the previous working date once`, async () => {
     await isolated(async (tx) => {
       await tx`UPDATE config SET server_now='2026-11-17 10:00+07'`;
+      await tx`UPDATE config SET hr=true`;
       await tx.unsafe(`INSERT INTO ${table} VALUES('${employee}','pending','2026-11-16','2026-11-16'); UPDATE ${table} SET status='rejected'; UPDATE ${table} SET status='rejected';`);
       const rows = await tx`SELECT violation_date::text AS day,violation_type FROM violations`;
       expect(rows).toHaveLength(1);
@@ -96,6 +97,7 @@ for (const table of ["leave_requests", "business_travel_requests"]) {
 }
 test("recheck skips weekends, holidays, future dates and unfinished working days", async () => {
   await isolated(async (tx) => {
+    await tx`UPDATE config SET hr=true`;
     await tx`INSERT INTO leave_requests VALUES(${employee},'pending','2026-11-11','2026-11-18')`;
     await tx`UPDATE leave_requests SET status='rejected'`;
     const rows = await tx`SELECT violation_date::text AS day FROM violations ORDER BY violation_date`;
@@ -105,6 +107,7 @@ test("recheck skips weekends, holidays, future dates and unfinished working days
 for (const status of ["pending", "approved"]) {
   test(`another ${status} request still protects the date`, async () => {
     await isolated(async (tx) => {
+      await tx`UPDATE config SET hr=true`;
       await tx`INSERT INTO business_travel_requests VALUES(${employee},${status},'2026-11-12','2026-11-12')`;
       await tx`INSERT INTO leave_requests VALUES(${employee},'pending','2026-11-12','2026-11-12')`;
       await tx`UPDATE leave_requests SET status='rejected'`;
@@ -120,7 +123,7 @@ test("existing attendance prevents a rejected-request absence violation", async 
   await isolated(async (tx) => {
     await tx`UPDATE config SET admin=true`;
     await tx`INSERT INTO attendance(user_id,check_in_time,status) VALUES(${employee},'2026-11-12 08:00+07','hadir')`;
-    await tx`UPDATE config SET admin=false`;
+    await tx`UPDATE config SET admin=false,hr=true`;
     await tx`INSERT INTO leave_requests VALUES(${employee},'pending','2026-11-12','2026-11-12')`;
     await tx`UPDATE leave_requests SET status='rejected'`;
     expect(await tx`SELECT * FROM violations`).toHaveLength(0);
@@ -128,6 +131,7 @@ test("existing attendance prevents a rejected-request absence violation", async 
 });
 test("BOD and inactive employees remain excluded", async () => {
   await isolated(async (tx) => {
+    await tx`UPDATE config SET hr=true`;
     await tx`UPDATE profiles SET departemen='BOD'`;
     await tx`INSERT INTO leave_requests VALUES(${employee},'pending','2026-11-12','2026-11-12')`;
     await tx`UPDATE leave_requests SET status='rejected'`;
@@ -136,5 +140,33 @@ test("BOD and inactive employees remain excluded", async () => {
     await tx`UPDATE leave_requests SET status='pending'`;
     await tx`UPDATE leave_requests SET status='rejected'`;
     expect(await tx`SELECT * FROM violations`).toHaveLength(0);
+  });
+});
+
+test("HR can correct another employee's historical attendance", async () => {
+  await isolated(async (tx) => {
+    await tx`UPDATE config SET hr=true`;
+    const [row] = await tx`INSERT INTO attendance(user_id,check_in_time,status) VALUES('00000000-0000-0000-0000-000000000009','2026-11-12 07:00+07','hadir') RETURNING check_in_time='2026-11-12 07:00+07'::timestamptz AS historical`;
+    expect(row.historical).toBe(true);
+  });
+});
+test("empty department does not block employee check-in", async () => {
+  await isolated(async (tx) => {
+    await tx`UPDATE profiles SET departemen=NULL`;
+    const [row] = await tx`INSERT INTO attendance(user_id,status) VALUES(${employee},'hadir') RETURNING late_minutes`;
+    expect(row.late_minutes).toBe(1);
+  });
+});
+test("locked employee can finish checkout but cannot check in", async () => {
+  await isolated(async (tx) => {
+    await tx`INSERT INTO attendance(user_id,status) VALUES(${employee},'hadir')`;
+    await tx`UPDATE profiles SET account_status='locked'`;
+    await tx`UPDATE config SET server_now='2026-11-16 17:00+07'`;
+    const [row] = await tx`UPDATE attendance SET check_out_time='2026-11-16 20:00+07' RETURNING duration_minutes`;
+    expect(row.duration_minutes).toBe(524);
+    await tx.savepoint(async (sp) => {
+      await expect(sp`INSERT INTO attendance(user_id,status) VALUES(${employee},'hadir')`).rejects.toThrow('Attendance is unavailable');
+      throw new Error('rollback expected denial');
+    }).catch(e => { if (e.message !== 'rollback expected denial') throw e; });
   });
 });

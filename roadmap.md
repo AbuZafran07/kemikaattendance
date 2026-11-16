@@ -1,5 +1,10 @@
 # Agent integrations
 # Attendance discipline correction
+- [x] Restore 24-hour detection only for attendance with no submitted reason, and allow submission from history; schedule daily including weekends.
+- [x] Preserve HR corrections, empty-department eligibility and locked-account checkout.
+- [x] Reconcile warnings/automatic locks affected by corrected late violations with audit history; six prior SP records corrected, no active locks found.
+- [x] Test corrected database rules and signed-in history dialog/cancel without fabricating employee reasons.
+- [ ] Verify real employee reason submission/check-out end-to-end (needs employee test-account approval; own caller is admin and no false reasons were submitted).
 - [x] Recheck past working dates when pending leave/travel requests are rejected, without counting protected dates.
 - [x] Enforce server timestamps/status for employee check-in/out and use saved results in the employee screen.
 - [x] Verify installed triggers, 14 isolated database tests, clean preview and signed-in admin screen.

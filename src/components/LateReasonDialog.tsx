@@ -17,9 +17,10 @@ interface LateReasonDialogProps {
   durationText: string;
   onConfirm: (reason: string) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
-const LateReasonDialog = ({ open, type, durationText, onConfirm, onCancel }: LateReasonDialogProps) => {
+const LateReasonDialog = ({ open, type, durationText, onConfirm, onCancel, isSubmitting = false }: LateReasonDialogProps) => {
   const [reason, setReason] = useState("");
 
   const isLate = type === "terlambat";
@@ -29,9 +30,8 @@ const LateReasonDialog = ({ open, type, durationText, onConfirm, onCancel }: Lat
     : "Anda terdeteksi pulang lebih awal. Silakan isi alasan pulang cepat Anda.";
 
   const handleConfirm = () => {
-    if (reason.trim()) {
+    if (reason.trim() && !isSubmitting) {
       onConfirm(reason.trim());
-      setReason("");
     }
   };
 
@@ -58,15 +58,16 @@ const LateReasonDialog = ({ open, type, durationText, onConfirm, onCancel }: Lat
             onChange={(e) => setReason(e.target.value)}
             className="min-h-[100px]"
             maxLength={500}
+            disabled={isSubmitting}
           />
           <p className="text-xs text-muted-foreground text-right">{reason.length}/500</p>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" disabled={isSubmitting} onClick={() => { setReason(""); onCancel(); }}>
             Batal
           </Button>
-          <Button onClick={handleConfirm} disabled={!reason.trim()}>
-            Kirim & Lanjutkan
+          <Button onClick={handleConfirm} disabled={!reason.trim() || isSubmitting}>
+            {isSubmitting ? "Mengirim..." : "Kirim & Lanjutkan"}
           </Button>
         </DialogFooter>
       </DialogContent>

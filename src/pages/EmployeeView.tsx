@@ -634,11 +634,14 @@ const EmployeeView = () => {
   };
 
   const handleLateReasonCancel = () => {
+    const isCheckIn = pendingAttendanceRef.current?.type === "checkin";
     setLateReasonDialog({ ...lateReasonDialog, open: false });
     pendingAttendanceRef.current = null;
     toast({
       title: "Absensi Tersimpan",
-      description: "Alasan belum dikirim. Anda dapat mengirim alasan keterlambatan dari riwayat absensi.",
+      description: isCheckIn
+        ? "Alasan belum dikirim. Kirim dari riwayat absensi; tanpa alasan setelah 24 jam dihitung sebagai pelanggaran."
+        : "Check-out tersimpan tanpa keterangan pulang cepat.",
       variant: "destructive",
     });
   };
@@ -729,7 +732,7 @@ const EmployeeView = () => {
               </div>
             </CardContent>
           </Card>
-        ) : profile?.account_status === "locked" ? (
+        ) : profile?.account_status === "locked" && !(todayAttendance && !todayAttendance.check_out_time) ? (
           <AccountLockedCard userId={profile.id} />
         ) : (
           <Card>

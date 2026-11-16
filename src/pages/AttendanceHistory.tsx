@@ -12,6 +12,7 @@ import logo from "@/assets/logo.png";
 import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { useWebMCP } from "use-webmcp-tool";
 import { runWebMCPTool } from "@/lib/webmcp-telemetry";
+import LateReasonDialog from "@/components/LateReasonDialog";
 
 const AttendanceHistory = () => {
   const navigate = useNavigate();
@@ -20,6 +21,27 @@ const AttendanceHistory = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [lateReasonStatusMap, setLateReasonStatusMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [reasonRecord, setReasonRecord] = useState<any | null>(null);
+  const [isSubmittingReason, setIsSubmittingReason] = useState(false);
+
+  const submitReason = async (reason: string) => {
+    if (!reasonRecord || isSubmittingReason) return;
+    setIsSubmittingReason(true);
+    try {
+      const { error } = await supabase.rpc("submit_late_reason", {
+        p_attendance_id: reasonRecord.id,
+        p_reason: reason,
+      });
+      if (error) throw error;
+      setReasonRecord(null);
+      await fetchAttendanceHistory();
+      toast({ title: "Alasan Terkirim", description: "Menunggu keputusan HR." });
+    } catch {
+      toast({ title: "Alasan Gagal Dikirim", description: "Silakan coba kembali.", variant: "destructive" });
+    } finally {
+      setIsSubmittingReason(false);
+    }
+  };
 
   useWebMCP({
     name: "read_visible_attendance",
@@ -48,10 +70,11 @@ const AttendanceHistory = () => {
       if (error) throw error;
       setAttendanceRecords(data || []);
 
-      const { data: lateReasons } = await supabase
+      const { data: lateReasons, error: reasonError } = await supabase
         .from('late_reasons')
         .select('attendance_id, status')
         .eq('user_id', profile?.id);
+      if (reasonError) throw reasonError;
 
       const map: Record<string, string> = {};
       (lateReasons || []).forEach((lr) => {
@@ -164,7 +187,7 @@ const AttendanceHistory = () => {
                         <p className="text-sm text-muted-foreground">
                           {formatStatus(record.status)}
                         </p>
-                        {record.status === 'terlambat' && lateReasonBadge(record.id)}
+                        {(record.status === 'terlambat' || record.late_minutes > 0) && lateReasonBadge(record.id)}
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium">
@@ -187,6 +210,11 @@ const AttendanceHistory = () => {
                         {record.notes}
                       </p>
                     )}
+                    {(record.status === 'terlambat' || record.late_minutes > 0) && !lateReasonStatusMap[record.id] && (
+                      <Button variant="outline" size="sm" className="mt-3" disabled={isSubmittingReason} onClick={() => setReasonRecord(record)}>
+                        Kirim Alasan
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -196,6 +224,15 @@ const AttendanceHistory = () => {
       </div>
 
       <EmployeeBottomNav />
+      <LateReasonDialog
+        key={reasonRecord?.id || "closed"}
+        open={Boolean(reasonRecord)}
+        type="terlambat"
+        durationText={`${reasonRecord?.late_minutes || 0} menit terlambat`}
+        onConfirm={submitReason}
+        onCancel={() => setReasonRecord(null)}
+        isSubmitting={isSubmittingReason}
+      />
     </div>
   );
 };

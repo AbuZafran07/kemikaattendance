@@ -17,8 +17,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -26,7 +26,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Missing configuration");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Runs on weekends/holidays too, before the daily absence scan's time gate.
+    // The database serializes this with reason submission and checks all history.
+    const { data: missingLateReasons, error: missingReasonError } = await supabase.rpc("scan_missing_late_reasons");
+    if (missingReasonError) throw missingReasonError;
 
     let force = false;
     if (req.method === "POST") {
@@ -56,6 +61,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: true,
           skipped: true,
+          missing_late_reason_violations: missingLateReasons,
           reason: `Jam saat ini ${currentHourWib}:00 WIB masih sebelum jam kerja selesai (${checkOutEnd} WIB)`,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -85,7 +91,7 @@ Deno.serve(async (req) => {
       .from("profiles")
       .select("id, full_name")
       .eq("status", "Active")
-      .not("departemen", "in", "(BOD,Komisaris)")
+      .or("departemen.is.null,departemen.not.in.(BOD,Komisaris)")
       .is("resign_date", null);
     if (profilesError) throw profilesError;
 
@@ -174,6 +180,7 @@ Deno.serve(async (req) => {
         missing_attendance: missingEmployees.length,
         violations_created: absenceResults.filter((r) => r.violation_type).length,
         late_reasons_expired: 0,
+        missing_late_reason_violations: missingLateReasons,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

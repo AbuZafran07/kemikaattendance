@@ -43,6 +43,20 @@
       "when": 1794798910885,
       "tag": "0005_server_attendance_clock_and_rejected_request_recheck",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794800057044,
+      "tag": "0006_close_missing_reason_and_attendance_access_gaps",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794800160448,
+      "tag": "0007_allow_discipline_correction_notifications",
+      "breakpoints": true
     }
   ]
 }

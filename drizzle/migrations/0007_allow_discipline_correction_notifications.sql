@@ -1,0 +1,2 @@
+ALTER TABLE public.attendance_notifications DROP CONSTRAINT attendance_notifications_notif_type_check;
+ALTER TABLE public.attendance_notifications ADD CONSTRAINT attendance_notifications_notif_type_check CHECK (notif_type IN ('late_reason_pending','monthly_violation_progress','sp1_issued','sp2_issued','lock_warning','account_locked','account_unlocked','rolling_3month_warning','unlock_letter_submitted','unlock_letter_approved','unlock_letter_rejected','warning_corrected'));

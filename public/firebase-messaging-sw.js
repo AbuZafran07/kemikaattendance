@@ -1,72 +1,48 @@
-// Firebase Messaging Service Worker
-// This service worker handles background push notifications from Firebase Cloud Messaging.
-// 
-// IMPORTANT: Firebase configuration is dynamically fetched from the server.
-// The actual API keys are stored as environment variables and are NOT exposed in this file.
-// This approach prevents credential exposure while maintaining FCM functionality.
-
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
-
-// Flag to track initialization state
-let isInitialized = false;
-
-// Initialize Firebase with config received from the main app
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'FIREBASE_CONFIG') {
-    const config = event.data.config;
-    
-    // Validate that we have the required configuration
-    if (!config || !config.apiKey || !config.projectId || !config.messagingSenderId || !config.appId) {
-      console.warn('Firebase SW: Invalid or incomplete configuration received');
-      return;
-    }
-    
-    if (!isInitialized) {
-      try {
-        firebase.initializeApp(config);
-        const messaging = firebase.messaging();
-        
-        messaging.onBackgroundMessage((payload) => {
-          console.log('Firebase SW: Received background message', payload);
-          
-          const notificationTitle = payload.notification?.title || 'Notification';
-          const notificationOptions = {
-            body: payload.notification?.body || '',
-            icon: '/logo.png',
-            badge: '/logo.png',
-            tag: payload.messageId || 'default'
-          };
-
-          self.registration.showNotification(notificationTitle, notificationOptions);
-        });
-        
-        isInitialized = true;
-        console.log('Firebase SW: Successfully initialized');
-      } catch (error) {
-        console.error('Firebase SW: Initialization error', error);
-      }
-    }
-  }
+// Public web configuration: available even when every application tab is closed.
+importScripts('https://www.gstatic.com/firebasejs/13.3.0/firebase-app-compat.js');
+firebase.initializeApp({
+  apiKey: 'AIzaSyBXwJkGmCBOF8BH2adnl1ErEUX3vHAq07M',
+  authDomain: 'hris-kemika.firebaseapp.com',
+  projectId: 'hris-kemika',
+  storageBucket: 'hris-kemika.firebasestorage.app',
+  messagingSenderId: '154403918893',
+  appId: '1:154403918893:web:0c567375ae6fcd325f14a4'
 });
 
-// Handle notification click events
+// Register before Firebase's click handler so it cannot replace our dated route.
 self.addEventListener('notificationclick', (event) => {
+  event.stopImmediatePropagation();
   event.notification.close();
-  
-  // Open the app when notification is clicked
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if there's already a window open
-      for (const client of clientList) {
-        if (client.url && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Open a new window if no existing window is found
-      if (clients.openWindow) {
-        return clients.openWindow('/');
-      }
-    })
-  );
+  const data = event.notification.data;
+  const path = data?.FCM_MSG?.data?.path || data?.path;
+  const fallback = new URL('/employee/notifications', self.location.origin);
+  let target = fallback;
+  try {
+    const candidate = new URL(path || fallback.href, self.location.origin);
+    if (candidate.origin === self.location.origin) target = candidate;
+  } catch { /* Invalid destinations fall back to employee notifications. */ }
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
+    if (existing) {
+      await existing.focus();
+      await existing.navigate(target.href);
+      return;
+    }
+    await self.clients.openWindow(target.href);
+  })());
+});
+
+importScripts('https://www.gstatic.com/firebasejs/13.3.0/firebase-messaging-compat.js');
+firebase.messaging().onBackgroundMessage((payload) => {
+  // Notification payloads are already displayed by Firebase; never display twice.
+  if (payload.notification) return;
+  return self.registration.showNotification(payload.data?.title || 'Kemika', {
+    body: payload.data?.body || '',
+    icon: '/logo.png',
+    badge: '/logo.png',
+    tag: payload.messageId,
+    data: payload.data || {}
+  });
 });

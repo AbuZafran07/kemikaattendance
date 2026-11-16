@@ -24,7 +24,7 @@ const isFirebaseConfigured = () => {
 let app: any;
 let messaging: Messaging | null = null;
 
-// Initialize service worker and send Firebase config securely
+// The messaging worker initializes itself, including when all tabs are closed.
 const initializeServiceWorker = async () => {
   if (!('serviceWorker' in navigator)) {
     logger.warn('Service workers are not supported in this browser');
@@ -36,14 +36,6 @@ const initializeServiceWorker = async () => {
     
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
-    
-    // Send Firebase config to the service worker (only if configured)
-    if (isFirebaseConfigured() && registration.active) {
-      registration.active.postMessage({
-        type: 'FIREBASE_CONFIG',
-        config: firebaseConfig
-      });
-    }
     
     return registration;
   } catch (error) {
@@ -88,7 +80,7 @@ export const requestNotificationPermission = async () => {
         return null;
       }
 
-      // Ensure service worker is registered and configured before getting token
+      // Ensure the messaging worker is registered before getting a token
       const swRegistration = await initializeServiceWorker();
       
       const token = await getToken(messaging, { 

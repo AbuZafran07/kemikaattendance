@@ -48,7 +48,7 @@ test('real queue SQL preserves sent state, clears stale token, and preserves rep
  const sql=postgres(process.env.SUPABASE_DB_URL,{max:1,prepare:false});
  try { await sql.begin(async tx=>{
   await tx.unsafe(`CREATE TEMP TABLE profiles(id uuid,fcm_token text) ON COMMIT DROP;
-   CREATE TEMP TABLE attendance_notifications(id uuid,user_id uuid,title text,message text,attendance_date date,target_role text,pushed_at timestamptz,push_claim uuid,push_claimed_until timestamptz,push_retry_after timestamptz,push_invalid_token text,created_at timestamptz DEFAULT now()) ON COMMIT DROP;`);
+   CREATE TEMP TABLE attendance_notifications(id uuid,user_id uuid,title text,message text,attendance_date date,target_role text,pushed_at timestamptz,push_claim uuid,push_claimed_until timestamptz,push_retry_after timestamptz,push_invalid_token text,push_skipped_at timestamptz,push_attempts integer NOT NULL DEFAULT 0,created_at timestamptz DEFAULT now()) ON COMMIT DROP;`);
   for(const name of ['claim_attendance_push','finish_attendance_push']) {
    const [fn]=await tx`SELECT pg_get_functiondef(oid) definition FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname=${name}`;
    await tx.unsafe(fn.definition.replaceAll('public.','pg_temp.').replace('SECURITY DEFINER','SECURITY INVOKER'));
@@ -79,4 +79,59 @@ test('monthly discipline audit permits server reactivation without a single atte
   const [column]=await sql`SELECT is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='attendance_audit_logs' AND column_name='attendance_id'`;
   expect(column.is_nullable).toBe('YES');
  } finally { await sql.end(); }
+});
+
+async function withBoundedQueue(check) {
+ const sql=postgres(process.env.SUPABASE_DB_URL,{max:1,prepare:false});
+ try { await sql.begin(async tx=>{
+  await tx.unsafe(`CREATE TEMP TABLE profiles(id uuid,fcm_token text) ON COMMIT DROP;
+   CREATE TEMP TABLE attendance_notifications(id uuid DEFAULT gen_random_uuid(),user_id uuid,title text DEFAULT 'Test',message text DEFAULT 'Test',attendance_date date,target_role text DEFAULT 'employee',pushed_at timestamptz,push_claim uuid,push_claimed_until timestamptz,push_retry_after timestamptz,push_invalid_token text,push_skipped_at timestamptz,push_attempts integer NOT NULL DEFAULT 0,created_at timestamptz DEFAULT '2026-11-16 09:00:00+00') ON COMMIT DROP;`);
+  const [fn]=await tx`SELECT pg_get_functiondef(oid) definition FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname='claim_attendance_push'`;
+  await tx.unsafe(fn.definition.replaceAll('public.','pg_temp.').replace('SECURITY DEFINER','SECURITY INVOKER').replaceAll('clock_timestamp()',"'2026-11-16 09:00:00+00'::timestamptz"));
+  await tx`INSERT INTO pg_temp.profiles VALUES('00000000-0000-0000-0000-000000000001','test-device')`;
+  await check(tx);
+ }); } finally { await sql.end(); }
+}
+
+test('queue sends a 24-hour-old notice but skips anything older, even without a device',async()=>{
+ await withBoundedQueue(async tx=>{
+  await tx.unsafe(`INSERT INTO pg_temp.attendance_notifications(user_id,title,created_at) VALUES
+   ('00000000-0000-0000-0000-000000000001','boundary','2026-11-15 09:00:00+00'),
+   ('00000000-0000-0000-0000-000000000001','old','2026-11-15 08:59:59+00'),
+   ('00000000-0000-0000-0000-000000000099','no-device-old','2026-11-14 09:00:00+00'),
+   ('00000000-0000-0000-0000-000000000001','future','2026-11-16 09:00:01+00');`);
+  const rows=await tx`SELECT * FROM pg_temp.claim_attendance_push()`;
+  expect(rows.map(r=>r.title)).toEqual(['boundary']);
+  const skipped=await tx`SELECT title,pushed_at,push_attempts FROM pg_temp.attendance_notifications WHERE push_skipped_at IS NOT NULL ORDER BY title`;
+  expect(skipped.map(r=>r.title)).toEqual(['no-device-old','old']);
+  for(const row of skipped){expect(row.pushed_at).toBeNull();expect(row.push_attempts).toBe(0);}
+ });
+});
+
+test('queue permits five attempts exactly and never a sixth across repeated runs',async()=>{
+ await withBoundedQueue(async tx=>{
+  await tx`INSERT INTO pg_temp.attendance_notifications(user_id) VALUES('00000000-0000-0000-0000-000000000001')`;
+  for(let attempt=1;attempt<=5;attempt++){
+   expect(await tx`SELECT * FROM pg_temp.claim_attendance_push()`).toHaveLength(1);
+   expect((await tx`SELECT push_attempts FROM pg_temp.attendance_notifications`)[0].push_attempts).toBe(attempt);
+   expect(await tx`SELECT * FROM pg_temp.claim_attendance_push()`).toHaveLength(0);
+   await tx`UPDATE pg_temp.attendance_notifications SET push_claim=NULL,push_claimed_until=NULL,push_retry_after=NULL`;
+  }
+  expect(await tx`SELECT * FROM pg_temp.claim_attendance_push()`).toHaveLength(0);
+  expect(await tx`SELECT * FROM pg_temp.claim_attendance_push()`).toHaveLength(0);
+  const [row]=await tx`SELECT push_attempts,push_skipped_at,pushed_at FROM pg_temp.attendance_notifications`;
+  expect(row.push_attempts).toBe(5);expect(row.push_skipped_at).not.toBeNull();expect(row.pushed_at).toBeNull();
+ });
+});
+
+test('age or attempts exhaustion cannot revoke an active sender lease',async()=>{
+ await withBoundedQueue(async tx=>{
+  await tx.unsafe(`INSERT INTO pg_temp.attendance_notifications(user_id,created_at,push_attempts,push_claim,push_claimed_until) VALUES('00000000-0000-0000-0000-000000000001','2026-11-14 09:00:00+00',5,gen_random_uuid(),'2026-11-16 09:20:00+00');`);
+  expect(await tx`SELECT * FROM pg_temp.claim_attendance_push()`).toHaveLength(0);
+  expect((await tx`SELECT push_skipped_at FROM pg_temp.attendance_notifications`)[0].push_skipped_at).toBeNull();
+  await tx`UPDATE pg_temp.attendance_notifications SET push_claimed_until='2026-11-16 08:59:59+00'`;
+  expect(await tx`SELECT * FROM pg_temp.claim_attendance_push()`).toHaveLength(0);
+  const [row]=await tx`SELECT push_skipped_at,push_claim FROM pg_temp.attendance_notifications`;
+  expect(row.push_skipped_at).not.toBeNull();expect(row.push_claim).toBeNull();
+ });
 });

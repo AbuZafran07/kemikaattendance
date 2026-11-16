@@ -1,4 +1,9 @@
 # Agent integrations
+# Push worker and bounded queue
+- [x] Initialize messaging worker without page messages; Firebase compat 13.3.0 activates in browser with no errors, notification display and dated click handlers tested.
+- [x] Bound claims to 24 hours and five attempts; 13 push/worker tests pass including age boundaries, exhausted attempts and leases; 22 old notices skipped.
+- [x] Verify active five-minute managed schedule, verify_jwt=false with internal cron authentication, real scheduled and direct cron calls return 200 and invalid credential returns 401.
+- [ ] Verify closed-tab push receipt and dated click on a real employee device (requires a registered device and published worker).
 # Attendance discipline correction
 - [x] Prevent missing-reason scans from recreating any previously recorded attendance violation; 39 isolated database regression tests pass, including HR waiver, revoked SP, no new SP notifications, and counted per-date guard.
 - [x] Enforce configured reason deadline on server/history without rewriting old data; add audited HR waiver and reactivate superseded SP without duplicates.

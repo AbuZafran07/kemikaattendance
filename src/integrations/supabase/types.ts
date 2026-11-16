@@ -370,10 +370,12 @@ export type Database = {
           is_read: boolean
           message: string
           notif_type: string
+          push_attempts: number
           push_claim: string | null
           push_claimed_until: string | null
           push_invalid_token: string | null
           push_retry_after: string | null
+          push_skipped_at: string | null
           pushed_at: string | null
           related_id: string | null
           target_role: string | null
@@ -389,10 +391,12 @@ export type Database = {
           is_read?: boolean
           message: string
           notif_type: string
+          push_attempts?: number
           push_claim?: string | null
           push_claimed_until?: string | null
           push_invalid_token?: string | null
           push_retry_after?: string | null
+          push_skipped_at?: string | null
           pushed_at?: string | null
           related_id?: string | null
           target_role?: string | null
@@ -408,10 +412,12 @@ export type Database = {
           is_read?: boolean
           message?: string
           notif_type?: string
+          push_attempts?: number
           push_claim?: string | null
           push_claimed_until?: string | null
           push_invalid_token?: string | null
           push_retry_after?: string | null
+          push_skipped_at?: string | null
           pushed_at?: string | null
           related_id?: string | null
           target_role?: string | null

@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.migrate-helper]
 verify_jwt = false
+
+[functions.attendance-push-worker]
+verify_jwt = false

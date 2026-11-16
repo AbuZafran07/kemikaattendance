@@ -99,6 +99,13 @@
       "when": 1794813731727,
       "tag": "0013_allow_non_row_discipline_audits",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794820491120,
+      "tag": "0014_bound_attendance_push_queue",
+      "breakpoints": true
     }
   ]
 }

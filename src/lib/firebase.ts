@@ -3,12 +3,12 @@ import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging
 import logger from '@/lib/logger';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBXwJkGmCBOF8BH2adnl1ErEUX3vHAq07M',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'hris-kemika.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'hris-kemika',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'hris-kemika.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '154403918893',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:154403918893:web:0c567375ae6fcd325f14a4'
 };
 
 // Check if Firebase is configured
@@ -82,7 +82,7 @@ export const requestNotificationPermission = async () => {
     if (permission === 'granted') {
       logger.debug('Notification permission granted.');
       
-      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BIuZgyw3MozVFL3e4EzZvw7sdvIaf2zWvtApxiSkc43EV7veXUBXPCZpt6Ud7guxhp5sdUa7CRLk_Zzznf_vyCk';
       if (!vapidKey) {
         logger.warn('Firebase VAPID key not configured.');
         return null;

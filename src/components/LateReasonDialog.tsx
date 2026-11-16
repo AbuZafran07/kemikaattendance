@@ -18,15 +18,16 @@ interface LateReasonDialogProps {
   onConfirm: (reason: string) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  deadlineHours?: number;
 }
 
-const LateReasonDialog = ({ open, type, durationText, onConfirm, onCancel, isSubmitting = false }: LateReasonDialogProps) => {
+const LateReasonDialog = ({ open, type, durationText, onConfirm, onCancel, isSubmitting = false, deadlineHours }: LateReasonDialogProps) => {
   const [reason, setReason] = useState("");
 
   const isLate = type === "terlambat";
   const title = isLate ? "Keterangan Terlambat" : "Keterangan Pulang Cepat";
   const description = isLate
-    ? "Anda terdeteksi terlambat check-in. Silakan isi alasan keterlambatan Anda."
+    ? `Anda terdeteksi terlambat check-in. Alasan wajib dikirim maksimal ${deadlineHours ?? "sesuai pengaturan batas waktu"}${deadlineHours ? " jam setelah check-in" : ""}. Setelah batas waktu lewat, hubungi HR.`
     : "Anda terdeteksi pulang lebih awal. Silakan isi alasan pulang cepat Anda.";
 
   const handleConfirm = () => {

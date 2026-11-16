@@ -26,6 +26,7 @@ import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { useNavigate } from "react-router-dom";
 import { uploadAttendancePhoto } from "@/lib/attendancePhotoUpload";
 import LateReasonDialog from "@/components/LateReasonDialog";
+import { useLateReasonWindow } from "@/hooks/use-late-reason-window";
 import CompanyCalendar from "@/components/dashboard/CompanyCalendar";
 import AccountLockedCard from "@/components/AccountLockedCard";
 import { pushRecentAttendanceNotifications, nowMinusBuffer } from "@/lib/attendanceDisciplineNotifications";
@@ -50,6 +51,7 @@ interface StatsData {
   attendanceCount: number;
 }
 const EmployeeView = () => {
+  const { deadlineHours } = useLateReasonWindow();
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
@@ -614,7 +616,7 @@ const EmployeeView = () => {
           logger.error("Failed to submit late reason:", lateReasonError);
           toast({
             title: "Peringatan",
-            description: "Absensi tersimpan, tetapi alasan keterlambatan gagal disimpan. Hubungi HR.",
+            description: lateReasonError.message || "Absensi tersimpan, tetapi alasan keterlambatan gagal disimpan. Hubungi HR.",
             variant: "destructive",
           });
         } else {
@@ -640,7 +642,7 @@ const EmployeeView = () => {
     toast({
       title: "Absensi Tersimpan",
       description: isCheckIn
-        ? "Alasan belum dikirim. Kirim dari riwayat absensi; tanpa alasan setelah 24 jam dihitung sebagai pelanggaran."
+        ? `Alasan wajib dikirim dari riwayat maksimal ${deadlineHours ? `${deadlineHours} jam setelah check-in` : "sesuai batas waktu pengaturan"}. Setelah batas waktu lewat, hubungi HR; tanpa alasan dihitung sebagai pelanggaran.`
         : "Check-out tersimpan tanpa keterangan pulang cepat.",
       variant: "destructive",
     });
@@ -967,6 +969,7 @@ const EmployeeView = () => {
         open={lateReasonDialog.open}
         type={lateReasonDialog.type}
         durationText={lateReasonDialog.durationText}
+        deadlineHours={deadlineHours}
         onConfirm={handleLateReasonConfirm}
         onCancel={handleLateReasonCancel}
       />

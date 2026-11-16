@@ -2267,6 +2267,7 @@ export type Database = {
         }[]
       }
       get_effective_work_hours: { Args: never; Returns: Json }
+      get_late_reason_window: { Args: never; Returns: Json }
       get_low_leave_quota_employees: {
         Args: { threshold?: number }
         Returns: {
@@ -2296,6 +2297,7 @@ export type Database = {
         Returns: boolean
       }
       is_discipline_admin: { Args: never; Returns: boolean }
+      late_reason_deadline_hours: { Args: never; Returns: number }
       mark_notifications_seen: { Args: never; Returns: string }
       reconcile_attendance_discipline: {
         Args: { p_attendance_id: string; p_month: string; p_user_id: string }
@@ -2349,6 +2351,10 @@ export type Database = {
           p_lock_id: string
           p_unlock_letter_id: string
         }
+        Returns: undefined
+      }
+      waive_attendance_violation: {
+        Args: { p_note: string; p_violation_id: string }
         Returns: undefined
       }
     }

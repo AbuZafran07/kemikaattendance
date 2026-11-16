@@ -13,6 +13,8 @@ import { EmployeeBottomNav } from "@/components/EmployeeBottomNav";
 import { useWebMCP } from "use-webmcp-tool";
 import { runWebMCPTool } from "@/lib/webmcp-telemetry";
 import LateReasonDialog from "@/components/LateReasonDialog";
+import { useLateReasonWindow } from "@/hooks/use-late-reason-window";
+import { isWithinLateReasonDeadline } from "@/lib/lateReasonDeadline";
 
 const AttendanceHistory = () => {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ const AttendanceHistory = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [reasonRecord, setReasonRecord] = useState<any | null>(null);
   const [isSubmittingReason, setIsSubmittingReason] = useState(false);
+  const { deadlineHours, serverNow } = useLateReasonWindow();
 
   const submitReason = async (reason: string) => {
     if (!reasonRecord || isSubmittingReason) return;
@@ -36,8 +39,8 @@ const AttendanceHistory = () => {
       setReasonRecord(null);
       await fetchAttendanceHistory();
       toast({ title: "Alasan Terkirim", description: "Menunggu keputusan HR." });
-    } catch {
-      toast({ title: "Alasan Gagal Dikirim", description: "Silakan coba kembali.", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Alasan Gagal Dikirim", description: (error as { message?: string }).message || "Silakan coba kembali.", variant: "destructive" });
     } finally {
       setIsSubmittingReason(false);
     }
@@ -211,9 +214,11 @@ const AttendanceHistory = () => {
                       </p>
                     )}
                     {(record.status === 'terlambat' || record.late_minutes > 0) && !lateReasonStatusMap[record.id] && (
+                      deadlineHours === undefined ? <p className="text-xs text-muted-foreground mt-3">Memeriksa batas waktu alasan...</p> : isWithinLateReasonDeadline(record.check_in_time, deadlineHours, serverNow) ?
                       <Button variant="outline" size="sm" className="mt-3" disabled={isSubmittingReason} onClick={() => setReasonRecord(record)}>
                         Kirim Alasan
                       </Button>
+                      : <Badge variant="secondary" className="mt-3">Batas waktu alasan lewat</Badge>
                     )}
                   </div>
                 ))}
@@ -229,6 +234,7 @@ const AttendanceHistory = () => {
         open={Boolean(reasonRecord)}
         type="terlambat"
         durationText={`${reasonRecord?.late_minutes || 0} menit terlambat`}
+        deadlineHours={deadlineHours}
         onConfirm={submitReason}
         onCancel={() => setReasonRecord(null)}
         isSubmitting={isSubmittingReason}

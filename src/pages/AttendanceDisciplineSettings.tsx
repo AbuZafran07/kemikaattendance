@@ -212,8 +212,9 @@ export default function AttendanceDisciplineSettings() {
           <CardContent className="pt-6 flex gap-3">
             <Info className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
             <p className="text-xs text-muted-foreground">
-              Alasan yang sudah dikirim tetap menunggu keputusan HR dan tidak dihitung sebagai pelanggaran,
-              termasuk setelah 24 jam. Jika ditolak HR, pelanggaran dihitung; jika disetujui, tidak dihitung.
+              Alasan wajib dikirim maksimal {config.late_reason_deadline_hours} jam setelah check-in.
+              Setelah batas waktu lewat, pengajuan ditolak dan karyawan harus menghubungi HR untuk koreksi dengan catatan.
+              Alasan yang dikirim tepat waktu tetap terlindungi selama menunggu HR. Jika ditolak HR, pelanggaran dihitung; jika disetujui, tidak dihitung.
               Riwayat pelanggaran tetap disimpan.
             </p>
           </CardContent>

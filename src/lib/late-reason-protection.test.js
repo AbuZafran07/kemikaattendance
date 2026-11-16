@@ -10,13 +10,16 @@ async function isolatedCase(check) {
     await sql.begin(async (tx) => {
       await tx`CREATE TEMP TABLE late_reasons(id uuid,attendance_id uuid,status text,reason text,submitted_at timestamptz) ON COMMIT DROP`;
       await tx`CREATE TEMP TABLE violations(late_reason_id uuid,attendance_id uuid,violation_type text,is_counted boolean) ON COMMIT DROP`;
+      await tx`CREATE TEMP TABLE attendance(id uuid,check_in_time timestamptz) ON COMMIT DROP`;
+      await tx`INSERT INTO attendance VALUES('00000000-0000-0000-0000-000000000002',now()-interval '26 hours')`;
+      await tx`CREATE OR REPLACE FUNCTION pg_temp.late_reason_deadline_hours() RETURNS integer LANGUAGE sql AS $$SELECT 24$$`;
       for (const name of ["protect_submitted_late_reason_status", "protect_late_reason_violation_count"]) {
         const [fn] = await tx`SELECT pg_get_functiondef(oid) AS definition FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname=${name}`;
         if (!fn) throw new Error("Protection trigger not installed");
         const definition = fn.definition
           .replace(`public.${name}`, `pg_temp.${name}`)
           .replace(/SECURITY DEFINER/g, "SECURITY INVOKER")
-          .replace(/public\.late_reasons/g, "pg_temp.late_reasons");
+          .replace(/public\.(late_reasons|attendance|late_reason_deadline_hours)/g, "pg_temp.$1");
         await tx.unsafe(definition);
       }
       await tx`CREATE TRIGGER protect_status BEFORE INSERT OR UPDATE ON late_reasons FOR EACH ROW EXECUTE FUNCTION pg_temp.protect_submitted_late_reason_status()`;

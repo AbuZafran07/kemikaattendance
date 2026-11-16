@@ -1,5 +1,7 @@
 # Agent integrations
 # Attendance discipline correction
+- [x] Enforce configured reason deadline on server/history without rewriting old data; add audited HR waiver and reactivate superseded SP without duplicates.
+- [x] Run 37 deadline/waiver/SP and existing regression tests; verify signed-in settings and real violation correction form with empty-note submission disabled.
 - [x] Restore 24-hour detection only for attendance with no submitted reason, and allow submission from history; schedule daily including weekends.
 - [x] Preserve HR corrections, empty-department eligibility and locked-account checkout.
 - [x] Reconcile warnings/automatic locks affected by corrected late violations with audit history; six prior SP records corrected, no active locks found.

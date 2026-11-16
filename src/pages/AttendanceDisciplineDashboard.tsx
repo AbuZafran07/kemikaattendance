@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DisciplinaryLettersCard from "@/components/DisciplinaryLettersCard";
+import DisciplineViolationDetail from "@/components/DisciplineViolationDetail";
 
 
 interface Stats {
@@ -61,6 +62,7 @@ const AttendanceDisciplineDashboard = () => {
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [letterTarget, setLetterTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [detailTarget, setDetailTarget] = useState<{ userId: string; name: string } | null>(null);
 
 
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -215,7 +217,7 @@ const AttendanceDisciplineDashboard = () => {
                   <TableBody>
                     {filteredRows.map((row) => (
                       <TableRow key={row.user_id}>
-                        <TableCell className="font-medium">{row.full_name}</TableCell>
+                        <TableCell className="font-medium"><Button variant="link" className="h-auto p-0 text-left whitespace-normal" onClick={() => setDetailTarget({ userId: row.user_id, name: row.full_name })}>{row.full_name}</Button></TableCell>
                         <TableCell>{row.departemen}</TableCell>
                         <TableCell>{row.monthly_violations}</TableCell>
                         <TableCell>{row.rolling_violations}</TableCell>
@@ -268,6 +270,11 @@ const AttendanceDisciplineDashboard = () => {
           {letterTarget && (
             <DisciplinaryLettersCard userId={letterTarget.userId} employeeName={letterTarget.name} />
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(detailTarget)} onOpenChange={open => { if (!open) setDetailTarget(null); }}>
+        <DialogContent className="max-w-lg max-h-[85dvh] overflow-y-auto"><DialogHeader><DialogTitle>Detail Disiplin — {detailTarget?.name}</DialogTitle></DialogHeader>
+          {detailTarget && <DisciplineViolationDetail userId={detailTarget.userId} month={month} onCorrected={() => { void fetchData(); }} />}
         </DialogContent>
       </Dialog>
     </>

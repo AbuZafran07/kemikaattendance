@@ -84,3 +84,38 @@ test("valid SP1 at 5 counted violations and manual locks are preserved",async()=
   expect((await tx`SELECT * FROM disciplinary_actions WHERE status='active'`)).toHaveLength(1);
   expect((await tx`SELECT * FROM account_locks WHERE status='locked'`)).toHaveLength(1);
 }));
+test("HR waiver survives rescanning: zero new violations, SP stays revoked and no new SP notification",async()=>isolated(async tx=>{
+  await tx`CREATE OR REPLACE FUNCTION pg_temp.get_rolling_3month_violation_count(uuid,date) RETURNS integer LANGUAGE sql AS $$SELECT 0$$`;
+  const [fn]=await tx`SELECT pg_get_functiondef(oid) d FROM pg_proc WHERE pronamespace=pg_my_temp_schema() AND proname='check_attendance_thresholds'`;
+  await tx.unsafe(fn.d.replace(/public.get_rolling_3month_violation_count/g,'pg_temp.get_rolling_3month_violation_count'));
+  await tx.unsafe(`CREATE OR REPLACE FUNCTION pg_temp.create_attendance_violation(uuid,uuid,date,text,text,text,uuid) RETURNS uuid LANGUAGE plpgsql AS $$
+    DECLARE violation_id uuid:=gen_random_uuid(); BEGIN
+      INSERT INTO pg_temp.attendance_violations VALUES(violation_id,$1,$2,$7,$3,$4,true);
+      PERFORM pg_temp.check_attendance_thresholds($1,$3);
+      RETURN violation_id;
+    END$$`);
+  await tx`INSERT INTO attendance_violations SELECT gen_random_uuid(),user_id,NULL,NULL,'2026-11-10'::date+x,'absent_without_permission',true FROM attendance CROSS JOIN generate_series(0,3) x`;
+  expect((await tx`SELECT pg_temp.scan_missing_late_reasons() n`)[0].n).toBe(1);
+  expect(await tx`SELECT * FROM disciplinary_actions WHERE status='active' AND warning_type='sp1'`).toHaveLength(1);
+  await tx`SELECT pg_temp.waive_attendance_violation(id,'Koreksi HR: bukti keterlambatan terverifikasi') FROM attendance_violations WHERE violation_type='late_no_reason_submitted'`;
+  expect(await tx`SELECT * FROM disciplinary_actions WHERE status='superseded' AND warning_type='sp1'`).toHaveLength(1);
+  const notificationsBefore=await tx`SELECT * FROM attendance_notifications WHERE notif_type IN ('sp1_issued','sp2_issued')`;
+  expect(notificationsBefore.length).toBeGreaterThan(0);
+  expect((await tx`SELECT pg_temp.scan_missing_late_reasons() n`)[0].n).toBe(0);
+  expect((await tx`SELECT pg_temp.scan_missing_late_reasons() n`)[0].n).toBe(0);
+  expect(await tx`SELECT * FROM attendance_violations`).toHaveLength(5);
+  expect(await tx`SELECT * FROM attendance_violations WHERE is_counted`).toHaveLength(4);
+  expect(await tx`SELECT * FROM disciplinary_actions WHERE status='active'`).toHaveLength(0);
+  expect(await tx`SELECT * FROM disciplinary_actions WHERE status='superseded' AND warning_type='sp1'`).toHaveLength(1);
+  expect(await tx`SELECT * FROM attendance_notifications WHERE notif_type IN ('sp1_issued','sp2_issued')`).toHaveLength(notificationsBefore.length);
+}));
+for(const counted of [true,false]) test(`any prior attendance violation blocks missing-reason scan (counted=${counted})`,async()=>isolated(async tx=>{
+  await tx`INSERT INTO attendance_violations SELECT gen_random_uuid(),user_id,id,NULL,'2026-11-14','leave_rejected',${counted} FROM attendance`;
+  expect((await tx`SELECT pg_temp.scan_missing_late_reasons() n`)[0].n).toBe(0);
+  expect(await tx`SELECT * FROM attendance_violations`).toHaveLength(1);
+}));
+test("counted violation on same date still blocks a different attendance row",async()=>isolated(async tx=>{
+  await tx`INSERT INTO attendance_violations SELECT gen_random_uuid(),user_id,gen_random_uuid(),NULL,'2026-11-15','absent_without_permission',true FROM attendance`;
+  expect((await tx`SELECT pg_temp.scan_missing_late_reasons() n`)[0].n).toBe(0);
+  expect(await tx`SELECT * FROM attendance_violations`).toHaveLength(1);
+}));

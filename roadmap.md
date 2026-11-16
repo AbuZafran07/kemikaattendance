@@ -1,5 +1,6 @@
 # Agent integrations
 # Attendance discipline correction
+- [x] Prevent missing-reason scans from recreating any previously recorded attendance violation; 39 isolated database regression tests pass, including HR waiver, revoked SP, no new SP notifications, and counted per-date guard.
 - [x] Enforce configured reason deadline on server/history without rewriting old data; add audited HR waiver and reactivate superseded SP without duplicates.
 - [x] Run 37 deadline/waiver/SP and existing regression tests; verify signed-in settings and real violation correction form with empty-note submission disabled.
 - [x] Restore 24-hour detection only for attendance with no submitted reason, and allow submission from history; schedule daily including weekends.

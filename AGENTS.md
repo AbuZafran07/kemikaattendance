@@ -1,7 +1,7 @@
 # Integration architecture
 - Recheck rejected leave/travel dates in database triggers, skipping attendance, protected requests and non-working dates; decisions must not depend on the daily worker revisiting history.
 - Enforce employee attendance timestamps and timing-derived status in database triggers; administrative historical corrections retain their existing path and the UI reads saved results.
-- Serialize missing-reason scans and submissions on attendance rows using the shared configured deadline; server-derived windows govern history controls, and only timely submissions protect counts.
+- Serialize missing-reason scans and submissions on attendance rows using the shared configured deadline; skip any attendance with prior violation history regardless of counted status and retain the counted per-date guard so HR waivers cannot be undone by rescanning. Server-derived windows govern history controls, and only timely submissions protect counts.
 - Reuse superseded monthly SP rows with atomic conflict handling and fresh documents; HR waivers require notes and reconcile discipline through immutable audits.
 - Permit admin/HR historical corrections and locked employees' checkout; reconcile invalid warnings and automatic locks with immutable audit history when late counts are corrected.
 - Enforce pending/approved late-reason protection in database triggers as well as the scheduled checker, so stale workers cannot count HR delays as employee violations.

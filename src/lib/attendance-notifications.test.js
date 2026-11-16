@@ -33,7 +33,7 @@ async function isolated(check) {
     await tx`DROP FUNCTION IF EXISTS pg_temp.create_attendance_violation(uuid,uuid,date,text,text,text,uuid)`;
     const [constraint]=await tx`SELECT pg_get_constraintdef(oid) d FROM pg_constraint WHERE conrelid='public.attendance_notifications'::regclass AND conname='attendance_notifications_notif_type_check'`;
     await tx.unsafe(`ALTER TABLE attendance_notifications ADD ${constraint.d}`);
-    for(const name of ['check_attendance_thresholds','notify_counted_attendance_violation','create_attendance_violation','notify_late_reason_decision','approve_late_reason','reject_late_reason','send_late_reason_reminders']) {
+    for(const name of ['attendance_notification_date','check_attendance_thresholds','notify_counted_attendance_violation','create_attendance_violation','notify_late_reason_decision','approve_late_reason','reject_late_reason','send_late_reason_reminders']) {
       const [fn]=await tx`SELECT pg_get_functiondef(oid) d FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname=${name}`;
       if(!fn) throw new Error(`Missing ${name}`);
       await tx.unsafe(fn.d.replace(/SECURITY DEFINER/g,'SECURITY INVOKER').replace(/public\.(?!app_role\b)/g,'pg_temp.').replace(/auth\.uid\(\)/g,'pg_temp.caller()').replace(/auth\.role\(\)/g,'pg_temp.caller_role()').replace(/clock_timestamp\(\)/g,'pg_temp.fake_now()'));
@@ -125,4 +125,25 @@ test('existing notifications remain unchanged and all previous types are still a
   await violation(tx);
   const after=await tx`SELECT * FROM attendance_notifications WHERE event_key IS NULL ORDER BY id`;
   expect(after).toEqual(before);
+}));
+
+for(const [count,text] of [[3,'menuju SP1 di 5'],[6,'menuju SP2 di 8'],[9,'menuju kunci akun di 11'],[11,'akun dikunci']]) test(`violation ${count} names the next configured threshold with Indonesian date`,()=>isolated(async tx=>{
+  await tx`ALTER TABLE attendance_violations DISABLE TRIGGER notices`;
+  await tx`INSERT INTO attendance_violations(user_id,violation_date,violation_type,is_counted) SELECT ${employee}::uuid,'2026-11-14'::date,'no_attendance_record',true FROM generate_series(1,${count-1})`;
+  await tx`ALTER TABLE attendance_violations ENABLE TRIGGER notices`;
+  await violation(tx);
+  const rows=await tx`SELECT * FROM attendance_notifications WHERE target_role='employee' AND event_key IS NOT NULL`;
+  expect(rows).toHaveLength(1);
+  expect(rows[0].message).toContain(`pelanggaran ke-${count} bulan ini, ${text}`);
+  expect(rows[0].message).toContain('15 November 2026');
+  if(count===11) expect(await tx`SELECT * FROM account_locks WHERE status='locked'`).toHaveLength(1);
+}));
+test('badge counts only employee notices after the server last-seen timestamp',()=>isolated(async tx=>{
+  await tx`INSERT INTO attendance_notifications(user_id,notif_type,title,message,target_role,created_at) VALUES
+    (${employee},'violation_recorded','A','A','employee','2026-11-16 09:01+07'),
+    (${employee},'violation_recorded','B','B','employee','2026-11-16 08:59+07'),
+    (${employee},'late_reason_pending','C','C','hr','2026-11-16 09:02+07'),
+    ('00000000-0000-0000-0000-000000000003','violation_recorded','D','D','employee','2026-11-16 09:03+07')`;
+  const [row]=await tx`SELECT count(*)::integer n FROM attendance_notifications WHERE user_id=${employee} AND target_role='employee' AND created_at>'2026-11-16 09:00+07'`;
+  expect(row.n).toBe(1);
 }));

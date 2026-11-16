@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { playNotificationSound } from '@/lib/notificationSound';
+import { notificationBadgeTotal } from '@/lib/notificationBadgeCount';
 
 const FALLBACK_DAYS = 7;
 
@@ -49,7 +50,7 @@ export const useNotificationBadge = () => {
       const lastSeen = await loadLastSeen();
       lastSeenRef.current = lastSeen;
 
-      const [leaveUpdated, overtimeUpdated, travelUpdated] = await Promise.all([
+      const [leaveUpdated, overtimeUpdated, travelUpdated, attendanceUpdated] = await Promise.all([
         supabase
           .from('leave_requests')
           .select('id', { count: 'exact', head: true })
@@ -68,12 +69,15 @@ export const useNotificationBadge = () => {
           .eq('user_id', profile.id)
           .in('status', ['approved', 'rejected'])
           .gt('updated_at', lastSeen),
+        supabase
+          .from('attendance_notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', profile.id)
+          .eq('target_role', 'employee')
+          .gt('created_at', lastSeen),
       ]);
 
-      const total =
-        (leaveUpdated.count || 0) +
-        (overtimeUpdated.count || 0) +
-        (travelUpdated.count || 0);
+      const total = notificationBadgeTotal([leaveUpdated.count, overtimeUpdated.count, travelUpdated.count, attendanceUpdated.count]);
 
       if (prevCountRef.current >= 0 && total > prevCountRef.current) {
         playNotificationSound();
@@ -87,14 +91,17 @@ export const useNotificationBadge = () => {
   }, [profile?.id, updateAppBadge, loadLastSeen]);
 
   useEffect(() => {
+    if (!profile?.id) return;
     fetchBadgeCount();
     const interval = setInterval(fetchBadgeCount, 60000);
 
     const channel = supabase
-      .channel('badge-realtime')
+      .channel(`badge-realtime-${profile.id}-${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leave_requests' }, () => fetchBadgeCount())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'overtime_requests' }, () => fetchBadgeCount())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'business_travel_requests' }, () => fetchBadgeCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_notifications', filter: `user_id=eq.${profile.id}` }, () => fetchBadgeCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_last_seen', filter: `user_id=eq.${profile.id}` }, () => fetchBadgeCount())
       .subscribe();
 
     return () => {
@@ -104,7 +111,7 @@ export const useNotificationBadge = () => {
         (navigator as any).clearAppBadge();
       }
     };
-  }, [fetchBadgeCount]);
+  }, [fetchBadgeCount, profile?.id]);
 
   const clearBadge = useCallback(async () => {
     if (!profile?.id) return;

@@ -11,3 +11,4 @@
 - Preserve canonical same-origin consent return paths through existing password login; employee registration remains administrator-managed.
 - Generate counted-violation notices and threshold actions atomically in the attendance insert trigger, merge existing employee warning messages by event key, and link dated notifications to WIB-bounded history; this prevents duplicate notices and incorrect next-day rejection dates.
 - Run the SQL-only reason reminder hourly with attendance-row locking and unique event keys; daily checks cannot reliably cover the four-hour reminder window.
+- Count employee attendance notices after the server last-seen timestamp and use unique scoped realtime channels; shared channel names leak subscriptions when multiple badge hooks mount.

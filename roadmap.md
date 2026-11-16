@@ -26,3 +26,8 @@
 - [x] Schedule hourly reminder and link notifications to dated history; installed schedule verified.
 - [x] Run 53 regression tests (14 notification tests and 39 existing); signed-in notification page and dated history/reset checked, preview builds cleanly.
 - [ ] Verify a real employee receives and clicks a new notification end-to-end (requester's account has no employee notifications; requires an employee test-account approval and permitted test decision).
+
+# Attendance notification delivery
+- [x] Include new employee attendance notifications in badge and scoped realtime updates; enable publication.
+- [x] Format Indonesian dates and next warning thresholds; all 60 regression tests pass and preview builds cleanly.
+- [ ] Enable server FCM delivery and pushed_at deduplication for all inserts (blocked: Firebase connector declined).

@@ -78,6 +78,13 @@
       "when": 1794810737781,
       "tag": "0010_employee_attendance_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794812023324,
+      "tag": "0011_attendance_notification_badge_and_wording",
+      "breakpoints": true
     }
   ]
 }

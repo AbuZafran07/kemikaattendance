@@ -370,6 +370,7 @@ export type Database = {
           is_read: boolean
           message: string
           notif_type: string
+          pushed_at: string | null
           related_id: string | null
           target_role: string | null
           title: string
@@ -384,6 +385,7 @@ export type Database = {
           is_read?: boolean
           message: string
           notif_type: string
+          pushed_at?: string | null
           related_id?: string | null
           target_role?: string | null
           title: string
@@ -398,6 +400,7 @@ export type Database = {
           is_read?: boolean
           message?: string
           notif_type?: string
+          pushed_at?: string | null
           related_id?: string | null
           target_role?: string | null
           title?: string
@@ -2230,6 +2233,10 @@ export type Database = {
       approve_unlock_letter: {
         Args: { p_hr_signature_data?: string; p_letter_id: string }
         Returns: undefined
+      }
+      attendance_notification_date: {
+        Args: { p_date: string }
+        Returns: string
       }
       check_attendance_thresholds: {
         Args: { p_reference_date: string; p_user_id: string }

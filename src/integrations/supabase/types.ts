@@ -330,7 +330,7 @@ export type Database = {
       attendance_audit_logs: {
         Row: {
           action_type: string
-          attendance_id: string
+          attendance_id: string | null
           changed_by: string
           created_at: string
           id: string
@@ -340,7 +340,7 @@ export type Database = {
         }
         Insert: {
           action_type: string
-          attendance_id: string
+          attendance_id?: string | null
           changed_by: string
           created_at?: string
           id?: string
@@ -350,7 +350,7 @@ export type Database = {
         }
         Update: {
           action_type?: string
-          attendance_id?: string
+          attendance_id?: string | null
           changed_by?: string
           created_at?: string
           id?: string

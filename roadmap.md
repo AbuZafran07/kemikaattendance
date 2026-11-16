@@ -30,4 +30,5 @@
 # Attendance notification delivery
 - [x] Include new employee attendance notifications in badge and scoped realtime updates; enable publication.
 - [x] Format Indonesian dates and next warning thresholds; all 60 regression tests pass and preview builds cleanly.
-- [ ] Migrate send-notification to connector-backed FCM HTTP v1, add leased server delivery with pushed_at, remove browser duplicate senders, and verify automated schedules and token cleanup.
+- [x] Migrate send-notification to connector-backed FCM HTTP v1; atomic leased push queue, success-only pushed_at, stale-token cleanup, browser senders removed; 67 tests pass and authenticated worker returned 200 twice.
+- [ ] Verify delivery on an employee device (no employee has an fcm_token registered; requires enabling notifications on a device).

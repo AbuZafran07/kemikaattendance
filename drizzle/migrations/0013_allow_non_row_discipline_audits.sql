@@ -1,0 +1,2 @@
+ALTER TABLE public.attendance_audit_logs ALTER COLUMN attendance_id DROP NOT NULL;
+COMMENT ON COLUMN public.attendance_audit_logs.attendance_id IS 'Nullable for monthly discipline reconciliation audits spanning multiple attendance records.';

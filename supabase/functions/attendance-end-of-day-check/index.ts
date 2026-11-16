@@ -5,8 +5,7 @@
 //    - skip kalau ada yang approved (izin/cuti/dinas sah)
 //    - kalau ada yang rejected -> violation 'absent_without_permission'
 //    - kalau tidak ada pengajuan sama sekali -> violation 'no_attendance_record'
-// 2. late_reasons berstatus 'pending' yang sudah lewat late_reason_deadline_hours
-//    tanpa diputuskan -> di-set 'no_reason_submitted' + violation 'late_no_reason_submitted'
+// 2. Submitted late reasons remain pending until HR decides, regardless of age.
 //
 // Dijadwalkan mirip checkout-reminder (lihat komentar di file itu): lewat pg_cron /
 // Supabase Dashboard Cron Jobs, dipanggil setelah jam kerja selesai setiap hari kerja.
@@ -62,9 +61,6 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const { data: config } = await supabase.rpc("get_attendance_discipline_config");
-    const deadlineHours: number = (config as any)?.late_reason_deadline_hours ?? 24;
 
     // Lewati akhir pekan & hari libur nasional/cuti bersama
     const dayOfWeek = wib.getUTCDay();
@@ -164,50 +160,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ============ 2. Late reasons past deadline without a decision ============
-    const deadlineCutoff = new Date(nowUtc.getTime() - deadlineHours * 60 * 60 * 1000).toISOString();
-    const { data: expiredLateReasons } = await supabase
-      .from("late_reasons")
-      .select("id, attendance_id, user_id, submitted_at")
-      .eq("status", "pending")
-      .lt("submitted_at", deadlineCutoff);
-
-    let expiredCount = 0;
-    for (const lr of expiredLateReasons || []) {
-      const { error: updateError } = await supabase
-        .from("late_reasons")
-        .update({ status: "no_reason_submitted" })
-        .eq("id", lr.id)
-        .eq("status", "pending");
-      if (updateError) {
-        console.error(`Failed to expire late_reason ${lr.id}:`, updateError);
-        continue;
-      }
-
-      const { data: attendanceRow } = await supabase
-        .from("attendance")
-        .select("check_in_time")
-        .eq("id", lr.attendance_id)
-        .maybeSingle();
-      const violationDate = attendanceRow?.check_in_time
-        ? new Date(attendanceRow.check_in_time).toISOString().split("T")[0]
-        : todayStr;
-
-      const { error: violationError } = await supabase.rpc("create_attendance_violation", {
-        p_user_id: lr.user_id,
-        p_attendance_id: lr.attendance_id,
-        p_violation_date: violationDate,
-        p_violation_type: "late_no_reason_submitted",
-        p_description: `Alasan keterlambatan tidak diajukan/diputuskan dalam ${deadlineHours} jam.`,
-        p_source: "system",
-        p_late_reason_id: lr.id,
-      });
-      if (violationError) {
-        console.error(`Failed to create violation for late_reason ${lr.id}:`, violationError);
-      } else {
-        expiredCount++;
-      }
-    }
+    // No expiration scan: an already-submitted reason is not a missing reason.
+    // Rejection/approval RPCs own the decision and associated violation count.
 
     return new Response(
       JSON.stringify({
@@ -219,7 +173,7 @@ Deno.serve(async (req) => {
         employees_checked: activeEmployees.length,
         missing_attendance: missingEmployees.length,
         violations_created: absenceResults.filter((r) => r.violation_type).length,
-        late_reasons_expired: expiredCount,
+        late_reasons_expired: 0,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

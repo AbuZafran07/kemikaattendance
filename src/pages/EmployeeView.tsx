@@ -319,6 +319,7 @@ const EmployeeView = () => {
       });
       return;
     }
+    if (!profile?.id) return;
     setIsProcessing(true);
     try {
       // Step 1: Convert blob URL to blob for storage upload
@@ -392,97 +393,30 @@ const EmployeeView = () => {
       }
 
       // Step 4: Upload photo to storage
-      const photoPath = await uploadAttendancePhoto(blob, profile?.id!, 'checkin');
+      const photoPath = await uploadAttendancePhoto(blob, profile.id, 'checkin');
 
-      // Step 5: Record check-in with status based on work hours settings
-      const now = new Date();
-      let status: "hadir" | "terlambat" = "hadir";
-      const checkInHour = now.getHours();
-      const checkInMinute = now.getMinutes();
-      const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
-      if (workHours && workHours.check_in_end) {
-        // Parse check_in_end time (e.g., "09:00")
-        const [endHour, endMinute] = workHours.check_in_end.split(":").map(Number);
-        const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
-        logger.debug("Work hours check:", { isLate: checkInTotalMinutes > lateThreshold });
-        if (checkInTotalMinutes > lateThreshold) {
-          status = "terlambat";
-        }
-      } else {
-        // Default: jam 09:00 + 15 menit toleransi = 09:15 (555 menit)
-        const defaultLateThreshold = 9 * 60 + 15; // 555 menit
-        logger.debug("Default check:", { isLate: checkInTotalMinutes > defaultLateThreshold });
-        if (checkInTotalMinutes > defaultLateThreshold) {
-          status = "terlambat";
-        }
-      }
-      
-      let locationNote = isHybridWorker 
-        ? `Check-in Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
+      const locationNote = isHybridWorker
+        ? `Check-in Hybrid di ${nearestOffice?.name || 'lokasi'} (${Math.round(nearestOffice?.distance || 0)}m)`
         : `Check-in di ${nearestOffice?.name} (${Math.round(nearestOffice?.distance || 0)}m)`;
-      
-      // Add lateness detail to notes
-      let lateText = "";
-      let lateMinutes = 0;
-      if (status === "terlambat") {
-        if (workHours && workHours.check_in_end) {
-          const [endHour, endMinute] = workHours.check_in_end.split(":").map(Number);
-          const lateThreshold = endHour * 60 + endMinute + (workHours.late_tolerance_minutes || 0);
-          lateMinutes = checkInTotalMinutes - lateThreshold;
-        } else {
-          const defaultLateThreshold = 9 * 60 + 15;
-          lateMinutes = checkInTotalMinutes - defaultLateThreshold;
-        }
-        if (lateMinutes > 0) {
-          const lateHours = Math.floor(lateMinutes / 60);
-          const lateRemMins = lateMinutes % 60;
-          lateText = lateHours > 0 
-            ? `Terlambat ${lateHours} jam ${lateRemMins > 0 ? `${lateRemMins} menit` : ''}`
-            : `Terlambat ${lateRemMins} menit`;
-          locationNote += ` | ${lateText.trim()}`;
-        }
-      }
-
-      // If late, show reason dialog before saving
-      if (status === "terlambat") {
-        pendingAttendanceRef.current = {
-          type: "checkin",
-          insertData: {
-            user_id: profile?.id!,
-            check_in_time: now.toISOString(),
-            check_in_latitude: location.latitude,
-            check_in_longitude: location.longitude,
-            check_in_photo_url: photoPath,
-            gps_validated: !isHybridWorker ? true : false,
-            face_recognition_validated: false,
-            status: status,
-            notes: locationNote,
-            late_minutes: lateMinutes > 0 ? lateMinutes : null,
-          },
-          nearestOffice,
-          isHybridWorker,
-        };
-        setLateReasonDialog({
-          open: true,
-          type: "terlambat",
-          durationText: lateText.trim(),
-        });
-        setIsProcessing(false);
-        return;
-      }
-
-      // Not late - proceed directly
-      await completeCheckIn({
-        user_id: profile?.id!,
-        check_in_time: now.toISOString(),
+      // The database supplies the timestamp, lateness and status, never the phone clock.
+      const inserted = await completeCheckIn({
+        user_id: profile.id,
         check_in_latitude: location.latitude,
         check_in_longitude: location.longitude,
         check_in_photo_url: photoPath,
-        gps_validated: !isHybridWorker ? true : false,
+        gps_validated: !isHybridWorker,
         face_recognition_validated: false,
-        status: status,
+        status: "hadir",
         notes: locationNote,
       }, nearestOffice, isHybridWorker);
+      if (inserted?.status === "terlambat") {
+        pendingAttendanceRef.current = { type: "checkin", inserted };
+        setLateReasonDialog({
+          open: true,
+          type: "terlambat",
+          durationText: `Terlambat ${inserted.late_minutes || 0} menit`,
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Check-In Gagal",
@@ -494,6 +428,7 @@ const EmployeeView = () => {
     }
   };
   const handleCheckOut = async (photoUrl: string) => {
+    if (!profile?.id) return;
     setIsProcessing(true);
     try {
       // Step 1: Convert blob URL to blob for storage upload
@@ -562,95 +497,27 @@ const EmployeeView = () => {
       }
 
       // Step 3: Upload photo to storage
-      const photoPath = await uploadAttendancePhoto(blob, profile?.id!, 'checkout');
+      const photoPath = await uploadAttendancePhoto(blob, profile.id, 'checkout');
 
-      const now = new Date();
-      const checkInTime = new Date(todayAttendance.check_in_time);
-      const durationMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
-
-      // Determine checkout status based on time
-      let finalStatus = todayAttendance.status;
-      const checkOutHour = now.getHours();
-      const checkOutMinute = now.getMinutes();
-      const checkOutTotalMinutes = checkOutHour * 60 + checkOutMinute;
-      if (workHours && workHours.check_out_start) {
-        const [startHour, startMinute] = workHours.check_out_start.split(":").map(Number);
-        const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
-        logger.debug("Checkout check:", { isEarly: checkOutTotalMinutes < earlyLeaveThreshold });
-        if (checkOutTotalMinutes < earlyLeaveThreshold) {
-          finalStatus = "pulang_cepat";
-        }
-      } else {
-        // Default: sebelum 16:45 (17:00 - 15 menit toleransi) = pulang cepat
-        const defaultEarlyLeaveThreshold = 17 * 60 - 15; // 1005 menit (16:45)
-        logger.debug("Default checkout:", { isEarly: checkOutTotalMinutes < defaultEarlyLeaveThreshold });
-        if (checkOutTotalMinutes < defaultEarlyLeaveThreshold) {
-          finalStatus = "pulang_cepat";
-        }
-      }
-
-      let checkoutLocationNote = isHybridWorker
-        ? `${todayAttendance.notes}, Check-out Hybrid di ${nearestOffice?.name || 'lokasi'} (${nearestOffice ? Math.round(nearestOffice.distance) : 0}m)`
-        : nearestOffice
-          ? `${todayAttendance.notes}, Check-out di ${nearestOffice.name} (${Math.round(nearestOffice.distance)}m)`
-          : todayAttendance.notes;
-
-      // Add early departure detail to notes
-      let earlyText = "";
-      if (finalStatus === "pulang_cepat") {
-        let earlyMinutes = 0;
-        if (workHours && workHours.check_out_start) {
-          const [startHour, startMinute] = workHours.check_out_start.split(":").map(Number);
-          const earlyLeaveThreshold = startHour * 60 + startMinute - (workHours.early_leave_tolerance_minutes || 0);
-          earlyMinutes = earlyLeaveThreshold - checkOutTotalMinutes;
-        } else {
-          const defaultEarlyLeaveThreshold = 17 * 60 - 15;
-          earlyMinutes = defaultEarlyLeaveThreshold - checkOutTotalMinutes;
-        }
-        if (earlyMinutes > 0) {
-          const earlyHours = Math.floor(earlyMinutes / 60);
-          const earlyRemMins = earlyMinutes % 60;
-          earlyText = earlyHours > 0 
-            ? `Pulang cepat ${earlyHours} jam ${earlyRemMins > 0 ? `${earlyRemMins} menit` : ''}`
-            : `Pulang cepat ${earlyRemMins} menit`;
-          checkoutLocationNote += ` | ${earlyText.trim()}`;
-        }
-      }
-
-      // If early departure, show reason dialog before saving
-      if (finalStatus === "pulang_cepat") {
-        pendingAttendanceRef.current = {
-          type: "checkout",
-          updateData: {
-            check_out_time: now.toISOString(),
-            check_out_latitude: location.latitude,
-            check_out_longitude: location.longitude,
-            check_out_photo_url: photoPath,
-            duration_minutes: durationMinutes,
-            status: finalStatus,
-            notes: checkoutLocationNote,
-          },
-          attendanceId: todayAttendance.id,
-        };
-        setLateReasonDialog({
-          open: true,
-          type: "pulang_cepat",
-          durationText: earlyText.trim(),
-        });
-        setIsProcessing(false);
-        return;
-      }
-
-      // Not early - proceed directly
-      await completeCheckOut({
-        check_out_time: now.toISOString(),
+      const checkoutLocationNote = isHybridWorker
+        ? `${todayAttendance.notes || ''}, Check-out Hybrid di ${nearestOffice?.name || 'lokasi'} (${Math.round(nearestOffice?.distance || 0)}m)`
+        : `${todayAttendance.notes || ''}, Check-out di ${nearestOffice?.name || 'lokasi'} (${Math.round(nearestOffice?.distance || 0)}m)`;
+      const updated = await completeCheckOut({
+        // A non-null value requests checkout; the database replaces it with server time.
+        check_out_time: new Date().toISOString(),
         check_out_latitude: location.latitude,
         check_out_longitude: location.longitude,
         check_out_photo_url: photoPath,
-        duration_minutes: durationMinutes,
-        status: finalStatus,
         notes: checkoutLocationNote,
       }, todayAttendance.id);
+      if (updated?.status === "pulang_cepat") {
+        pendingAttendanceRef.current = {
+          type: "checkout",
+          updateData: { notes: checkoutLocationNote },
+          attendanceId: updated.id,
+        };
+        setLateReasonDialog({ open: true, type: "pulang_cepat", durationText: "Pulang lebih awal dari jadwal" });
+      }
     } catch (error: any) {
       toast({
         title: "Check-Out Gagal",
@@ -674,9 +541,10 @@ const EmployeeView = () => {
       setIsCheckedIn(true);
       setTodayAttendance(data);
       setCheckInTime(
-        new Date(insertData.check_in_time).toLocaleTimeString("id-ID", {
+        new Date(data.check_in_time).toLocaleTimeString("id-ID", {
           hour: "2-digit",
           minute: "2-digit",
+          timeZone: "Asia/Jakarta",
         }),
       );
       toast({
@@ -712,9 +580,10 @@ const EmployeeView = () => {
       toast({
         title: "Check-Out Berhasil",
         description:
-          updateData.status === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!",
+          updatedData.status === "pulang_cepat" ? "Anda pulang lebih awal dari jadwal" : "Sampai jumpa besok!",
       });
       fetchRecentAttendance();
+      return updatedData;
     } catch (error: any) {
       toast({
         title: "Check-Out Gagal",
@@ -734,7 +603,7 @@ const EmployeeView = () => {
     if (pending.type === "checkin") {
       // Alasan keterlambatan disimpan sebagai row late_reasons berstatus "pending"
       // untuk direview HR, bukan lagi ditempel sebagai teks ke attendance.notes.
-      const inserted = await completeCheckIn(pending.insertData, pending.nearestOffice, pending.isHybridWorker);
+      const inserted = pending.inserted;
       if (inserted?.id) {
         const since = nowMinusBuffer();
         const { error: lateReasonError } = await supabase.rpc("submit_late_reason", {
@@ -768,8 +637,8 @@ const EmployeeView = () => {
     setLateReasonDialog({ ...lateReasonDialog, open: false });
     pendingAttendanceRef.current = null;
     toast({
-      title: "Dibatalkan",
-      description: "Absensi dibatalkan karena alasan tidak diisi.",
+      title: "Absensi Tersimpan",
+      description: "Alasan belum dikirim. Anda dapat mengirim alasan keterlambatan dari riwayat absensi.",
       variant: "destructive",
     });
   };

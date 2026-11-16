@@ -1,4 +1,6 @@
 # Integration architecture
+- Recheck rejected leave/travel dates in database triggers, skipping attendance, protected requests and non-working dates; decisions must not depend on the daily worker revisiting history.
+- Enforce employee attendance timestamps and timing-derived status in database triggers; administrative historical corrections retain their existing path and the UI reads saved results.
 - Enforce pending/approved late-reason protection in database triggers as well as the scheduled checker, so stale workers cannot count HR delays as employee violations.
 - Author remote agent tools in `src/lib/mcp`, with one SDK tool per file and SDK-generated transport; this keeps the published catalog aligned with handlers.
 - MCP database access must use the verified OAuth caller's shared lazy client and existing RLS; no privileged or anonymous fallback is permitted.

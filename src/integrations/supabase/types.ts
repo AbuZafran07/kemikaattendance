@@ -2287,6 +2287,7 @@ export type Database = {
         Returns: number
       }
       get_work_hours: { Args: never; Returns: Json }
+      get_work_hours_for_date: { Args: { p_date: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

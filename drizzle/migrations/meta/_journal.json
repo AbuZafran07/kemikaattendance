@@ -36,6 +36,13 @@
       "when": 1794797253680,
       "tag": "0004_protect_submitted_late_reasons_from_hr_timeout",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794798910885,
+      "tag": "0005_server_attendance_clock_and_rejected_request_recheck",
+      "breakpoints": true
     }
   ]
 }

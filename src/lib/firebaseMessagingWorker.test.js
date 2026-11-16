@@ -34,11 +34,11 @@ test('closed-tab worker initializes immediately and leaves notification display 
  expect(w.opened).toEqual(['https://kemikaattendance.web.id/employee/attendance-history?date=2026-11-16']);
 });
 
-test('notification click focuses an existing app window then navigates to the correct date', async () => {
+test('notification click focuses an existing app window then posts the dated path to the app', async () => {
  const actions = [];
- const w = worker([{ url: 'https://kemikaattendance.web.id/employee', focus: async () => actions.push('focus'), navigate: async url => actions.push(url) }]);
+ const w = worker([{ url: 'https://kemikaattendance.web.id/employee', focus: async () => actions.push('focus'), postMessage: msg => actions.push(msg) }]);
  await w.click({ FCM_MSG: { data: { path: '/employee/attendance-history?date=2026-11-15' } } });
- expect(actions).toEqual(['focus', 'https://kemikaattendance.web.id/employee/attendance-history?date=2026-11-15']);
+ expect(actions).toEqual(['focus', { type: 'OPEN_PATH', path: '/employee/attendance-history?date=2026-11-15' }]);
  expect(w.opened).toHaveLength(0);
 });
 

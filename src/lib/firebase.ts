@@ -24,24 +24,36 @@ const isFirebaseConfigured = () => {
 let app: any;
 let messaging: Messaging | null = null;
 
+export const FIREBASE_SW_SCOPE = '/firebase-cloud-messaging-push-scope';
+
+// Wait for this registration's own worker; navigator.serviceWorker.ready belongs to the PWA worker.
+const waitForActive = (registration: ServiceWorkerRegistration) =>
+  new Promise<ServiceWorkerRegistration>((resolve) => {
+    if (registration.active) return resolve(registration);
+    const worker = registration.installing || registration.waiting;
+    if (!worker) return resolve(registration);
+    worker.addEventListener('statechange', () => {
+      if (worker.state === 'activated') resolve(registration);
+    });
+  });
+
+let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+
 // The messaging worker initializes itself, including when all tabs are closed.
-const initializeServiceWorker = async () => {
+const initializeServiceWorker = () => {
   if (!('serviceWorker' in navigator)) {
     logger.warn('Service workers are not supported in this browser');
-    return null;
+    return Promise.resolve(null);
   }
-
-  try {
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-    
-    // Wait for the service worker to be ready
-    await navigator.serviceWorker.ready;
-    
-    return registration;
-  } catch (error) {
-    logger.error('Service worker registration failed:', error);
-    return null;
-  }
+  registrationPromise ??= navigator.serviceWorker
+    .register('/firebase-messaging-sw.js', { scope: FIREBASE_SW_SCOPE })
+    .then(waitForActive)
+    .catch((error) => {
+      logger.error('Service worker registration failed:', error);
+      registrationPromise = null;
+      return null;
+    });
+  return registrationPromise;
 };
 
 // Only initialize if Firebase is properly configured
@@ -83,10 +95,8 @@ export const requestNotificationPermission = async () => {
       // Ensure the messaging worker is registered before getting a token
       const swRegistration = await initializeServiceWorker();
       
-      const token = await getToken(messaging, { 
-        vapidKey,
-        serviceWorkerRegistration: swRegistration || undefined
-      });
+      if (!swRegistration) return null;
+      const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swRegistration });
       
       if (token) {
         // Token retrieved successfully

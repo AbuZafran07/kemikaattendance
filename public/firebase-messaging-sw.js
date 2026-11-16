@@ -26,8 +26,9 @@ self.addEventListener('notificationclick', (event) => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
     if (existing) {
+      // This worker does not control app windows, so the app performs the navigation.
       await existing.focus();
-      await existing.navigate(target.href);
+      existing.postMessage({ type: 'OPEN_PATH', path: target.pathname + target.search + target.hash });
       return;
     }
     await self.clients.openWindow(target.href);

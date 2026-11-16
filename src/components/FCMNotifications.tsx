@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { requestNotificationPermission, onMessageListener } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { playNotificationSound } from '@/lib/notificationSound';
@@ -8,12 +9,30 @@ import { useAuth } from '@/contexts/AuthContext';
 export const FCMNotifications = () => {
   const { toast } = useToast();
   const { profile } = useAuth();
+  const navigate = useNavigate();
+
+  // The Firebase worker sends OPEN_PATH after a notification click; navigate inside the app.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (data?.type !== 'OPEN_PATH' || typeof data.path !== 'string') return;
+      try {
+        const url = new URL(data.path, window.location.origin);
+        if (url.origin === window.location.origin) navigate(url.pathname + url.search + url.hash);
+      } catch { /* ignore invalid destinations */ }
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [navigate]);
 
   useEffect(() => {
     const setupNotifications = async () => {
       if (!profile?.id) return;
 
       try {
+        // Refresh the token every session so tokens bound to the old "/" registration are replaced.
+        if (!('Notification' in window) || Notification.permission === 'denied') return;
         const token = await requestNotificationPermission();
         
         if (token) {

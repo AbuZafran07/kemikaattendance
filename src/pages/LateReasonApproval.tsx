@@ -11,6 +11,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
 import logger from "@/lib/logger";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { approveSelectedLateReasons, selectedPendingIds } from "@/lib/lateReasonApprovalSelection";
 
 interface LateReasonRow {
   id: string;
@@ -40,6 +43,11 @@ const LateReasonApproval = () => {
   const [rows, setRows] = useState<LateReasonRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState("pending");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkIds, setBulkIds] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState<"approve" | "reject">("approve");
@@ -105,12 +113,33 @@ const LateReasonApproval = () => {
   };
 
   const openDialog = (id: string, action: "approve" | "reject") => {
+    setBulkIds([]);
     setSelectedId(id);
     setDialogAction(action);
     setDialogOpen(true);
   };
 
   const handleApprove = async (notes: string) => {
+    if (bulkIds.length > 0) {
+      setIsProcessing(true);
+      try {
+        const ids = selectedPendingIds(rows, bulkIds);
+        const result = await approveSelectedLateReasons(ids, id =>
+          supabase.rpc("approve_late_reason", { reason_id: id, notes: notes || null })
+        );
+        setSelectedIds(result.failed);
+        toast({
+          title: result.failed.length ? "Sebagian Belum Disetujui" : "Berhasil",
+          description: `${result.approved.length} alasan disetujui.${result.failed.length ? ` ${result.failed.length} gagal; silakan coba kembali.` : ""}`,
+          variant: result.failed.length ? "destructive" : "default",
+        });
+        await fetchLateReasons();
+      } finally {
+        setIsProcessing(false);
+        setBulkIds([]);
+      }
+      return;
+    }
     if (!selectedId) return;
     const { error } = await supabase.rpc("approve_late_reason", { reason_id: selectedId, notes: notes || null });
     if (error) {
@@ -136,6 +165,17 @@ const LateReasonApproval = () => {
 
   const filteredRows = rows.filter((r) => (tab === "all" ? true : r.status === tab));
   const pendingCount = rows.filter((r) => r.status === "pending").length;
+  const page = Math.min(currentPage, Math.max(1, Math.ceil(filteredRows.length / itemsPerPage)));
+  const pageRows = filteredRows.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const pendingSelection = selectedPendingIds(filteredRows, selectedIds);
+  const pagePendingIds = pageRows.filter(row => row.status === "pending").map(row => row.id);
+  const selectedOnPage = pagePendingIds.filter(id => pendingSelection.includes(id)).length;
+
+  const changeTab = (value: string) => {
+    setTab(value);
+    setCurrentPage(1);
+    setSelectedIds([]);
+  };
 
   const getInitials = (name?: string) =>
     (name || "?")
@@ -161,7 +201,7 @@ const LateReasonApproval = () => {
             <CardDescription>{pendingCount} menunggu persetujuan</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={tab} onValueChange={setTab}>
+            <Tabs value={tab} onValueChange={changeTab}>
               <TabsList>
                 <TabsTrigger value="pending">Menunggu</TabsTrigger>
                 <TabsTrigger value="approved">Disetujui</TabsTrigger>
@@ -169,6 +209,25 @@ const LateReasonApproval = () => {
                 <TabsTrigger value="all">Semua</TabsTrigger>
               </TabsList>
               <TabsContent value={tab} className="mt-4">
+                {isAdmin && (tab === "pending" || tab === "all") && (
+                  <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <Button
+                      disabled={pendingSelection.length === 0 || isLoading || isProcessing}
+                      onClick={() => {
+                        setSelectedId(null);
+                        setBulkIds(pendingSelection);
+                        setDialogAction("approve");
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Setujui Terpilih ({pendingSelection.length})
+                    </Button>
+                    {pendingSelection.length > 0 && (
+                      <Button variant="ghost" disabled={isProcessing} onClick={() => setSelectedIds([])}>Batal Pilih</Button>
+                    )}
+                  </div>
+                )}
                 {isLoading ? (
                   <div className="text-center py-8 text-muted-foreground">Memuat data...</div>
                 ) : filteredRows.length === 0 ? (
@@ -178,6 +237,18 @@ const LateReasonApproval = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          {isAdmin && (tab === "pending" || tab === "all") && (
+                            <TableHead className="w-10">
+                              <Checkbox
+                                aria-label="Pilih semua alasan menunggu di halaman ini"
+                                disabled={pagePendingIds.length === 0 || isProcessing}
+                                checked={selectedOnPage > 0 && selectedOnPage === pagePendingIds.length ? true : selectedOnPage > 0 ? "indeterminate" : false}
+                                onCheckedChange={checked => setSelectedIds(previous => checked === true
+                                  ? [...new Set([...previous, ...pagePendingIds])]
+                                  : previous.filter(id => !pagePendingIds.includes(id)))}
+                              />
+                            </TableHead>
+                          )}
                           <TableHead>Karyawan</TableHead>
                           <TableHead>Tanggal &amp; Waktu</TableHead>
                           <TableHead>Alasan</TableHead>
@@ -186,8 +257,20 @@ const LateReasonApproval = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredRows.map((row) => (
+                        {pageRows.map((row) => (
                           <TableRow key={row.id}>
+                            {isAdmin && (tab === "pending" || tab === "all") && (
+                              <TableCell>
+                                {row.status === "pending" && <Checkbox
+                                  aria-label={`Pilih alasan ${row.profile?.full_name || "karyawan"}`}
+                                  checked={pendingSelection.includes(row.id)}
+                                  disabled={isProcessing}
+                                  onCheckedChange={checked => setSelectedIds(previous => checked === true
+                                    ? [...new Set([...previous, row.id])]
+                                    : previous.filter(id => id !== row.id))}
+                                />}
+                              </TableCell>
+                            )}
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
@@ -237,6 +320,8 @@ const LateReasonApproval = () => {
                                       size="sm"
                                       className="h-8 w-8 p-0 text-primary"
                                       onClick={() => openDialog(row.id, "approve")}
+                                      aria-label={`Setujui alasan ${row.profile?.full_name || "karyawan"}`}
+                                      disabled={isProcessing}
                                     >
                                       <CheckCircle2 className="h-4 w-4" />
                                     </Button>
@@ -245,6 +330,8 @@ const LateReasonApproval = () => {
                                       size="sm"
                                       className="h-8 w-8 p-0 text-destructive"
                                       onClick={() => openDialog(row.id, "reject")}
+                                      aria-label={`Tolak alasan ${row.profile?.full_name || "karyawan"}`}
+                                      disabled={isProcessing}
                                     >
                                       <XCircle className="h-4 w-4" />
                                     </Button>
@@ -260,6 +347,13 @@ const LateReasonApproval = () => {
                     </Table>
                   </div>
                 )}
+                {!isLoading && <DataTablePagination
+                  currentPage={page}
+                  totalItems={filteredRows.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                />}
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -270,7 +364,7 @@ const LateReasonApproval = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         action={dialogAction}
-        title="Alasan Keterlambatan"
+        title={bulkIds.length ? `${bulkIds.length} Alasan Keterlambatan Terpilih` : "Alasan Keterlambatan"}
         onConfirm={dialogAction === "approve" ? handleApprove : handleReject}
       />
     </>

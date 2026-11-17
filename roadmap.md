@@ -1,4 +1,6 @@
 # Agent integrations
+# Late-reason approval list
+- [x] Add standard pagination and pending-row selection with bulk approval through existing decision functions; three tests pass and signed-in selection/confirmation and 53-row pagination verified without changing real employee decisions.
 # Push worker and bounded queue
 - [x] Initialize messaging worker without page messages; Firebase compat 13.3.0 activates in browser with no errors, notification display and dated click handlers tested.
 - [x] Bound claims to 24 hours and five attempts; 13 push/worker tests pass including age boundaries, exhausted attempts and leases; 22 old notices skipped.

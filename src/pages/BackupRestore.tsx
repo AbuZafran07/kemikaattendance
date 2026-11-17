@@ -193,6 +193,12 @@ export default function BackupRestore() {
 
   const [gdriveLoading, setGdriveLoading] = useState(false);
   const [gdriveTesting, setGdriveTesting] = useState(false);
+  const [externalBusy, setExternalBusy] = useState(false);
+  const [externalStatus, setExternalStatus] = useState<{ configured?: boolean; last_backup_at?: string; last_backup_file?: string; records?: number; last_attempt_success?: boolean }>({});
+  const fetchExternalStatus = useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke("external-backup", { body: { action: "status" } });
+    if (!error && data) setExternalStatus(data);
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
   const [confirmLocalRestore, setConfirmLocalRestore] = useState(false);
@@ -285,7 +291,8 @@ export default function BackupRestore() {
     fetchBackupFiles();
     fetchGdriveConfig();
     fetchAuditLogs();
-  }, [fetchBackupFiles, fetchGdriveConfig, fetchAuditLogs]);
+    fetchExternalStatus();
+  }, [fetchBackupFiles, fetchGdriveConfig, fetchAuditLogs, fetchExternalStatus]);
 
 
   // Backup file berjalan di background (bertahap) — polling progres tiap 10 detik
@@ -691,6 +698,21 @@ export default function BackupRestore() {
 
   const latestScheduled = backupFiles.find((f) => f.name.startsWith("scheduled-backup-"));
 
+  const runExternalBackup = async () => {
+    setExternalBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("external-backup", { body: { action: "backup" } });
+      if (error) throw error;
+      if (!data?.success) throw new Error("Backup eksternal gagal");
+      toast.success(`Backup eksternal tersimpan dan terverifikasi: ${data.records} records`);
+    } catch (error) {
+      toast.error(await getFunctionErrorMessage(error, "Backup eksternal gagal"));
+    } finally {
+      await fetchExternalStatus();
+      setExternalBusy(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-6 animate-fadeIn">
@@ -740,6 +762,17 @@ export default function BackupRestore() {
         </Card>
 
         {/* Google Drive Backup */}
+        <section className="space-y-3 border-y border-border py-5">
+          <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold"><CloudUpload className="h-5 w-5 text-primary" />Backup Eksternal</h2>
+          <p className="text-sm text-muted-foreground">Setiap hari 09.30 WIB · 14 salinan terakhir · 10 tabel data utama (JSON)</p>
+          <p className="text-xs text-muted-foreground">Tidak termasuk akun login, pengaturan sistem, tabel lainnya, foto dan dokumen asli.</p>
+          {externalStatus.last_backup_at && <p className="text-sm">Terakhir berhasil: {new Date(externalStatus.last_backup_at).toLocaleString("id-ID")} · {externalStatus.records?.toLocaleString("id-ID")} records</p>}
+          {externalStatus.last_attempt_success === false && <p className="text-sm text-destructive">Percobaan terakhir gagal. Salinan sebelumnya tetap tersimpan.</p>}
+          <Button onClick={runExternalBackup} disabled={externalBusy}>
+            {externalBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}
+            {externalBusy ? "Mengirim..." : "Uji Salin Backup ke Eksternal"}
+          </Button>
+        </section>
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

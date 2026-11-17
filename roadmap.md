@@ -1,4 +1,7 @@
 # Agent integrations
+# External backup
+- [x] Add administrator-only and managed daily external JSON backup with private destination, bounded retention and status; existing internal schedules unchanged.
+- [x] Real administrator UI upload/readback verified (3,546 records); desktop/mobile controls checked, three tests pass and invalid authorization returns 401; daily 09:30 WIB schedule active. Scope is existing ten-table JSON only, not auth, other tables or binary storage; first scheduled execution and full restore drill remain unverified.
 # Discipline list and unlock-letter display
 - [x] Verify signed-in pagination (1–10 and 11–17 of 17), warning-letter scrolling to the final item, and mobile dialog layout.
 - [x] Visually verify black unlock-letter text and title below logo; generate PDF preview from an existing signed record without changing stored data; no browser errors and preview build OK.

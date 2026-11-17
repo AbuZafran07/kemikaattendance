@@ -1,4 +1,5 @@
 # Integration architecture
+- External backups export the existing ten-table JSON format fail-closed, verify private destination readback, and retain only owned-prefix files; managed cron and server-verified administrators share one handler without altering internal schedules.
 - Render unlock-letter previews from existing signed records with the current PDF generator; this fixes old layouts without rewriting signatures or approval history.
 - Bulk late-reason approval reuses the existing per-request decision RPC and retains only failed selections; this preserves server validation, audits and notifications without a second approval path.
 - Recheck rejected leave/travel dates in database triggers, skipping attendance, protected requests and non-working dates; decisions must not depend on the daily worker revisiting history.

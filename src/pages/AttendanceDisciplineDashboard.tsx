@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DisciplinaryLettersCard from "@/components/DisciplinaryLettersCard";
 import DisciplineViolationDetail from "@/components/DisciplineViolationDetail";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 
 interface Stats {
@@ -68,6 +69,12 @@ const AttendanceDisciplineDashboard = () => {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [warningFilter, setWarningFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [month, departmentFilter, warningFilter, statusFilter, itemsPerPage]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -109,6 +116,8 @@ const AttendanceDisciplineDashboard = () => {
     if (statusFilter !== "all" && r.account_status !== statusFilter) return false;
     return true;
   });
+  const page = Math.min(currentPage, Math.max(1, Math.ceil(filteredRows.length / itemsPerPage)));
+  const paginatedRows = filteredRows.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   const summaryCards: Array<{ label: string; value: number; icon: ElementType; color: string }> = [
     { label: "Total Karyawan", value: stats.total_employees, icon: Users, color: "text-primary" },
@@ -215,7 +224,7 @@ const AttendanceDisciplineDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRows.map((row) => (
+                    {paginatedRows.map((row) => (
                       <TableRow key={row.user_id}>
                         <TableCell className="font-medium"><Button variant="link" className="h-auto p-0 text-left whitespace-normal" onClick={() => setDetailTarget({ userId: row.user_id, name: row.full_name })}>{row.full_name}</Button></TableCell>
                         <TableCell>{row.departemen}</TableCell>
@@ -258,18 +267,19 @@ const AttendanceDisciplineDashboard = () => {
                 </Table>
               </div>
             )}
+            {!isLoading && <DataTablePagination currentPage={page} totalItems={filteredRows.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />}
           </CardContent>
         </Card>
       </div>
 
       <Dialog open={!!letterTarget} onOpenChange={(open) => !open && setLetterTarget(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85dvh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0 pr-6">
             <DialogTitle>Surat Peringatan — {letterTarget?.name}</DialogTitle>
           </DialogHeader>
-          {letterTarget && (
-            <DisciplinaryLettersCard userId={letterTarget.userId} employeeName={letterTarget.name} />
-          )}
+          <div className="min-h-0 overflow-y-auto overscroll-contain">
+            {letterTarget && <DisciplinaryLettersCard userId={letterTarget.userId} employeeName={letterTarget.name} />}
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(detailTarget)} onOpenChange={open => { if (!open) setDetailTarget(null); }}>

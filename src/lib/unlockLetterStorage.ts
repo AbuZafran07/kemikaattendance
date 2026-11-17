@@ -1,5 +1,30 @@
 import { supabase } from "@/integrations/supabase/client";
 import logger from "@/lib/logger";
+import { generateUnlockLetterPDF } from "@/lib/unlockLetterPdfGenerator";
+import logo from "@/assets/logo.png";
+
+/** Render existing signed records with the current layout without changing their audit data. */
+export const getUnlockLetterPreviewUrl = async (letterId: string): Promise<string> => {
+  const { data: letter, error } = await supabase.from("account_unlock_letters")
+    .select("letter_number, user_id, statement_text, employee_signature_data, employee_signed_at, hr_signature_data, hr_signed_by, hr_signed_at")
+    .eq("id", letterId).single();
+  if (error || !letter) throw new Error("Surat tidak dapat dimuat");
+  const { data: employee } = await supabase.from("profiles")
+    .select("full_name, nik, jabatan, departemen").eq("id", letter.user_id).single();
+  if (!employee) throw new Error("Data karyawan tidak dapat dimuat");
+  const { data: hr } = letter.hr_signed_by
+    ? await supabase.from("profiles").select("full_name").eq("id", letter.hr_signed_by).maybeSingle()
+    : { data: null };
+  const blob = await generateUnlockLetterPDF({
+    ...letter,
+    employee_name: employee.full_name,
+    nik: employee.nik,
+    jabatan: employee.jabatan,
+    departemen: employee.departemen,
+    hr_signed_by_name: hr?.full_name,
+  }, logo);
+  return URL.createObjectURL(blob);
+};
 
 /**
  * Upload a generated unlock letter PDF to the private 'unlock-letters' bucket.

@@ -1,4 +1,5 @@
 # Integration architecture
+- Render unlock-letter previews from existing signed records with the current PDF generator; this fixes old layouts without rewriting signatures or approval history.
 - Bulk late-reason approval reuses the existing per-request decision RPC and retains only failed selections; this preserves server validation, audits and notifications without a second approval path.
 - Recheck rejected leave/travel dates in database triggers, skipping attendance, protected requests and non-working dates; decisions must not depend on the daily worker revisiting history.
 - Enforce employee attendance timestamps and timing-derived status in database triggers; administrative historical corrections retain their existing path and the UI reads saved results.

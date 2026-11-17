@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import ApprovalReasonDialog from "@/components/ApprovalReasonDialog";
-import { getUnlockLetterSignedUrl } from "@/lib/unlockLetterStorage";
+import { getUnlockLetterPreviewUrl } from "@/lib/unlockLetterStorage";
 import logger from "@/lib/logger";
 
 interface LockedRow {
@@ -140,15 +140,23 @@ const EmployeeCoaching = () => {
     fetchLockedAccounts();
   }, [fetchLockedAccounts]);
 
+  useEffect(() => () => {
+    if (signedPdfUrl?.startsWith("blob:")) URL.revokeObjectURL(signedPdfUrl);
+  }, [signedPdfUrl]);
+
   const openDetail = async (row: LockedRow) => {
     setSelected(row);
     setCoachingType("");
     setCoachingNotes("");
     setFollowUp("");
     setSignedPdfUrl(null);
-    if (row.unlockLetter?.document_url) {
-      const url = await getUnlockLetterSignedUrl(row.unlockLetter.document_url);
-      setSignedPdfUrl(url);
+    if (row.unlockLetter) {
+      try {
+        const url = await getUnlockLetterPreviewUrl(row.unlockLetter.id);
+        setSignedPdfUrl(url);
+      } catch {
+        toast({ title: "Surat tidak dapat dibuka", description: "Silakan coba kembali.", variant: "destructive" });
+      }
     }
   };
 

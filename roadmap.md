@@ -1,4 +1,7 @@
 # Agent integrations
+# Discipline list and unlock-letter display
+- [x] Verify signed-in pagination (1–10 and 11–17 of 17), warning-letter scrolling to the final item, and mobile dialog layout.
+- [x] Visually verify black unlock-letter text and title below logo; generate PDF preview from an existing signed record without changing stored data; no browser errors and preview build OK.
 # Late-reason approval list
 - [x] Add standard pagination and pending-row selection with bulk approval through existing decision functions; three tests pass and signed-in selection/confirmation and 53-row pagination verified without changing real employee decisions.
 # Push worker and bounded queue

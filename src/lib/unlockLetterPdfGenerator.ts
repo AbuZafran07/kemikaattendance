@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "@/lib/payslipPdfGenerator";
 
-const GREEN = [0, 135, 81] as const;
+const INK = [0, 0, 0] as const;
 
 export interface UnlockLetterData {
   letter_number: string;
@@ -38,21 +38,24 @@ export async function generateUnlockLetterPDF(data: UnlockLetterData, logoSrc: s
     /* logo optional */
   }
 
-  doc.setFontSize(14);
+  // Keep the title below the logo, with wrapping inside the page margins.
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...GREEN);
-  doc.text("SURAT PERMOHONAN PEMBUKAAN LOCK ABSENSI", pw / 2, 20, { align: "center" });
+  doc.setTextColor(...INK);
+  const titleLines = doc.splitTextToSize("SURAT PERMOHONAN PEMBUKAAN LOCK ABSENSI", rightEnd - mx);
+  doc.text(titleLines, pw / 2, 38, { align: "center" });
+  const numberY = 38 + titleLines.length * 6;
 
   doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
+  doc.setTextColor(...INK);
   doc.setFont("helvetica", "normal");
-  doc.text(`Nomor: ${data.letter_number}`, pw / 2, 26, { align: "center" });
+  doc.text(`Nomor: ${data.letter_number}`, pw / 2, numberY, { align: "center" });
 
-  doc.setDrawColor(...GREEN);
+  doc.setDrawColor(...INK);
   doc.setLineWidth(0.5);
-  doc.line(mx, 34, rightEnd, 34);
+  doc.line(mx, numberY + 6, rightEnd, numberY + 6);
 
-  let y = 44;
+  let y = numberY + 16;
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
 
@@ -104,7 +107,7 @@ export async function generateUnlockLetterPDF(data: UnlockLetterData, logoSrc: s
   doc.text(data.hr_signed_by_name || "(menunggu persetujuan)", mx + sigBoxWidth + 10, y);
   y += 5;
   doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(...INK);
   doc.text(`Ditandatangani: ${formatDate(data.employee_signed_at)}`, mx, y);
   if (data.hr_signed_at) {
     doc.text(`Disetujui: ${formatDate(data.hr_signed_at)}`, mx + sigBoxWidth + 10, y);

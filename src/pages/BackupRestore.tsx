@@ -194,7 +194,7 @@ export default function BackupRestore() {
   const [gdriveLoading, setGdriveLoading] = useState(false);
   const [gdriveTesting, setGdriveTesting] = useState(false);
   const [externalBusy, setExternalBusy] = useState(false);
-  const [externalStatus, setExternalStatus] = useState<{ configured?: boolean; last_backup_at?: string; last_backup_file?: string; records?: number; last_attempt_success?: boolean }>({});
+  const [externalStatus, setExternalStatus] = useState<{ configured?: boolean; last_backup_at?: string; last_backup_file?: string; records?: number; last_attempt_success?: boolean; last_error?: string | null; table_count?: number | null; gdrive_last_backup_at?: string | null }>({});
   const fetchExternalStatus = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke("external-backup", { body: { action: "status" } });
     if (!error && data) setExternalStatus(data);
@@ -764,10 +764,18 @@ export default function BackupRestore() {
         {/* Google Drive Backup */}
         <section className="space-y-3 border-y border-border py-5">
           <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold"><CloudUpload className="h-5 w-5 text-primary" />Backup Eksternal</h2>
-          <p className="text-sm text-muted-foreground">Setiap hari 09.30 WIB · 14 salinan terakhir · 10 tabel data utama (JSON)</p>
-          <p className="text-xs text-muted-foreground">Tidak termasuk akun login, pengaturan sistem, tabel lainnya, foto dan dokumen asli.</p>
-          {externalStatus.last_backup_at && <p className="text-sm">Terakhir berhasil: {new Date(externalStatus.last_backup_at).toLocaleString("id-ID")} · {externalStatus.records?.toLocaleString("id-ID")} records</p>}
-          {externalStatus.last_attempt_success === false && <p className="text-sm text-destructive">Percobaan terakhir gagal. Salinan sebelumnya tetap tersimpan.</p>}
+          <p className="text-sm text-muted-foreground">Setiap hari 09.30 WIB · 14 salinan terakhir · {externalStatus.table_count ? `${externalStatus.table_count} tabel` : "semua tabel"} database (JSON)</p>
+          <div className="grid gap-1 text-sm sm:grid-cols-2">
+            <p>Google Drive terakhir berhasil: <span className="font-medium">{externalStatus.gdrive_last_backup_at ? new Date(externalStatus.gdrive_last_backup_at).toLocaleString("id-ID") : "belum ada"}</span></p>
+            <p>Eksternal terakhir berhasil: <span className="font-medium">{externalStatus.last_backup_at ? `${new Date(externalStatus.last_backup_at).toLocaleString("id-ID")} · ${externalStatus.records?.toLocaleString("id-ID") ?? 0} records` : "belum ada"}</span></p>
+          </div>
+          <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+            <li>Backup penuh mencakup semua tabel, tetapi pemulihan (restore) otomatis di halaman ini masih hanya untuk 10 tabel data utama.</li>
+            <li>Akun login (termasuk kata sandi) tidak ikut backup ini. Pemulihan penuh membutuhkan backup database penuh dari penyedia database.</li>
+            <li>File backup berisi data gaji, pinjaman, dan persetujuan biometrik. Pastikan semua penyimpanan tujuan privat dan jangan pernah dipublikasikan.</li>
+            <li>Foto absensi tidak ikut backup. Google Drive menyimpan foto karyawan dan dokumen; Supabase eksternal hanya menyimpan file data.</li>
+          </ul>
+          {externalStatus.last_attempt_success === false && <p className="text-sm text-destructive">Percobaan terakhir gagal{externalStatus.last_error ? `: ${externalStatus.last_error}` : ""}. Salinan sebelumnya tetap tersimpan.</p>}
           <Button onClick={runExternalBackup} disabled={externalBusy}>
             {externalBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}
             {externalBusy ? "Mengirim..." : "Uji Salin Backup ke Eksternal"}
@@ -827,7 +835,7 @@ export default function BackupRestore() {
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <label htmlFor="gdrive-include-files" className="text-sm cursor-pointer">
-                  Sertakan file (foto absensi, foto karyawan, dokumen dinas) — hanya backup mingguan
+                  Sertakan file (foto karyawan, dokumen dinas, surat, lampiran cuti, dokumen karyawan, KPI, sertifikat; tanpa foto absensi) — hanya backup mingguan
                 </label>
                 <Switch
                   id="gdrive-include-files"

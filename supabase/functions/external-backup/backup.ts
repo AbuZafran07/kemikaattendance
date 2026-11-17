@@ -1,21 +1,20 @@
-export const TABLES = ["profiles", "attendance", "leave_requests", "overtime_requests", "business_travel_requests", "payroll_periods", "payroll", "payroll_overrides", "employee_loans", "loan_installments"];
+import { buildManifest, collectTables } from "../_shared/backup-tables.ts";
 export const PREFIX = "kemika-attendance";
 export const RETENTION = 14;
+export const STALE_HOURS = 36;
 
-export async function collectBackup(readPage: (table: string, from: number, to: number) => Promise<Record<string, unknown>[]>, now = new Date()) {
-  const data: Record<string, Record<string, unknown>[]> = {};
-  for (const table of TABLES) {
-    data[table] = [];
-    for (let from = 0; ; from += 1000) {
-      const rows = await readPage(table, from, from + 999);
-      data[table].push(...rows);
-      if (rows.length < 1000) break;
-    }
-  }
-  return { version: "1.0", app: "Kemika Attendance", created_at: now.toISOString(), type: "external", tables: TABLES, data };
+export async function collectBackup(tables: string[], skipped: { table: string; reason: string }[], readPage: (table: string, from: number, to: number) => Promise<Record<string, unknown>[]>, now = new Date()) {
+  const data = await collectTables(tables, readPage);
+  return { version: "2.0", app: "Kemika Attendance", created_at: now.toISOString(), type: "external", tables, manifest: buildManifest(data, skipped, now), data };
 }
 
 export function expiredBackupNames(files: { name: string }[]) {
   return files.filter(f => /^backup-\d{4}-\d{2}-\d{2}T[\d-]+Z\.json$/.test(f.name))
     .sort((a, b) => b.name.localeCompare(a.name)).slice(RETENTION).map(f => `${PREFIX}/${f.name}`);
+}
+
+/** True when neither destination has a successful backup within STALE_HOURS. */
+export function backupIsStale(lastSuccesses: (string | null | undefined)[], now = new Date()) {
+  const latest = Math.max(0, ...lastSuccesses.map(s => (s ? Date.parse(s) : 0)).filter(n => !Number.isNaN(n)));
+  return now.getTime() - latest > STALE_HOURS * 3600_000;
 }

@@ -2353,6 +2353,13 @@ export type Database = {
       }
       is_discipline_admin: { Args: never; Returns: boolean }
       late_reason_deadline_hours: { Args: never; Returns: number }
+      list_backup_tables: {
+        Args: never
+        Returns: {
+          pk_columns: string[]
+          table_name: string
+        }[]
+      }
       mark_notifications_seen: { Args: never; Returns: string }
       notify_late_reason_decision: {
         Args: { p_reason_id: string }

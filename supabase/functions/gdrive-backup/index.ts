@@ -1,43 +1,23 @@
+import { listBackupTables, tablePageReader, collectTables, buildManifest } from "../_shared/backup-tables.ts";
+import { alertAdmins } from "../_shared/backup-alert.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const TABLES = [
-  "profiles",
-  "attendance",
-  "leave_requests",
-  "overtime_requests",
-  "business_travel_requests",
-  "payroll_periods",
-  "payroll",
-  "payroll_overrides",
-  "employee_loans",
-  "loan_installments",
-];
 
 const KEEP_COUNT = 30;
-const BUCKETS_TO_BACKUP = ["attendance-photos", "employee-photos", "business-travel-docs"];
+// attendance-photos sengaja tidak dibackup (foto absensi). Jangan masukkan bucket "backups".
+const BUCKETS_TO_BACKUP = [
+  "employee-photos",
+  "business-travel-docs",
+  "unlock-letters",
+  "leave-attachments",
+  "employee-documents",
+  "kpi-attachments",
+  "training-certificates",
+];
 // Batas waktu aman per invocation untuk fase file (edge function max ±400s)
 const FILE_PHASE_BUDGET_MS = 110_000;
 const FILE_BATCH = 6;
 
-// Ambil SEMUA baris (PostgREST default hanya 1000 baris per request)
-async function fetchAllRows(
-  // deno-lint-ignore no-explicit-any
-  supabase: any,
-  table: string,
-): Promise<Record<string, unknown>[]> {
-  const PAGE = 1000;
-  let from = 0;
-  let all: Record<string, unknown>[] = [];
-  while (true) {
-    const { data, error } = await supabase.from(table).select("*").range(from, from + PAGE - 1);
-    if (error) throw new Error(`Gagal ambil ${table}: ${error.message}`);
-    if (!data || data.length === 0) break;
-    all = all.concat(data);
-    if (data.length < PAGE) break;
-    from += PAGE;
-  }
-  return all;
-}
 
 
 
@@ -499,18 +479,11 @@ Deno.serve(async (req) => {
     }
 
     // ================= FASE DB (cepat) =================
-    const backupData: Record<string, unknown[]> = {};
-    let totalRecords = 0;
-    for (const table of TABLES) {
-      try {
-        const rows = await fetchAllRows(supabase, table);
-        backupData[table] = rows;
-        totalRecords += rows.length;
-      } catch (e) {
-        console.error(`Error fetching ${table}:`, e instanceof Error ? e.message : e);
-        backupData[table] = [];
-      }
-    }
+    const { tables: backupTables, skipped: skippedTables } = await listBackupTables(supabase);
+    const TABLES = backupTables.map((t) => t.table_name);
+    const backupData = await collectTables(TABLES, tablePageReader(supabase, backupTables));
+    const manifest = buildManifest(backupData, skippedTables);
+    const totalRecords = manifest.total_records;
 
 
     const now = new Date();
@@ -530,6 +503,7 @@ Deno.serve(async (req) => {
       version: "1.0",
       created_at: now.toISOString(),
       tables: TABLES,
+      manifest,
       data: backupData,
     });
 
@@ -587,6 +561,8 @@ Deno.serve(async (req) => {
       last_backup_at: now.toISOString(),
       last_backup_file: fileName,
       last_backup_records: totalRecords,
+      last_backup_table_count: TABLES.length,
+      last_error: null,
       last_backup_type: includeFiles ? "weekly" : "daily",
       gdrive_file_id: uploadResult.id,
 
@@ -674,6 +650,10 @@ Deno.serve(async (req) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("GDrive backup error:", message);
+    if (!isTest) {
+      await saveConfig({ last_error: message, last_error_at: new Date().toISOString() }).catch(() => undefined);
+      await alertAdmins(supabase, "Backup Google Drive gagal", `Backup Google Drive gagal: ${message}`);
+    }
     return json({ error: message }, 500, origin);
   }
 });

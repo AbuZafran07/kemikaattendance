@@ -1,41 +1,11 @@
+import { listBackupTables, tablePageReader, collectTables, buildManifest } from "../_shared/backup-tables.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const TABLES = [
-  "profiles",
-  "attendance",
-  "leave_requests",
-  "overtime_requests",
-  "business_travel_requests",
-  "payroll_periods",
-  "payroll",
-  "payroll_overrides",
-  "employee_loans",
-  "loan_installments",
-];
 
 const MAX_BACKUPS = 14; // backup harian, simpan 14 hari terakhir
 const FIREBASE_SERVER_KEY = Deno.env.get("FIREBASE_SERVER_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-// Ambil SEMUA baris (PostgREST default hanya 1000 baris per request)
-async function fetchAllRows(
-  // deno-lint-ignore no-explicit-any
-  supabase: any,
-  table: string,
-): Promise<Record<string, unknown>[]> {
-  const PAGE = 1000;
-  let from = 0;
-  let all: Record<string, unknown>[] = [];
-  while (true) {
-    const { data, error } = await supabase.from(table).select("*").range(from, from + PAGE - 1);
-    if (error) throw new Error(`Gagal ambil ${table}: ${error.message}`);
-    if (!data || data.length === 0) break;
-    all = all.concat(data);
-    if (data.length < PAGE) break;
-    from += PAGE;
-  }
-  return all;
-}
 
 
 async function sendEmailNotification(
@@ -102,7 +72,7 @@ async function sendEmailNotification(
               </tr>
               <tr style="background-color:#f8fafc;">
                 <td style="padding:10px 16px;font-size:13px;color:#64748b;">Tabel</td>
-                <td style="padding:10px 16px;font-size:13px;color:#1e293b;">${TABLES.length} tabel</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;">Semua tabel</td>
               </tr>
             </table>
           </td>
@@ -275,18 +245,11 @@ Deno.serve(async (req) => {
 
 
   try {
-    const backupData: Record<string, unknown[]> = {};
-    let totalRecords = 0;
-    for (const table of TABLES) {
-      try {
-        const rows = await fetchAllRows(supabase, table);
-        backupData[table] = rows;
-        totalRecords += rows.length;
-      } catch (e) {
-        console.error(`Error fetching ${table}:`, e instanceof Error ? e.message : e);
-        backupData[table] = [];
-      }
-    }
+    const { tables: backupTables, skipped: skippedTables } = await listBackupTables(supabase);
+    const TABLES = backupTables.map((t) => t.table_name);
+    const backupData = await collectTables(TABLES, tablePageReader(supabase, backupTables));
+    const manifest = buildManifest(backupData, skippedTables);
+    const totalRecords = manifest.total_records;
 
 
     const backup = {
@@ -295,6 +258,7 @@ Deno.serve(async (req) => {
       created_at: new Date().toISOString(),
       type: "scheduled",
       tables: TABLES,
+      manifest,
       data: backupData,
     };
 

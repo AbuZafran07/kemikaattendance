@@ -62,6 +62,7 @@ export interface BPJSRatesConfig {
   jp_employee_rate: number;
   jp_employer_rate: number;
   jp_max_salary: number;
+  jp_max_salary_history?: { effective_from: string; value: number }[];
   jkk_employer_rate: number;
   jkm_employer_rate: number;
   // Dasar perhitungan BPJS: "basic" = hanya gaji pokok, "basic_plus_fixed" = gapok + tunjangan tetap
@@ -144,8 +145,9 @@ export function calculatePPh21Reconciliation(
   biayaJabatanRate: number = BIAYA_JABATAN_RATE,
   biayaJabatanMaxYearly: number = BIAYA_JABATAN_MAX_YEARLY,
   customBrackets?: TaxBracketConfig[],
+  monthsWorked: number = 12,
 ): { tax: number; yearlyTax: number; adjustment: number; mode: "REKONSILIASI"; biayaJabatan: number; yearlyNetto: number; pkp: number } {
-  const biayaJabatan = Math.min(yearlyBruto * biayaJabatanRate, biayaJabatanMaxYearly);
+  const biayaJabatan = calculateBiayaJabatan(yearlyBruto, monthsWorked, biayaJabatanRate, biayaJabatanMaxYearly);
   const totalPengurang = biayaJabatan + yearlyBpjsKtEmployee;
   const yearlyNetto = yearlyBruto - totalPengurang;
   const pkp = Math.max(0, yearlyNetto - ptkpValue);
@@ -167,6 +169,56 @@ export function calculatePPh21Reconciliation(
 
 // ===== Existing Payroll Calculation =====
 
+export interface TaxablePayrollRow {
+  bruto_income: number;
+  bruto_basis?: string | null;
+  bpjs_jht_employer?: number;
+  bpjs_jp_employer?: number;
+}
+
+export function getTaxableBruto(row: TaxablePayrollRow): number {
+  return row.bruto_basis === 'pph_taxable' ? row.bruto_income
+    : row.bruto_income - (row.bpjs_jht_employer || 0) - (row.bpjs_jp_employer || 0);
+}
+
+export function calculateBiayaJabatan(bruto: number, monthsWorked = 12, rate = BIAYA_JABATAN_RATE, maxYearly = BIAYA_JABATAN_MAX_YEARLY): number {
+  const months = Math.max(1, Math.min(12, Math.trunc(monthsWorked)));
+  return Math.min(bruto * rate, (maxYearly / 12) * months);
+}
+
+export function getJpSalaryCap(config?: BPJSRatesConfig, month?: number, year?: number): number {
+  const fallback = config?.jp_max_salary ?? BPJS_JP_MAX_SALARY;
+  if (!month || !year) return fallback;
+  const date = `${year}-${String(month).padStart(2, '0')}-01`;
+  const entries = [...(config?.jp_max_salary_history || [])].sort((a, b) => b.effective_from.localeCompare(a.effective_from));
+  return entries.find(entry => entry.effective_from <= date)?.value ?? (entries.length ? entries[entries.length - 1]?.value ?? fallback : fallback);
+}
+
+export function getEmployerBpjs(row: { bpjs_kes_employer?: number; bpjs_jht_employer?: number; bpjs_jp_employer?: number; bpjs_jkk_employer?: number; bpjs_jkm_employer?: number }): number {
+  return (row.bpjs_kes_employer || 0) + (row.bpjs_jht_employer || 0) + (row.bpjs_jp_employer || 0) + (row.bpjs_jkk_employer || 0) + (row.bpjs_jkm_employer || 0);
+}
+
+export function getPayrollEmployerCost(row: TaxablePayrollRow & Parameters<typeof getEmployerBpjs>[0] & { basic_salary: number; allowance: number; overtime_total: number }): number {
+  return row.basic_salary + row.allowance + row.overtime_total + getEmployerBpjs(row);
+}
+
+export function getPphLabel(amount: number): string {
+  return amount < 0 ? 'Pengembalian kelebihan PPh 21' : 'PPh 21';
+}
+
+export function isResignTaxPeriod(resignDate: Date | null, periodStart: Date, periodEnd: Date): boolean {
+  return Boolean(resignDate && resignDate >= periodStart && resignDate <= periodEnd);
+}
+
+export function summarizeTaxYear(rows: (TaxablePayrollRow & { month: number; bpjs_ketenagakerjaan: number; pph21_monthly: number })[]) {
+  return {
+    bruto: rows.reduce((sum, row) => sum + getTaxableBruto(row), 0),
+    bpjsEmployee: rows.reduce((sum, row) => sum + row.bpjs_ketenagakerjaan, 0),
+    withheld: rows.reduce((sum, row) => sum + row.pph21_monthly, 0),
+    monthsWorked: Math.max(1, Math.min(12, new Set(rows.map(row => row.month)).size)),
+  };
+}
+
 export interface PayrollInput {
   basicSalary: number;
   allowance: number;
@@ -180,6 +232,9 @@ export interface PayrollInput {
   deductionNotes?: string;
   // TER support
   month?: number; // 1-12
+  year?: number;
+  monthsWorked?: number;
+  lastTaxPeriod?: boolean;
   terRates?: TERRate[]; // TER rates for this PTKP category
   totalPphJanNov?: number; // Sum of PPh21 paid Jan-Nov (for Dec reconciliation)
   // BPJS Kesehatan opt-out
@@ -187,7 +242,7 @@ export interface PayrollInput {
   // BPJS Ketenagakerjaan opt-out (JHT, JP, JKK, JKM)
   bpjsKetenagakerjaanEnabled?: boolean; // default true
   // December reconciliation — actual yearly data from previous months
-  prevMonthsBruto?: number;   // Sum of Jan-Nov bruto_income
+  prevMonthsBruto?: number;   // Prior months taxable bruto, converted using getTaxableBruto
   prevMonthsBpjsKt?: number;  // Sum of Jan-Nov bpjs_ketenagakerjaan (JHT+JP employee)
   // Dynamic BPJS config
   bpjsConfig?: BPJSRatesConfig;
@@ -205,6 +260,7 @@ export interface PayrollResult {
   overtime_total: number;
   overtime_hours: number;
   bruto_income: number;
+  bruto_basis: 'pph_taxable';
   bpjs_kesehatan: number;
   bpjs_ketenagakerjaan: number;
   bpjs_kes_employer: number;
@@ -231,7 +287,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     basicSalary, allowance, overtimeTotal, ptkpStatus, overtimeHours,
     fixedAllowance = 0,
     loanDeduction = 0, otherDeduction = 0, deductionNotes = "",
-    month, terRates, totalPphJanNov = 0,
+    month, year, monthsWorked = 12, lastTaxPeriod = false, terRates, totalPphJanNov = 0,
     bpjsKesehatanEnabled = true,
     bpjsKetenagakerjaanEnabled = true,
     prevMonthsBruto = 0, prevMonthsBpjsKt = 0,
@@ -253,7 +309,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const jhtEmployerRate = bpjsConfig ? bpjsConfig.jht_employer_rate / 100 : BPJS_JHT_EMPLOYER_RATE;
   const jpEmployeeRate = bpjsConfig ? bpjsConfig.jp_employee_rate / 100 : BPJS_JP_RATE;
   const jpEmployerRate = bpjsConfig ? bpjsConfig.jp_employer_rate / 100 : BPJS_JP_EMPLOYER_RATE;
-  const jpMaxSalary = bpjsConfig ? bpjsConfig.jp_max_salary : BPJS_JP_MAX_SALARY;
+  const jpMaxSalary = getJpSalaryCap(bpjsConfig, month, year);
   const jkkEmployerRate = bpjsConfig ? bpjsConfig.jkk_employer_rate / 100 : BPJS_JKK_EMPLOYER_RATE;
   const jkmEmployerRate = bpjsConfig ? bpjsConfig.jkm_employer_rate / 100 : BPJS_JKM_EMPLOYER_RATE;
 
@@ -276,12 +332,11 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const bpjsJkkEmployer = bpjsKetenagakerjaanEnabled ? Math.round(bpjsBase * jkkEmployerRate) : 0;
   const bpjsJkmEmployer = bpjsKetenagakerjaanEnabled ? Math.round(bpjsBase * jkmEmployerRate) : 0;
 
-  // Bruto = Gaji Pokok + Semua Tunjangan/Tambahan + BPJS Perusahaan
-  const totalBpjsEmployer = bpjsKesEmployer + bpjsJhtEmployer + bpjsJpEmployer + bpjsJkkEmployer + bpjsJkmEmployer;
-  const brutoIncome = basicSalary + allowance + overtimeTotal + totalBpjsEmployer;
+  // Taxable bruto includes employer health/JKK/JKM, but not employer JHT/JP.
+  const brutoIncome = basicSalary + allowance + overtimeTotal + bpjsKesEmployer + bpjsJkkEmployer + bpjsJkmEmployer;
 
   const totalBpjsEmployee = bpjsKesehatan + bpjsKetenagakerjaan;
-  const nettoIncome = brutoIncome - totalBpjsEmployee - totalBpjsEmployer;
+  const nettoIncome = basicSalary + allowance + overtimeTotal - totalBpjsEmployee;
 
   // Use dynamic PTKP config if available, fallback to hardcoded defaults
   const effectivePtkp = ptkpConfig || PTKP_VALUES;
@@ -295,7 +350,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   // Determine calculation mode
   const hasTER = terRates && terRates.length > 0 && month;
 
-  if (hasTER && month < 12) {
+  if (hasTER && month < 12 && !lastTaxPeriod) {
     // Jan-Nov: Use TER — no rounding, keep decimal precision like Excel
     const terResult = calculatePPh21TER(brutoIncome, terRates);
     pph21Monthly = terResult.tax;
@@ -304,14 +359,14 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     // PKP not used in TER but we still calculate for display
     const annualNetto = nettoIncome * 12;
     pkp = Math.max(0, annualNetto - ptkpValue);
-  } else if (hasTER && month === 12) {
+  } else if ((month === 12 || lastTaxPeriod) && month) {
     // December: Reconciliation using actual yearly data
     // Yearly bruto = Jan-Nov actual + December current
     const yearlyBruto = prevMonthsBruto + brutoIncome;
     // Yearly JHT+JP employee = Jan-Nov actual + December current
     const yearlyBpjsKt = prevMonthsBpjsKt + bpjsKetenagakerjaan;
 
-    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov, bjRate, bjMaxYearly, taxBrackets);
+    const reconResult = calculatePPh21Reconciliation(yearlyBruto, yearlyBpjsKt, ptkpValue, totalPphJanNov, bjRate, bjMaxYearly, taxBrackets, monthsWorked);
     pph21Monthly = reconResult.tax; // Can be negative (refund)
     pph21Mode = "REKONSILIASI";
     pph21TerRate = 0;
@@ -337,6 +392,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     overtime_total: overtimeTotal,
     overtime_hours: overtimeHours,
     bruto_income: brutoIncome,
+    bruto_basis: 'pph_taxable',
     bpjs_kesehatan: bpjsKesehatan,
     bpjs_ketenagakerjaan: bpjsKetenagakerjaan,
     bpjs_kes_employer: bpjsKesEmployer,

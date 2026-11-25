@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2, Info, Shield, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { clearFixedAllowanceComponentsCache } from "@/lib/bpjsFixedComponents";
 
 export type BPJSBaseCalculation = "basic" | "basic_plus_fixed";
@@ -29,6 +30,7 @@ export interface BPJSConfig {
   // JP
   jp_employee_rate: number;    // default 1%
   jp_employer_rate: number;    // default 2%
+  jp_max_salary_history?: { effective_from: string; value: number }[];
   jp_max_salary: number;       // default 10.547.400
 
   // JKK
@@ -72,20 +74,29 @@ export default function BPJSSettings() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [historyDate, setHistoryDate] = useState(`${new Date().getFullYear() + 1}-03-01`);
+  const [historyValue, setHistoryValue] = useState("");
+  const todayDate = format(new Date(), "yyyy-MM-dd");
   const [config, setConfig] = useState<BPJSConfig>(DEFAULT_BPJS_CONFIG);
 
+  const missingMarchEntry = todayDate >= `${new Date().getFullYear()}-03-01` && !(config.jp_max_salary_history || []).some(entry => entry.effective_from.startsWith(`${new Date().getFullYear()}-`));
+  const addHistoryEntry = () => {
+    const value = Number(historyValue);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(historyDate) || !Number.isFinite(value) || value <= 0) { toast.error("Isi tanggal berlaku dan batas upah yang valid"); return; }
+    const entries = config.jp_max_salary_history || [];
+    if (entries.some(entry => entry.effective_from === historyDate)) { toast.error("Tanggal berlaku sudah ada dalam riwayat"); return; }
+    const history = [...entries, { effective_from: historyDate, value }].sort((a,b) => a.effective_from.localeCompare(b.effective_from));
+    setConfig(prev => ({ ...prev, jp_max_salary_history: history, jp_max_salary: history[history.length - 1]?.value ?? prev.jp_max_salary }));
+    setHistoryValue("");
+  };
   useEffect(() => { fetchSettings(); }, []);
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "bpjs_config")
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_bpjs_config");
       if (error) throw error;
-      if (data?.value) {
-        const loaded = data.value as any;
+      if (data) {
+        const loaded = data as any;
         setConfig({
           ...DEFAULT_BPJS_CONFIG,
           ...loaded,
@@ -116,7 +127,7 @@ export default function BPJSSettings() {
       const baseChanged = (prevConfig.base_calculation ?? "basic") !== config.base_calculation;
       const today = new Date().toISOString().slice(0, 10);
       const finalConfig: BPJSConfig = {
-        ...config,
+        ...prevConfig, ...config,
         base_calculation_effective_date: baseChanged ? today : (config.base_calculation_effective_date || prevConfig.base_calculation_effective_date),
       };
 
@@ -313,13 +324,24 @@ export default function BPJSSettings() {
               </div>
               <div className="space-y-2">
                 <Label>Batas Maks. Gaji</Label>
-                <Input type="number" value={config.jp_max_salary} onChange={e => updateField("jp_max_salary", e.target.value)} />
-                <p className="text-xs text-muted-foreground">{formatCurrency(config.jp_max_salary)}</p>
+                <Input type="number" readOnly value={config.jp_max_salary} onChange={e => updateField("jp_max_salary", e.target.value)} />
+                <p className="text-xs text-muted-foreground">{formatCurrency(config.jp_max_salary)} · Entri terbaru pada riwayat</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
+        <section className="space-y-3 border-y border-border py-5">
+          <h2 className="font-semibold">Riwayat batas upah JP</h2>
+          {missingMarchEntry && <Alert><AlertDescription>Sudah melewati 1 Maret, tetapi belum ada batas JP untuk tahun ini. Konfirmasikan batas resmi BPJS sebelum menghitung payroll.</AlertDescription></Alert>}
+          {(config.jp_max_salary_history || []).map(entry => <div key={entry.effective_from} className="flex flex-wrap justify-between gap-2 text-sm"><span>Berlaku {entry.effective_from}</span><span className="font-medium">{formatCurrency(entry.value)}</span></div>)}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div className="space-y-2"><Label htmlFor="jp-effective-date">Tanggal berlaku</Label><Input id="jp-effective-date" type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="jp-history-value">Batas upah baru (Rp)</Label><Input id="jp-history-value" type="number" min="1" value={historyValue} onChange={e => setHistoryValue(e.target.value)} /></div>
+            <Button variant="outline" onClick={addHistoryEntry}>Tambah entri JP</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Entri baru disimpan dengan Simpan Pengaturan. Payroll final tidak dihitung ulang.</p>
+        </section>
         {/* JKK & JKM */}
         <Card>
           <CardHeader>

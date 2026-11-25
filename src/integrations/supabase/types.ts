@@ -1657,6 +1657,7 @@ export type Database = {
           bpjs_kes_employer: number
           bpjs_kesehatan: number
           bpjs_ketenagakerjaan: number
+          bruto_basis: string
           bruto_income: number
           created_at: string
           deduction_notes: string | null
@@ -1697,6 +1698,7 @@ export type Database = {
           bpjs_kes_employer?: number
           bpjs_kesehatan?: number
           bpjs_ketenagakerjaan?: number
+          bruto_basis?: string
           bruto_income?: number
           created_at?: string
           deduction_notes?: string | null
@@ -1737,6 +1739,7 @@ export type Database = {
           bpjs_kes_employer?: number
           bpjs_kesehatan?: number
           bpjs_ketenagakerjaan?: number
+          bruto_basis?: string
           bruto_income?: number
           created_at?: string
           deduction_notes?: string | null
@@ -2336,6 +2339,7 @@ export type Database = {
         Returns: number
       }
       get_office_locations: { Args: never; Returns: Json }
+      get_payroll_wage_bases: { Args: never; Returns: Json }
       get_pph21_brackets_config: { Args: never; Returns: Json }
       get_ptkp_config: { Args: never; Returns: Json }
       get_rolling_3month_violation_count: {
@@ -2387,6 +2391,10 @@ export type Database = {
       }
       reject_unlock_letter: {
         Args: { p_letter_id: string; p_reason: string }
+        Returns: undefined
+      }
+      save_payroll_wage_bases: {
+        Args: { p_overtime_base: string; p_thr_base: string }
         Returns: undefined
       }
       scan_missing_late_reasons: { Args: never; Returns: number }

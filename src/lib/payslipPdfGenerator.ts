@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { getTaxableBruto, getPphLabel } from "./payrollCalculation";
 import autoTable from "jspdf-autotable";
 
 const MONTHS = [
@@ -82,6 +83,7 @@ export interface PayslipData {
   pph21_monthly: number;
   // Totals
   bruto_income: number;
+  bruto_basis?: string;
   netto_income: number;
   take_home_pay: number;
   // Employer contributions
@@ -188,7 +190,7 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
     ["BPJS Kesehatan Employee", data.bpjs_kesehatan],
     ["Pinjaman Karyawan", data.loan_deduction || 0],
     ["Pengembalian Company", data.other_deduction || 0],
-    ["PPH21", data.pph21_monthly],
+    [getPphLabel(data.pph21_monthly), data.pph21_monthly],
   ];
 
   // Section headers with green background
@@ -235,7 +237,7 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
     if (i < deductionItems.length) {
       const [label, val] = deductionItems[i];
       doc.setFont("helvetica", "normal");
-      doc.text(label, colMid + 1, ry + 3);
+      doc.text(label, colMid + 1, ry + 3, { maxWidth: 60 });
       doc.text("Rp", colMid + 62, ry + 3);
       doc.text(fmtNum(val), rightAmtX, ry + 3, { align: "right" });
     }
@@ -279,6 +281,13 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
   doc.setTextColor(0);
   y += 10;
 
+  doc.setFontSize(8);
+  doc.text("Penghasilan bruto (dasar PPh 21)", colLeft + 1, y);
+  doc.text(fmtNum(getTaxableBruto(data)), rightAmtX, y, { align: "right" });
+  y += 4;
+  doc.setFontSize(7);
+  doc.text("JHT dan JP perusahaan tidak termasuk penghasilan kena pajak.", colLeft + 1, y);
+  y += 7;
   // ===== NEUTRAL section =====
   doc.setDrawColor(...GREEN); doc.setLineWidth(0.3);
   doc.line(colLeft, y, rightEnd, y);

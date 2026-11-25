@@ -1,3 +1,4 @@
+import { getTaxableBruto, getEmployerBpjs, getPayrollEmployerCost } from "@/lib/payrollCalculation";
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,7 +50,7 @@ const fetchYearPayrollData = async (year: number) => {
   const periodMonthMap = new Map(periods.map(p => [p.id, p.month]));
 
   const { data: payrolls } = await supabase
-    .from("payroll").select("period_id, user_id, bruto_income, pph21_monthly, take_home_pay, overtime_total, overtime_hours")
+    .from("payroll").select("period_id, user_id, bruto_income, bruto_basis, basic_salary, allowance, bpjs_kes_employer, bpjs_jht_employer, bpjs_jp_employer, bpjs_jkk_employer, bpjs_jkm_employer, pph21_monthly, take_home_pay, overtime_total, overtime_hours")
     .in("period_id", periodIds);
 
   if (!payrolls) return null;
@@ -62,7 +63,7 @@ const fetchYearPayrollData = async (year: number) => {
   for (const p of payrolls) {
     const month = periodMonthMap.get(p.period_id) || 1;
     const m = monthlyMap.get(month) || { bruto: 0, pph21: 0, thp: 0 };
-    m.bruto += p.bruto_income;
+    m.bruto += getPayrollEmployerCost(p);
     m.pph21 += p.pph21_monthly;
     m.thp += p.take_home_pay;
     monthlyMap.set(month, m);
@@ -81,6 +82,7 @@ const fetchYearPayrollData = async (year: number) => {
 const PayrollAnalytics = () => {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [loading, setLoading] = useState(true);
+  const [taxAndCost, setTaxAndCost] = useState({ taxable: 0, bpjs: 0 });
   const [monthlyCost, setMonthlyCost] = useState<MonthlyData[]>([]);
   const [deptCost, setDeptCost] = useState<{ name: string; value: number }[]>([]);
   const [monthlyOvertime, setMonthlyOvertime] = useState<{ month: string; hours: number; cost: number }[]>([]);
@@ -117,7 +119,7 @@ const PayrollAnalytics = () => {
       const deptAgg = new Map<string, number>();
       for (const p of currentData.payrolls) {
         const dept = deptMap.get(p.user_id) || "Lainnya";
-        deptAgg.set(dept, (deptAgg.get(dept) || 0) + p.bruto_income);
+        deptAgg.set(dept, (deptAgg.get(dept) || 0) + getPayrollEmployerCost(p));
       }
 
       const monthlyData = Array.from({ length: 12 }, (_, i) => {
@@ -152,6 +154,7 @@ const PayrollAnalytics = () => {
       const prevBruto = yoy.reduce((s, m) => s + m.brutoPrevYear, 0);
       const prevPph21 = yoy.reduce((s, m) => s + m.pph21PrevYear, 0);
 
+      setTaxAndCost({ taxable: currentData.payrolls.reduce((s,p) => s + getTaxableBruto(p), 0), bpjs: currentData.payrolls.reduce((s,p) => s + getEmployerBpjs(p), 0) });
       setMonthlyCost(monthlyData);
       setDeptCost(deptData);
       setMonthlyOvertime(overtimeData);
@@ -241,6 +244,7 @@ const PayrollAnalytics = () => {
           </Card>
         ) : (
           <>
+            <section className="flex flex-wrap gap-8 border-y border-border py-4"><div><p className="text-xs text-muted-foreground">Bruto pajak</p><p className="text-lg font-semibold">{formatRupiah(taxAndCost.taxable)}</p></div><div><p className="text-xs text-muted-foreground">Biaya perusahaan (BPJS)</p><p className="text-lg font-semibold">{formatRupiah(taxAndCost.bpjs)}</p></div></section>
             {/* Summary Cards with YoY */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card><CardContent className="pt-6">
@@ -248,7 +252,7 @@ const PayrollAnalytics = () => {
                   <TrendingUp className="h-8 w-8 text-primary/60" />
                   <div className="flex-1">
                     <p className="text-lg font-bold">{formatRupiah(totals.bruto)}</p>
-                    <p className="text-xs text-muted-foreground">Total Biaya Gaji</p>
+                    <p className="text-xs text-muted-foreground">Total biaya tenaga kerja</p>
                     <div className="flex items-center gap-2 mt-1">
                       <ChangeIndicator value={yoySummary.brutoChange} percent={yoySummary.brutoPercent} />
                       <span className="text-[10px] text-muted-foreground">vs {selectedYear - 1}</span>
@@ -293,7 +297,7 @@ const PayrollAnalytics = () => {
                     </div>
                     <div className="flex gap-4 text-right">
                       <div>
-                        <p className="text-xs text-muted-foreground">Δ Bruto</p>
+                        <p className="text-xs text-muted-foreground">Δ Biaya tenaga kerja</p>
                         <p className={`text-sm font-bold ${yoySummary.brutoChange > 0 ? "text-destructive" : "text-primary"}`}>
                           {yoySummary.brutoChange > 0 ? "+" : ""}{formatRupiah(yoySummary.brutoChange)}
                         </p>
@@ -328,8 +332,8 @@ const PayrollAnalytics = () => {
                           );
                         }} />
                         <Legend />
-                        <Line type="monotone" dataKey="brutoThisYear" name={`Bruto ${selectedYear}`} stroke="hsl(161, 80%, 35%)" strokeWidth={2.5} dot={{ r: 4 }} />
-                        <Line type="monotone" dataKey="brutoPrevYear" name={`Bruto ${selectedYear - 1}`} stroke="hsl(161, 80%, 35%)" strokeWidth={1.5} strokeDasharray="5 5" dot={{ r: 3 }} />
+                        <Line type="monotone" dataKey="brutoThisYear" name={`Biaya tenaga kerja ${selectedYear}`} stroke="hsl(161, 80%, 35%)" strokeWidth={2.5} dot={{ r: 4 }} />
+                        <Line type="monotone" dataKey="brutoPrevYear" name={`Biaya tenaga kerja ${selectedYear - 1}`} stroke="hsl(161, 80%, 35%)" strokeWidth={1.5} strokeDasharray="5 5" dot={{ r: 3 }} />
                         <Line type="monotone" dataKey="pph21ThisYear" name={`PPh21 ${selectedYear}`} stroke="hsl(350, 70%, 55%)" strokeWidth={2.5} dot={{ r: 4 }} />
                         <Line type="monotone" dataKey="pph21PrevYear" name={`PPh21 ${selectedYear - 1}`} stroke="hsl(350, 70%, 55%)" strokeWidth={1.5} strokeDasharray="5 5" dot={{ r: 3 }} />
                       </LineChart>
@@ -342,8 +346,8 @@ const PayrollAnalytics = () => {
             {/* Monthly Cost Chart */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Total Biaya Gaji & Pajak Per Bulan</CardTitle>
-                <CardDescription>Trend bulanan bruto, THP, dan PPh 21 tahun {selectedYear}</CardDescription>
+                <CardTitle className="text-lg">Total biaya tenaga kerja & Pajak Per Bulan</CardTitle>
+                <CardDescription>Trend bulanan biaya tenaga kerja, THP, dan PPh 21 tahun {selectedYear}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[350px]">
@@ -354,7 +358,7 @@ const PayrollAnalytics = () => {
                       <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                       <Tooltip content={<CustomTooltip />} />
                       <Legend />
-                      <Bar dataKey="bruto" name="Bruto" fill="hsl(161, 80%, 35%)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="bruto" name="Biaya tenaga kerja" fill="hsl(161, 80%, 35%)" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="thp" name="Take Home Pay" fill="hsl(200, 70%, 50%)" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="pph21" name="PPh 21" fill="hsl(350, 70%, 55%)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -368,7 +372,7 @@ const PayrollAnalytics = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Biaya Per Departemen</CardTitle>
-                  <CardDescription>Distribusi biaya bruto per departemen tahun {selectedYear}</CardDescription>
+                  <CardDescription>Distribusi biaya tenaga kerja per departemen tahun {selectedYear}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px]">

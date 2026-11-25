@@ -1,3 +1,4 @@
+import { getTaxableBruto, getPayrollEmployerCost, getPphLabel } from "./payrollCalculation";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -73,6 +74,7 @@ export interface PayrollReportItem {
   pph21_mode: string;
   pph21_ter_rate: number | null;
   bruto_income: number;
+  bruto_basis?: string;
   netto_income: number;
   take_home_pay: number;
   bpjs_jht_employer: number;
@@ -131,7 +133,7 @@ export async function generatePayrollReportPDF(
   // ===== SUMMARY CARDS =====
   let y = 60;
   const totalEmployees = items.length;
-  const totalBruto = items.reduce((s, i) => s + i.bruto_income, 0);
+  const totalBruto = items.reduce((s, i) => s + getTaxableBruto(i), 0);
   const totalDeductions = items.reduce((s, i) => s + i.bpjs_ketenagakerjaan + i.bpjs_kesehatan + i.loan_deduction + i.other_deduction + i.pph21_monthly, 0);
   const totalTHP = items.reduce((s, i) => s + i.take_home_pay, 0);
   const totalPPh = items.reduce((s, i) => s + i.pph21_monthly, 0);
@@ -140,7 +142,7 @@ export async function generatePayrollReportPDF(
   const cardW = (pw - mx * 2 - 12 * 2) / 3;
   const cards = [
     { label: "Total Karyawan", value: String(totalEmployees), sub: "orang" },
-    { label: "Total Penghasilan Bruto", value: `Rp ${fmtRp(totalBruto)}`, sub: "" },
+    { label: "Bruto pajak", value: `Rp ${fmtRp(totalBruto)}`, sub: "" },
     { label: "Total Take Home Pay", value: `Rp ${fmtRp(totalTHP)}`, sub: "" },
   ];
 
@@ -171,7 +173,7 @@ export async function generatePayrollReportPDF(
   const cards2 = [
     { label: "Total PPh 21", value: `Rp ${fmtRp(totalPPh)}` },
     { label: "Total Potongan", value: `Rp ${fmtRp(totalDeductions)}` },
-    { label: "Total BPJS Perusahaan", value: `Rp ${fmtRp(totalEmployerBpjs)}` },
+    { label: "Biaya perusahaan (BPJS)", value: `Rp ${fmtRp(totalEmployerBpjs)}` },
   ];
 
   cards2.forEach((card, idx) => {
@@ -199,7 +201,7 @@ export async function generatePayrollReportPDF(
     const dept = i.departemen || "Lainnya";
     const d = deptMap.get(dept) || { count: 0, bruto: 0, thp: 0 };
     d.count++;
-    d.bruto += i.bruto_income;
+    d.bruto += getTaxableBruto(i);
     d.thp += i.take_home_pay;
     deptMap.set(dept, d);
   });
@@ -212,7 +214,7 @@ export async function generatePayrollReportPDF(
 
   autoTable(doc, {
     startY: y,
-    head: [["Departemen", "Jumlah Karyawan", "Total Bruto", "Total THP"]],
+    head: [["Departemen", "Jumlah Karyawan", "Bruto pajak", "Total THP"]],
     body: Array.from(deptMap.entries()).map(([dept, d]) => [
       dept,
       String(d.count),
@@ -260,7 +262,7 @@ export async function generatePayrollReportPDF(
       fmtRp(item.overtime_total || 0),
       fmtRp(item.thr || 0),
       fmtRp((item.insentif_kinerja || 0) + (item.insentif_penjualan || 0) + (item.bonus_tahunan || 0) + (item.bonus_lainnya || 0) + (item.pengembalian_employee || 0)),
-      fmtRp(item.bruto_income),
+      fmtRp(getTaxableBruto(item)),
     ];
   });
 
@@ -286,7 +288,7 @@ export async function generatePayrollReportPDF(
 
   autoTable(doc, {
     startY: 24,
-    head: [["No", "NIK", "Nama", "Dept", "Gaji Pokok", "T. Kehadiran", "T. Operasional", "T. Jabatan", "T. Komunikasi", "T. Kesehatan", "T. Dinas", "Lembur", "THR", "Bonus & Insentif", "Total Bruto"]],
+    head: [["No", "NIK", "Nama", "Dept", "Gaji Pokok", "T. Kehadiran", "T. Operasional", "T. Jabatan", "T. Komunikasi", "T. Kesehatan", "T. Dinas", "Lembur", "THR", "Bonus & Insentif", "Bruto pajak"]],
     body: [...incomeRows, incomeTotals],
     margin: { left: mx, right: mx },
     styles: { fontSize: 6.5, cellPadding: 1.8, lineWidth: 0.1, lineColor: [200, 200, 200] },
@@ -335,13 +337,13 @@ export async function generatePayrollReportPDF(
       String(idx + 1),
       item.nik || "-",
       item.employee_name || "-",
-      fmtRp(item.bruto_income),
+      fmtRp(getTaxableBruto(item)),
       fmtRp(jhtEmp),
       fmtRp(jpEmp),
       fmtRp(item.bpjs_kesehatan),
       fmtRp(item.loan_deduction || 0),
       fmtRp(item.other_deduction || 0),
-      pph21Label,
+      item.pph21_monthly < 0 ? getPphLabel(item.pph21_monthly) : pph21Label,
       fmtRp(item.pph21_monthly),
       fmtRp(item.bpjs_ketenagakerjaan + item.bpjs_kesehatan + (item.loan_deduction || 0) + (item.other_deduction || 0) + item.pph21_monthly),
       fmtRp(item.take_home_pay),
@@ -364,7 +366,7 @@ export async function generatePayrollReportPDF(
 
   autoTable(doc, {
     startY: 24,
-    head: [["No", "NIK", "Nama", "Bruto", "JHT (2%)", "JP (1%)", "BPJS Kes (1%)", "Pinjaman", "Pot. Lain", "Mode PPh21", "PPh 21", "Total Potongan", "Take Home Pay"]],
+    head: [["No", "NIK", "Nama", "Bruto pajak", "JHT (2%)", "JP (1%)", "BPJS Kes (1%)", "Pinjaman", "Pot. Lain", "Mode PPh21", "PPh 21", "Total Potongan", "Take Home Pay"]],
     body: [...deductionRows, deductionTotals],
     margin: { left: mx, right: mx },
     styles: { fontSize: 6.5, cellPadding: 1.8, lineWidth: 0.1, lineColor: [200, 200, 200] },
@@ -405,6 +407,8 @@ export async function generatePayrollReportPDF(
   // ===== PAGE 4: EMPLOYER CONTRIBUTIONS (BPJS) =====
   doc.addPage("a4", "landscape");
   addPageHeader(doc, pw, "KONTRIBUSI BPJS PERUSAHAAN", periodLabel, mx, rightEnd);
+  doc.setFontSize(9);
+  doc.text(`Total biaya tenaga kerja (penghasilan + seluruh BPJS perusahaan): Rp ${fmtRp(items.reduce((s, i) => s + getPayrollEmployerCost(i), 0))}`, mx, 45);
 
   const bpjsRows = items.map((item, idx) => {
     const totalEr = item.bpjs_kes_employer + item.bpjs_jht_employer + item.bpjs_jp_employer + item.bpjs_jkk_employer + item.bpjs_jkm_employer;

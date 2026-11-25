@@ -16,6 +16,8 @@ const parseLocalDate = (s: string): Date => {
 };
 import { getCutoffPeriodBounds } from "@/lib/tenureCalculation";
 import { format } from "date-fns";
+import { getFullMonthlyWage, getLeaveShortfall } from "@/lib/payrollPolicy";
+import { BPJSRatesConfig } from "@/lib/payrollCalculation";
 
 interface Props {
   open: boolean;
@@ -44,6 +46,9 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
   const [pesangonAmount, setPesangonAmount] = useState<number>(0);
   const [loanPayoff, setLoanPayoff] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
+  const [lastWorkDate, setLastWorkDate] = useState("");
+  const [holidayDates, setHolidayDates] = useState<string[]>([]);
+  const [bpjsConfig, setBpjsConfig] = useState<BPJSRatesConfig>();
   const [proratedTHP, setProratedTHP] = useState<number | null>(null);
 
   // Period bounds (informational)
@@ -69,15 +74,20 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
     setLoading(true);
     (async () => {
       try {
-        const [{ data: cutoffSetting }, { data: profile }, { data: loans }] = await Promise.all([
+        const [{ data: cutoffSetting }, { data: profile }, { data: loans }, { data: bpjs }, { data: holidays }] = await Promise.all([
           supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
           supabase.from("profiles").select("remaining_leave, basic_salary").eq("id", employee.id).maybeSingle(),
           supabase.from("employee_loans").select("remaining_amount, status").eq("user_id", employee.id).eq("status", "active"),
+          supabase.rpc("get_bpjs_config"),
+          supabase.from("system_settings").select("value").eq("key", "overtime_policy").maybeSingle(),
         ]);
         const cd = (cutoffSetting?.value as any)?.cutoff_day || 21;
         setCutoffDay(cd);
         const leaveLeft = profile?.remaining_leave ?? employee.remaining_leave ?? 0;
         setRemainingLeaveDays(Number(leaveLeft) || 0);
+        setBpjsConfig(bpjs as unknown as BPJSRatesConfig);
+        setHolidayDates(((holidays?.value as any)?.holidays || []).map((h: { date: string }) => h.date));
+        setLastWorkDate("");
         const totalLoan = (loans || []).reduce((s: number, l: any) => s + (Number(l.remaining_amount) || 0), 0);
         setLoanPayoff(Math.round(totalLoan));
         setPesangonAmount(0);
@@ -107,6 +117,18 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
   const totalBonus = Math.max(0, pesangonAmount || 0);
   const totalDeduction = Math.max(0, loanPayoff || 0);
   const netSettlement = totalBonus - totalDeduction;
+  const availableLeaveDays = useMemo(() => {
+    if (!lastWorkDate || !resignDate || parseLocalDate(lastWorkDate) > resignDate) return null;
+    const day = parseLocalDate(lastWorkDate);
+    day.setDate(day.getDate() + 1);
+    let days = 0;
+    while (day <= resignDate) {
+      if (day.getDay() !== 0 && day.getDay() !== 6 && !holidayDates.includes(format(day, "yyyy-MM-dd"))) days++;
+      day.setDate(day.getDate() + 1);
+    }
+    return days;
+  }, [lastWorkDate, employee?.resign_date, holidayDates]);
+  const leaveShortfall = availableLeaveDays === null ? null : getLeaveShortfall(remainingLeaveDays, availableLeaveDays, getFullMonthlyWage(employee || {}, "basic_plus_fixed", bpjsConfig));
 
   const handleSave = async () => {
     if (!employee?.id) return;
@@ -233,6 +255,14 @@ export const FinalSettlementDialog = ({ open, onOpenChange, employee }: Props) =
               </AlertDescription>
             </Alert>
 
+            <Alert><Info className="h-4 w-4" /><AlertDescription>PPh 21 atas pesangon dihitung terpisah (tarif khusus), konfirmasikan ke konsultan pajak sebelum dibayarkan.</AlertDescription></Alert>
+            <div className="space-y-2">
+              <Label htmlFor="last-work-date">Tanggal terakhir masuk kerja sebelum cuti</Label>
+              <Input id="last-work-date" type="date" max={employee.resign_date || undefined} value={lastWorkDate} onChange={e => setLastWorkDate(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Harus ada persetujuan tertulis karyawan bahwa cuti diambil sebelum tanggal resign.</p>
+              {availableLeaveDays !== null && <p className="text-sm">Hari kerja tersedia setelah tanggal terakhir masuk: {availableLeaveDays} hari.</p>}
+              {leaveShortfall && leaveShortfall.days > 0 && <Alert><AlertDescription>Sisa cuti {leaveShortfall.days} hari belum tertampung sebelum tanggal resign; selisihnya perlu dibayar tunai (upah per hari = (gaji pokok + tunjangan tetap) / 25). Nominal catatan: <strong>{formatRp(leaveShortfall.amount)}</strong>. Tidak ditambahkan ke pembayaran otomatis.</AlertDescription></Alert>}
+            </div>
             <Separator />
 
             {/* Pesangon */}

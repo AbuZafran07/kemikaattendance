@@ -1,4 +1,9 @@
 # Agent integrations
+# Payroll tax correction
+- [x] Add taxable bruto marker/helper, dated JP caps, proportional last-period reconciliation; 27 calculation/settings tests pass and finalized payroll fingerprint unchanged.
+- [x] Update tax reports, payroll costs, slips/refund displays and administrator December simulation; signed-in 17-row simulation, reports and negative-PPh PDFs verified.
+- [x] Configure full fixed-allowance overtime/THR bases (THR from 2027), JP history editor and reachable settlement warnings; retain existing overtime limits and BPJS proration; preserve paid 2026 THR and Jan–Nov overtime on manual regeneration.
+- [x] Report read-only JP differences and resigned-employee reconciliation; desktop/mobile and signed-in settlement warnings verified. November/December generation deliberately not executed on production data.
 # External backup
 - [x] Add administrator-only and managed daily external JSON backup with private destination, bounded retention and status; existing internal schedules unchanged.
 - [x] Real administrator UI upload/readback verified (3,546 records); desktop/mobile controls checked, three tests pass and invalid authorization returns 401; daily 09:30 WIB schedule active. Scope is existing ten-table JSON only, not auth, other tables or binary storage; first scheduled execution and full restore drill remain unverified.

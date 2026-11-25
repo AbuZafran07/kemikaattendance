@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import DecemberReconciliationDialog from "@/components/DecemberReconciliationDialog";
+import { getFullMonthlyWage, getThrWage, preservePaidComponents, type WageBase } from "@/lib/payrollPolicy";
 import PayrollOverrideHistory from "@/components/PayrollOverrideHistory";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +20,7 @@ import { exportToExcelFile } from "@/lib/excelExport";
 import BusinessTravelVoucherExportDialog from "@/components/BusinessTravelVoucherExportDialog";
 import {
   calculatePayroll,
+  getTaxableBruto, getEmployerBpjs, getPphLabel, isResignTaxPeriod,
   calculateOvertimePay,
   calculateOvertimePayPP35,
   formatRupiah,
@@ -56,6 +59,7 @@ interface PayrollData {
   overtime_total: number;
   overtime_hours: number;
   bruto_income: number;
+  bruto_basis?: string;
   bpjs_kesehatan: number;
   bpjs_ketenagakerjaan: number;
   bpjs_kes_employer: number;
@@ -159,7 +163,8 @@ const Payroll = () => {
     idulFitriDate: string;
     idulFitriName: string;
     cutoffDay: number;
-    profiles: { id: string; full_name: string; join_date: string; basic_salary: number }[];
+    base: WageBase;
+    profiles: { id: string; full_name: string; join_date: string; basic_salary: number; monthly_wage: number }[];
   } | null>(null);
   const [idulFitriAvailability, setIdulFitriAvailability] = useState({ month: selectedMonth, year: selectedYear, found: false });
   const hasIdulFitriInPeriod =
@@ -175,7 +180,8 @@ const Payroll = () => {
 
   useEffect(() => { getFixedAllowanceComponents().then(setFacFlags).catch(() => {}); }, []);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const [showDecemberSimulation, setShowDecemberSimulation] = useState(false);
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
@@ -606,6 +612,10 @@ const Payroll = () => {
   };
 
   const handleAutoCalculateTHR = async () => {
+    if (selectedYear < 2027) {
+      toast({ title: "THR 2026 tidak dihitung ulang", description: "Dasar upah baru berlaku mulai THR 2027; nilai yang sudah dibayar tetap dipertahankan." });
+      return;
+    }
     setCalculatingThr(true);
     try {
       // 1. Find Idul Fitri date from holidays in overtime_policy
@@ -620,7 +630,7 @@ const Payroll = () => {
 
       const idulFitriKeywords = ["idul fitri", "lebaran", "eid al-fitr", "idulfitri"];
       const idulFitriHolidays = holidays.filter((h) =>
-        idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw))
+        h.date.startsWith(`${selectedYear}-`) && idulFitriKeywords.some((kw) => h.name.toLowerCase().includes(kw))
       );
 
       if (idulFitriHolidays.length === 0) {
@@ -639,10 +649,13 @@ const Payroll = () => {
 
       // 2. Fetch employee profiles and cutoff setting
       const empIds = employees.map((e) => e.id);
-      const [profilesResult, cutoffResult] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, join_date, basic_salary").in("id", empIds),
+      const [profilesResult, cutoffResult, wageResult, thrBpjsResult] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, join_date, basic_salary, tunjangan_jabatan, tunjangan_operasional").in("id", empIds),
         supabase.from("system_settings").select("value").eq("key", "attendance_allowance").maybeSingle(),
+        supabase.rpc("get_payroll_wage_bases"), supabase.rpc("get_bpjs_config"),
       ]);
+      if (wageResult.error || thrBpjsResult.error) throw new Error("Tidak dapat memuat dasar upah THR");
+      const thrBase: WageBase = (wageResult.data as any)?.thr_base === "basic_only" ? "basic_only" : "basic_plus_fixed";
       const profiles = profilesResult.data;
       const cutoffDay = (cutoffResult.data?.value as any)?.cutoff_day || 21;
 
@@ -664,9 +677,10 @@ const Payroll = () => {
             full_name: p.full_name,
             join_date: p.join_date,
             basic_salary: Number(p.basic_salary) || 0,
+            monthly_wage: getThrWage(p, selectedYear, thrBase, thrBpjsResult.data as unknown as BPJSRatesConfig),
           };
         })
-        .filter(Boolean) as { id: string; full_name: string; join_date: string; basic_salary: number }[];
+        .filter(Boolean) as { id: string; full_name: string; join_date: string; basic_salary: number; monthly_wage: number }[];
 
       if (eligibleProfiles.length === 0) {
         toast({ title: t("payrollPage.toast.noEligibleTitle"), description: t("payrollPage.toast.noEligibleDesc"), variant: "destructive" });
@@ -678,6 +692,7 @@ const Payroll = () => {
         idulFitriName,
         cutoffDay,
         profiles: eligibleProfiles,
+        base: thrBase,
       });
     } catch (error: any) {
       console.error("Error fetching THR data:", error);
@@ -697,7 +712,7 @@ const Payroll = () => {
       const next = new Map(prev);
       for (const profile of thrConfirmData.profiles) {
         const joinDate = parseLocalDate(profile.join_date);
-        const basicSalary = profile.basic_salary;
+        const basicSalary = profile.monthly_wage;
 
         if (refDate.getTime() < joinDate.getTime()) continue;
 
@@ -748,6 +763,7 @@ const Payroll = () => {
     setGenerating(true);
     try {
       let periodId: string;
+      const preserved2026 = new Map<string, { thr: number; overtime_total: number; overtime_hours: number }>();
       const { data: existingPeriod } = await supabase
         .from("payroll_periods").select("id, status")
         .eq("month", selectedMonth).eq("year", selectedYear).maybeSingle();
@@ -759,6 +775,11 @@ const Payroll = () => {
 
       if (existingPeriod) {
         periodId = existingPeriod.id;
+        if (selectedYear === 2026) {
+          const { data: paid, error: paidError } = await supabase.from("payroll").select("user_id, thr, overtime_total, overtime_hours").eq("period_id", periodId);
+          if (paidError) throw paidError;
+          for (const row of paid || []) preserved2026.set(row.user_id, row);
+        }
         await supabase.from("payroll").delete().eq("period_id", periodId);
 
         // Revert any previously scheduled/paid loan installments for this period back to pending,
@@ -1037,25 +1058,35 @@ const Payroll = () => {
         });
       }
 
-      // For December reconciliation: fetch actual yearly data from Jan-Nov
+      const { data: wageBases, error: wageError } = await supabase.rpc("get_payroll_wage_bases");
+      if (wageError) throw wageError;
+      const overtimeBase: WageBase = (wageBases as any)?.overtime_base === "basic_only" ? "basic_only" : "basic_plus_fixed";
+      const previousMonthCounts = new Map<string, Set<number>>();
+      const { start: taxPeriodStart, end: taxPeriodEnd } = getCutoffPeriodBounds(selectedMonth, selectedYear, cutoffDayPre);
+      // Read prior actual payroll for December or an employee last tax period.
       let pphJanNovMap = new Map<string, number>();
       let brutoJanNovMap = new Map<string, number>();
       let bpjsKtJanNovMap = new Map<string, number>();
-      if (selectedMonth === 12) {
+      if (selectedMonth === 12 || emps.some((emp: any) => isResignTaxPeriod(emp.resign_date ? parseLocalDate(emp.resign_date) : null, taxPeriodStart, taxPeriodEnd))) {
         // Get all period IDs for Jan-Nov of this year
         const { data: prevPeriods } = await supabase
-          .from("payroll_periods").select("id")
-          .eq("year", selectedYear).lt("month", 12);
+          .from("payroll_periods").select("id, month")
+          .eq("year", selectedYear).lt("month", selectedMonth);
         
         if (prevPeriods && prevPeriods.length > 0) {
           const prevPeriodIds = prevPeriods.map(p => p.id);
           const { data: prevPayrolls } = await supabase
-            .from("payroll").select("user_id, pph21_monthly, bruto_income, bpjs_ketenagakerjaan")
+            .from("payroll").select("user_id, period_id, pph21_monthly, bruto_income, bruto_basis, bpjs_jht_employer, bpjs_jp_employer, bpjs_ketenagakerjaan")
             .in("period_id", prevPeriodIds);
           
+          const periodMonthMap = new Map(prevPeriods.map(p => [p.id, p.month]));
           for (const pp of prevPayrolls || []) {
+            const months = previousMonthCounts.get(pp.user_id) || new Set<number>();
+            const priorMonth = periodMonthMap.get(pp.period_id);
+            if (priorMonth) months.add(priorMonth);
+            previousMonthCounts.set(pp.user_id, months);
             pphJanNovMap.set(pp.user_id, (pphJanNovMap.get(pp.user_id) || 0) + pp.pph21_monthly);
-            brutoJanNovMap.set(pp.user_id, (brutoJanNovMap.get(pp.user_id) || 0) + pp.bruto_income);
+            brutoJanNovMap.set(pp.user_id, (brutoJanNovMap.get(pp.user_id) || 0) + getTaxableBruto(pp));
             bpjsKtJanNovMap.set(pp.user_id, (bpjsKtJanNovMap.get(pp.user_id) || 0) + pp.bpjs_ketenagakerjaan);
           }
         }
@@ -1101,7 +1132,7 @@ const Payroll = () => {
 
         const fullBasicSalary = Number(emp.basic_salary) || 0;
         const basicSalary = Math.round(fullBasicSalary * prorateFactor);
-        const overtimeHours = overtimeHoursMap.get(emp.id) || 0;
+        let overtimeHours = overtimeHoursMap.get(emp.id) || 0;
         const ded = deductionOverrides.get(emp.id);
         const inc = incomeAdditions.get(emp.id);
         const loanDed = loanDeductionMap.get(emp.id);
@@ -1112,7 +1143,7 @@ const Payroll = () => {
         } else {
           const entries = overtimeEntriesMap.get(emp.id) || [];
           for (const entry of entries) {
-            overtimeTotal += calculateOvertimePayPP35(fullBasicSalary, entry.hours, entry.dayType, workDaysPerWeek).total;
+            overtimeTotal += calculateOvertimePayPP35(getFullMonthlyWage(emp, overtimeBase, bpjsConfig), entry.hours, entry.dayType, workDaysPerWeek).total;
           }
         }
         const ptkpStatus = emp.ptkp_status || "TK/0";
@@ -1145,7 +1176,10 @@ const Payroll = () => {
         // Incidental income from dialog (exclude tunjangan_kehadiran as it's handled separately)
         const tunjanganKesehatan = inc?.tunjangan_kesehatan || 0;
         const bonusTahunan = inc?.bonus_tahunan || 0;
-        const thr = inc?.thr || 0;
+        const preserved = preservePaidComponents(selectedYear, selectedMonth, preserved2026.get(emp.id), { thr: inc?.thr || 0, overtime_total: overtimeTotal, overtime_hours: overtimeHours });
+        const thr = preserved.thr;
+        overtimeTotal = preserved.overtime_total;
+        overtimeHours = preserved.overtime_hours;
         const insentifKinerja = inc?.insentif_kinerja || 0;
         const bonusLainnya = inc?.bonus_lainnya || 0;
         const pengembalianEmployee = inc?.pengembalian_employee || 0;
@@ -1182,7 +1216,9 @@ const Payroll = () => {
           loanDeduction: finalLoanDeduction,
           otherDeduction: finalOtherDeduction,
           deductionNotes: mergedNotes,
-          month: selectedMonth,
+          month: selectedMonth, year: selectedYear,
+          monthsWorked: (previousMonthCounts.get(emp.id)?.size || 0) + 1,
+          lastTaxPeriod: isResignTaxPeriod(resignDate, taxPeriodStart, taxPeriodEnd),
           terRates: terRatesForEmp,
           totalPphJanNov: pphJanNovMap.get(emp.id) || 0,
           bpjsKesehatanEnabled: emp.bpjs_kesehatan_enabled !== false,
@@ -1197,6 +1233,7 @@ const Payroll = () => {
 
         return {
           user_id: emp.id, period_id: periodId, ...result,
+          deduction_notes: [result.deduction_notes, isResignTaxPeriod(resignDate, taxPeriodStart, taxPeriodEnd) ? "Masa pajak terakhir (resign)" : ""].filter(Boolean).join(" | "),
           // Breakdown data (client-side only, not persisted to DB)
           tunjangan_komunikasi: tunjanganKomunikasi,
           tunjangan_jabatan: tunjanganJabatan,
@@ -1521,6 +1558,7 @@ const Payroll = () => {
       other_deduction: item.other_deduction,
       pph21_monthly: item.pph21_monthly,
       bruto_income: item.bruto_income,
+      bruto_basis: item.bruto_basis,
       netto_income: item.netto_income,
       take_home_pay: item.take_home_pay,
       bpjs_jht_employer: item.bpjs_jht_employer,
@@ -1548,7 +1586,7 @@ const Payroll = () => {
   const safePage = Math.min(payrollPage, payrollTotalPages);
   const paginatedPayroll = filteredPayroll.slice((safePage - 1) * payrollPerPage, safePage * payrollPerPage);
 
-  const totalBruto = payrollData.reduce((s, p) => s + p.bruto_income, 0);
+  const totalBruto = payrollData.reduce((s, p) => s + getTaxableBruto(p), 0);
   const totalTHP = payrollData.reduce((s, p) => s + p.take_home_pay, 0);
   const totalPPh = payrollData.reduce((s, p) => s + p.pph21_monthly, 0);
   const totalEmployerBpjs = payrollData.reduce((s, p) => s + p.bpjs_kes_employer + p.bpjs_jht_employer + p.bpjs_jp_employer + p.bpjs_jkk_employer + p.bpjs_jkm_employer, 0);
@@ -1577,7 +1615,8 @@ const Payroll = () => {
       "Pengembalian": item.pengembalian_employee || 0,
       "Lembur (Jam)": item.overtime_hours,
       "Lembur (Rp)": item.overtime_total,
-      "Bruto": item.bruto_income,
+      "Bruto pajak": getTaxableBruto(item),
+      "Biaya perusahaan (BPJS)": getEmployerBpjs(item),
       "BPJS Kes (1%)": item.bpjs_kesehatan,
       "BPJS TK+JP (3%)": item.bpjs_ketenagakerjaan,
       "Pot. Pinjaman": item.loan_deduction,
@@ -1587,6 +1626,7 @@ const Payroll = () => {
       "PKP": item.pkp,
       "PPh 21 Mode": item.pph21_mode === 'TER' && item.pph21_ter_rate != null ? `TER (${item.pph21_ter_rate.toFixed(2)}%)` : item.pph21_mode,
       "PPh 21": item.pph21_monthly,
+      "Keterangan PPh": getPphLabel(item.pph21_monthly),
       "Take Home Pay": item.take_home_pay,
       "BPJS Kes Perusahaan (4%)": item.bpjs_kes_employer,
       "JHT Perusahaan (3.7%)": item.bpjs_jht_employer,
@@ -2063,6 +2103,7 @@ const Payroll = () => {
           pph21_mode: item.pph21_mode,
           pph21_ter_rate: item.pph21_ter_rate,
           bruto_income: item.bruto_income,
+      bruto_basis: item.bruto_basis,
           netto_income: item.netto_income,
           take_home_pay: item.take_home_pay,
           bpjs_jht_employer: item.bpjs_jht_employer,
@@ -2085,6 +2126,7 @@ const Payroll = () => {
 
   return (
     <DashboardLayout>
+      {userRole === "admin" && <DecemberReconciliationDialog open={showDecemberSimulation} onOpenChange={setShowDecemberSimulation} year={selectedYear} />}
       <Tabs defaultValue="payroll" className="space-y-6">
         <div className="space-y-4">
           <div>
@@ -2100,6 +2142,8 @@ const Payroll = () => {
             </TabsList>
           </div>
 
+          {selectedYear === 2026 && selectedMonth === 11 && period?.status === "draft" && <p className="text-sm text-muted-foreground">Payroll November belum dihitung ulang. Gunakan Generate untuk menerapkan bruto pajak dan batas JP yang baru; payroll final Januari–Oktober tidak berubah.</p>}
+          {userRole === "admin" && <Button variant="outline" className="gap-2" onClick={() => setShowDecemberSimulation(true)}><Calculator className="h-4 w-4" />Simulasi Rekonsiliasi Desember</Button>}
           {/* All actions in one row */}
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
@@ -2194,7 +2238,7 @@ const Payroll = () => {
         {payrollData.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><Users className="h-8 w-8 text-primary/60" /><div><p className="text-2xl font-bold">{payrollData.length}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalEmployees")}</p></div></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><TrendingUp className="h-8 w-8 text-primary/40" /><div><p className="text-lg font-bold">{formatRupiah(totalBruto)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalBruto")}</p></div></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><TrendingUp className="h-8 w-8 text-primary/40" /><div><p className="text-lg font-bold">{formatRupiah(totalBruto)}</p><p className="text-xs text-muted-foreground">Bruto pajak</p></div></div></CardContent></Card>
             <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><FileText className="h-8 w-8 text-destructive/40" /><div><p className="text-lg font-bold">{formatRupiah(totalPPh)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalPph")}</p></div></div></CardContent></Card>
             <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><DollarSign className="h-8 w-8 text-primary/40" /><div><p className="text-lg font-bold">{formatRupiah(totalTHP)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.totalThp")}</p></div></div></CardContent></Card>
             <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><Building2 className="h-8 w-8 text-muted-foreground/40" /><div><p className="text-lg font-bold">{formatRupiah(totalEmployerBpjs)}</p><p className="text-xs text-muted-foreground">{t("payrollPage.summary.employerBpjs")}</p></div></div></CardContent></Card>
@@ -2248,7 +2292,7 @@ const Payroll = () => {
                         <TableHead className="text-right">{t("payrollPage.table.basicSalary")}</TableHead>
                         <TableHead className="text-right">{t("payrollPage.table.allowance")}</TableHead>
                         <TableHead className="text-right">{t("payrollPage.table.overtime")}</TableHead>
-                        <TableHead className="text-right">{t("payrollPage.table.bruto")}</TableHead>
+                        <TableHead className="text-right">Bruto pajak</TableHead>
                         <TableHead className="text-right">{t("payrollPage.table.bpjs")}</TableHead>
                         <TableHead className="text-right">{t("payrollPage.table.deduction")}</TableHead>
                         <TableHead className="text-center">{t("payrollPage.table.pphMode")}</TableHead>
@@ -2266,7 +2310,7 @@ const Payroll = () => {
                           <TableCell className="text-right text-sm">{formatRupiah(item.basic_salary)}</TableCell>
                           <TableCell className="text-right text-sm">{item.allowance > 0 ? formatRupiah(item.allowance) : <span className="text-muted-foreground">-</span>}</TableCell>
                           <TableCell className="text-right text-sm">{item.overtime_hours > 0 ? <span title={t("payrollPage.table.hoursTooltip", { count: item.overtime_hours })}>{formatRupiah(item.overtime_total)}</span> : <span className="text-muted-foreground">-</span>}</TableCell>
-                          <TableCell className="text-right text-sm font-medium">{formatRupiah(item.bruto_income)}</TableCell>
+                          <TableCell className="text-right text-sm font-medium">{formatRupiah(getTaxableBruto(item))}</TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">{formatRupiah(item.bpjs_kesehatan + item.bpjs_ketenagakerjaan)}</TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">
                             {(item.loan_deduction + item.other_deduction) > 0 ? formatRupiah(item.loan_deduction + item.other_deduction) : <span>-</span>}
@@ -2280,7 +2324,7 @@ const Payroll = () => {
                               <span className="text-muted-foreground">{item.pph21_mode}</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right text-sm text-destructive">{formatRupiah(item.pph21_monthly)}</TableCell>
+                          <TableCell className="text-right text-sm text-destructive">{formatRupiah(item.pph21_monthly)}{item.pph21_monthly < 0 && <span className="block text-xs text-primary">{getPphLabel(item.pph21_monthly)}</span>}</TableCell>
                           <TableCell className="text-right text-sm font-bold text-primary">{formatRupiah(item.take_home_pay)}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -2297,7 +2341,7 @@ const Payroll = () => {
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.basic_salary, 0))}</TableCell>
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.allowance, 0))}</TableCell>
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.overtime_total, 0))}</TableCell>
-                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.bruto_income, 0))}</TableCell>
+                        <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + getTaxableBruto(p), 0))}</TableCell>
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.bpjs_kesehatan + p.bpjs_ketenagakerjaan, 0))}</TableCell>
                         <TableCell className="text-right">{formatRupiah(filteredPayroll.reduce((s, p) => s + p.loan_deduction + p.other_deduction, 0))}</TableCell>
                         <TableCell />
@@ -2435,8 +2479,8 @@ const Payroll = () => {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
-                  <span className="font-semibold">{t("payrollPage.detail.bruto")}</span>
-                  <span className="text-right font-semibold">{formatRupiah(detailItem.bruto_income)}</span>
+                  <span className="font-semibold">Penghasilan bruto (dasar PPh 21)</span>
+                  <span className="text-right font-semibold">{formatRupiah(getTaxableBruto(detailItem))}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
                   <span className="text-muted-foreground">{t("payrollPage.detail.bpjsKes")}</span>
@@ -2465,15 +2509,15 @@ const Payroll = () => {
                   <span className="text-muted-foreground">{t("payrollPage.detail.pkpYearly")}</span>
                   <span className="text-right">{formatRupiah(detailItem.pkp)}</span>
                   <span className="text-muted-foreground">
-                    {t("payrollPage.detail.pphMonthly")}
+                    {getPphLabel(detailItem.pph21_monthly)}
                     {detailItem.pph21_mode === "TER" && <Badge variant="outline" className="ml-1 text-[9px]">TER {detailItem.pph21_ter_rate}%</Badge>}
                     {detailItem.pph21_mode === "REKONSILIASI" && <Badge variant="secondary" className="ml-1 text-[9px]">{t("payrollPage.detail.rekonsiliasi")}</Badge>}
                   </span>
-                  <span className="text-right text-destructive font-medium">-{formatRupiah(detailItem.pph21_monthly)}</span>
+                  <span className="text-right text-destructive font-medium">{detailItem.pph21_monthly < 0 ? "+" : "−"}{formatRupiah(Math.abs(detailItem.pph21_monthly))}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 border-b border-border pb-3 bg-muted/30 rounded p-2">
-                  <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">{t("payrollPage.detail.companyContribution")}</span>
+                  <span className="col-span-2 text-xs font-semibold text-muted-foreground mb-1">Biaya perusahaan (BPJS)</span>
                   <span className="text-muted-foreground text-xs">{t("payrollPage.detail.bpjsKes4")}</span>
                   <span className="text-right text-xs">{formatRupiah(detailItem.bpjs_kes_employer)}</span>
                   <span className="text-muted-foreground text-xs">{t("payrollPage.detail.jht")}</span>
@@ -2800,7 +2844,7 @@ const Payroll = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Basis Perhitungan</span>
-                    <Badge variant="secondary">Gaji Pokok</Badge>
+                    <Badge variant="secondary">{thrConfirmData.base === "basic_only" ? "Gaji Pokok" : "Gaji Pokok + Tunjangan Tetap"}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Jumlah Karyawan</span>
@@ -2821,10 +2865,10 @@ const Payroll = () => {
                         let label = "";
                         const tenureLabel = `${fullMonths} bln ${remainingDays} hr`;
                         if (totalMonthsFraction >= 12) {
-                          thrAmount = p.basic_salary;
+                          thrAmount = p.monthly_wage;
                           label = "1× gaji";
                         } else if (totalMonthsFraction >= 1) {
-                          thrAmount = Math.round((totalMonthsFraction / 12) * p.basic_salary);
+                          thrAmount = Math.round((totalMonthsFraction / 12) * p.monthly_wage);
                           label = `${totalMonthsFraction.toFixed(2)}/12`;
                         }
                         if (thrAmount <= 0) return null;

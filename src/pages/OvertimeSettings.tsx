@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { calculateOvertimePayPP35, formatRupiah } from "@/lib/payrollCalculation";
+import { getFullMonthlyWage, type WageBase } from "@/lib/payrollPolicy";
+import { type BPJSRatesConfig } from "@/lib/payrollCalculation";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 
@@ -42,6 +44,8 @@ export default function OvertimeSettings() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [overtimeBase, setOvertimeBase] = useState<WageBase>("basic_plus_fixed");
+  const [thrBase, setThrBase] = useState<WageBase>("basic_plus_fixed");
   const [config, setConfig] = useState<OvertimePolicyConfig>({
     min_hours: 1,
     max_hours_per_day: 4,
@@ -76,6 +80,10 @@ export default function OvertimeSettings() {
         .maybeSingle();
 
       if (error && error.code !== "PGRST116") throw error;
+      const { data: bases, error: basesError } = await supabase.rpc("get_payroll_wage_bases");
+      if (basesError) throw basesError;
+      setOvertimeBase((bases as any)?.overtime_base === "basic_only" ? "basic_only" : "basic_plus_fixed");
+      setThrBase((bases as any)?.thr_base === "basic_only" ? "basic_only" : "basic_plus_fixed");
 
       if (data && data.value) {
         setConfig({ ...config, ...(data.value as unknown as OvertimePolicyConfig) });
@@ -121,6 +129,8 @@ export default function OvertimeSettings() {
         if (error) throw error;
       }
 
+      const { error: wageError } = await supabase.rpc("save_payroll_wage_bases", { p_overtime_base: overtimeBase, p_thr_base: thrBase });
+      if (wageError) throw wageError;
       toast({
         title: "Berhasil Disimpan",
         description: "Pengaturan kebijakan lembur telah diperbarui",
@@ -166,6 +176,13 @@ export default function OvertimeSettings() {
           </Card>
         ) : (
           <>
+            <section className="border-y border-border py-5 space-y-4">
+              <h2 className="font-semibold">Dasar upah lembur & THR</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2"><Label htmlFor="overtime-base">Dasar lembur (PP 35/2021)</Label><Select value={overtimeBase} onValueChange={v => setOvertimeBase(v as WageBase)}><SelectTrigger id="overtime-base"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="basic_plus_fixed">Gaji pokok + tunjangan tetap</SelectItem><SelectItem value="basic_only">Gaji pokok saja (cadangan)</SelectItem></SelectContent></Select><p className="text-xs text-muted-foreground">Upah sebulan penuh ÷ 173; tunjangan jabatan/operasional mengikuti komponen tetap BPJS. Komunikasi tidak termasuk.</p></div>
+                <div className="space-y-2"><Label htmlFor="thr-base">Dasar THR mulai 2027 (Permenaker 6/2016)</Label><Select value={thrBase} onValueChange={v => setThrBase(v as WageBase)}><SelectTrigger id="thr-base"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="basic_plus_fixed">Gaji pokok + tunjangan tetap</SelectItem><SelectItem value="basic_only">Gaji pokok saja (cadangan)</SelectItem></SelectContent></Select><p className="text-xs text-muted-foreground">THR 2026 yang sudah dibayar tetap; dasar baru hanya dipakai saat menghitung THR tahun 2027 dan seterusnya.</p></div>
+              </div>
+            </section>
             {/* Batasan Jam Lembur */}
             <Card>
               <CardHeader className="p-4 sm:p-6">
@@ -485,7 +502,7 @@ export default function OvertimeSettings() {
             {/* Note: Hari Libur & Event Kantor dipindah ke menu terpisah */}
 
             {/* Simulasi Perhitungan Lembur PP 35/2021 */}
-            <OvertimeSimulator formatCurrency={formatCurrency} />
+              <OvertimeSimulator formatCurrency={formatCurrency} base={overtimeBase} />
 
             <Alert>
               <Info className="h-4 w-4" />
@@ -511,8 +528,9 @@ export default function OvertimeSettings() {
   );
 }
 
-function OvertimeSimulator({ formatCurrency }: { formatCurrency: (v: number) => string }) {
-  const [employees, setEmployees] = useState<{ id: string; full_name: string; basic_salary: number }[]>([]);
+function OvertimeSimulator({ formatCurrency, base }: { formatCurrency: (v: number) => string; base: WageBase }) {
+  const [employees, setEmployees] = useState<{ id: string; full_name: string; basic_salary: number; tunjangan_jabatan: number; tunjangan_operasional: number }[]>([]);
+  const [bpjsConfig, setBpjsConfig] = useState<BPJSRatesConfig>();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [salary, setSalary] = useState<number>(0);
   const [hours, setHours] = useState<number>(3);
@@ -523,9 +541,11 @@ function OvertimeSimulator({ formatCurrency }: { formatCurrency: (v: number) => 
     const fetchEmployees = async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, basic_salary")
+        .select("id, full_name, basic_salary, tunjangan_jabatan, tunjangan_operasional")
         .order("full_name");
       if (data) setEmployees(data.map(e => ({ ...e, basic_salary: Number(e.basic_salary) || 0 })));
+      const { data: bpjs } = await supabase.rpc("get_bpjs_config");
+      if (bpjs) setBpjsConfig(bpjs as unknown as BPJSRatesConfig);
     };
     fetchEmployees();
   }, []);
@@ -533,8 +553,12 @@ function OvertimeSimulator({ formatCurrency }: { formatCurrency: (v: number) => 
   const handleEmployeeChange = (employeeId: string) => {
     setSelectedEmployeeId(employeeId);
     const emp = employees.find(e => e.id === employeeId);
-    if (emp) setSalary(emp.basic_salary);
+    if (emp) setSalary(getFullMonthlyWage(emp, base, bpjsConfig));
   };
+  useEffect(() => {
+    const emp = employees.find(e => e.id === selectedEmployeeId);
+    if (emp) setSalary(getFullMonthlyWage(emp, base, bpjsConfig));
+  }, [base, bpjsConfig, employees, selectedEmployeeId]);
 
   const result = calculateOvertimePayPP35(salary, hours, dayType, workDays);
   const hourlyRate = salary / 173;
@@ -573,7 +597,7 @@ function OvertimeSimulator({ formatCurrency }: { formatCurrency: (v: number) => 
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">Gapok: {formatCurrency(salary)}</p>
+            <p className="text-xs text-muted-foreground">Dasar upah penuh: {formatCurrency(salary)}</p>
           </div>
           <div className="space-y-2">
             <Label>Jam Lembur</Label>

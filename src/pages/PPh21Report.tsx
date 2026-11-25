@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Loader2, Download, FileSpreadsheet, Search, ArrowLeft, Calculator, TrendingUp } from "lucide-react";
-import { formatRupiah, calculatePPh21Annual } from "@/lib/payrollCalculation";
+import { formatRupiah, calculatePPh21Annual, getTaxableBruto, calculateBiayaJabatan, getPphLabel } from "@/lib/payrollCalculation";
 import { exportToExcelFile } from "@/lib/excelExport";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import logo from "@/assets/logo.png";
+import { loadTaxConfig } from "@/lib/payrollTaxData";
 import { useNavigate } from "react-router-dom";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -79,6 +80,7 @@ const PPh21Report = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const taxConfig = await loadTaxConfig();
       const { data: periods } = await supabase
         .from("payroll_periods").select("id, month")
         .eq("year", selectedYear).eq("status", "finalized");
@@ -90,7 +92,7 @@ const PPh21Report = () => {
 
       const { data: payrolls } = await supabase
         .from("payroll")
-        .select("user_id, period_id, bruto_income, bpjs_ketenagakerjaan, pph21_monthly, ptkp_status, ptkp_value, pph21_mode, pph21_ter_rate")
+        .select("user_id, period_id, bruto_income, bruto_basis, bpjs_jht_employer, bpjs_jp_employer, bpjs_ketenagakerjaan, pph21_monthly, ptkp_status, ptkp_value, pph21_mode, pph21_ter_rate")
         .in("period_id", periodIds);
 
       if (!payrolls || payrolls.length === 0) { setData([]); return; }
@@ -106,12 +108,12 @@ const PPh21Report = () => {
         const u = userMap.get(p.user_id)!;
         u.monthlyData.set(month, {
           month,
-          bruto: p.bruto_income,
+          bruto: getTaxableBruto(p),
           pph21: p.pph21_monthly,
           ter_rate: p.pph21_ter_rate,
           mode: p.pph21_mode,
         });
-        u.totalBruto += p.bruto_income;
+        u.totalBruto += getTaxableBruto(p);
         u.totalPph21 += p.pph21_monthly;
         u.totalBpjsKt += p.bpjs_ketenagakerjaan;
       }
@@ -126,10 +128,10 @@ const PPh21Report = () => {
       const result: EmployeePPh21Data[] = userIds.map(uid => {
         const u = userMap.get(uid)!;
         const prof = profileMap.get(uid);
-        const biayaJabatan = Math.min(u.totalBruto * 0.05, 6000000);
+        const biayaJabatan = calculateBiayaJabatan(u.totalBruto, u.monthlyData.size, taxConfig.rate, taxConfig.maxYearly);
         const nettoAnnual = u.totalBruto - biayaJabatan - u.totalBpjsKt;
         const pkp = Math.max(0, nettoAnnual - u.ptkpValue);
-        const pph21Terutang = calculatePPh21Annual(pkp);
+        const pph21Terutang = calculatePPh21Annual(pkp, taxConfig.brackets);
 
         const monthly: MonthlyPPh21[] = [];
         for (let m = 1; m <= 12; m++) {
@@ -220,6 +222,7 @@ const PPh21Report = () => {
             "Bulan": MONTH_NAMES[m.month - 1],
             "Bruto": m.bruto,
             "PPh 21": m.pph21,
+            "Keterangan PPh": getPphLabel(m.pph21),
             "Tarif TER": m.ter_rate ? `${(m.ter_rate * 100).toFixed(2)}%` : "-",
             "Mode": m.mode,
           });
@@ -408,7 +411,7 @@ const PPh21Report = () => {
       head: [["No", "Nama", "NIK", "NPWP", "Jabatan", "Departemen", "Bruto", "PPh 21", "Tarif TER", "Mode"]],
       body: monthData.map((d, i) => [
         i + 1, d.full_name, d.nik, d.npwp, d.jabatan, d.departemen,
-        formatRupiah(d.m.bruto), formatRupiah(d.m.pph21),
+        formatRupiah(d.m.bruto), `${formatRupiah(d.m.pph21)}${d.m.pph21 < 0 ? " (Pengembalian kelebihan PPh 21)" : ""}`,
         d.m.ter_rate ? `${(d.m.ter_rate * 100).toFixed(2)}%` : "-",
         d.m.mode,
       ]),
@@ -451,6 +454,7 @@ const PPh21Report = () => {
       "PTKP": d.ptkp_status,
       "Bruto": d.monthly[month - 1].bruto,
       "PPh 21": d.monthly[month - 1].pph21,
+      "Keterangan PPh": getPphLabel(d.monthly[month - 1].pph21),
       "Tarif TER": d.monthly[month - 1].ter_rate ? `${(d.monthly[month - 1].ter_rate! * 100).toFixed(2)}%` : "-",
       "Mode": d.monthly[month - 1].mode,
     }));
@@ -708,7 +712,7 @@ const PPh21Report = () => {
                                       <TableRow key={m.month} className={m.bruto === 0 ? "opacity-40" : ""}>
                                         <TableCell className="text-xs">{MONTH_NAMES[m.month - 1]}</TableCell>
                                         <TableCell className="text-right text-xs">{m.bruto > 0 ? formatRupiah(m.bruto) : "-"}</TableCell>
-                                        <TableCell className="text-right text-xs">{m.pph21 > 0 ? formatRupiah(m.pph21) : "-"}</TableCell>
+                                        <TableCell className="text-right text-xs">{m.pph21 !== 0 ? formatRupiah(m.pph21) : "-"}{m.pph21 < 0 && <span className="block text-xs text-primary">{getPphLabel(m.pph21)}</span>}</TableCell>
                                         <TableCell className="text-right text-xs">{m.ter_rate ? `${(m.ter_rate * 100).toFixed(2)}%` : "-"}</TableCell>
                                         <TableCell className="text-xs">{m.mode !== "-" ? <Badge variant="secondary" className="text-[10px]">{m.mode}</Badge> : "-"}</TableCell>
                                       </TableRow>

@@ -1,3 +1,4 @@
+import { getTaxableBruto, getPphLabel } from "@/lib/payrollCalculation";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -22,6 +23,7 @@ interface PayrollItem {
   overtime_total: number;
   overtime_hours: number;
   bruto_income: number;
+  bruto_basis?: string;
   bpjs_kesehatan: number;
   bpjs_ketenagakerjaan: number;
   bpjs_kes_employer: number;
@@ -146,6 +148,7 @@ const EmployeePayrollHistory = () => {
       other_deduction: item.other_deduction,
       pph21_monthly: item.pph21_monthly,
       bruto_income: item.bruto_income,
+      bruto_basis: item.bruto_basis,
       netto_income: item.netto_income,
       take_home_pay: item.take_home_pay,
       bpjs_jht_employer: item.bpjs_jht_employer,
@@ -291,8 +294,8 @@ const EmployeePayrollHistory = () => {
               )}
 
               <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
-                <span className="font-semibold">{t("empPayroll.bruto")}</span>
-                <span className="text-right font-semibold">{formatRupiah(detailItem.bruto_income)}</span>
+                <span className="font-semibold">Penghasilan bruto (dasar PPh 21)</span>
+                <span className="text-right font-semibold">{formatRupiah(getTaxableBruto(detailItem))}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 border-b border-border pb-3">
@@ -320,8 +323,8 @@ const EmployeePayrollHistory = () => {
                 <span className="text-right">{formatRupiah(detailItem.ptkp_value)}</span>
                 <span className="text-muted-foreground">{t("empPayroll.pkpYear")}</span>
                 <span className="text-right">{formatRupiah(detailItem.pkp)}</span>
-                <span className="text-muted-foreground">{t("empPayroll.pphMonthly")}</span>
-                <span className="text-right text-destructive font-medium">-{formatRupiah(detailItem.pph21_monthly)}</span>
+                <span className="text-muted-foreground">{getPphLabel(detailItem.pph21_monthly)}</span>
+                <span className="text-right text-destructive font-medium">{detailItem.pph21_monthly < 0 ? "+" : "−"}{formatRupiah(Math.abs(detailItem.pph21_monthly))}</span>
               </div>
 
               {/* Employer BPJS section */}

@@ -45,6 +45,7 @@ export const snapshotPayrollRow = (row: Record<string, any>) => ({
   allowance: row.allowance,
   overtime_total: row.overtime_total,
   bruto_income: row.bruto_income,
+  bruto_basis: row.bruto_basis,
   bpjs_kesehatan: row.bpjs_kesehatan,
   bpjs_ketenagakerjaan: row.bpjs_ketenagakerjaan,
   pph21_monthly: row.pph21_monthly,

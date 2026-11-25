@@ -8,6 +8,7 @@ import { Plus, Search, Download, MoreVertical, Upload, User, Pencil, Eye, Mail, 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EmployeeDetailDialog } from "@/components/EmployeeDetailDialog";
+import FinalSettlementDialog from "@/components/FinalSettlementDialog";
 import {
   Table,
   TableBody,
@@ -71,6 +72,7 @@ const Employees = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [viewingEmployee, setViewingEmployee] = useState<any>(null);
+  const [settlementEmployee, setSettlementEmployee] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -1378,6 +1380,7 @@ const Employees = () => {
           </DialogContent>
         </Dialog>
 
+        <FinalSettlementDialog open={Boolean(settlementEmployee)} onOpenChange={open => { if (!open) setSettlementEmployee(null); }} employee={settlementEmployee} />
         <EmployeeDetailDialog
           open={isDetailDialogOpen}
           onOpenChange={(open) => {
@@ -1498,6 +1501,7 @@ const Employees = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {employee.resign_date && <DropdownMenuItem onClick={() => setSettlementEmployee(employee)}>Final Settlement</DropdownMenuItem>}
                               <DropdownMenuItem onClick={() => openDetailDialog(employee)}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 Lihat Detail

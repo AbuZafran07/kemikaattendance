@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Loader2, Download } from "lucide-react";
-import { formatRupiah, PTKP_VALUES, calculatePPh21Annual } from "@/lib/payrollCalculation";
+import { formatRupiah, PTKP_VALUES, calculatePPh21Annual, getTaxableBruto, calculateBiayaJabatan, getPphLabel } from "@/lib/payrollCalculation";
+import { loadTaxConfig } from "@/lib/payrollTaxData";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import logo from "@/assets/logo.png";
@@ -26,6 +27,7 @@ interface EmployeeTaxSummary {
   biaya_jabatan: number;
   total_netto: number; // Tax netto (Bruto - Biaya Jabatan - JHT - JP)
   total_pph21: number;
+  yearly_tax: number;
   pkp: number;
 }
 
@@ -57,25 +59,32 @@ const BuktiPotong1721A1 = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const taxConfig = await loadTaxConfig();
       // Get all finalized periods for the year
       const { data: periods } = await supabase
-        .from("payroll_periods").select("id")
+        .from("payroll_periods").select("id, month")
         .eq("year", selectedYear).eq("status", "finalized");
 
       if (!periods || periods.length === 0) { setData([]); setLoading(false); return; }
 
       const periodIds = periods.map(p => p.id);
       const { data: payrolls } = await supabase
-        .from("payroll").select("user_id, bruto_income, bpjs_kesehatan, bpjs_ketenagakerjaan, netto_income, pph21_monthly, ptkp_status, ptkp_value, pkp")
+        .from("payroll").select("user_id, period_id, bruto_income, bruto_basis, bpjs_jht_employer, bpjs_jp_employer, bpjs_kesehatan, bpjs_ketenagakerjaan, netto_income, pph21_monthly, ptkp_status, ptkp_value, pkp")
         .in("period_id", periodIds);
 
       if (!payrolls || payrolls.length === 0) { setData([]); setLoading(false); return; }
 
       // Aggregate by user
+      const monthsByUser = new Map<string, Set<number>>();
+      const periodMonthMap = new Map(periods.map(p => [p.id, p.month]));
       const userMap = new Map<string, { bruto: number; bpjsKt: number; pph21: number; ptkpStatus: string; ptkpValue: number }>();
       for (const p of payrolls) {
         const existing = userMap.get(p.user_id) || { bruto: 0, bpjsKt: 0, pph21: 0, ptkpStatus: p.ptkp_status, ptkpValue: p.ptkp_value };
-        existing.bruto += p.bruto_income;
+        existing.bruto += getTaxableBruto(p);
+        const months = monthsByUser.get(p.user_id) || new Set<number>();
+        const month = periodMonthMap.get(p.period_id);
+        if (month) months.add(month);
+        monthsByUser.set(p.user_id, months);
         existing.bpjsKt += p.bpjs_ketenagakerjaan; // JHT + JP employee only
         existing.pph21 += p.pph21_monthly;
         userMap.set(p.user_id, existing);
@@ -92,7 +101,7 @@ const BuktiPotong1721A1 = () => {
         const agg = userMap.get(uid)!;
         const prof = profileMap.get(uid);
         // Tax netto uses Biaya Jabatan (5%, max 6jt) + JHT + JP employee
-        const biayaJabatan = Math.min(agg.bruto * 0.05, 6000000);
+        const biayaJabatan = calculateBiayaJabatan(agg.bruto, monthsByUser.get(uid)?.size || 1, taxConfig.rate, taxConfig.maxYearly);
         const totalPengurang = biayaJabatan + agg.bpjsKt;
         const taxNetto = agg.bruto - totalPengurang;
         const pkp = Math.max(0, taxNetto - agg.ptkpValue);
@@ -109,6 +118,7 @@ const BuktiPotong1721A1 = () => {
           biaya_jabatan: biayaJabatan,
           total_netto: taxNetto,
           total_pph21: agg.pph21,
+          yearly_tax: calculatePPh21Annual(pkp, taxConfig.brackets),
           pkp,
         };
       }).sort((a, b) => a.full_name.localeCompare(b.full_name));
@@ -174,14 +184,14 @@ const BuktiPotong1721A1 = () => {
       head: [["No", "Uraian", "Jumlah (Rp)"]],
       body: [
         ["1", "Penghasilan Bruto Setahun", formatRupiah(emp.total_bruto)],
-        ["2", "Biaya Jabatan (5%, maks Rp 6.000.000)", `(${formatRupiah(emp.biaya_jabatan)})`],
+        ["2", "Biaya Jabatan (proporsional masa kerja)", `(${formatRupiah(emp.biaya_jabatan)})`],
         ["3", "Iuran JHT + JP Karyawan", `(${formatRupiah(emp.total_bpjs_kt)})`],
         ["4", "Penghasilan Netto Setahun", formatRupiah(emp.total_netto)],
         ["5", `PTKP (${emp.ptkp_status})`, `(${formatRupiah(emp.ptkp_value)})`],
         ["6", "Penghasilan Kena Pajak (PKP)", formatRupiah(emp.pkp)],
-        ["7", "PPh 21 Terutang Setahun", formatRupiah(calculatePPh21Annual(emp.pkp))],
+        ["7", "PPh 21 Terutang Setahun", formatRupiah(emp.yearly_tax)],
         ["8", "PPh 21 Telah Dipotong", formatRupiah(emp.total_pph21)],
-        ["9", "Selisih (Kurang/Lebih Bayar)", formatRupiah(calculatePPh21Annual(emp.pkp) - emp.total_pph21)],
+        ["9", emp.yearly_tax - emp.total_pph21 < 0 ? "Pengembalian kelebihan PPh 21" : "Selisih (Kurang/Lebih Bayar)", formatRupiah(emp.yearly_tax - emp.total_pph21)],
       ],
       margin: { left: mx, right: mx },
       styles: { fontSize: 9, cellPadding: 3 },
@@ -290,7 +300,7 @@ const BuktiPotong1721A1 = () => {
                         <TableCell className="text-sm">{emp.nik}</TableCell>
                         <TableCell><Badge variant="outline">{emp.ptkp_status}</Badge></TableCell>
                         <TableCell className="text-right text-sm">{formatRupiah(emp.total_bruto)}</TableCell>
-                        <TableCell className="text-right text-sm text-destructive">{formatRupiah(emp.total_pph21)}</TableCell>
+                        <TableCell className="text-right text-sm text-destructive">{formatRupiah(emp.total_pph21)}{emp.total_pph21 < 0 && <span className="block text-xs text-primary">{getPphLabel(emp.total_pph21)}</span>}</TableCell>
                         <TableCell className="text-right text-sm">{formatRupiah(emp.pkp)}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="sm" className="h-7 px-2 gap-1" onClick={() => generatePDF(emp)}>

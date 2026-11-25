@@ -20,7 +20,7 @@ import { exportToExcelFile } from "@/lib/excelExport";
 import BusinessTravelVoucherExportDialog from "@/components/BusinessTravelVoucherExportDialog";
 import {
   calculatePayroll,
-  getTaxableBruto, getEmployerBpjs, getPphLabel, isResignTaxPeriod,
+  getTaxableBruto, getEmployerBpjs, getPphLabel, isResignTaxPeriod, splitBpjsKtEmployee,
   calculateOvertimePay,
   calculateOvertimePayPP35,
   formatRupiah,
@@ -62,6 +62,7 @@ interface PayrollData {
   bruto_basis?: string;
   bpjs_kesehatan: number;
   bpjs_ketenagakerjaan: number;
+  bpjs_employee_split?: ReturnType<typeof splitBpjsKtEmployee>;
   bpjs_kes_employer: number;
   bpjs_jht_employer: number;
   bpjs_jp_employer: number;
@@ -337,6 +338,8 @@ const Payroll = () => {
   const fetchPayrollData = async () => {
     setLoading(true);
     try {
+      const { data: displayBpjsConfig, error: displayBpjsError } = await supabase.rpc("get_bpjs_config");
+      const splitConfig = displayBpjsError ? undefined : displayBpjsConfig as unknown as BPJSRatesConfig;
       const { data: periodData } = await supabase
         .from("payroll_periods").select("*")
         .eq("month", selectedMonth).eq("year", selectedYear).maybeSingle();
@@ -369,6 +372,8 @@ const Payroll = () => {
 
       const enriched: PayrollData[] = filteredPayrolls.map((p) => ({
         ...p,
+        // Allocate from the raw saved payroll row BEFORE presentation/profile enrichment.
+        bpjs_employee_split: splitBpjsKtEmployee(p, splitConfig, periodData.month, periodData.year),
         employee_name: profileMap.get(p.user_id)?.name || "Unknown",
         departemen: profileMap.get(p.user_id)?.dept || "-",
         jabatan: profileMap.get(p.user_id)?.jabatan || "-",
@@ -1553,6 +1558,7 @@ const Payroll = () => {
       pengembalian_employee: item.pengembalian_employee || 0,
       tunjangan_perjalanan_dinas: item.tunjangan_perjalanan_dinas || 0,
       bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
+      bpjs_employee_split: item.bpjs_employee_split,
       bpjs_kesehatan: item.bpjs_kesehatan,
       loan_deduction: item.loan_deduction,
       other_deduction: item.other_deduction,
@@ -1619,6 +1625,9 @@ const Payroll = () => {
       "Biaya perusahaan (BPJS)": getEmployerBpjs(item),
       "BPJS Kes (1%)": item.bpjs_kesehatan,
       "BPJS TK+JP (3%)": item.bpjs_ketenagakerjaan,
+      "JHT Karyawan": (item.bpjs_employee_split ?? splitBpjsKtEmployee(item, undefined, selectedMonth, selectedYear)).jht,
+      "JP Karyawan": (item.bpjs_employee_split ?? splitBpjsKtEmployee(item, undefined, selectedMonth, selectedYear)).jp,
+      "Keterangan JHT/JP": item.bpjs_employee_split?.estimated === false ? "" : "perkiraan",
       "Pot. Pinjaman": item.loan_deduction,
       "Pot. Lainnya": item.other_deduction,
       "Netto": item.netto_income,
@@ -2096,6 +2105,7 @@ const Payroll = () => {
           pengembalian_employee: item.pengembalian_employee || 0,
           tunjangan_perjalanan_dinas: item.tunjangan_perjalanan_dinas || 0,
           bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
+          bpjs_employee_split: item.bpjs_employee_split,
           bpjs_kesehatan: item.bpjs_kesehatan,
           loan_deduction: item.loan_deduction,
           other_deduction: item.other_deduction,
@@ -2487,6 +2497,10 @@ const Payroll = () => {
                   <span className="text-right text-destructive">-{formatRupiah(detailItem.bpjs_kesehatan)}</span>
                   <span className="text-muted-foreground">{t("payrollPage.detail.bpjsTk")}</span>
                   <span className="text-right text-destructive">-{formatRupiah(detailItem.bpjs_ketenagakerjaan)}</span>
+                  <span className="text-muted-foreground text-xs">JHT Karyawan {detailItem.bpjs_employee_split?.estimated !== false && <small>(perkiraan)</small>}</span>
+                  <span className="text-right text-xs">-{formatRupiah((detailItem.bpjs_employee_split ?? splitBpjsKtEmployee(detailItem, undefined, selectedMonth, selectedYear)).jht)}</span>
+                  <span className="text-muted-foreground text-xs">JP Karyawan {detailItem.bpjs_employee_split?.estimated !== false && <small>(perkiraan)</small>}</span>
+                  <span className="text-right text-xs">-{formatRupiah((detailItem.bpjs_employee_split ?? splitBpjsKtEmployee(detailItem, undefined, selectedMonth, selectedYear)).jp)}</span>
                   {detailItem.loan_deduction > 0 && <>
                     <span className="text-muted-foreground">{t("payrollPage.detail.loan")}</span>
                     <span className="text-right text-destructive">-{formatRupiah(detailItem.loan_deduction)}</span>

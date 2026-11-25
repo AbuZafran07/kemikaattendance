@@ -1,4 +1,7 @@
 # Agent integrations
+# Employee JHT/JP display correction
+- [x] Share historical-row BPJS split across PDFs, payroll details and Excel without changing totals or stored payroll.
+- [x] Run 14 new split tests plus 24 payroll regressions; all 191 January–November rows preserve totals with no fallbacks; signed-in October/November PDF, slip, Excel and mobile detail verified; source fingerprints unchanged.
 # Payroll tax correction
 - [x] Add taxable bruto marker/helper, dated JP caps, proportional last-period reconciliation; 27 calculation/settings tests pass and finalized payroll fingerprint unchanged.
 - [x] Update tax reports, payroll costs, slips/refund displays and administrator December simulation; signed-in 17-row simulation, reports and negative-PPh PDFs verified.

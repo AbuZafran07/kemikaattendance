@@ -67,6 +67,7 @@ export interface BPJSRatesConfig {
   jkm_employer_rate: number;
   // Dasar perhitungan BPJS: "basic" = hanya gaji pokok, "basic_plus_fixed" = gapok + tunjangan tetap
   base_calculation?: BPJSBaseCalculation;
+  base_calculation_effective_date?: string;
   // Komponen tunjangan tetap yang dipakai sebagai dasar BPJS (hanya berlaku bila base_calculation = basic_plus_fixed).
   // Default: semua true demi kompatibilitas. Atur false untuk menjadikan tunjangan tsb "tidak tetap".
   fixed_allowance_components?: {
@@ -196,6 +197,48 @@ export function getJpSalaryCap(config?: BPJSRatesConfig, month?: number, year?: 
 
 export function getEmployerBpjs(row: { bpjs_kes_employer?: number; bpjs_jht_employer?: number; bpjs_jp_employer?: number; bpjs_jkk_employer?: number; bpjs_jkm_employer?: number }): number {
   return (row.bpjs_kes_employer || 0) + (row.bpjs_jht_employer || 0) + (row.bpjs_jp_employer || 0) + (row.bpjs_jkk_employer || 0) + (row.bpjs_jkm_employer || 0);
+}
+
+/** Display only: allocate the stored total; never recalculate payroll deductions. */
+export function splitBpjsKtEmployee(
+  row: { bpjs_ketenagakerjaan: number; basic_salary?: number | null; tunjangan_jabatan?: number | null; tunjangan_operasional?: number | null },
+  config: BPJSRatesConfig | undefined,
+  month: number,
+  year: number,
+): { jht: number; jp: number; estimated: boolean } {
+  const total = row.bpjs_ketenagakerjaan;
+  const fallback = () => {
+    const jht = Math.round(total * 2 / 3);
+    return { jht, jp: total - jht, estimated: true };
+  };
+  if (!Number.isFinite(total) || total < 0) return fallback();
+  if (total === 0) return { jht: 0, jp: 0, estimated: false };
+  if (!config || !Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year)) return fallback();
+  // Monthly payroll uses the policy in effect during that month (including June 2026).
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-31`;
+  const effectiveDate = config.base_calculation_effective_date;
+  if (!effectiveDate || !/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) return fallback();
+  const usesFixed = monthEnd >= effectiveDate && config.base_calculation === 'basic_plus_fixed';
+  let base = row.basic_salary;
+  if (typeof base !== 'number' || !Number.isFinite(base) || base <= 0) return fallback();
+  if (usesFixed) {
+    for (const [enabled, amount] of [
+      [config.fixed_allowance_components?.jabatan ?? true, row.tunjangan_jabatan],
+      [config.fixed_allowance_components?.operasional ?? true, row.tunjangan_operasional],
+    ] as const) {
+      if (!enabled) continue;
+      if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) return fallback();
+      base += amount;
+    }
+  }
+  const date = `${year}-${String(month).padStart(2, '0')}-01`;
+  const history = config.jp_max_salary_history?.filter(e => e.effective_from <= date && Number.isFinite(e.value) && e.value > 0);
+  if (!history?.length || !Number.isFinite(config.jp_employee_rate) || config.jp_employee_rate < 0) return fallback();
+  const cap = getJpSalaryCap(config, month, year);
+  const jp = Math.round(Math.min(base, cap) * config.jp_employee_rate / 100);
+  const jht = total - jp;
+  if (!Number.isFinite(jp) || jp > total || jht < 0) return fallback();
+  return { jht, jp, estimated: false };
 }
 
 export function getPayrollEmployerCost(row: TaxablePayrollRow & Parameters<typeof getEmployerBpjs>[0] & { basic_salary: number; allowance: number; overtime_total: number }): number {

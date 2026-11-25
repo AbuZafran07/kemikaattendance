@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { getTaxableBruto, getPphLabel } from "./payrollCalculation";
+import { getTaxableBruto, getPphLabel, splitBpjsKtEmployee, type BPJSRatesConfig } from "./payrollCalculation";
 import autoTable from "jspdf-autotable";
 
 const MONTHS = [
@@ -77,6 +77,7 @@ export interface PayslipData {
   tunjangan_perjalanan_dinas?: number;
   // Deductions
   bpjs_ketenagakerjaan: number; // JHT + JP employee
+  bpjs_employee_split?: ReturnType<typeof splitBpjsKtEmployee>;
   bpjs_kesehatan: number;
   loan_deduction: number;
   other_deduction: number;
@@ -97,7 +98,7 @@ export interface PayslipData {
   year: number;
 }
 
-export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
+export async function generatePayslipPDF(data: PayslipData, logoSrc: string, bpjsConfig?: BPJSRatesConfig) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth(); // ~210
   const mx = 10; // margin x
@@ -160,10 +161,8 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
     + (data.insentif_kinerja || 0) + (data.bonus_lainnya || 0) + (data.pengembalian_employee || 0) + (data.insentif_penjualan || 0) + (data.tunjangan_perjalanan_dinas || 0);
   const tunjanganKehadiran = Math.max(0, data.allowance - fixedTotal - incidentalTotal);
 
-  // JHT Employee = 2% of basic salary, JP Employee = 1% of basic salary
-  // bpjs_ketenagakerjaan = JHT + JP combined
-  const jhtEmployee = Math.round(data.bpjs_ketenagakerjaan * 2 / 3); // approx 2% portion
-  const jpEmployee = data.bpjs_ketenagakerjaan - jhtEmployee; // approx 1% portion
+  const employeeBpjs = data.bpjs_employee_split ?? splitBpjsKtEmployee(data, bpjsConfig, data.month, data.year);
+  const estimateLabel = employeeBpjs.estimated ? " (perkiraan)" : "";
 
   // Income items
   const incomeItems: [string, number][] = [
@@ -185,8 +184,8 @@ export async function generatePayslipPDF(data: PayslipData, logoSrc: string) {
 
   // Deduction items
   const deductionItems: [string, number][] = [
-    ["JHT Employee", jhtEmployee],
-    ["JP Employee", jpEmployee],
+    [`JHT Employee${estimateLabel}`, employeeBpjs.jht],
+    [`JP Employee${estimateLabel}`, employeeBpjs.jp],
     ["BPJS Kesehatan Employee", data.bpjs_kesehatan],
     ["Pinjaman Karyawan", data.loan_deduction || 0],
     ["Pengembalian Company", data.other_deduction || 0],

@@ -1,4 +1,4 @@
-import { getTaxableBruto, getPayrollEmployerCost, getPphLabel } from "./payrollCalculation";
+import { getTaxableBruto, getPayrollEmployerCost, getPphLabel, splitBpjsKtEmployee, type BPJSRatesConfig } from "./payrollCalculation";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -67,6 +67,7 @@ export interface PayrollReportItem {
   pengembalian_employee: number;
   tunjangan_perjalanan_dinas?: number;
   bpjs_ketenagakerjaan: number;
+  bpjs_employee_split?: ReturnType<typeof splitBpjsKtEmployee>;
   bpjs_kesehatan: number;
   loan_deduction: number;
   other_deduction: number;
@@ -88,7 +89,8 @@ export async function generatePayrollReportPDF(
   items: PayrollReportItem[],
   month: number,
   year: number,
-  logoSrc: string
+  logoSrc: string,
+  bpjsConfig?: BPJSRatesConfig
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth(); // ~297
@@ -327,8 +329,8 @@ export async function generatePayrollReportPDF(
   addPageHeader(doc, pw, "DETAIL POTONGAN & TAKE HOME PAY", periodLabel, mx, rightEnd);
 
   const deductionRows = items.map((item, idx) => {
-    const jhtEmp = Math.round(item.bpjs_ketenagakerjaan * 2 / 3);
-    const jpEmp = item.bpjs_ketenagakerjaan - jhtEmp;
+    const split = item.bpjs_employee_split ?? splitBpjsKtEmployee(item, bpjsConfig, month, year);
+    const estimateLabel = split.estimated ? "\n(perkiraan)" : "";
     const pph21Label = item.pph21_mode === "TER" && item.pph21_ter_rate != null
       ? `TER ${item.pph21_ter_rate.toFixed(2)}%`
       : item.pph21_mode || "-";
@@ -338,8 +340,8 @@ export async function generatePayrollReportPDF(
       item.nik || "-",
       item.employee_name || "-",
       fmtRp(getTaxableBruto(item)),
-      fmtRp(jhtEmp),
-      fmtRp(jpEmp),
+      fmtRp(split.jht) + estimateLabel,
+      fmtRp(split.jp) + estimateLabel,
       fmtRp(item.bpjs_kesehatan),
       fmtRp(item.loan_deduction || 0),
       fmtRp(item.other_deduction || 0),
@@ -353,8 +355,8 @@ export async function generatePayrollReportPDF(
   const deductionTotals = [
     "", "", `TOTAL`,
     fmtRp(totalBruto),
-    fmtRp(items.reduce((s, i) => s + Math.round(i.bpjs_ketenagakerjaan * 2 / 3), 0)),
-    fmtRp(items.reduce((s, i) => s + (i.bpjs_ketenagakerjaan - Math.round(i.bpjs_ketenagakerjaan * 2 / 3)), 0)),
+    fmtRp(items.reduce((s, i) => s + (i.bpjs_employee_split ?? splitBpjsKtEmployee(i, bpjsConfig, month, year)).jht, 0)),
+    fmtRp(items.reduce((s, i) => s + (i.bpjs_employee_split ?? splitBpjsKtEmployee(i, bpjsConfig, month, year)).jp, 0)),
     fmtRp(items.reduce((s, i) => s + i.bpjs_kesehatan, 0)),
     fmtRp(items.reduce((s, i) => s + (i.loan_deduction || 0), 0)),
     fmtRp(items.reduce((s, i) => s + (i.other_deduction || 0), 0)),

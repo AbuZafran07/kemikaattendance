@@ -1,4 +1,5 @@
 # Integration architecture
+- Split employee JHT/JP only for display using stored monthly wage components and dated BPJS configuration; retain the stored combined deduction and mark unsafe allocations as estimates so historical totals never move.
 - Centralize taxable-bruto conversion, dated contribution caps and last-period reconciliation in the payroll engine; reports and the read-only simulation reuse these rules while finalized source amounts remain unchanged. Keep full-wage overtime/THR basis selection separate from prorated BPJS inputs to prevent one policy changing another.
 - All backups discover tables via `list_backup_tables` in `_shared/backup-tables.ts` (only cache tables excluded) and export fail-closed with a row-count manifest; external backups verify readback counts against exact source counts, verify private destination readback, and retain only owned-prefix files; managed cron and server-verified administrators share one handler without altering internal schedules.
 - Render unlock-letter previews from existing signed records with the current PDF generator; this fixes old layouts without rewriting signatures or approval history.

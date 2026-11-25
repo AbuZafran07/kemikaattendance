@@ -1,4 +1,4 @@
-import { getTaxableBruto, getPphLabel } from "@/lib/payrollCalculation";
+import { getTaxableBruto, getPphLabel, splitBpjsKtEmployee, type BPJSRatesConfig } from "@/lib/payrollCalculation";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -26,6 +26,9 @@ interface PayrollItem {
   bruto_basis?: string;
   bpjs_kesehatan: number;
   bpjs_ketenagakerjaan: number;
+  tunjangan_jabatan?: number;
+  tunjangan_operasional?: number;
+  bpjs_employee_split?: ReturnType<typeof splitBpjsKtEmployee>;
   bpjs_kes_employer: number;
   bpjs_jht_employer: number;
   bpjs_jp_employer: number;
@@ -77,6 +80,8 @@ const EmployeePayrollHistory = () => {
   const fetchPayrolls = async () => {
     setLoading(true);
     try {
+      const { data: displayBpjsConfig, error: displayBpjsError } = await supabase.rpc("get_bpjs_config");
+      const splitConfig = displayBpjsError ? undefined : displayBpjsConfig as unknown as BPJSRatesConfig;
       // Get finalized periods for selected year
       const { data: periods } = await supabase
         .from("payroll_periods")
@@ -98,7 +103,7 @@ const EmployeePayrollHistory = () => {
 
       const enriched = (payrollData || []).map(p => {
         const per = periodMap.get(p.period_id)!;
-        return { ...p, month: per.month, year: per.year };
+        return { ...p, month: per.month, year: per.year, bpjs_employee_split: splitBpjsKtEmployee(p, splitConfig, per.month, per.year) };
       });
 
       enriched.sort((a, b) => b.month - a.month);
@@ -143,6 +148,7 @@ const EmployeePayrollHistory = () => {
       bonus_lainnya: item.bonus_lainnya || 0,
       pengembalian_employee: item.pengembalian_employee || 0,
       bpjs_ketenagakerjaan: item.bpjs_ketenagakerjaan,
+      bpjs_employee_split: item.bpjs_employee_split,
       bpjs_kesehatan: item.bpjs_kesehatan,
       loan_deduction: item.loan_deduction,
       other_deduction: item.other_deduction,
@@ -303,6 +309,10 @@ const EmployeePayrollHistory = () => {
                 <span className="text-right text-destructive">-{formatRupiah(detailItem.bpjs_kesehatan)}</span>
                 <span className="text-muted-foreground">{t("empPayroll.bpjsTk")}</span>
                 <span className="text-right text-destructive">-{formatRupiah(detailItem.bpjs_ketenagakerjaan)}</span>
+                <span className="text-muted-foreground text-xs">JHT Karyawan {detailItem.bpjs_employee_split?.estimated !== false && <small>(perkiraan)</small>}</span>
+                <span className="text-right text-xs">-{formatRupiah((detailItem.bpjs_employee_split ?? splitBpjsKtEmployee(detailItem, undefined, detailItem.month, detailItem.year)).jht)}</span>
+                <span className="text-muted-foreground text-xs">JP Karyawan {detailItem.bpjs_employee_split?.estimated !== false && <small>(perkiraan)</small>}</span>
+                <span className="text-right text-xs">-{formatRupiah((detailItem.bpjs_employee_split ?? splitBpjsKtEmployee(detailItem, undefined, detailItem.month, detailItem.year)).jp)}</span>
                 {detailItem.loan_deduction > 0 && <>
                   <span className="text-muted-foreground">{t("empPayroll.loanCut")}</span>
                   <span className="text-right text-destructive">-{formatRupiah(detailItem.loan_deduction)}</span>
